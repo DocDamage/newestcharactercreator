@@ -42,3 +42,15 @@ jobs:
       - name: Run official Blender and MPFB with actual mesh and rig
         shell: bash
         run: bash ci/run_mpfb_cloud_smoke.sh
+      - name: Retain only JSON evidence (no proprietary models or Blender files)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ucc-mpfb-linux-mesh-worker-json
+          path: |
+            ${{ runner.temp }}/ucc-mpfb-smoke/summary.json
+            ${{ runner.temp }}/ucc-mpfb-smoke/mpfb_create_result.json
+            ${{ runner.temp }}/ucc-mpfb-smoke/reopen_result.json
+            ${{ runner.temp }}/ucc-ucc-worker/production_summary.json
+          if-no-files-found: ignore
+          retention-days: 3

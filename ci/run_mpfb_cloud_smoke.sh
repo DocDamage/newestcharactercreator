@@ -58,3 +58,35 @@ if not all(conditions):
 print('REAL_LINUX_BLENDER_MPFb_MESH_RIG_REOPEN_PASSED')
 print('Windows compatibility, deformation and engine import remain untested')
 PY
+
+echo 'Now verifying the production BlenderJobRunner / entrypoint protocol with real MPFB'
+python3 - "$blender" "$GITHUB_WORKSPACE" "$RUNNER_TEMP/ucc-ucc-worker" <<'PY'
+import json, sys
+from pathlib import Path
+blender, repo, base = (Path(p) for p in sys.argv[1:])
+sys.path.insert(0, str(repo/'src'))
+from ucc.jobs.protocol import JobRequest
+from ucc.jobs.runner import BlenderJobRunner
+base.mkdir(parents=True, exist_ok=True)
+runner = BlenderJobRunner(blender, base/'jobs', repo/'blender_bridge'/'entrypoint.py')
+created, created_dir = runner.run(JobRequest.new('create_human'), timeout_s=300)
+source = created_dir/'generated_human.blend'
+if not source.is_file() or source.stat().st_size < 16:
+    raise SystemExit('Worker falsely claimed creation without a Blender master')
+inspected, inspect_dir = runner.run(
+    JobRequest.new('inspect_character', input_project='candidate.blend'),
+    staged_inputs={'candidate.blend': source}, timeout_s=300,
+)
+geometry = inspected.details
+if not (geometry.get('vertex_count',0)>100 and geometry.get('mesh_count',0)>0 and
+        any(r.get('bone_count',0)>=5 for r in geometry.get('armatures',[]))):
+    raise SystemExit('Worker fresh-process character inspection failed')
+summary={'status':'REAL_BPY_WORKER_CREATE_REOPEN_PASSED',
+         'created_mesh_count': len(created.details.get('created_meshes',[])),
+         'inspected_mesh_count': geometry['mesh_count'],
+         'inspected_vertices': geometry['vertex_count'],
+         'armatures': geometry['armatures'],
+         'engine_validated': False, 'windows_validated': False}
+(base/'production_summary.json').write_text(json.dumps(summary,indent=2),encoding='utf8')
+print('REAL_BPY_WORKER_CREATE_REOPEN_PASSED: vertex_count='+str(geometry['vertex_count']))
+PY
