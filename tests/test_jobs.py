@@ -25,6 +25,17 @@ class WorkerProtocolTests(unittest.TestCase):
         with self.assertRaises(ValidationError):
             JobRequest.new("arbitrary_code")
 
+    def test_preview_glb_needs_staged_blend_and_rejects_unsafe_options(self):
+        with self.assertRaisesRegex(ValidationError, "input_project"):
+            JobRequest.new("export_preview_glb")
+        with self.assertRaisesRegex(ValidationError, "fixed"):
+            JobRequest.new("export_preview_glb", input_project="candidate.blend",
+                           options={"include_textures": True})
+        request = JobRequest.new("export_preview_glb", input_project="candidate.blend")
+        self.assertEqual(JobRequest.from_dict(request.as_dict()), request)
+        with self.assertRaises(ValidationError):
+            JobRequest.new("export_preview_glb", input_project="../escape.blend")
+
     def test_request_cannot_traverse_or_run_arbitrary_code(self):
         for bad in ("../../user.blend", "C:/user.blend", "\\\\server\\file.blend"):
             with self.subTest(bad=bad), self.assertRaises(ValidationError):
