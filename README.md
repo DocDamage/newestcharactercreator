@@ -1,12 +1,20 @@
 # Universal AI Character Creator
 
-**Project stage: functional PySide6 desktop alpha, versioned core and verified Linux Blender/MPFB generation.** This is not yet a complete interactive rigged-character editor or a certified engine export pipeline.
+**Project stage: functional PySide6 desktop alpha, versioned core and Linux-verified MPFB character generation, saved-body refit, static GLB preview and rig-pose deformation diagnostic.** This is not a complete character animation editor or certified Godot/Unity/Unreal export pipeline.
+
+## Current character workflow and verified evidence (November 11, 2026)
+
+[PRs #25–#28](https://github.com/DocDamage/newestcharactercreator/pulls?q=is%3Apr+is%3Amerged) are merged. The desktop can create a real MPFB humanoid from **saved** normalized Height/Muscle/Weight settings, edit the saved master on a private Blender copy using MPFB macro refit while preserving its rig weights, and display a private **evaluated-geometry-baked** static GLB preview. Original SHA-addressed masters and metadata backups are preserved.
+
+**[PR #29](https://github.com/DocDamage/newestcharactercreator/pull/29)** adds **Test saved rig deformation in Blender...**. On its tested Linux branch, a real 20° rotation of the weighted head bone moved **4,451 evaluated mesh vertices**. Two separate Blender processes agreed on the geometry/rig fingerprints, the original pose was restored, and neither master nor project file changed. This also fixes the merged PR #28's static GLB preview regression by baking **evaluated** MPFB shape-key positions before exporting the temporary diagnostic GLB. [Real Blender integration run #43101713245](https://github.com/DocDamage/newestcharactercreator/actions/runs/43101713245) passed; core, Qt, preflight and frozen Windows startup CI also passed on that commit.
+
+**Explicit limits:** The test demonstrates one reproducible static skinned-bone response, **not** live animation clips, quality of shoulder/face deformation, IK, retargeting, real-world height calibration or successful engine reimport. The owner's actual Windows Blender 5.3/MPFB environment remains untested; MPFB installed from the live official extension registry is not version-hash pinned. Existing per-PR milestone descriptions below are retained as **historical development notes** and may describe earlier limitations now improved by subsequent PRs. [Current status](docs/STATUS.md) · [Rig-pose test guide](docs/integration/rig-pose-deformation.md).
 
 ## Current verified milestone (November 11, 2026)
 
 [Pull request #24](https://github.com/DocDamage/newestcharactercreator/pull/24) removes the broken GitHub Actions runner-context expression and adds a **real Linux production-worker verification**, with evidence at [Actions run #43082628064](https://github.com/DocDamage/newestcharactercreator/actions/runs/43082628064): Blender 5.3.0 with the official installed MPFB extension generated an editable `.blend` master (19,158 new mesh vertices, 163 reopened armature bones). A separate Blender worker process reopened an identical master successfully. The core/preflight CI checks also passed.
 
-**Not verified:** user's Windows Blender 5.3 + MPFB installation, specific MPFB release version (the CI registry install is not version-pinned), animated skinning, in-app model generation/morph editing, Godot/Unity/Unreal imports. **The feature remains on the PR branch until merged.** See [current evidence/status](docs/STATUS.md). Older sections below describe incremental history, not the current readiness gate.
+**Historical PR #24 limitations:** user's Windows Blender/MPFB, exact MPFB release pin, animations and game-engine imports were not verified by that step. Subsequent merged PRs added real in-app generation, phenotype regeneration, master refit and static preview; PR #29 tests an actual weighted-bone pose. See [current evidence/status](docs/STATUS.md). Older sections below describe incremental history, not the current readiness gate.
 
 ## Desktop humanoid generation — PR #25
 
