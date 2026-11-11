@@ -1,0 +1,32 @@
+name: Character Core and Worker Tests
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  core-tests:
+    name: Core Python ${{ matrix.python-version }} / ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.12', '3.13']
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Compile pure Python and bundled bridge
+        run: python -m compileall -q src blender_bridge
+      - name: Core/worker/library tests (no Blender)
+        run: python -m unittest discover -s tests -v
+      - name: Earlier preflight tests
+        run: python -m unittest discover -s Stage0_Starter/tests -v
+      - name: Earlier evidence and license tests
+        run: python -m unittest discover -s Development_Guardrails/tests -v
+      - name: Validate JSON schemas are parseable
+        run: python -c "import json,pathlib; [json.loads(p.read_text(encoding='utf-8')) for p in pathlib.Path('docs/schemas').glob('*.json')]"

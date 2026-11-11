@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "UCC PartAsset metadata version 1",
+  "type": "object", "additionalProperties": false,
+  "required": ["asset_id", "family_compatibility", "kind", "slot", "socket", "license_asset_id", "mesh", "rig_profile", "bind_pose_fingerprint", "source_verified"],
+  "properties": {
+    "asset_id": {"type": "string", "minLength": 1},
+    "family_compatibility": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"const": "humanoid.v1"}},
+    "kind": {"enum": ["rigid_mesh", "skinned_mesh"]},
+    "slot": {"type": "string", "minLength": 1},
+    "socket": {"type": "string", "minLength": 1},
+    "license_asset_id": {"type": "string", "minLength": 1},
+    "mesh": {"type": "string", "minLength": 1},
+    "rig_profile": {"type": ["string", "null"]},
+    "bind_pose_fingerprint": {"type": ["string", "null"]},
+    "source_verified": {"type": "boolean"}
+  }
+}

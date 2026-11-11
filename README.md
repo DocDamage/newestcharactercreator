@@ -48,3 +48,20 @@ Do not commit scanner reports containing personal paths, source Fab assets, mode
 Keep main stable; use one topic branch and PR per task. Don't silently install dependencies, fabricate successful integrations or ship placeholder assets. Track source permissions before any AI processing or export. No public distribution license is chosen yet. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 **Next action:** run `UCC-P0-001` with the user's real Blender 5.3 + MPFB installation, and record logs, versions and actual saved/reopened character evidence.
+
+## New: versioned core implementation (pre-UI)
+
+A functional **Python metadata backend** now exists. It is not yet a graphical 3D creator. See [Implementation status](IMPLEMENTATION_STATUS.md) and [start guide](docs/START_DEV.md).
+
+```powershell
+$env:PYTHONPATH = "src"
+py -3 -m unittest discover -s tests -v
+py -3 -m ucc new "$env:USERPROFILE\Documents\UCC\FirstHuman" --name "First Human"
+py -3 -m ucc info "$env:USERPROFILE\Documents\UCC\FirstHuman"
+py -3 -m ucc slots
+py -3 -m ucc plan-sprites --directions 8 --clip idle:8
+```
+
+Included: strict character/project data model, semantic body-part slots, reversible metadata edits, atomic revision-checked project saves, SQLite asset-provenance ledger, sprite camera/frame planner, and a cancellable Blender subprocess protocol. Its `blender_bridge/entrypoint.py` is an **untested real Blender integration candidate**. No physical character geometry, animation export, or engine import is claimed until [UCC-P0-001](https://github.com/DocDamage/newestcharactercreator/issues/2) passes on Windows.
+
+**Unit tests are not Blender tests.** The real create/save/reopen test remains in `Stage0_Starter/` and `Development_Guardrails/`. Source checkpoints, purchased Fab animations, evidence containing personal paths, and project masters remain excluded from this public repo.

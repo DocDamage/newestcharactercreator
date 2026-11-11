@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "UCC Blender worker response v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["protocol_version", "job_id", "operation", "status", "details", "error"],
+  "properties": {
+    "protocol_version": {"const": 1},
+    "job_id": {"type": "string", "format": "uuid"},
+    "operation": {"enum": ["inspect_environment", "inspect_character", "create_human"]},
+    "status": {"enum": ["ok", "error"]},
+    "details": {"type": "object"},
+    "error": {"type": ["string", "null"]}
+  }
+}
