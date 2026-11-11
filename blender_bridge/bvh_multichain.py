@@ -94,6 +94,13 @@ def select_explicit_chain(
         if not 1.0 <= maximum <= MAX_ANGLE_DELTA:
             raise MultiBvhError("Each BVH joint must have safe 1–45 degree source motion")
         parent_name = motion.parents.get(key)
+        if selected:
+            if parent_name != selected[-1]["source"].casefold():
+                raise MultiBvhError(
+                    "BVH source must form a directly connected, non-branching joint chain"
+                )
+        elif parent_name is not None:
+            raise MultiBvhError("First selected BVH joint must be the source root")
         if parent_name is not None:
             parent = target_map.get(parent_name)
             if parent is None or actual.parent != parent:
