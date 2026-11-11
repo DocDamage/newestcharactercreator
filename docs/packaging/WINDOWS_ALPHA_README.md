@@ -18,6 +18,10 @@ The desktop's Character tab now includes **Generate real MPFB humanoid...**. Thi
 
 The portable archive includes the UCC-owned `blender_bridge` Python worker scripts but **does not** ship Blender, MPFB, assets or models. The frozen `--self-test` now checks worker-file presence as well as Qt and metadata. It **does not run Blender/MPFB**. Real creation has been tested on Linux CI; it still needs target-Windows verification. Live morph deformation, rig animation, export and game-engine imports remain unverified. Read [the actual generation workflow and safeguards](../integration/humanoid-generation.md) before using it.
 
+## Read-only preview of a saved Blender master (PR #26)
+
+The Character tab can convert an already-saved UCC `.blend` master into a temporary static GLB, displayed in the existing UCC viewer. The user must explicitly choose an installed Blender executable if one was not already selected during the current app session. No Blender binaries or third-party assets are bundled, downloaded or uploaded. The generated GLB is a private local preview only; animation, mesh deformation, textures and engine import are **not** verified. See [saved-master preview guide](../integration/saved-master-preview.md).
+
 ## Source and asset protections
 
 This artifact bundles only open dependency runtime libraries and UCC source code. It intentionally excludes Fab files, model checkpoints, purchased music/animation data, personal project directories, MPFB, Blender, and proprietary reference art. It does **not** automatically scan the computer or contact cloud AI providers.
