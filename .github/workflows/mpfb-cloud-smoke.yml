@@ -11,6 +11,10 @@ on:
       - 'Stage0_Starter/blender_bridge/**'
       - 'Stage0_Starter/tools/run_mpfb_smoke.py'
       - 'ci/verify_production_worker.py'
+      - 'ci/verify_project_generation.py'
+      - 'src/ucc/jobs/geometry_evidence.py'
+      - 'src/ucc/jobs/humanoid_generation.py'
+      - 'src/ucc/core/master_versions.py'
   push:
     branches:
       - main
@@ -20,6 +24,10 @@ on:
       - 'Stage0_Starter/blender_bridge/**'
       - 'Stage0_Starter/tools/run_mpfb_smoke.py'
       - 'ci/verify_production_worker.py'
+      - 'ci/verify_project_generation.py'
+      - 'src/ucc/jobs/geometry_evidence.py'
+      - 'src/ucc/jobs/humanoid_generation.py'
+      - 'src/ucc/core/master_versions.py'
 
 permissions:
   contents: read
@@ -110,6 +118,13 @@ jobs:
           python3 ci/verify_production_worker.py \
             --blender "$BLENDER_EXE" \
             --outdir "$RUNNER_TEMP/ucc-production-worker" --timeout 300
+      - name: Verify complete Blender-to-project humanoid transaction
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ci/verify_project_generation.py \
+            --blender "$BLENDER_EXE" \
+            --outdir "$RUNNER_TEMP/ucc-project-integration"
       - name: Retain JSON diagnostics only; no assets or .blend in artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -120,5 +135,6 @@ jobs:
             ${{ runner.temp }}/ucc-mpfb-smoke/mpfb_create_result.json
             ${{ runner.temp }}/ucc-mpfb-smoke/reopen_result.json
             ${{ runner.temp }}/ucc-production-worker/production_summary.json
+            ${{ runner.temp }}/ucc-project-integration/transaction_summary.json
           if-no-files-found: ignore
           retention-days: 3

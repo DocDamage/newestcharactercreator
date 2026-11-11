@@ -8,6 +8,12 @@
 
 **Not verified:** user's Windows Blender 5.3 + MPFB installation, specific MPFB release version (the CI registry install is not version-pinned), animated skinning, in-app model generation/morph editing, Godot/Unity/Unreal imports. **The feature remains on the PR branch until merged.** See [current evidence/status](docs/STATUS.md). Older sections below describe incremental history, not the current readiness gate.
 
+## Desktop humanoid generation — PR #25
+
+[PR #25](https://github.com/DocDamage/newestcharactercreator/pull/25) adds an **opt-in real MPFB human generation action** in the existing desktop Character tab. After saving character metadata, select **Generate real MPFB humanoid...**, confirm, and point UCC to your already-installed Blender executable with MPFB enabled. It runs the real Blender worker twice, independently inspects the saved human/rig, checks the file hash, and makes the resulting `.blend` the project's new immutable master revision only if the saved project has not changed. Existing masters remain intact; cancellation and errors do not write a new project pointer.
+
+This does **not** apply draft morph sliders to mesh geometry, animate or retarget a rig, or certify Godot/Unity/Unreal imports. All generated masters remain `generated_unverified` until later real deformation/export validation. The user's Windows Blender installation is still untested. See [generation instructions, failure modes and disk layout](docs/integration/humanoid-generation.md).
+
 ## Goal
 
 A standalone Windows character creator using Blender 5.3 and MPFB to make an editable humanoid foundation, with modular body parts, animation/rigging, selectable local or cloud AI, and validated export to Godot, Unreal Engine, Unity, 2D and 2.5D workflows. The first hardware target is RTX 3060 12 GB. Broader anatomy types and 100+ animations are planned after a reliable end-to-end humanoid pipeline exists.

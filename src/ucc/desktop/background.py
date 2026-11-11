@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from typing import Any, Callable
+from threading import Event
 
 from PySide6.QtCore import QObject, QThread, Signal, Slot
 
@@ -35,12 +36,13 @@ class BackgroundJobs(QObject):
         self.on_busy = on_busy
         self._thread: QThread | None = None
         self._worker: JobWorker | None = None
+        self._cancel: Event | None = None
 
     @property
     def busy(self) -> bool:
         return self._thread is not None
 
-    def submit(self, func: Callable[[], Any]) -> bool:
+    def submit(self, func: Callable[[], Any], *, cancel: Event | None = None) -> bool:
         if self.busy:
             return False
         thread = QThread()
@@ -55,12 +57,21 @@ class BackgroundJobs(QObject):
         thread.finished.connect(self._completed)
         self._thread = thread
         self._worker = worker
+        self._cancel = cancel
         self.on_busy(True)
         thread.start()
+        return True
+
+    def cancel(self) -> bool:
+        """Request cooperative cancellation; never force-delete a running Qt thread."""
+        if not self.busy or self._cancel is None:
+            return False
+        self._cancel.set()
         return True
 
     @Slot()
     def _completed(self) -> None:
         self._thread = None
         self._worker = None
+        self._cancel = None
         self.on_busy(False)

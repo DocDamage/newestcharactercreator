@@ -60,6 +60,11 @@ def _self_test(report: Path | None) -> int:
                 if window.tabs.count() != 3 or window.character.heading.text() != loaded.name:
                     raise RuntimeError("Qt editor failed to initialize expected widgets")
                 result["checks"].append("QT_WIDGETS_OK")
+                from ucc.desktop.generation import bundled_worker_path
+                worker = bundled_worker_path()
+                if worker.parent.name != "blender_bridge":
+                    raise RuntimeError("Unexpected Blender script location")
+                result["checks"].append("BLENDER_BRIDGE_BUNDLED_OK")
             finally:
                 window.close()
                 window.deleteLater()

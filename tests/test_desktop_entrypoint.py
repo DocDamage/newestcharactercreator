@@ -51,7 +51,7 @@ class RealQtSelfTest(unittest.TestCase):
             self.assertEqual(main(["--self-test", "--self-test-report", str(target)]), 0)
             status = json.loads(target.read_text(encoding="utf-8"))
             self.assertEqual(status["status"], "SELF_TEST_OK")
-            self.assertEqual(status["checks"], ["PROJECT_SAVE_REOPEN_OK", "QT_WIDGETS_OK"])
+            self.assertEqual(status["checks"], ["PROJECT_SAVE_REOPEN_OK", "QT_WIDGETS_OK", "BLENDER_BRIDGE_BUNDLED_OK"])
             self.assertNotIn("source_path", json.dumps(status))
 
 

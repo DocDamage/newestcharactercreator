@@ -2,6 +2,8 @@
 
 This is the **first desktop UI**, implemented in PySide6. It provides real project and file operations and deliberately does **not** depict a working humanoid 3D editor or animation retargeting. No example character geometry, Fab assets, or pretrained weights are bundled.
 
+> **Historical v0.1 workstation documentation.** [PR #25](https://github.com/DocDamage/newestcharactercreator/pull/25) adds a real, explicit MPFB create/reopen/save action to the Character tab. For current instructions and limits see [desktop humanoid generation](humanoid-generation.md). Below describes the original pre-generation release.
+
 ## Setup on Windows (no IDE necessary)
 
 Using Python 3.12 or newer, from the checked-out repository root in PowerShell:

@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+from threading import Event
 from typing import Any, Callable
 
 from PySide6.QtCore import QStandardPaths, Qt
@@ -24,9 +25,11 @@ from ucc.library.provenance import LicensePolicy
 from ucc.sprites.atlas import pack_frames
 from ucc.sprites.plan import CameraProfile, build_plan
 from ucc.preview.glb_mesh import PreviewMesh, load_glb_preview
+from ucc.jobs.humanoid_generation import HumanoidGeneration
 
 from .background import BackgroundJobs
 from .controller import DesktopController, ProjectView
+from .generation import generate_from_desktop
 from .panes import AnimationPane, CharacterPane, ToolsPane
 from .mesh_viewer import MeshViewer
 
@@ -50,8 +53,9 @@ class MainWindow(QMainWindow):
         self.log.setReadOnly(True)
         self.log.setMaximumHeight(150)
         self.log.setPlainText(
-            "Ready. The application edits project metadata and existing files. "
-            "Actual humanoid creation remains unverified; View has a read-only sampled GLB mesh preview."
+            "Ready. Humanoid generation requires your installed Blender and MPFB. "
+            "Every generated master is reopened before staging, but its deformation and "
+            "game-engine compatibility remain unverified; GLB preview is read-only."
         )
         container = QWidget()
         layout = QVBoxLayout(container)
@@ -86,6 +90,12 @@ class MainWindow(QMainWindow):
         self.redo_action = self._action(edit, "&Redo", "Ctrl+Shift+Z", self.redo)
         self.undo_action.setEnabled(False)
         self.redo_action.setEnabled(False)
+        character_menu = self.menuBar().addMenu("&Character")
+        self.cancel_generation_action = self._action(
+            character_menu, "&Cancel current humanoid generation", "",
+            self.cancel_generation,
+        )
+        self.cancel_generation_action.setEnabled(False)
         view_menu = self.menuBar().addMenu("&View")
         self.mesh_action = self._action(view_menu, "&Preview local GLB model...", "Ctrl+Shift+M", self.open_mesh_preview)
         self.mesh_toggle = self.mesh_dock.toggleViewAction()
@@ -106,6 +116,7 @@ class MainWindow(QMainWindow):
         self.character.name_requested.connect(self.rename)
         self.character.morph_requested.connect(self.set_morph)
         self.character.open_master_requested.connect(self.open_master_in_blender)
+        self.character.generate_human_requested.connect(self.generate_humanoid)
         self.animations.inspect_requested.connect(self.inspect_animation)
         self.animations.index_requested.connect(self.index_animation)
         self.animations.refresh_requested.connect(self.refresh_catalog)
@@ -213,25 +224,75 @@ class MainWindow(QMainWindow):
             raise ValidationError("Application data folder cannot be a symlink")
         return folder / "animation_library.db"
 
-    def _submit(self, kind: str, operation: Callable[[], object]) -> None:
+    def _submit(self, kind: str, operation: Callable[[], object], *,
+                cancel: Event | None = None) -> None:
         if self.jobs.busy:
             self._error("Another local task is still running")
             return
         self._work_kind = kind
-        if not self.jobs.submit(operation):
+        if not self.jobs.submit(operation, cancel=cancel):
             self._error("Could not start task")
 
     def _busy_changed(self, busy: bool) -> None:
+        # A live Blender run may take minutes. Freeze ALL project-edit actions,
+        # not merely the other worker tabs, to avoid stale in-memory sessions.
+        self.character.setEnabled(not busy)
         self.animations.setEnabled(not busy)
         self.tools.setEnabled(not busy)
         self.mesh_action.setEnabled(not busy)
-        self.statusBar().showMessage("Working on local files..." if busy else "Local task finished")
+        self.new_action.setEnabled(not busy)
+        self.open_action.setEnabled(not busy)
+        self.save_action.setEnabled(not busy and self.controller.dirty)
+        if self.controller.has_project:
+            state = self.controller.view()
+            self.undo_action.setEnabled(not busy and state.can_undo)
+            self.redo_action.setEnabled(not busy and state.can_redo)
+        self.cancel_generation_action.setEnabled(
+            busy and self._work_kind == "generate_humanoid"
+        )
+        self.statusBar().showMessage(
+            "Generating real MPFB humanoid in Blender..."
+            if busy and self._work_kind == "generate_humanoid"
+            else ("Working on local files..." if busy else "Local task finished")
+        )
 
     def _job_success(self, result: object) -> None:
         if self._work_kind == "catalog":
             assert isinstance(result, list)
             self.animations.display_catalog(result)
             self.log.setPlainText(f"Catalog contains {len(result)} source files. Metadata only; no retargeting verified.")
+        elif self._work_kind == "generate_humanoid":
+            assert isinstance(result, HumanoidGeneration)
+            if self.controller.store is None or (
+                result.revision.project.project_id != self.controller.require_project().project_id
+            ):
+                self._error("Project selection changed during Blender work; inspect saved revisions")
+                return
+            try:
+                self.controller.open(self.controller.store.root)
+                actual = self.controller.require_project()
+                if (actual.revision != result.revision.project.revision
+                        or actual.master_blend != result.revision.project.master_blend):
+                    raise ValidationError(
+                        "Another editor changed this project after generation committed"
+                    )
+                self.refresh_project()
+            except (UCCError, OSError, ValueError) as exc:
+                self._error(
+                    f"Master was staged but UI reload failed ({type(exc).__name__}: {exc}); "
+                    "reopen your project manually to inspect the saved revision"
+                )
+                return
+            self.log.setPlainText(
+                "REAL BLENDER MASTER GENERATED, REOPENED AND SAVED.\n"
+                f"Created vertices: {result.observed['created_vertex_count']}\n"
+                f"Reopened bones: {result.observed['reopened_bone_count']}\n"
+                f"Saved revision: {result.revision.project.revision}\n"
+                f"SHA-256: {result.revision.sha256}\n"
+                "Geometry state: generated_unverified. Open the saved master in Blender "
+                "for visual inspection. Morph sliders are draft metadata, and this is "
+                "NOT a verified animated model or Godot/Unity/Unreal export."
+            )
         elif self._work_kind == "mesh_preview":
             assert isinstance(result, PreviewMesh)
             self.mesh_viewer.show_model(result)
@@ -244,6 +305,57 @@ class MainWindow(QMainWindow):
 
     def _job_error(self, error: str) -> None:
         self._error(error)
+
+    def generate_humanoid(self) -> None:
+        """Explicit user-launched Blender work; never background-scan for Blender."""
+        if self.jobs.busy:
+            self._error("Another local task is still running")
+            return
+        if not self.controller.has_project or self.controller.store is None:
+            self._error("Create or open a character project before generating geometry")
+            return
+        if self.controller.dirty:
+            self._error("Save all metadata edits before generating a new humanoid master")
+            return
+        answer = QMessageBox.question(
+            self, "Generate actual MPFB humanoid",
+            "Run your installed Blender and enabled MPFB to create a real default humanoid?\n\n"
+            "This takes two Blender processes: creation and independent save/reopen. "
+            "A previous master remains in immutable history. Morph sliders are NOT "
+            "applied to this geometry; animation and engine export are NOT verified. "
+            "Continue?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        file_filter = "Blender executable (*.exe);;All files (*)" if os.name == "nt" else "All files (*)"
+        selected, _ = QFileDialog.getOpenFileName(
+            self, "Choose your installed Blender executable", "", file_filter,
+        )
+        if not selected:
+            return
+        exe = Path(selected)
+        if exe.is_symlink() or not exe.is_file():
+            self._error("Choose an existing regular Blender executable")
+            return
+        store = self.controller.store
+        snapshot = self.controller.require_project()
+        cancel = Event()
+        self._submit(
+            "generate_humanoid",
+            lambda: generate_from_desktop(
+                store, blender_exe=exe, project_id=snapshot.project_id,
+                revision=snapshot.revision, cancel=cancel,
+            ),
+            cancel=cancel,
+        )
+
+    def cancel_generation(self) -> None:
+        if self.jobs.cancel():
+            self.statusBar().showMessage(
+                "Cancellation requested. Waiting for Blender worker shutdown..."
+            )
 
     def inspect_animation(self, file: str) -> None:
         if not file:
@@ -299,8 +411,10 @@ class MainWindow(QMainWindow):
         QMessageBox.information(self, "Development desktop",
             "Functional: project editing, atomic metadata saves, undo/redo, private animation "
             "catalog, local AI API probes, GLB structural inspection and PNG atlas generation.\n\n"
-            "Limited: static GLB triangle preview only. Not yet delivered: live MPFB mesh deformation, rig retargeting "
-            "and real Godot/Unity/Unreal import verification.")
+            "Generation: optional real Blender/MPFB human creation with independent "
+            "reopen and immutable master save; requires your local installation. "
+            "Limited: static GLB triangle preview only, no physical morph sliders, "
+            "verified skinning, retargeting or game-engine import certification.")
 
     def closeEvent(self, event: QCloseEvent) -> None:
         if self.jobs.busy:
