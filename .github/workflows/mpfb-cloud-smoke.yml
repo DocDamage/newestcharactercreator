@@ -53,6 +53,12 @@ jobs:
           test -n "$executable" && test -x "$executable"
           "$executable" --background --version | head -n 5
           echo "BLENDER_EXE=$executable" >> "$GITHUB_ENV"
+      - name: Record pinned Blender download source
+        shell: bash
+        run: |
+          echo "Blender 5.3.0 source: https://download.blender.org/release/Blender5.3/" >> "$GITHUB_STEP_SUMMARY"
+          echo "MPFB official extension: https://extensions.blender.org/add-ons/mpfb/" >> "$GITHUB_STEP_SUMMARY"
+          echo "Success requires a real mesh, rig, and separate-process reopen; synthetic tests do not count." >> "$GITHUB_STEP_SUMMARY"
       - name: Install only official MPFB Blender extension
         shell: bash
         run: |
@@ -63,8 +69,9 @@ jobs:
           "$BLENDER_EXE" --command extension repo-add ucc_blender_org \
              --name 'Blender Extensions' \
              --url 'https://extensions.blender.org/api/v1/extensions/'
-          "$BLENDER_EXE" --command extension sync
-          "$BLENDER_EXE" --command extension install -s -e mpfb
+          "$BLENDER_EXE" --online-mode --command extension sync
+          "$BLENDER_EXE" --command extension repo-info ucc_blender_org
+          "$BLENDER_EXE" --online-mode --command extension install -s -e mpfb
           "$BLENDER_EXE" --command extension list | grep -i mpfb
       - name: Run actual MPFB mesh + rig save/reopen test in isolated Blender processes
         shell: bash
