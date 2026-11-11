@@ -20,13 +20,14 @@ if str(REPO_ROOT) not in sys.path:
 
 from blender_bridge.mpfb_service import (
     create_human_with_rig, inspect_service, locate_human_service,
-    locate_target_service,
+    locate_target_service, locate_human_properties,
 )
 from blender_bridge.morphs import check_macro_values, inspect_applied_macro
 from blender_bridge.preview_export import export_static_glb
+from blender_bridge.refit_revision import apply_body_revision
 
 PROTOCOL_VERSION = 1
-OPERATIONS = {"inspect_environment", "inspect_character", "create_human", "export_preview_glb"}
+OPERATIONS = {"inspect_environment", "inspect_character", "create_human", "export_preview_glb", "refit_human"}
 
 
 def arguments() -> argparse.Namespace:
@@ -96,6 +97,22 @@ def export_preview_glb(job: dict, root: Path) -> dict:
     return export_static_glb(bpy, source, output)
 
 
+def refit_human(job: dict, root: Path) -> dict:
+    """Morph/refit a private staged copy; never save over the authoritative master."""
+    options = job["options"]
+    if set(options) != {"macro_parameters"}:
+        raise ValueError("Refit requires exactly saved MPFB macro parameters")
+    source = member(root, job["input_project"])
+    destination = member(root, "refitted_human.blend")
+    values = check_macro_values(options["macro_parameters"])
+    human_service, module = locate_human_service()
+    target_service, _ = locate_target_service(module)
+    properties, _ = locate_human_properties(module)
+    return apply_body_revision(
+        bpy, source, destination, values, human_service, target_service, properties,
+    )
+
+
 def create_human(job: dict, root: Path) -> dict:
     service, module = locate_human_service()
     options = job["options"]
@@ -146,7 +163,8 @@ def main() -> int:
         action = {"inspect_environment": inspect_environment,
                   "inspect_character": inspect_character,
                   "create_human": create_human,
-                  "export_preview_glb": export_preview_glb}[operation]
+                  "export_preview_glb": export_preview_glb,
+                  "refit_human": refit_human}[operation]
         reply["details"] = action(data, root)
         reply["status"] = "ok"
         reply["error"] = None
