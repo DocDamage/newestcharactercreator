@@ -20,6 +20,7 @@ MAX_SOURCE_BYTES = 128 * 1024 * 1024
 MAX_VERTICES = 250_000
 MAX_INDICES = 1_500_000
 MAX_FACES_DRAWN = 2_000
+MAX_FACES_INSPECTED = 1_000_000  # Bound CPU traversal even with many repeated instances.
 MAX_MESH_INSTANCES = 256
 
 
@@ -252,6 +253,8 @@ def load_glb_preview(path: Path | str) -> PreviewMesh:
                     raise PreviewError("Triangle index references an absent vertex")
                 cache[key] = (positions, indices)
             total += len(cache[key][1]) // 3
+            if total > MAX_FACES_INSPECTED:
+                raise PreviewError("GLB contains too many aggregate triangles for a safe static preview")
     if not total:
         raise PreviewError("No displayable triangular geometry found")
     skip = max(1, math.ceil(total / MAX_FACES_DRAWN))

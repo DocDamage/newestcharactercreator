@@ -67,7 +67,8 @@ class PreviewWidgetTests(unittest.TestCase):
         self.assertTrue(window.mesh_action.isEnabled())
         window._work_kind = "mesh_preview"
         window._job_success(self.mesh())
-        self.assertIs(window.mesh_viewer.canvas.mesh, window.mesh_viewer.canvas.mesh)
+        self.assertIsNotNone(window.mesh_viewer.canvas.mesh)
+        self.assertEqual(window.mesh_viewer.canvas.mesh.source_face_count, 1)
         self.assertIn("No rig/animation/export validation", window.log.toPlainText())
         self.assertIn("Preview", window.mesh_dock.windowTitle())
         window.close()

@@ -114,6 +114,22 @@ class GlbMeshPreviewTests(unittest.TestCase):
         self.assertLessEqual(report.sample_count,2000)
         self.assertTrue(any('Sampled' in warning for warning in report.warnings))
 
+    def test_large_instanced_mesh_fails_before_unbounded_triangle_processing(self):
+        doc = synthetic_glb(self.path, indices=(0, 1, 2) * 5000)
+        doc["nodes"] = [{"mesh": 0} for _ in range(220)]
+        doc["scenes"] = [{"nodes": list(range(220))}]
+        doc["scene"] = 0
+        data = self.path.read_bytes()
+        original_json_len = struct.unpack_from("<I", data, 12)[0]
+        binary = data[20 + original_json_len + 8:]
+        updated_json = json.dumps(doc, separators=(",", ":")).encode()
+        updated_json += b" " * (-len(updated_json) % 4)
+        chunks = (struct.pack("<I4s", len(updated_json), b"JSON") + updated_json
+                  + struct.pack("<I4s", len(binary), b"BIN\0") + binary)
+        self.path.write_bytes(b"glTF" + struct.pack("<II", 2, 12 + len(chunks)) + chunks)
+        with self.assertRaisesRegex(PreviewError, "too many aggregate triangles"):
+            load_glb_preview(self.path)
+
     def test_refuses_non_glb_and_symlinks(self):
         self.path.write_text('not a glb')
         with self.assertRaises(PreviewError):
