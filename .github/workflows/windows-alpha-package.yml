@@ -68,13 +68,25 @@ jobs:
         run: |
           $exe = Join-Path $PWD 'dist/UCC-Desktop-Alpha/UCC-Desktop-Alpha.exe'
           if (-not (Test-Path $exe)) { throw "Frozen executable missing: $exe" }
-          & $exe --self-test --self-test-report "$PWD/frozen-health.json"
-          if ($LASTEXITCODE -ne 0) { throw "Frozen GUI self-test failed (exit $LASTEXITCODE)" }
+          # Windows GUI-subsystem EXEs do not reliably populate $LASTEXITCODE from '&' in pwsh.
+          # Start-Process -Wait -PassThru returns a real process ExitCode.
+          $report = Join-Path $PWD 'frozen-health.json'
+          $args = '--self-test --self-test-report "' + $report + '"'
+          $process = Start-Process -FilePath $exe -ArgumentList $args -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Frozen GUI self-test failed (exit $($process.ExitCode))" }
           if (-not (Test-Path "$PWD/frozen-health.json")) { throw 'Frozen health report missing' }
           $health = Get-Content "$PWD/frozen-health.json" -Raw | ConvertFrom-Json
           if ($health.status -ne 'SELF_TEST_OK') { throw 'Frozen self-test did not pass' }
           if ($health.checks.Count -ne 2) { throw 'Frozen self-test did not exercise project and Qt widgets' }
           Write-Output 'FROZEN_QT_AND_PROJECT_ROUNDTRIP_VERIFIED'
+      - name: Retain self-test JSON on failure for diagnosis
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ucc-frozen-self-test-failure
+          path: frozen-health.json
+          if-no-files-found: ignore
+          retention-days: 3
       - name: Create SHA-256 checked internal QA archive
         shell: pwsh
         run: |
