@@ -12,7 +12,12 @@ on:
       - 'Stage0_Starter/tools/run_mpfb_smoke.py'
   push:
     branches:
-      - feat/mpfb-humanservice-stage0
+      - main
+    paths:
+      - '.github/workflows/mpfb-cloud-smoke.yml'
+      - 'blender_bridge/**'
+      - 'Stage0_Starter/blender_bridge/**'
+      - 'Stage0_Starter/tools/run_mpfb_smoke.py'
 
 permissions:
   contents: read
