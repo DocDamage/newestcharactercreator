@@ -122,3 +122,8 @@ The desktop now includes an **opt-in GitHub Actions Windows alpha builder**. It 
 - [Actions build workflow](.github/workflows/windows-alpha-package.yml) — after a successful build, open the workflow run and download `UCC-Desktop-Alpha-Windows-x64` under Artifacts.
 - The binary's `--self-test --self-test-report FILE.json` performs an actual Qt widget startup and temporary local project save/reopen; **it does not prove Blender/MPFB geometry, animation, GPU rendering or engine imports**.
 
+## Read-only GLB geometry viewer (preview-only)
+
+The optional PySide6 desktop now supports **View → Preview local GLB model...** (Ctrl+Shift+M). It renders a sampled subset of actual embedded glTF 2.0 triangle geometry with Qt's CPU painter. Orbit, pan, zoom and reset work without OpenGL drivers or third-party asset packs. The parser validates container relationships, transform bounds, vertex/index accessors and a hard aggregate face limit. It **does not** skin meshes, run motion, evaluate morphs, import materials or certify engine compatibility; this viewer is not the eventual animated character editor. See [GLB static preview](docs/integration/glb-static-preview.md).
+
+The desktop CI requires real, non-skipped Qt widget tests on Windows and Linux, and a separate metadata/mesh parser test suite. No demo character art or proprietary asset has been committed.
