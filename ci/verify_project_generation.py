@@ -305,6 +305,8 @@ def verify(blender: Path, root: Path) -> dict:
             or [v["target"] for v in mapped] != ["neck03", "head"]
             or mapped[1]["parent"] != "neck03"
             or mapped[1]["rest_alignment_cos"] < .9
+            or chain_evidence["rest_length_scale_measured"] is not True
+            or chain_evidence["rest_scale_consistency_verified"] is not False
             or [v["bone"] for v in chain_evidence["per_bone_deformation"]]
                != ["neck03", "head"]
             or chain_evidence["retargeting_verified"] is not False
@@ -397,6 +399,8 @@ def verify(blender: Path, root: Path) -> dict:
         "multibone_bvh_mapped_bones": [v["target"] for v in mapped],
         "multibone_bvh_parent_verified": True,
         "multibone_bvh_alignment_cos": mapped[1]["rest_alignment_cos"],
+        "multibone_bvh_rest_length_ratio_measured": True,
+        "multibone_bvh_uniform_scale_verified": False,
         "multibone_bvh_individual_movement": chain_evidence["per_bone_deformation"],
         "multibone_bvh_frame_sample_count": len(chain_evidence["sampled_frames"]),
         "multibone_bvh_distinct_geometry": chain_evidence["distinct_geometry_states"],
