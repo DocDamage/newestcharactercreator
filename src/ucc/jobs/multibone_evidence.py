@@ -36,7 +36,7 @@ def validate_multibone_evidence(details: Any, *, axis_profile: str) -> dict[str,
     ):
         raise MultiBoneEvidenceError("Worker used the wrong explicit BVH axis preset")
     if (details.get("rest_direction_alignment_verified") is not True or
-            details.get("rest_scale_consistency_verified") is not True or
+            details.get("rest_length_scale_measured") is not True or
             details.get("bone_roll_calibrated") is not False or
             details.get("source_orientation_calibrated") is not False or
             details.get("retargeting_verified") is not False):
@@ -65,6 +65,10 @@ def validate_multibone_evidence(details: Any, *, axis_profile: str) -> dict[str,
             not isinstance(mapped, list) or len(mapped) != count or
             not isinstance(per_bone, list) or len(per_bone) != count):
         raise MultiBoneEvidenceError("Expected exactly 2–4 mapped and moving bones")
+    if details.get("rest_scale_consistency_verified") is not (count >= 3):
+        raise MultiBoneEvidenceError(
+            "Two-bone rest scale can be measured but not cross-segment verified"
+        )
     sources, targets = set(), set()
     for idx, (bone, movement) in enumerate(zip(mapped, per_bone)):
         if not isinstance(bone, dict) or not isinstance(movement, dict):
