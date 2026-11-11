@@ -401,7 +401,7 @@ def verify(blender: Path, root: Path) -> dict:
         "multibone_bvh_frame_sample_count": len(chain_evidence["sampled_frames"]),
         "multibone_bvh_distinct_geometry": chain_evidence["distinct_geometry_states"],
         "multibone_bvh_two_workers_agreed": True,
-        "multibone_bvh_retarged": False,
+        "multibone_bvh_retargeting_verified": False,
         "windows_verified": False,
         "deformation_verified": False,
         "engine_imports_verified": [],
