@@ -32,7 +32,7 @@ class HumanoidGenerationTests(unittest.TestCase):
         self.calls = []
         self.cancel = Event()
 
-    def responses(self, job, directory, **kwargs):
+    def responses(self, job, **kwargs):
         path = self.store.root / ".ucc-jobs" / job.job_id
         path.mkdir(parents=True, exist_ok=False)
         self.calls.append(job.operation)
@@ -85,8 +85,8 @@ class HumanoidGenerationTests(unittest.TestCase):
         self.assertEqual(self.store.load(), self.saved)
 
     def test_second_editor_save_during_worker_blocks_promotion(self):
-        def changed(job, directory, **kwargs):
-            result = self.responses(job, directory, **kwargs)
+        def changed(job, **kwargs):
+            result = self.responses(job, **kwargs)
             if job.operation == "inspect_character":
                 current = self.store.load()
                 self.store.save(replace(current, name="Concurrent edit", revision=2),
@@ -103,8 +103,8 @@ class HumanoidGenerationTests(unittest.TestCase):
         self.assertEqual(current.geometry_state, "not_generated")
 
     def test_missing_rig_does_not_save_project(self):
-        def invalid(job, directory, **kwargs):
-            reply, root = self.responses(job, directory, **kwargs)
+        def invalid(job, **kwargs):
+            reply, root = self.responses(job, **kwargs)
             if job.operation == "inspect_character":
                 reply = replace(reply, details={**reply.details, "armatures": []})
             return reply, root
@@ -118,8 +118,8 @@ class HumanoidGenerationTests(unittest.TestCase):
         self.assertFalse((self.store.root / "master").exists())
 
     def test_bytes_differ_between_creation_and_reopen(self):
-        def tampered(job, directory, **kwargs):
-            result, root = self.responses(job, directory, **kwargs)
+        def tampered(job, **kwargs):
+            result, root = self.responses(job, **kwargs)
             if job.operation == "inspect_character":
                 (root / "candidate.blend").write_bytes(b"BLENDER" + b"changed" * 200)
             return result, root
@@ -143,8 +143,8 @@ class HumanoidGenerationTests(unittest.TestCase):
             self.run_generation()
         self.assertEqual(self.calls, [])
         self.cancel.clear()
-        def delayed_cancel(job, directory, **kwargs):
-            result = self.responses(job, directory, **kwargs)
+        def delayed_cancel(job, **kwargs):
+            result = self.responses(job, **kwargs)
             if job.operation == "inspect_character":
                 self.cancel.set()
             return result
