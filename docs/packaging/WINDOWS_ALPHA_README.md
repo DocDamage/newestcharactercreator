@@ -50,6 +50,12 @@ In the Animation library tab, **Test selected BVH motion on saved MPFB rig...** 
 
 The first-party offline BVH reader and worker are included in the frozen build; Blender and MPFB remain separately installed by the owner. Frozen self-tests verify file presence, not real Blender/MPFB execution on Windows. See [the local BVH guide](../integration/local-bvh-source-motion.md).
 
+## Explicit source up-axis and 2–4 bone BVH chain test — PR #32
+
+The Animation library tab offers **Test 2–4 bone BVH chain against saved MPFB rig...** alongside the existing single-bone test. After selecting a local file and explicitly confirming its actual reviewed Blender-use license (not UE-only), select an **explicit source up-axis profile** (BVH Y-up → Blender Z-up or Z-up identity). This version verifies real MPFB deform weights, direct source/target bone parents, rest-direction alignment and independent source-driven vertex movement for every joint in a connected chain. It does **not** solve bone roll or certify complete retargeting.
+
+The Windows alpha bundles first-party BVH chain and evidence code; its PyInstaller self-test verifies source availability, not actual MPFB execution on the owner's Windows machine. [Details](../integration/bvh-multibone-rest-gate.md).
+
 ## Source and asset protections
 
 This artifact bundles only open dependency runtime libraries and UCC source code. It intentionally excludes Fab files, model checkpoints, purchased music/animation data, personal project directories, MPFB, Blender, and proprietary reference art. It does **not** automatically scan the computer or contact cloud AI providers.
