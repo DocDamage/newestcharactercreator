@@ -8,6 +8,7 @@ from uuid import UUID, uuid4
 
 from ucc.core.errors import ValidationError
 from ucc.core.models import safe_relative_path
+from .phenotype import validate_macro_parameters
 
 PROTOCOL_VERSION = 1
 SUPPORTED_OPERATIONS = {"inspect_environment", "inspect_character", "create_human", "export_preview_glb"}
@@ -45,8 +46,17 @@ class JobRequest:
         if type(self.options) is not dict:
             raise ValidationError("options must be JSON object")
         _check_json(self.as_dict())
-        if self.operation == "create_human" and self.options:
-            raise ValidationError("MPFB creation options are not verified yet; use defaults")
+        if self.operation == "create_human":
+            if self.input_project is not None:
+                raise ValidationError("create_human creates a new master; no input project allowed")
+            if set(self.options) not in (set(), {"macro_parameters"}):
+                raise ValidationError("create_human permits only saved MPFB macro parameters")
+            if self.options:
+                validate_macro_parameters(self.options["macro_parameters"])
+        if self.operation == "inspect_character" and self.options:
+            if set(self.options) != {"macro_parameters"}:
+                raise ValidationError("inspect_character permits only expected MPFB macros")
+            validate_macro_parameters(self.options["macro_parameters"])
         if self.operation in {"inspect_character", "export_preview_glb"} and not self.input_project:
             raise ValidationError(f"{self.operation} needs input_project")
         if self.operation == "export_preview_glb" and self.options:
