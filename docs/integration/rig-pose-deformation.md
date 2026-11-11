@@ -32,7 +32,15 @@ The output displays the bone name, moved vertex count, maximum movement (in Blen
 
 Earlier static previews disabled glTF morph export but could then display the original Basis geometry after TargetService.reapply_macro_details(). The exporter now bakes the **evaluated mesh** into temporary unrigged in-memory objects before producing the private static GLB. The source .blend is untouched, and the result is still untextured, unanimated and uncertified for engine imports. UCC's static GLB coordinator refuses workers that do not explicitly report this evaluated-geometry bake.
 
-This also repairs the previously merged PR #28 Blender integration failure that detected an unchanged static GLB despite a changed MPFB evaluated mesh. The changed real CI run must pass before declaring the repair verified.
+This also repairs the previously merged PR #28 Blender integration failure that detected an unchanged static GLB despite a changed MPFB evaluated mesh. [Real Linux Blender integration #43101713245](https://github.com/DocDamage/newestcharactercreator/actions/runs/43101713245) **passed** the refitted-body GLB comparison with actual evaluated-mesh baking; the defect is fixed in the proposed PR #29 branch.
+
+## Observed integration result — November 11, 2026
+
+The [real Blender/MPFB smoke #43101713245](https://github.com/DocDamage/newestcharactercreator/actions/runs/43101713245) **passed** the generated-body, existing-rig refit, evaluated-shape GLB bake and two independent transient pose jobs. A weighted head-bone 20-degree rotation moved **4,451 evaluated vertices**; maximum displacement was approximately **0.05496 Blender object-local units**. The posed vertex fingerprint differed from baseline and matched baseline again after the pose was restored. The two Blender subprocesses reported the same bone, hashes and vertex counts. The refitted master retained the 163-bone armature and the original master was not modified. The static GLB reader parsed 26,756 source triangles with 1,912 drawn samples.
+
+The [core matrix #43101713380](https://github.com/DocDamage/newestcharactercreator/actions/runs/43101713380), [Qt matrix #43101713184](https://github.com/DocDamage/newestcharactercreator/actions/runs/43101713184), [preflight #43101713174](https://github.com/DocDamage/newestcharactercreator/actions/runs/43101713174), and [Windows frozen alpha build #43101713379](https://github.com/DocDamage/newestcharactercreator/actions/runs/43101713379) also passed at the prior tested commit. Final CI must be checked again after documentation changes.
+
+No result establishes working Windows Blender, animated clip playback or an imported engine character. Only JSON diagnostic summaries were uploaded.
 
 ## Required verification
 
