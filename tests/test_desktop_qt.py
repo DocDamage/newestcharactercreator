@@ -88,13 +88,12 @@ class DesktopQtSmoke(unittest.TestCase):
         args, kwargs = submit.call_args
         self.assertEqual(args[0], "body_refit")
         self.assertFalse(kwargs["cancel"].is_set())
-        self.assertFalse(kwargs["cancel"].is_set())
 
     def test_dirty_project_blocks_existing_master_refit(self):
         self.test_existing_master_refit_button_disabled_until_generated()
         self.controller.set_morph("weight", .82)
-        with patch.object(self.window, "_error") as error, \\
-                patch.object(self.window, "_submit") as submit:
+        with (patch.object(self.window, "_error") as error,
+              patch.object(self.window, "_submit") as submit):
             self.window.apply_saved_body()
         self.assertIn("Save all body", error.call_args.args[0])
         submit.assert_not_called()
