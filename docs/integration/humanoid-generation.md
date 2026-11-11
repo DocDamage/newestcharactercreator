@@ -1,6 +1,6 @@
 # Create a real MPFB humanoid in the UCC desktop — v0.2 alpha
 
-**Source branch:** [PR #25](https://github.com/DocDamage/newestcharactercreator/pull/25). **Status:** implementation submitted for CI verification; your Windows Blender/MPFB installation is not tested by GitHub's Linux integration suite.
+**Source branch:** [PR #25](https://github.com/DocDamage/newestcharactercreator/pull/25). **Status:** the genuine Linux Blender-to-project integration passed in [run #43086427807](https://github.com/DocDamage/newestcharactercreator/actions/runs/43086427807). The owner's Windows Blender/MPFB installation is still not verified.
 
 This adds the first end-to-end desktop project flow from an actual Blender-generated mesh. It is **not** an animated character editor, a morph-binding system, a licensed Fab retargeter or a certified Godot/Unity/Unreal export adapter.
 
@@ -42,7 +42,7 @@ No automatic scanning of AI models, Fab libraries or disks is performed. The too
 ## Evidence and remaining gates
 
 - [PR #24 Linux smoke](https://github.com/DocDamage/newestcharactercreator/actions/runs/43083744705) established real default MPFB creation, rig and independent saved-file reopen on Linux, **not Windows**.
-- [PR #25](https://github.com/DocDamage/newestcharactercreator/pull/25) adds actual project-transaction smoke in `ci/verify_project_generation.py`. Read the latest CI run and only mark the full transaction verified if that real Blender test succeeds.
+- [PR #25 Linux integration run #43086427807](https://github.com/DocDamage/newestcharactercreator/actions/runs/43086427807) **passed** the actual `ci/verify_project_generation.py` path: creation of 19,158-vertex humanoid, 163 reopened bones, 6,571,540-byte uncompressed master, revision-checked UCC commit and saved project reopen. It remains `generated_unverified`; no windows, deformation, animation or engine import proof.
 - Packaging includes only the first-party Blender bridge source, not Blender, MPFB, licensed Fab assets, checkpoints or rendered models. The unsigned Windows alpha needs an installed Blender+MPFB before generation can run.
 - Still outstanding: actual Windows creation/inspection, manual appearance/skin deformation review, binding slider values to MPFB morphs, rigged GLB export/animated 3D viewport, and actual engine re-import.
 
