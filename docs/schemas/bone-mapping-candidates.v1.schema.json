@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "UCC Humanoid Bone Naming Candidates v1 (not retargeted)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "status", "source_profile", "target_profile", "source_fingerprint",
+    "target_fingerprint", "mapped_role_count", "required_roles_unmapped", "candidates",
+    "ignored_source_bones", "ignored_target_bones", "warnings", "retargeted",
+    "preview_verified", "engine_validated", "can_execute_without_manual_review"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "status": {"const": "NAMING_CANDIDATES_ONLY_NOT_RETARGETED"},
+    "source_profile": {"type": ["string", "null"], "enum": ["mixamo", "unreal_ue4", "unreal_ue5", null]},
+    "target_profile": {"type": ["string", "null"], "enum": ["mixamo", "unreal_ue4", "unreal_ue5", null]},
+    "source_fingerprint": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "target_fingerprint": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "mapped_role_count": {"type": "integer", "minimum": 0},
+    "required_roles_unmapped": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+    "candidates": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["role", "source", "target", "evidence"],
+        "properties": {
+          "role": {"type": "string"},
+          "source": {"type": "string"},
+          "target": {"type": "string"},
+          "evidence": {"const": "EXACT_DOCUMENTED_BONE_ALIAS_ONLY"}
+        }
+      }
+    },
+    "ignored_source_bones": {"type": "array", "items": {"type": "string"}},
+    "ignored_target_bones": {"type": "array", "items": {"type": "string"}},
+    "warnings": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "retargeted": {"const": false},
+    "preview_verified": {"const": false},
+    "engine_validated": {"const": false},
+    "can_execute_without_manual_review": {"const": false}
+  }
+}
