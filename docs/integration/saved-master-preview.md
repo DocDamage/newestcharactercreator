@@ -34,6 +34,12 @@ The Blender adapter exports only substantial mesh objects (more than 100 vertice
 | Cancellation | Stop Blender subprocess and leave project unchanged |
 | Switch to a different project | Clear prior preview so it cannot be mistaken for the current character |
 
+## Verified real Linux integration — 2026-11-11
+
+[Blender/MPFB integration run #43089727477](https://github.com/DocDamage/newestcharactercreator/actions/runs/43089727477) **passed**: Blender 5.3.0 created a real 19,158-vertex MPFB humanoid with 163 reopened bones; its persisted UCC master was reopened in another Blender process and converted to a real GLB. UCC's actual static parser read **36,972 source triangles and 1,946 sampled triangles**, with no animation or skinning evaluated. The real project revision and master SHA-256 remained unchanged by the preview operation. The CI retained **JSON summaries only**, not model files.
+
+The dedicated Windows/Linux Qt offscreen tests, preflight/core unit suites, and the frozen Windows alpha build also passed for the initial PR #26 commit. **No test has run Blender/MPFB on the owner's Windows installation**, nor proven live physical morphs or animation. Current PR tests should be checked at its latest commit before merging.
+
 ## Verification and boundaries
 
 - Unit tests in `tests/test_preview_export.py`, `test_master_preview.py`, `test_jobs.py`, and Qt preview tests cover the protocol, source integrity, fixed export settings, cancellation, project switching and rendering. Synthetic fixtures are **not** MPFB proof.
