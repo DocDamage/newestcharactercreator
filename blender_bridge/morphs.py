@@ -75,7 +75,7 @@ def inspect_applied_macro(bpy: Any, basemesh: Any, target_service: Any,
             if any(not math.isfinite(v) or abs(v) > 1000000 for v in pos):
                 raise MorphEvidenceError("Non-finite or extreme evaluated Blender geometry")
             # Quantization removes insignificant floating serialization noise.
-            digest.update(struct.pack("<iii", *(int(round(v * 10000)) for v in pos)))
+            digest.update(struct.pack("<qqq", *(int(round(v * 10000)) for v in pos)))
             count += 1
     finally:
         evaluated.to_mesh_clear()
