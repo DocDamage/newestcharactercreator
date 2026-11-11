@@ -10,6 +10,7 @@ from ucc.jobs.bvh_clip_diagnostic import LocalBvhClipCheck
 def format_bvh_motion_evidence(result: LocalBvhClipCheck,
                                *, multibone: bool = False) -> str:
     data = result.evidence
+    p = data
     lines = [
         ("REAL 2–4 BONE BVH SOURCE CHAIN MEASURED IN BLENDER."
          if multibone else "REAL USER-SELECTED BVH SOURCE MOTION EVALUATED IN BLENDER."),
@@ -36,7 +37,9 @@ def format_bvh_motion_evidence(result: LocalBvhClipCheck,
             )
         lines.extend([
             "Actual source/target parent links and rest DIRECTION were checked.",
-            "Uniform source/target rest length scaling was checked, not applied.",
+            ("Source/target rest-length ratio was measured; scale consistency "
+             + ("checked across segments." if p["rest_scale_consistency_verified"] else
+                "requires three or more mapped joints.")),
             "Bone roll and full local rotation bases were NOT calibrated.",
         ])
     else:
