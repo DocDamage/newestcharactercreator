@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "UCC private animation catalog report v1; not animation retarget verification",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "asset_id", "sha256", "format", "status", "skeleton_fingerprint", "bone_names", "clips", "warnings", "permissions", "preview_verified", "retarget_verified", "engine_validated"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "asset_id": {"type": "string", "minLength": 1, "maxLength": 128},
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "format": {"enum": ["bvh", "glb", "gltf", "fbx", "uasset"]},
+    "status": {"enum": ["METADATA_EXTRACTED", "REQUIRES_CONVERSION"]},
+    "skeleton_fingerprint": {"type": ["string", "null"], "pattern": "^[a-f0-9]{64}$"},
+    "bone_names": {"type": "array", "maxItems": 20000, "items": {"type": "string"}},
+    "clips": {"type": "array", "maxItems": 10000, "items": {"$ref": "#/$defs/clip"}},
+    "warnings": {"type": "array", "items": {"type": "string"}},
+    "permissions": {
+      "type": "object", "additionalProperties": false,
+      "required": ["unreal", "godot", "unity", "ai_input", "ship_source"],
+      "properties": {
+        "unreal": {"type": "string"}, "godot": {"type": "string"},
+        "unity": {"type": "string"}, "ai_input": {"type": "string"},
+        "ship_source": {"type": "string"}
+      }
+    },
+    "preview_verified": {"const": false},
+    "retarget_verified": {"const": false},
+    "engine_validated": {"const": false}
+  },
+  "$defs": {
+    "clip": {
+      "type": "object", "additionalProperties": false,
+      "required": ["clip_id", "ordinal", "name", "duration_seconds", "frame_count", "fps", "track_count", "animated_bones", "warnings"],
+      "properties": {
+        "clip_id": {"type": "string", "minLength": 1},
+        "ordinal": {"type": "integer", "minimum": 0},
+        "name": {"type": "string", "minLength": 1, "maxLength": 128},
+        "duration_seconds": {"type": ["number", "null"], "minimum": 0},
+        "frame_count": {"type": ["integer", "null"], "minimum": 1},
+        "fps": {"type": ["number", "null"], "exclusiveMinimum": 0},
+        "track_count": {"type": "integer", "minimum": 0},
+        "animated_bones": {"type": "array", "items": {"type": "string"}},
+        "warnings": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  }
+}

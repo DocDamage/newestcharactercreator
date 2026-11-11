@@ -80,3 +80,17 @@ The Stage 0 real Blender smoke remains the blocker. New pure-Python tests cannot
 ### GLB export preflight, not an engine certification
 
 \`py -3 -m ucc inspect-glb "C:\UCC\exports\character.glb"\` performs an actual read-only glTF 2.0 binary/JSON structure audit. It reports meshes, skins/joints, animations, morph targets, broken references and potential export gaps. It never marks Godot/Unity/Unreal import as passed. See [GLB offline inspection](docs/integration/glb-offline.md).
+
+
+### Animation asset intake (metadata only)
+
+UCC can now inspect one user-selected BVH, GLB or glTF file, extract declared clip and skeleton metadata, and store it in a private SQLite asset catalog. FBX and Unreal \`.uasset\` are cataloged as **requiring verified Blender/Unreal conversion** rather than inventing clip details. Unreviewed source licenses block engine export, AI input and source redistribution.
+
+\`\`\`powershell
+$env:PYTHONPATH = "src"
+py -3 -m ucc inspect-animation "D:\MyAnimations\Walk.bvh"
+py -3 -m ucc index-animation "D:\MyAnimations\Walk.bvh" --database "$env:LOCALAPPDATA\UCC\animation_library.db" --asset-id "walk-001" --provider "Fab" --license-name "unreviewed" --source-uri "ACTUAL_FAB_LISTING_URL"
+py -3 -m ucc list-animations --database "$env:LOCALAPPDATA\UCC\animation_library.db"
+\`\`\`
+
+Replace paths and URL with real user-owned data; the example above is intentionally unreviewed. It does **not** download the user's Fab library, retarget a rig, or certify any animation's playback. See [animation intake guide](docs/integration/animation-intake.md) and [feature tracker #9](https://github.com/DocDamage/newestcharactercreator/issues/9).

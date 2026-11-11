@@ -17,6 +17,9 @@ from ucc.sprites.plan import CameraProfile, build_plan
 from ucc.sprites.atlas import pack_frames
 from ucc.ai.probe import probe_comfyui, probe_webui
 from ucc.export.inspect_glb import inspect_glb
+from ucc.animations.metadata import inspect_animation_file
+from ucc.animations.catalog import AnimationCatalog
+from ucc.library.provenance import LicensePolicy
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -40,6 +43,18 @@ def main(argv: list[str] | None = None) -> int:
     staged.add_argument("--worker-output-root", type=Path, required=True)
     glb = sp.add_parser("inspect-glb", help="Offline GLB structure inspection (not engine validation)")
     glb.add_argument("path", type=Path)
+    anim = sp.add_parser("inspect-animation", help="Read BVH/glTF metadata without retargeting or moving files")
+    anim.add_argument("file", type=Path)
+    index_anim = sp.add_parser("index-animation", help="Index one explicitly chosen animation with fail-closed provenance")
+    index_anim.add_argument("file", type=Path)
+    index_anim.add_argument("--database", type=Path, required=True, help="Private local SQLite catalog")
+    index_anim.add_argument("--asset-id", required=True)
+    index_anim.add_argument("--provider", required=True, help="Exact source provider, e.g. Fab")
+    index_anim.add_argument("--license-name", required=True, help="Actual license name or 'unreviewed'")
+    index_anim.add_argument("--source-uri", required=True, help="Original listing/source URI")
+    index_anim.add_argument("--policy-file", type=Path, help="Optional user-reviewed JSON LicensePolicy flags")
+    list_anim = sp.add_parser("list-animations", help="Read local catalog only; no scanning or network access")
+    list_anim.add_argument("--database", type=Path, required=True)
     api = sp.add_parser("probe-ai", help="Read-only probes of existing loopback AI APIs")
     api.add_argument("--comfyui", default="http://127.0.0.1:8188")
     api.add_argument("--webui", default="http://127.0.0.1:7860")
@@ -85,6 +100,22 @@ def main(argv: list[str] | None = None) -> int:
                     "note": "UNVERIFIED: Blender must reopen/inspect before engine export"}
         elif args.command == "inspect-glb":
             data = inspect_glb(args.path).to_dict()
+        elif args.command == "inspect-animation":
+            data = inspect_animation_file(args.file).to_dict()
+        elif args.command == "index-animation":
+            if args.policy_file is not None:
+                policy_data = json.loads(args.policy_file.read_text(encoding="utf-8"))
+                policy = LicensePolicy.from_dict(policy_data)
+                if (policy.provider != args.provider or policy.license_name != args.license_name
+                        or policy.source_uri != args.source_uri):
+                    raise ValueError("Policy JSON source fields must match explicit CLI source arguments")
+            else:
+                policy = LicensePolicy(args.provider, args.license_name, args.source_uri)
+            with AnimationCatalog(args.database) as catalog:
+                data = catalog.index_file(args.asset_id, args.file, policy).to_dict()
+        elif args.command == "list-animations":
+            with AnimationCatalog(args.database) as catalog:
+                data = [entry.to_dict() for entry in catalog.list_sources()]
         elif args.command == "probe-ai":
             data = [probe_comfyui(args.comfyui).to_dict(), probe_webui(args.webui).to_dict()]
         elif args.command == "probe-blender":
