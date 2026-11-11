@@ -6,6 +6,8 @@ on:
     paths:
       - 'src/ucc/desktop/**'
       - 'src/ucc/core/**'
+      - 'src/ucc/jobs/**'
+      - 'blender_bridge/**'
       - 'src/ucc/animations/**'
       - 'src/ucc/ai/**'
       - 'src/ucc/export/**'
@@ -46,7 +48,7 @@ jobs:
           python -m ucc.desktop --self-test --self-test-report "$PWD/source-health.json"
           if ($LASTEXITCODE -ne 0) { throw "Source app self-test failed" }
           $health = Get-Content "$PWD/source-health.json" -Raw | ConvertFrom-Json
-          if ($health.status -ne 'SELF_TEST_OK' -or $health.checks.Count -ne 2) {
+          if ($health.status -ne 'SELF_TEST_OK' -or $health.checks.Count -ne 3) {
             throw 'Qt/project source self-test did not pass both checks'
           }
       - name: Desktop import and UI tests (real Qt, not skipped)
@@ -61,6 +63,7 @@ jobs:
         run: |
           python -m PyInstaller --clean --noconfirm --onedir --windowed `
             --name UCC-Desktop-Alpha --paths src `
+            --add-data 'blender_bridge;blender_bridge' `
             src/ucc/desktop/__main__.py
           if ($LASTEXITCODE -ne 0) { throw 'PyInstaller failed' }
       - name: Test the frozen executable and confirm JSON evidence
@@ -77,7 +80,7 @@ jobs:
           if (-not (Test-Path "$PWD/frozen-health.json")) { throw 'Frozen health report missing' }
           $health = Get-Content "$PWD/frozen-health.json" -Raw | ConvertFrom-Json
           if ($health.status -ne 'SELF_TEST_OK') { throw 'Frozen self-test did not pass' }
-          if ($health.checks.Count -ne 2) { throw 'Frozen self-test did not exercise project and Qt widgets' }
+          if ($health.checks.Count -ne 3) { throw 'Frozen self-test did not exercise project, Qt widgets and bundled Blender bridge' }
           Write-Output 'FROZEN_QT_AND_PROJECT_ROUNDTRIP_VERIFIED'
       - name: Retain self-test JSON on failure for diagnosis
         if: failure()
