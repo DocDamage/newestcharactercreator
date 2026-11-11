@@ -24,9 +24,11 @@ def bundled_worker_path() -> Path:
     worker = base / "blender_bridge" / "entrypoint.py"
     service = worker.parent / "mpfb_service.py"
     preview = worker.parent / "preview_export.py"
+    morphs = worker.parent / "morphs.py"
     if (not worker.is_file() or worker.is_symlink()
             or not service.is_file() or service.is_symlink()
-            or not preview.is_file() or preview.is_symlink()):
+            or not preview.is_file() or preview.is_symlink()
+            or not morphs.is_file() or morphs.is_symlink()):
         raise ValidationError(
             "Blender worker bridge is unavailable. Run from the repo checkout "
             "or a complete Windows alpha archive."
