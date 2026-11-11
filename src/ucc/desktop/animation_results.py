@@ -53,7 +53,7 @@ def format_bvh_motion_evidence(result: LocalBvhClipCheck,
         "Two independent Blender processes agreed; original master/BVH unmodified.",
         "Permission is USER-ATTESTED for local Blender preview, not independently licensed.",
         "BVH position/root translation is ignored; motion is local rotation DELTAS only.",
-        "NOT certified full retargeting, visual quality, in-app animation playback",
+        "NOT certified retargeting, visual quality, in-app animation playback",
         "or Godot/Unity/Unreal import. Saved geometry remains generated_unverified.",
     ])
     return "\n".join(lines)
