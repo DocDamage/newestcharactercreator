@@ -268,14 +268,21 @@ class MainWindow(QMainWindow):
             ):
                 self._error("Project selection changed during Blender work; inspect saved revisions")
                 return
-            self.controller.open(self.controller.store.root)
-            self.refresh_project()
+            try:
+                self.controller.open(self.controller.store.root)
+                self.refresh_project()
+            except (UCCError, OSError, ValueError) as exc:
+                self._error(
+                    f"Master was staged but UI reload failed ({type(exc).__name__}: {exc}); "
+                    "reopen your project manually to inspect the saved revision"
+                )
+                return
             self.log.setPlainText(
-                "REAL BLENDER MASTER GENERATED, REOPENED AND SAVED.\\n"
-                f"Created vertices: {result.observed['created_vertex_count']}\\n"
-                f"Reopened bones: {result.observed['reopened_bone_count']}\\n"
-                f"Saved revision: {result.revision.project.revision}\\n"
-                f"SHA-256: {result.revision.sha256}\\n"
+                "REAL BLENDER MASTER GENERATED, REOPENED AND SAVED.\n"
+                f"Created vertices: {result.observed['created_vertex_count']}\n"
+                f"Reopened bones: {result.observed['reopened_bone_count']}\n"
+                f"Saved revision: {result.revision.project.revision}\n"
+                f"SHA-256: {result.revision.sha256}\n"
                 "Geometry state: generated_unverified. Open the saved master in Blender "
                 "for visual inspection. Morph sliders are draft metadata, and this is "
                 "NOT a verified animated model or Godot/Unity/Unreal export."
@@ -306,7 +313,7 @@ class MainWindow(QMainWindow):
             return
         answer = QMessageBox.question(
             self, "Generate actual MPFB humanoid",
-            "Run your installed Blender and enabled MPFB to create a real default humanoid?\\n\\n"
+            "Run your installed Blender and enabled MPFB to create a real default humanoid?\n\n"
             "This takes two Blender processes: creation and independent save/reopen. "
             "A previous master remains in immutable history. Morph sliders are NOT "
             "applied to this geometry; animation and engine export are NOT verified. "
