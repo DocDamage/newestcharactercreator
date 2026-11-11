@@ -31,6 +31,7 @@ class LicensePolicy:
     can_use_unreal: bool = False
     ai_input_allowed: bool = False
     redistribute_source_allowed: bool = False
+    local_preview_allowed: bool = False
 
     def __post_init__(self) -> None:
         for name in ("provider", "license_name", "source_uri"):
@@ -38,17 +39,23 @@ class LicensePolicy:
             if not isinstance(val, str) or not val.strip() or len(val) > 2048:
                 raise ValidationError(f"License field {name} is invalid")
         for name in ("reviewed", "no_ai", "ue_only", "can_use_non_unreal", "can_use_unreal",
-                     "ai_input_allowed", "redistribute_source_allowed"):
+                     "ai_input_allowed", "redistribute_source_allowed", "local_preview_allowed"):
             if type(getattr(self, name)) is not bool:
                 raise ValidationError(f"License flag {name} must be Boolean")
 
     def allow(self, operation: str, target: str | None = None) -> tuple[bool, str]:
         if operation == "inventory":
             return True, "inventory metadata only"
-        if operation not in {"engine_export", "ai_input", "ship_source"}:
+        if operation not in {"engine_export", "ai_input", "ship_source", "local_preview"}:
             return False, "unknown operation"
         if not self.reviewed:
             return False, "asset-specific license review missing"
+        if operation == "local_preview":
+            if self.ue_only:
+                return False, "UE-only source cannot be used in the Blender preview"
+            if not self.local_preview_allowed:
+                return False, "local animation preview rights not explicitly confirmed"
+            return True, "user-confirmed reviewed local Blender preview permission"
         if operation == "engine_export":
             if target not in {"unreal", "unity", "godot"}:
                 return False, "unrecognized target engine"
