@@ -267,6 +267,57 @@ def verify(blender: Path, root: Path) -> dict:
             or _hash(revised_master) != refitted.revision.sha256):
         raise RuntimeError("Local BVH preview modified the saved master or project")
 
+    # A second self-authored CI-only source exercises *both* default MPFB
+    # neck03 -> head, with an explicit BVH Y-up to Blender Z-up rest direction.
+    # Source rest offset follows official MPFB default rig geometry; real
+    # refitted Blender rest coordinates must independently pass alignment.
+    multibone_source = root / "ci-original-two-bone-source.bvh"
+    multibone_header = (
+        "HIERARCHY\nROOT neck03\n{\n"
+        "OFFSET 0 0 0\nCHANNELS 3 Xrotation Yrotation Zrotation\n"
+        "JOINT head\n{\nOFFSET 0 0.032704 0.017147\n"
+        "CHANNELS 3 Xrotation Yrotation Zrotation\n"
+        "End Site\n{\nOFFSET 0 0.1 0\n}\n}\n}\n"
+        "MOTION\nFrames: 25\nFrame Time: 0.041666667\n"
+    )
+    both_rotations = [
+        f"{10 * math.sin(math.pi * i / 24):.7f} 0 0 "
+        f"{20 * math.sin(math.pi * i / 24):.7f} 0 0"
+        for i in range(25)
+    ]
+    multibone_source.write_text(
+        multibone_header + "\n".join(both_rotations) + "\n",
+        encoding="utf-8",
+    )
+    chain = check_selected_bvh(
+        store, blender_exe=blender,
+        worker_script=ROOT / "blender_bridge" / "entrypoint.py",
+        source_bvh=multibone_source, permission=local_authorization,
+        expected_project_id=new_project.project_id,
+        expected_revision=new_project.revision,
+        expected_master_blend=new_project.master_blend,
+        multi_axis_profile="Y_UP_TO_Z_UP", timeout_s=300,
+    )
+    chain_evidence = chain.evidence
+    mapped = chain_evidence["mapped_bones"]
+    if (chain_evidence["status"] != "REAL_MPFB_MULTIBONE_BVH_CHAIN_GEOMETRY_MEASURED"
+            or chain_evidence["mapped_bone_count"] != 2
+            or [v["target"] for v in mapped] != ["neck03", "head"]
+            or mapped[1]["parent"] != "neck03"
+            or mapped[1]["rest_alignment_cos"] < .9
+            or [v["bone"] for v in chain_evidence["per_bone_deformation"]]
+               != ["neck03", "head"]
+            or chain_evidence["retargeting_verified"] is not False
+            or chain_evidence["bone_roll_calibrated"] is not False
+            or chain_evidence["source_orientation_calibrated"] is not False
+            or len(chain.worker_job_ids) != 2):
+        raise RuntimeError("Real two-bone MPFB neck/head BVH rest/motion gate failed")
+    if (ProjectStore(store.root).load() != new_project
+            or _hash(revised_master) != refitted.revision.sha256
+            or not multibone_source.is_file()
+            or _hash(multibone_source) != chain.clip_sha256):
+        raise RuntimeError("Multi-bone BVH preview modified source/master/project")
+
     return {
         "status": "REAL_LINUX_PROJECT_GENERATE_REOPEN_STAGED",
         "blender_version": transaction.observed["blender_version"],
@@ -341,6 +392,16 @@ def verify(blender: Path, root: Path) -> dict:
         "local_bvh_two_blender_processes_agreed": True,
         "local_bvh_master_unchanged": True,
         "local_bvh_retargeting_verified": False,
+        "multibone_bvh_status": chain_evidence["status"],
+        "multibone_bvh_axis_profile": chain_evidence["axis_profile"],
+        "multibone_bvh_mapped_bones": [v["target"] for v in mapped],
+        "multibone_bvh_parent_verified": True,
+        "multibone_bvh_alignment_cos": mapped[1]["rest_alignment_cos"],
+        "multibone_bvh_individual_movement": chain_evidence["per_bone_deformation"],
+        "multibone_bvh_frame_sample_count": len(chain_evidence["sampled_frames"]),
+        "multibone_bvh_distinct_geometry": chain_evidence["distinct_geometry_states"],
+        "multibone_bvh_two_workers_agreed": True,
+        "multibone_bvh_retarged": False,
         "windows_verified": False,
         "deformation_verified": False,
         "engine_imports_verified": [],
