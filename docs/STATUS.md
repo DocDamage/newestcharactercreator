@@ -2,6 +2,12 @@
 
 **As of November 11, 2026 — evidence from proposed PR [#24](https://github.com/DocDamage/newestcharactercreator/pull/24).** This reflects the PR branch and must not be attributed to `main` until the PR is merged. Successful automation is not equivalent to Windows usability or a finished character editor.
 
+## Active increment: desktop MPFB generation (PR #25)
+
+[Pull request #25](https://github.com/DocDamage/newestcharactercreator/pull/25) adds a genuine opt-in PySide6 humanoid generation action, cooperative cancellation, independent Blender worker inspection, checked SHA-256 master staging, project revision/identity concurrency protection and frozen-app bridge files. The **real Linux Blender-to-project test passed** in [run #43086427807](https://github.com/DocDamage/newestcharactercreator/actions/runs/43086427807): 19,158 new human vertices, 163 reopened armature bones and a safely saved project revision 2. The saved output is **generated_unverified**, not deformation- or export-validated. This branch is awaiting PR review; do not attribute it to merged `main` until accepted.
+
+**Remaining highest-priority verification:** the owner's actual Windows 11 Blender 5.3 + MPFB installation. No live GUI display, morph deformation, rig animation or Godot/Unity/Unreal import has been certified.
+
 | Capability | Observed evidence | Not yet established |
 | --- | --- | --- |
 | Product requirements | Locked blueprint and `AGENTS.md` | — |
@@ -21,4 +27,4 @@
 
 **P0 remains open for Windows.** Run `Development_Guardrails/scripts/run_stage0.ps1` with the user's actual Blender 5.3 plus enabled MPFB, keep the generated outputs in private local evidence, and require real mesh/rig save/reopen. This Linux pass must not close [UCC-P0-001 / #2](https://github.com/DocDamage/newestcharactercreator/issues/2).
 
-**Next development gate:** validate the same production worker on Windows and design a crash-safe desktop action: generate → independently inspect → stage immutable master → revision-checked metadata save → update preview. Do not claim animation, deformation, or export success until separately demonstrated.
+**Next development gate:** verify this actual desktop generation workflow with Blender 5.3 + MPFB on the user's Windows PC; visually inspect rig/mesh and validate bone-weight deformation, then map real MPFB morphs. Static GLB preview is not a live deformable viewport. Do not claim animation or engine export until independently demonstrated.
