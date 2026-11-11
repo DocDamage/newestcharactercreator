@@ -18,6 +18,7 @@ on:
       - 'src/ucc/jobs/pose_diagnostic.py'
       - 'src/ucc/jobs/timeline_diagnostic.py'
       - 'src/ucc/jobs/bvh_clip_diagnostic.py'
+      - 'src/ucc/jobs/multibone_evidence.py'
       - 'blender_bridge/refit_revision.py'
       - 'src/ucc/jobs/master_preview.py'
       - 'src/ucc/jobs/protocol.py'
@@ -38,6 +39,7 @@ on:
       - 'src/ucc/jobs/pose_diagnostic.py'
       - 'src/ucc/jobs/timeline_diagnostic.py'
       - 'src/ucc/jobs/bvh_clip_diagnostic.py'
+      - 'src/ucc/jobs/multibone_evidence.py'
       - 'blender_bridge/refit_revision.py'
       - 'src/ucc/jobs/master_preview.py'
       - 'src/ucc/jobs/protocol.py'
@@ -132,7 +134,7 @@ jobs:
           python3 ci/verify_production_worker.py \
             --blender "$BLENDER_EXE" \
             --outdir "$RUNNER_TEMP/ucc-production-worker" --timeout 300
-      - name: Verify real MPFB timeline plus local original BVH source motion
+      - name: Verify MPFB rig, single BVH and axis-aligned multi-bone motion
         shell: bash
         run: |
           set -euo pipefail
