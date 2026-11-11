@@ -96,6 +96,7 @@ def stage_unverified_master(
     authorized_source_root: str | Path,
     max_bytes: int = MAX_BLEND_BYTES,
     expected_revision: int | None = None,
+    expected_project_id: str | None = None,
     expected_sha256: str | None = None,
     cancel: Event | None = None,
     before_project_save: Callable[[], None] | None = None,
@@ -113,6 +114,10 @@ def stage_unverified_master(
         type(expected_revision) is not int or expected_revision < 0
     ):
         raise ValidationError("expected_revision must be a nonnegative integer")
+    if expected_project_id is not None and (
+        not isinstance(expected_project_id, str) or not expected_project_id
+    ):
+        raise ValidationError("expected_project_id must be nonempty text")
     if expected_sha256 is not None and (
         not isinstance(expected_sha256, str) or len(expected_sha256) != 64
         or any(c not in "0123456789abcdef" for c in expected_sha256)
@@ -131,6 +136,8 @@ def stage_unverified_master(
     if not source_resolved.is_relative_to(allowed):
         raise ProjectStorageError("Source file must be in the authorized worker output directory")
     original = store.load()  # Never create a project as an accidental side effect.
+    if expected_project_id is not None and original.project_id != expected_project_id:
+        raise ProjectConflict("Character project changed during master generation")
     if expected_revision is not None and original.revision != expected_revision:
         raise ProjectConflict(
             f"Master generation is stale: expected revision {expected_revision}, "
