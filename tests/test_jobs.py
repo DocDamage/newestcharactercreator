@@ -124,6 +124,34 @@ class BlenderRunnerStagingTests(unittest.TestCase):
             with self.assertRaisesRegex(WorkerFailure, "mismatch"):
                 self.runner.run(job)
 
+    def test_blender_failure_includes_matching_worker_error_response(self):
+        job = JobRequest.new("inspect_environment")
+        def failed(command, directory, **kwargs):
+            (directory / "result.json").write_text(json.dumps(
+                JobResult(job.job_id, job.operation, "error", {},
+                          error="MPFB TargetService.reapply_macro_details failed").as_dict()
+            ))
+            return ProcessOutcome(2, "", "", 0.1)
+        with patch("ucc.jobs.runner.run_process", side_effect=failed):
+            with self.assertRaisesRegex(
+                WorkerFailure, "TargetService.reapply_macro_details failed"
+            ):
+                self.runner.run(job)
+
+    def test_blender_failure_does_not_trust_spoofed_worker_response(self):
+        job = JobRequest.new("inspect_environment")
+        def failed(command, directory, **kwargs):
+            (directory / "result.json").write_text(json.dumps(
+                JobResult(str(uuid4()), job.operation, "error", {},
+                          error="Spoofed success!").as_dict()
+            ))
+            return ProcessOutcome(2, "", "Actual Blender failure", 0.1)
+        with patch("ucc.jobs.runner.run_process", side_effect=failed):
+            with self.assertRaises(WorkerFailure) as raised:
+                self.runner.run(job)
+        self.assertNotIn("Spoofed success!", str(raised.exception))
+        self.assertIn("Actual Blender failure", str(raised.exception))
+
     def test_job_id_collision_does_not_overwrite(self):
         job = JobRequest.new("inspect_environment")
         with patch("ucc.jobs.runner.run_process", side_effect=lambda command, workdir, **kw: self.protocol_only_result(job, workdir)):
