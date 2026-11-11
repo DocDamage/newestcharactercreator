@@ -138,7 +138,8 @@ def select_explicit_chain(
     return selected, {
         "axis_profile": axis_profile,
         "rest_direction_alignment_verified": True,
-        "rest_scale_consistency_verified": True,
+        "rest_length_scale_measured": True,
+        "rest_scale_consistency_verified": len(scaling) > 1,
         "relative_rest_length_scale": scale,
         "bone_roll_calibrated": False,
         "retargeting_verified": False,
