@@ -81,7 +81,8 @@ def validate_multibone_evidence(details: Any, *, axis_profile: str) -> dict[str,
             if parent is not None or bone.get("rest_alignment_cos") is not None:
                 raise MultiBoneEvidenceError("First chain member must be source root")
         else:
-            if (type(parent) is not str or parent.casefold() not in sources
+            if (type(parent) is not str or
+                    parent.casefold() != mapped[idx - 1]["source"].casefold()
                     or not _finite(bone.get("rest_alignment_cos"))
                     or not 0.90 <= bone["rest_alignment_cos"] <= 1.00001):
                 raise MultiBoneEvidenceError("BVH source and target parent/rest alignment unproved")
