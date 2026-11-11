@@ -113,6 +113,7 @@ class MultiBoneEvidenceTests(unittest.TestCase):
         samples = [dict(x) for x in updated["sampled_frames"]]
         samples[1]["evaluated_sha256"] = "e" * 64
         updated["sampled_frames"] = samples
+        updated["distinct_geometry_states"] = 4
         with self.assertRaisesRegex(MultiBoneEvidenceError, "disagreed"):
             compare_multibone_evidence(valid_report(), updated, "Y_UP_TO_Z_UP")
 
