@@ -18,6 +18,7 @@ from ucc.core.master_versions import MasterRevision, stage_unverified_master
 from ucc.core.storage import ProjectStore
 
 from .geometry_evidence import EvidenceError, verify_geometry
+from .phenotype import from_saved_parameters, verify_evaluated_shape
 from .protocol import JobRequest
 from .runner import BlenderJobRunner
 
@@ -73,6 +74,12 @@ def generate_humanoid(
         raise ProjectConflict("Project changed since the generation task was prepared")
     if initial.family != "humanoid.v1" or initial.base_provider != "mpfb":
         raise ValidationError("Only the MPFB humanoid family is supported by this worker")
+    if initial.parts or initial.animations:
+        raise ValidationError(
+            "Cannot regenerate a new base while character parts or animation "
+            "references are attached; create a clean project for this operation"
+        )
+    macros = from_saved_parameters(initial.parameters)
     if type(timeout_s) not in (int, float) or not 0.05 <= timeout_s <= 3600:
         raise ValidationError("timeout_s must be between 0.05 and 3600 seconds")
 
@@ -90,7 +97,9 @@ def generate_humanoid(
         raise ProjectStorageError("Private Blender job directory is redirected")
 
     runner = BlenderJobRunner(executable, jobs_root, script)
-    create_job = JobRequest.new("create_human")
+    create_job = JobRequest.new(
+        "create_human", options={"macro_parameters": macros},
+    )
     created, create_dir = runner.run(create_job, timeout_s=timeout_s, cancel=cancel)
     if created.details.get("staged_blend") != "generated_human.blend":
         raise EvidenceError("Worker returned an unrecognized generated master path")
@@ -100,7 +109,10 @@ def generate_humanoid(
     digest = _sha256(master)
     _cancelled(cancel)
 
-    inspect_job = JobRequest.new("inspect_character", input_project="candidate.blend")
+    inspect_job = JobRequest.new(
+        "inspect_character", input_project="candidate.blend",
+        options={"macro_parameters": macros},
+    )
     reopened, inspect_dir = runner.run(
         inspect_job, timeout_s=timeout_s, cancel=cancel,
         staged_inputs={"candidate.blend": master},
@@ -110,6 +122,7 @@ def generate_humanoid(
             or _sha256(inspected_copy) != digest or _sha256(master) != digest):
         raise EvidenceError("Inspected Blender file differs from generated master")
     observed = verify_geometry(created.details, reopened.details)
+    observed.update(verify_evaluated_shape(macros, created.details, reopened.details))
     _cancelled(cancel)
 
     revision = stage_unverified_master(
