@@ -4,9 +4,10 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 import tempfile
 from pathlib import Path
 import unittest
+from unittest.mock import patch
 
 try:
-    from PySide6.QtWidgets import QApplication
+    from PySide6.QtWidgets import QApplication, QMessageBox
     from ucc.desktop.controller import DesktopController
     from ucc.desktop.window import MainWindow
 except ImportError as error:
@@ -52,6 +53,64 @@ class DesktopQtSmoke(unittest.TestCase):
         self.assertAlmostEqual(dict(self.controller.view().morphs)["muscle"], .65)
         self.window.undo()
         self.assertAlmostEqual(dict(self.controller.view().morphs)["muscle"], .5)
+
+    def test_generate_action_requires_explicit_blender_selection(self):
+        self.assertTrue(self.window.character.generate.isEnabled())
+        exe = Path(self.tmp.name) / "selected-blender"
+        exe.write_bytes(b"fake-test-executable-not-invoked")
+        with patch.object(QMessageBox, "question", return_value=QMessageBox.StandardButton.Yes):
+            with patch("ucc.desktop.window.QFileDialog.getOpenFileName",
+                       return_value=(str(exe), "")):
+                with patch.object(self.window, "_submit") as submit:
+                    self.window.character.generate.click()
+        submit.assert_called_once()
+        args, kwargs = submit.call_args
+        self.assertEqual(args[0], "generate_humanoid")
+        self.assertTrue(callable(args[1]))
+        self.assertFalse(kwargs["cancel"].is_set())
+
+    def test_dirty_metadata_blocks_generation_without_a_worker(self):
+        self.controller.rename("Unsaved hero")
+        with patch.object(self.window, "_error") as error:
+            with patch.object(self.window, "_submit") as submit:
+                self.window.generate_humanoid()
+        error.assert_called_once()
+        self.assertIn("Save all metadata", error.call_args.args[0])
+        submit.assert_not_called()
+
+    def test_busy_blender_generation_locks_all_project_edits(self):
+        self.window._work_kind = "generate_humanoid"
+        self.window._busy_changed(True)
+        self.assertFalse(self.window.character.generate.isEnabled())
+        self.assertFalse(self.window.new_action.isEnabled())
+        self.assertFalse(self.window.open_action.isEnabled())
+        self.assertTrue(self.window.cancel_generation_action.isEnabled())
+        self.window._busy_changed(False)
+        self.assertTrue(self.window.character.generate.isEnabled())
+        self.assertTrue(self.window.new_action.isEnabled())
+        self.assertFalse(self.window.cancel_generation_action.isEnabled())
+
+    def test_genuine_workflow_result_refreshes_project_but_does_not_certify(self):
+        # Structural unit-test bytes; neither this test nor this output is MPFB proof.
+        from ucc.core.master_versions import stage_unverified_master
+        from ucc.jobs.humanoid_generation import HumanoidGeneration
+        worker = Path(self.tmp.name) / "fake-worker-results"
+        worker.mkdir()
+        master = worker / "generated_human.blend"
+        master.write_bytes(b"BLENDER" + b"unit-test-only" * 100)
+        result = stage_unverified_master(
+            self.controller.store, master, authorized_source_root=worker
+        )
+        outcome = HumanoidGeneration(
+            result, {"created_vertex_count": 2000, "reopened_bone_count": 60},
+            "unit-create", "unit-inspect",
+        )
+        self.window._work_kind = "generate_humanoid"
+        self.window._job_success(outcome)
+        self.assertEqual(self.window.controller.view().geometry_state, "generated_unverified")
+        self.assertTrue(self.window.character.open_master.isEnabled())
+        self.assertIn("NOT a verified animated model", self.window.log.toPlainText())
+        self.assertIn("Master geometry has not passed", self.window.character.blockers.toPlainText())
 
     def test_tools_are_real_and_cannot_claim_geometry(self):
         self.assertIn("PNG", self.window.tools.pack.text())
