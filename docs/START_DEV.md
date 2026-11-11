@@ -23,6 +23,7 @@ py -3 -m ucc morph "$env:USERPROFILE\Documents\UCC\FirstHuman" height 0.65
 py -3 -m ucc slots
 py -3 -m ucc plan-sprites --directions 8 --width 128 --height 128 --clip idle:8 --clip walk:12
 py -3 -m ucc probe-ai
+py -3 -m ucc inspect-glb "C:\UCC\exports\character.glb"
 ```
 
 To assemble real spritesheets from **existing** transparent PNG frames (e.g., future Blender renders), install free Pillow into your development environment and use:
@@ -34,7 +35,7 @@ py -3 -m ucc pack-sprites --frames-dir "C:\UCC\ExistingFrames" --output-dir "C:\
 
 The PNG folder must contain `idle/dir-00/frame-0000.png`, etc., matching the exact plan. The packer verifies real pixels, RGBA, sizes, hashes, and metadata, and rejects missing frames. No generated character images are supplied in the repo.
 
-**The project commands edit only metadata and can generate a sprite render *plan*.** A morph value does not physically change Blender geometry until MPFB target mapping is verified and integrated. A render plan does not generate PNGs.
+**The project commands edit only metadata and can generate a sprite render *plan*.** The GLB command inspects actual GLB files structurally without claiming in-engine compatibility. See `docs/integration/glb-offline.md`. A morph value does not physically change Blender geometry until MPFB target mapping is verified and integrated. A render plan does not generate PNGs.
 
 ## Local files and privacy
 

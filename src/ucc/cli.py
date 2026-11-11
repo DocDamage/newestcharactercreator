@@ -15,6 +15,7 @@ from ucc.jobs.runner import BlenderJobRunner
 from ucc.sprites.plan import CameraProfile, build_plan
 from ucc.sprites.atlas import pack_frames
 from ucc.ai.probe import probe_comfyui, probe_webui
+from ucc.export.inspect_glb import inspect_glb
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -32,6 +33,8 @@ def main(argv: list[str] | None = None) -> int:
     sp.add_parser("slots", help="List known humanoid attachment slots")
     validate = sp.add_parser("validate", help="Read and validate a project without modifying it")
     validate.add_argument("project_json", type=Path)
+    glb = sp.add_parser("inspect-glb", help="Offline GLB structure inspection (not engine validation)")
+    glb.add_argument("path", type=Path)
     api = sp.add_parser("probe-ai", help="Read-only probes of existing loopback AI APIs")
     api.add_argument("--comfyui", default="http://127.0.0.1:8188")
     api.add_argument("--webui", default="http://127.0.0.1:7860")
@@ -68,6 +71,8 @@ def main(argv: list[str] | None = None) -> int:
                     for s in slot_catalog()]
         elif args.command == "validate":
             data = CharacterProject.from_dict(json.loads(args.project_json.read_text(encoding="utf-8"))).to_dict()
+        elif args.command == "inspect-glb":
+            data = inspect_glb(args.path).to_dict()
         elif args.command == "probe-ai":
             data = [probe_comfyui(args.comfyui).to_dict(), probe_webui(args.webui).to_dict()]
         elif args.command == "probe-blender":

@@ -75,3 +75,8 @@ These are implemented independently of Blender (no example character artwork is 
 - \`py -3 -m ucc probe-ai\` checks only loopback local ComfyUI and Stable Diffusion WebUI HTTP APIs, returning availability and limited capability metadata. It makes no POST requests, uploads or downloads, and does not reveal model filenames. See [AI probes](docs/integration/ai-probes.md).
 
 The Stage 0 real Blender smoke remains the blocker. New pure-Python tests cannot replace it.
+
+
+### GLB export preflight, not an engine certification
+
+\`py -3 -m ucc inspect-glb "C:\UCC\exports\character.glb"\` performs an actual read-only glTF 2.0 binary/JSON structure audit. It reports meshes, skins/joints, animations, morph targets, broken references and potential export gaps. It never marks Godot/Unity/Unreal import as passed. See [GLB offline inspection](docs/integration/glb-offline.md).
