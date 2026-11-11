@@ -2,7 +2,7 @@
 
 **Target:** Windows 11 + Blender 5.3 + installed MPFB, PySide6 desktop, optional local ComfyUI/WebUI and future Godot/Unity/Unreal workflows.
 
-**Merged:** PRs [#24–#29](https://github.com/DocDamage/newestcharactercreator/pulls?q=is%3Apr+is%3Amerged). **Current review:** [PR #30 — real keyed Blender animation timeline](https://github.com/DocDamage/newestcharactercreator/pull/30). The PR #30 behavior remains on its feature branch until merged.
+**Merged:** PRs [#24–#30](https://github.com/DocDamage/newestcharactercreator/pulls?q=is%3Apr+is%3Amerged). **Current review:** [PR #31 — explicitly reviewed local source BVH motion](https://github.com/DocDamage/newestcharactercreator/pull/31). The PR #31 action remains on its feature branch until merged.
 
 ## Verified capabilities and remaining gates
 
