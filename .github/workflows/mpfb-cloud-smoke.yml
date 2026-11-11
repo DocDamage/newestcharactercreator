@@ -40,8 +40,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          printf 'BLENDER_USER_CONFIG=%s\\n' "$RUNNER_TEMP/ucc-blender-config" >> "$GITHUB_ENV"
-          printf 'BLENDER_USER_SCRIPTS=%s\\n' "$RUNNER_TEMP/ucc-blender-scripts" >> "$GITHUB_ENV"
+          printf 'BLENDER_USER_CONFIG=%s\n' "$RUNNER_TEMP/ucc-blender-config" >> "$GITHUB_ENV"
+          printf 'BLENDER_USER_SCRIPTS=%s\n' "$RUNNER_TEMP/ucc-blender-scripts" >> "$GITHUB_ENV"
           mkdir -p "$RUNNER_TEMP/ucc-blender-config" "$RUNNER_TEMP/ucc-blender-scripts"
       - name: Download Blender 5.3.0 and check official SHA-256
         shell: bash
