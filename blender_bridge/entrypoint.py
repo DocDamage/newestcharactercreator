@@ -78,7 +78,9 @@ def create_human(_: dict, root: Path) -> dict:
     service, module = locate_human_service()
     details = create_human_with_rig(bpy, service, "default")
     path = member(root, "generated_human.blend")
-    bpy.ops.wm.save_as_mainfile(filepath=str(path))
+    # The project master staging contract requires the canonical BLENDER header;
+    # default per-install compression settings must not change file format.
+    bpy.ops.wm.save_as_mainfile(filepath=str(path), compress=False)
     if not path.is_file() or path.stat().st_size < 16:
         raise RuntimeError("Generated project was not saved")
     return {"blender_version": bpy.app.version_string, "mpfb_service_module": module,
