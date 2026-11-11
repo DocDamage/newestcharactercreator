@@ -25,6 +25,12 @@ It does **not** prove correct joint bending, cloth collision, retargeting, movem
 
 The original saved master and project geometry state remain untouched and **generated_unverified**. Do not describe this diagnostic as a shippable animation pack.
 
+## Observed real Blender evidence — November 11, 2026
+
+[Real Blender 5.3 + official MPFB integration #43105088396](https://github.com/DocDamage/newestcharactercreator/actions/runs/43105088396) **passed** the original diagnostic Action with three keyframes. Blender evaluated frames 1, 7, 13, 19 and 25. The real weighted head bone moved **4,451 evaluated mesh vertices** at frames 7, 13 and 19; the first and final frame fingerprints were identical. The intermediate geometry hashes differed from both baseline and peak, demonstrating interpolated frame sampling rather than a manually applied one-off pose. Two independent Blender processes agreed on the exact bone, frame hashes and moved-vertex counts. The source .blend and UCC metadata were unchanged.
+
+The core/preflight and desktop Qt tests also passed on that PR revision; the Windows frozen startup test is separate. This evidence is **for a diagnostic original motion only**, not a user-selected clip, visual playback quality, retargeting or engine import.
+
 ## Acceptance gates
 
 - Synthetic contract tests for the fixed worker operation, no arbitrary script/angle/clip options, frame/sample validation, Action guards and restoration, cancellation, stale metadata, and worker disagreement.
