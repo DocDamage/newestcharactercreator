@@ -93,6 +93,30 @@ def locate_target_service(
     return target, module_name
 
 
+def locate_human_properties(
+    human_module: str,
+    loader: Callable[[str], Any] | None = None,
+) -> tuple[Any, str]:
+    """Resolve MPFB HumanObjectProperties from the same enabled extension."""
+    if not isinstance(human_module, str) or not (
+        human_module == "mpfb.services.humanservice"
+        or human_module.endswith(".mpfb.services.humanservice")
+    ):
+        raise MpfbServiceError("Untrusted MPFB HumanService module name")
+    name = human_module.removesuffix(".services.humanservice") + ".entities.objectproperties"
+    importer = importlib.import_module if loader is None else loader
+    try:
+        loaded = importer(name)
+    except (ImportError, AttributeError, RuntimeError) as exc:
+        raise MpfbServiceError("MPFB human object properties could not be imported") from exc
+    properties = getattr(loaded, "HumanObjectProperties", None)
+    if properties is None or any(
+        not callable(getattr(properties, item, None)) for item in ("get_value", "set_value")
+    ):
+        raise MpfbServiceError("MPFB HumanObjectProperties API unavailable")
+    return properties, name
+
+
 def inspect_service(registry: Mapping[str, Any] | None = None,
                     loader: Callable[[str], Any] | None = None) -> dict[str, Any]:
     """Report discoverability; never claim geometry creation or rigging."""
