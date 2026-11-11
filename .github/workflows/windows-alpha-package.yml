@@ -1,0 +1,95 @@
+name: Windows desktop alpha build (internal testing)
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'src/ucc/desktop/**'
+      - 'src/ucc/core/**'
+      - 'src/ucc/animations/**'
+      - 'src/ucc/ai/**'
+      - 'src/ucc/export/**'
+      - 'src/ucc/library/**'
+      - 'src/ucc/sprites/**'
+      - 'tests/test_desktop_entrypoint.py'
+      - 'pyproject.toml'
+      - '.github/workflows/windows-alpha-package.yml'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/windows-alpha-package.yml'
+      - 'src/ucc/desktop/**'
+      - 'pyproject.toml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-alpha:
+    name: Windows x64 portable GUI
+    runs-on: windows-latest
+    timeout-minutes: 25
+    env:
+      QT_QPA_PLATFORM: offscreen
+      UCC_REQUIRE_QT: '1'
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install explicit alpha dependencies and packager
+        run: python -m pip install -e ".[desktop,sprites]" "pyinstaller>=6.13,<7"
+      - name: Run real Qt self-test before freezing
+        shell: pwsh
+        run: |
+          python -m ucc.desktop --self-test --self-test-report "$PWD/source-health.json"
+          if ($LASTEXITCODE -ne 0) { throw "Source app self-test failed" }
+          $health = Get-Content "$PWD/source-health.json" -Raw | ConvertFrom-Json
+          if ($health.status -ne 'SELF_TEST_OK' -or $health.checks.Count -ne 2) {
+            throw 'Qt/project source self-test did not pass both checks'
+          }
+      - name: Desktop import and UI tests (real Qt, not skipped)
+        shell: pwsh
+        run: |
+          python -m unittest discover -s tests -p 'test_desktop_qt.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Qt UI tests failed' }
+          python -m unittest discover -s tests -p 'test_desktop_entrypoint.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Qt diagnostic tests failed' }
+      - name: Freeze windowed desktop application
+        shell: pwsh
+        run: |
+          python -m PyInstaller --clean --noconfirm --onedir --windowed `
+            --name UCC-Desktop-Alpha --paths src `
+            src/ucc/desktop/__main__.py
+          if ($LASTEXITCODE -ne 0) { throw 'PyInstaller failed' }
+      - name: Test the frozen executable and confirm JSON evidence
+        shell: pwsh
+        run: |
+          $exe = Join-Path $PWD 'dist/UCC-Desktop-Alpha/UCC-Desktop-Alpha.exe'
+          if (-not (Test-Path $exe)) { throw "Frozen executable missing: $exe" }
+          & $exe --self-test --self-test-report "$PWD/frozen-health.json"
+          if ($LASTEXITCODE -ne 0) { throw "Frozen GUI self-test failed (exit $LASTEXITCODE)" }
+          if (-not (Test-Path "$PWD/frozen-health.json")) { throw 'Frozen health report missing' }
+          $health = Get-Content "$PWD/frozen-health.json" -Raw | ConvertFrom-Json
+          if ($health.status -ne 'SELF_TEST_OK') { throw 'Frozen self-test did not pass' }
+          if ($health.checks.Count -ne 2) { throw 'Frozen self-test did not exercise project and Qt widgets' }
+          Write-Output 'FROZEN_QT_AND_PROJECT_ROUNDTRIP_VERIFIED'
+      - name: Create SHA-256 checked internal QA archive
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path release -Force | Out-Null
+          Copy-Item 'docs/packaging/WINDOWS_ALPHA_README.md' 'dist/UCC-Desktop-Alpha/READ_THIS_FIRST.md'
+          $archive = 'release/UCC-Desktop-Alpha-windows-x64.zip'
+          Compress-Archive -Path 'dist/UCC-Desktop-Alpha' -DestinationPath $archive -CompressionLevel Optimal
+          $hash = (Get-FileHash -Path $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+          Set-Content -Path 'release/SHA256SUMS.txt' -Value "$hash  UCC-Desktop-Alpha-windows-x64.zip" -Encoding ascii
+          Copy-Item 'frozen-health.json' 'release/frozen-health.json'
+          if ((Get-Item $archive).Length -lt 1000000) { throw 'Archive suspiciously small' }
+      - name: Upload ephemeral internal-test artifact (not a release)
+        uses: actions/upload-artifact@v4
+        with:
+          name: UCC-Desktop-Alpha-Windows-x64
+          path: release/*
+          retention-days: 7
+          if-no-files-found: error
