@@ -1,8 +1,8 @@
 """Blender-only job entrypoint, isolated from the desktop process.
 
-This is real bpy integration code, NOT yet validated with Blender 5.3 + MPFB.
-Only these explicit operations are permitted: inspect_environment, inspect_character,
-create_human. Other operations fail without executing arbitrary user code.
+This is real bpy/MPFB HumanService integration code but is NOT yet validated
+with Blender 5.3 + MPFB. All outputs are staged; a fresh Blender open and
+manual deformation check are required before a usable character is claimed.
 """
 from __future__ import annotations
 import argparse
@@ -12,6 +12,15 @@ import sys
 import traceback
 
 import bpy
+
+# Blender --python does not guarantee the repository parent is on sys.path.
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from blender_bridge.mpfb_service import (
+    create_human_with_rig, inspect_service, locate_human_service,
+)
 
 PROTOCOL_VERSION = 1
 OPERATIONS = {"inspect_environment", "inspect_character", "create_human"}
@@ -38,17 +47,13 @@ def member(root: Path, path: str) -> Path:
 
 
 def mpfb_status() -> dict:
-    try:
-        operator = bpy.ops.mpfb.create_human
-        operator.get_rna_type()
-        return {"registered": True, "poll": bool(operator.poll())}
-    except Exception as exc:
-        return {"registered": False, "error": f"{type(exc).__name__}: {exc}"}
+    return inspect_service()
 
 
 def inspect_environment(_: dict, __: Path) -> dict:
     return {"blender_version": bpy.app.version_string,
-            "blender_version_tuple": list(bpy.app.version), "mpfb_operator": mpfb_status()}
+            "blender_version_tuple": list(bpy.app.version),
+            "mpfb_service": mpfb_status()}
 
 
 def inspect_character(job: dict, root: Path) -> dict:
@@ -60,37 +65,25 @@ def inspect_character(job: dict, root: Path) -> dict:
     if not meshes or sum(len(o.data.vertices) for o in meshes) <= 100:
         raise RuntimeError("Insufficient 3D mesh geometry")
     return {"blender_version": bpy.app.version_string,
-            "mesh_count": len(meshes), "vertex_count": sum(len(o.data.vertices) for o in meshes),
+            "mesh_count": len(meshes),
+            "vertex_count": sum(len(o.data.vertices) for o in meshes),
             "armatures": [{"name": a.name, "bone_count": len(a.data.bones)}
                           for a in bpy.data.objects if a.type == "ARMATURE"],
             "shape_keys": {m.name: ([key.name for key in m.data.shape_keys.key_blocks]
-                                    if m.data.shape_keys else []) for m in meshes}}
+                                    if m.data.shape_keys else []) for m in meshes},
+            "visual_deformation_verified": False}
 
 
 def create_human(_: dict, root: Path) -> dict:
-    # MPFB supports a create_human operator in its API documentation. Its
-    # background context and Blender 5.3 compatibility MUST be tested on PC.
-    status = mpfb_status()
-    if not status.get("registered"):
-        raise RuntimeError(f"MPFB operator unavailable: {status.get('error')}")
-    if not status.get("poll"):
-        raise RuntimeError("MPFB create_human.poll() is false in this Blender context")
-    existing = {obj.as_pointer() for obj in bpy.data.objects if obj.type == "MESH"}
-    operation = bpy.ops.mpfb.create_human()
-    if "FINISHED" not in operation:
-        raise RuntimeError(f"MPFB create_human returned {operation}, not FINISHED")
-    created = [o for o in bpy.data.objects if o.type == "MESH" and o.as_pointer() not in existing]
-    if not created or max(len(o.data.vertices) for o in created) <= 100:
-        raise RuntimeError("MPFB did not produce a substantial new human mesh")
+    service, module = locate_human_service()
+    details = create_human_with_rig(bpy, service, "default")
     path = member(root, "generated_human.blend")
     bpy.ops.wm.save_as_mainfile(filepath=str(path))
     if not path.is_file() or path.stat().st_size < 16:
         raise RuntimeError("Generated project was not saved")
-    return {"blender_version": bpy.app.version_string,
+    return {"blender_version": bpy.app.version_string, "mpfb_service_module": module,
             "staged_blend": "generated_human.blend", "bytes": path.stat().st_size,
-            "created_meshes": [{"name": o.name, "vertex_count": len(o.data.vertices)} for o in created],
-            "armatures": [o.name for o in bpy.data.objects if o.type == "ARMATURE"],
-            "verified_reopen": False}
+            **details}
 
 
 def main() -> int:
