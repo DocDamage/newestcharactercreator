@@ -9,14 +9,17 @@ try:
     from PySide6.QtWidgets import QApplication
     from ucc.desktop.controller import DesktopController
     from ucc.desktop.window import MainWindow
-except ImportError:
+except ImportError as error:
     QApplication = None
+    QT_IMPORT_ERROR = str(error)
 
 
-@unittest.skipIf(QApplication is None, "Install PySide6 [desktop] extra to exercise actual Qt UI")
+@unittest.skipIf(QApplication is None and os.environ.get("UCC_REQUIRE_QT") != "1", "Optional PySide6 not installed")
 class DesktopQtSmoke(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        if QApplication is None:
+            raise RuntimeError(f"Qt smoke tests REQUIRED but PySide6 UI import failed: {QT_IMPORT_ERROR}")
         cls.app = QApplication.instance() or QApplication(["ucc-qt-tests"])
 
     def setUp(self):
