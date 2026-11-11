@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "UCC GLB offline inspection report",
+  "type": "object", "additionalProperties": false,
+  "required": ["status", "engine_validated", "file_name", "sha256", "vertex_accessor_count", "mesh_count", "mesh_primitive_count", "skin_count", "joint_count", "skinned_mesh_nodes", "morph_target_count", "animation_count", "material_count", "warnings"],
+  "properties": {
+    "status": {"const": "OFFLINE_STRUCTURE_CHECKED"},
+    "engine_validated": {"const": false},
+    "file_name": {"type": "string"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "vertex_accessor_count": {"type": "integer", "minimum": 0},
+    "mesh_count": {"type": "integer", "minimum": 0},
+    "mesh_primitive_count": {"type": "integer", "minimum": 0},
+    "skin_count": {"type": "integer", "minimum": 0},
+    "joint_count": {"type": "integer", "minimum": 0},
+    "skinned_mesh_nodes": {"type": "integer", "minimum": 0},
+    "morph_target_count": {"type": "integer", "minimum": 0},
+    "animation_count": {"type": "integer", "minimum": 0},
+    "material_count": {"type": "integer", "minimum": 0},
+    "warnings": {"type": "array", "items": {"type": "string"}}
+  }
+}

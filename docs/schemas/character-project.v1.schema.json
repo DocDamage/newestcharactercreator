@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/DocDamage/newestcharactercreator/tree/main/docs/schemas/character-project.v1.schema.json",
+  "title": "UCC CharacterProject version 1 (metadata; not geometry validation)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "project_id", "name", "family", "base_provider", "master_blend", "geometry_state", "rig_profile", "scale", "parameters", "parts", "animations", "appearance", "revision", "created_utc"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "project_id": {"type": "string", "minLength": 1},
+    "name": {"type": "string", "minLength": 1, "maxLength": 200},
+    "family": {"const": "humanoid.v1"},
+    "base_provider": {"type": "object", "additionalProperties": false, "required": ["kind"], "properties": {"kind": {"const": "mpfb"}}},
+    "master_blend": {"type": ["string", "null"], "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[^:~\\\\]+\\.blend$"},
+    "geometry_state": {"enum": ["not_generated", "generated_unverified", "validated"]},
+    "rig_profile": {"type": ["string", "null"]},
+    "scale": {"type": "object", "additionalProperties": false, "required": ["unit", "height_m"], "properties": {"unit": {"const": "meter"}, "height_m": {"type": "number", "minimum": 0.2, "maximum": 5.0}}},
+    "parameters": {"type": "object", "additionalProperties": false, "properties": {"height": {"type": "number", "minimum": 0, "maximum": 1}, "muscle": {"type": "number", "minimum": 0, "maximum": 1}, "weight": {"type": "number", "minimum": 0, "maximum": 1}}},
+    "parts": {"type": "array", "items": {"$ref": "#/$defs/part"}},
+    "animations": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "appearance": {"type": "object", "additionalProperties": {"type": "string"}},
+    "revision": {"type": "integer", "minimum": 0},
+    "created_utc": {"type": "string", "minLength": 1}
+  },
+  "$defs": {
+    "part": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "part_asset_id", "slot", "visible", "status"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "part_asset_id": {"type": "string", "minLength": 1},
+        "slot": {"type": "string", "minLength": 1},
+        "visible": {"type": "boolean"},
+        "status": {"enum": ["proposed", "geometry_validated"]}
+      }
+    }
+  }
+}

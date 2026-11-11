@@ -48,3 +48,35 @@ Do not commit scanner reports containing personal paths, source Fab assets, mode
 Keep main stable; use one topic branch and PR per task. Don't silently install dependencies, fabricate successful integrations or ship placeholder assets. Track source permissions before any AI processing or export. No public distribution license is chosen yet. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 **Next action:** run `UCC-P0-001` with the user's real Blender 5.3 + MPFB installation, and record logs, versions and actual saved/reopened character evidence.
+
+## New: versioned core implementation (pre-UI)
+
+A functional **Python metadata backend** now exists. It is not yet a graphical 3D creator. See [Implementation status](IMPLEMENTATION_STATUS.md) and [start guide](docs/START_DEV.md).
+
+```powershell
+$env:PYTHONPATH = "src"
+py -3 -m unittest discover -s tests -v
+py -3 -m ucc new "$env:USERPROFILE\Documents\UCC\FirstHuman" --name "First Human"
+py -3 -m ucc info "$env:USERPROFILE\Documents\UCC\FirstHuman"
+py -3 -m ucc slots
+py -3 -m ucc plan-sprites --directions 8 --clip idle:8
+```
+
+Included: strict character/project data model, semantic body-part slots, reversible metadata edits, atomic revision-checked project saves, SQLite asset-provenance ledger, sprite camera/frame planner, and a cancellable Blender subprocess protocol. Its `blender_bridge/entrypoint.py` is an **untested real Blender integration candidate**. No physical character geometry, animation export, or engine import is claimed until [UCC-P0-001](https://github.com/DocDamage/newestcharactercreator/issues/2) passes on Windows.
+
+**Unit tests are not Blender tests.** The real create/save/reopen test remains in `Stage0_Starter/` and `Development_Guardrails/`. Source checkpoints, purchased Fab animations, evidence containing personal paths, and project masters remain excluded from this public repo.
+
+
+### Existing-PNG sprite atlases and local AI probes
+
+These are implemented independently of Blender (no example character artwork is bundled):
+
+- With the optional free Pillow library: \`py -3 -m pip install "Pillow>=11,<13"\`, then \`py -3 -m ucc pack-sprites --frames-dir "C:\UCC\ExistingFrames" --output-dir "C:\UCC\Atlases" --directions 8 --width 128 --height 128 --clip idle:8\`. The input files must match the generated frame plan. The tool produces real RGBA PNG sheets, a manifest with frame coordinates and source hashes, and rolls back partial output on failure.
+- \`py -3 -m ucc probe-ai\` checks only loopback local ComfyUI and Stable Diffusion WebUI HTTP APIs, returning availability and limited capability metadata. It makes no POST requests, uploads or downloads, and does not reveal model filenames. See [AI probes](docs/integration/ai-probes.md).
+
+The Stage 0 real Blender smoke remains the blocker. New pure-Python tests cannot replace it.
+
+
+### GLB export preflight, not an engine certification
+
+\`py -3 -m ucc inspect-glb "C:\UCC\exports\character.glb"\` performs an actual read-only glTF 2.0 binary/JSON structure audit. It reports meshes, skins/joints, animations, morph targets, broken references and potential export gaps. It never marks Godot/Unity/Unreal import as passed. See [GLB offline inspection](docs/integration/glb-offline.md).
