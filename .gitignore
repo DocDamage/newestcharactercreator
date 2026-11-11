@@ -1,0 +1,39 @@
+# Python
+**/__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+dist/
+build/
+*.egg-info/
+# Private machine scans and generated evidence
+evidence/
+preflight.json
+ucc-smoke-results/
+*.log
+# Imported binary assets and source character projects: keep local until a reviewed LFS/distribution plan exists
+*.blend
+*.blend1
+*.blend2
+*.blend@
+*.fbx
+*.glb
+*.gltf
+*.uasset
+*.umap
+*.safetensors
+*.ckpt
+*.gguf
+*.pth
+*.pt
+*.onnx
+*.psd
+*.aseprite
+*.zip
+**/exports/
+**/render_jobs/
+**/tmp/
+.DS_Store
+Thumbs.db

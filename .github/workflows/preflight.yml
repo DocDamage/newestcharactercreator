@@ -1,0 +1,28 @@
+name: Preflight Unit Tests (no Blender)
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Syntax check
+        run: python -m compileall -q Stage0_Starter Development_Guardrails
+      - name: Audit scanner unit tests
+        run: python -m unittest discover -s Stage0_Starter/tests -v
+      - name: Gate and license policy unit tests
+        run: python -m unittest discover -s Development_Guardrails/tests -v
+      - name: Example evidence must fail
+        shell: bash
+        run: |
+          if python Development_Guardrails/tools/verify_gate.py --gate P0_SPIKE --evidence-dir Development_Guardrails/config --evidence Development_Guardrails/config/P0_SPIKE.evidence.example.json; then
+            echo "ERROR: sample evidence incorrectly passed"; exit 1
+          fi
