@@ -147,6 +147,54 @@ class DesktopQtSmoke(unittest.TestCase):
         self.assertIn("Save metadata", error.call_args.args[0])
         submit.assert_not_called()
 
+    def test_keyframed_timeline_action_requires_saved_master_and_explicit_blender(self):
+        self.assertFalse(self.window.character.test_timeline.isEnabled())
+        self.test_existing_master_refit_button_disabled_until_generated()
+        self.assertTrue(self.window.character.test_timeline.isEnabled())
+        executable = Path(self.tmp.name) / "fake-test-blender"
+        executable.write_bytes(b"unit-test-only-not-executed")
+        with patch("ucc.desktop.window.QFileDialog.getOpenFileName",
+                   return_value=(str(executable), "")):
+            with patch.object(self.window, "_submit") as submit:
+                self.window.character.test_timeline.click()
+        submit.assert_called_once()
+        args, options = submit.call_args
+        self.assertEqual(args[0], "keyframed_timeline")
+        self.assertTrue(callable(args[1]))
+        self.assertFalse(options["cancel"].is_set())
+
+    def test_keyframed_timeline_reports_five_frames_but_no_user_clip_claim(self):
+        from ucc.jobs.timeline_diagnostic import SavedTimelineDiagnostic
+        self.test_existing_master_refit_button_disabled_until_generated()
+        project = self.controller.require_project()
+        samples = [
+            {"frame": frame, "moved_vertices": move,
+             "max_displacement_local": .04 if move else 0.0}
+            for frame, move in ((1, 0), (7, 200), (13, 450), (19, 200), (25, 0))
+        ]
+        result = SavedTimelineDiagnostic(
+            project.project_id, project.revision, project.master_blend,
+            "a" * 64,
+            {"sampled_frames": samples, "selected_deform_bone": "head"},
+            ("first-test-job", "second-test-job"),
+        )
+        self.window._work_kind = "keyframed_timeline"
+        self.window._job_success(result)
+        log = self.window.log.toPlainText()
+        self.assertIn("KEYFRAMED TIMELINE", log)
+        self.assertIn("Frame 13", log)
+        self.assertIn("NOT your own imported animation clip", log)
+        self.assertEqual(self.controller.require_project().revision, project.revision)
+
+    def test_keyframed_timeline_blocks_unsaved_metadata(self):
+        self.test_existing_master_refit_button_disabled_until_generated()
+        self.controller.set_morph("muscle", .63)
+        with patch.object(self.window, "_error") as error:
+            with patch.object(self.window, "_submit") as submit:
+                self.window.verify_saved_timeline()
+        self.assertIn("Save metadata", error.call_args.args[0])
+        submit.assert_not_called()
+
     def test_generate_action_requires_explicit_blender_selection(self):
         self.assertTrue(self.window.character.generate.isEnabled())
         exe = Path(self.tmp.name) / "selected-blender"
