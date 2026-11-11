@@ -10,6 +10,12 @@
 
 **Explicit limits:** The test demonstrates one reproducible static skinned-bone response, **not** live animation clips, quality of shoulder/face deformation, IK, retargeting, real-world height calibration or successful engine reimport. The owner's actual Windows Blender 5.3/MPFB environment remains untested; MPFB installed from the live official extension registry is not version-hash pinned. Existing per-PR milestone descriptions below are retained as **historical development notes** and may describe earlier limitations now improved by subsequent PRs. [Current status](docs/STATUS.md) · [Rig-pose test guide](docs/integration/rig-pose-deformation.md).
 
+## Frame-by-frame Blender animation timeline — proposed PR #30
+
+[PR #30](https://github.com/DocDamage/newestcharactercreator/pull/30) adds an opt-in **Validate one-second Blender keyframe timeline...** action. On a private copy of an existing saved MPFB humanoid, Blender creates a temporary, original three-keyframe Action and evaluates actual bound mesh geometry at five frames (1, 7, 13, 19, 25). Two independent Blender processes must agree on per-frame hashes, interpolated mesh motion, and a restored final pose. The authoritative project and .blend remain unchanged. [Timeline procedure and limitations](docs/integration/keyframed-timeline-diagnostic.md).
+
+**This is not your animation library playback or a retargeter.** It establishes that real Blender keyframe interpolation can deform the saved MPFB character over time. User-owned Fab/BVH/FBX clips, rendered animation in UCC and Godot/Unity/Unreal imports still need separate permission-aware integration. The Linux acceptance test must actually pass before describing the new timeline functionality as verified.
+
 ## Current verified milestone (November 11, 2026)
 
 [Pull request #24](https://github.com/DocDamage/newestcharactercreator/pull/24) removes the broken GitHub Actions runner-context expression and adds a **real Linux production-worker verification**, with evidence at [Actions run #43082628064](https://github.com/DocDamage/newestcharactercreator/actions/runs/43082628064): Blender 5.3.0 with the official installed MPFB extension generated an editable `.blend` master (19,158 new mesh vertices, 163 reopened armature bones). A separate Blender worker process reopened an identical master successfully. The core/preflight CI checks also passed.
