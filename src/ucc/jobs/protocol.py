@@ -11,7 +11,7 @@ from ucc.core.models import safe_relative_path
 from .phenotype import validate_macro_parameters
 
 PROTOCOL_VERSION = 1
-SUPPORTED_OPERATIONS = {"inspect_environment", "inspect_character", "create_human", "export_preview_glb"}
+SUPPORTED_OPERATIONS = {"inspect_environment", "inspect_character", "create_human", "export_preview_glb", "refit_human"}
 MAX_REQUEST_BYTES = 256 * 1024
 
 
@@ -54,10 +54,18 @@ class JobRequest:
             if self.options:
                 validate_macro_parameters(self.options["macro_parameters"])
         if self.operation == "inspect_character" and self.options:
-            if set(self.options) != {"macro_parameters"}:
-                raise ValidationError("inspect_character permits only expected MPFB macros")
+            keys = set(self.options)
+            if keys not in ({"macro_parameters"},
+                            {"macro_parameters", "verify_rig_binding"}):
+                raise ValidationError("inspect_character permits only MPFB macros and rig check")
             validate_macro_parameters(self.options["macro_parameters"])
-        if self.operation in {"inspect_character", "export_preview_glb"} and not self.input_project:
+            if "verify_rig_binding" in keys and self.options["verify_rig_binding"] is not True:
+                raise ValidationError("verify_rig_binding must be true when requested")
+        if self.operation == "refit_human":
+            if set(self.options) != {"macro_parameters"}:
+                raise ValidationError("refit_human permits only saved MPFB macro parameters")
+            validate_macro_parameters(self.options["macro_parameters"])
+        if self.operation in {"inspect_character", "export_preview_glb", "refit_human"} and not self.input_project:
             raise ValidationError(f"{self.operation} needs input_project")
         if self.operation == "export_preview_glb" and self.options:
             raise ValidationError("Preview export uses fixed, offline safe settings")

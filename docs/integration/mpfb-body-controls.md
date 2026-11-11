@@ -30,4 +30,6 @@
 
 Python-only mocks are contract regression tests, not proof of actual Blender behavior. The user's Windows 11 Blender 5.3 + MPFB environment, rigging under animation, true real-world height, and Godot/Unity/Unreal imports remain outstanding until explicitly executed.
 
+> **New work (PR #28):** [Apply saved body controls to an existing master](mpfb-existing-master-refit.md) uses MPFB's real target reapplication and armature refit on a staged `.blend` copy, rather than regenerating an unrelated new human. The existing default-generation steps above remain valid; this subsequent operation has its own structural rig/weight validation gate.
+
 **Next feature after verification:** an in-place *apply saved body changes to staged copy* workflow using MPFB `TargetService.reapply_macro_details()` and `HumanService.refit()`, with real armature/skin-weight preservation checks before replacing the master pointer. Do not add live sliders without that transaction.

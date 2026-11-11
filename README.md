@@ -24,6 +24,12 @@ A new **Preview saved master in UCC...** action in the Character tab converts th
 
 **This is not live morphing** of an existing master. Normalized values are not centimeters/meters or kilograms. Real rig deformation under animation, the owner's Windows MPFB installation and Godot/Unity/Unreal imports remain unverified. The [body-control integration guide](docs/integration/mpfb-body-controls.md) explains all limitations and the independent Linux CI acceptance check.
 
+## Update an existing humanoid master — proposed PR #28
+
+[PR #28](https://github.com/DocDamage/newestcharactercreator/pull/28) adds **Apply saved body controls to existing master...** in the Character tab. Unlike new-base generation, this makes a private copy of the saved `.blend`, reapplies real MPFB Height/Muscle/Weight macro targets, and **refits the existing rig**. A second Blender process checks the edited body's real evaluated geometry, original bone-weight groups and armature bindings before any new immutable master revision is committed. The old master stays untouched.
+
+This operation needs a saved character with **no external parts or animation references**, installed Blender/MPFB and saved slider values that actually differ from the current master. It is not live morphing, verified animated deformation or a certified Godot/Unity/Unreal export. [Workflow, safety and acceptance criteria](docs/integration/mpfb-existing-master-refit.md).
+
 ## Goal
 
 A standalone Windows character creator using Blender 5.3 and MPFB to make an editable humanoid foundation, with modular body parts, animation/rigging, selectable local or cloud AI, and validated export to Godot, Unreal Engine, Unity, 2D and 2.5D workflows. The first hardware target is RTX 3060 12 GB. Broader anatomy types and 100+ animations are planned after a reliable end-to-end humanoid pipeline exists.

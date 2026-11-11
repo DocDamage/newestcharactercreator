@@ -21,6 +21,7 @@ class CharacterPane(QWidget):
     open_master_requested = Signal()
     generate_human_requested = Signal()
     preview_master_requested = Signal()
+    refit_human_requested = Signal()
 
     def __init__(self) -> None:
         super().__init__()
@@ -71,9 +72,9 @@ class CharacterPane(QWidget):
             self.morph_values[key] = output
         layout.addWidget(self.morph_box)
         self.note = QLabel(
-            "Save these values, then generate/regenerate a humanoid to apply them "
-            "through MPFB macro targets. Changing sliders does not live-edit an "
-            "existing .blend. Values are normalized, not measured height/weight."
+            "Save Height/Muscle/Weight first. Generate a new master, or apply "
+            "saved values to the existing master through a reversible MPFB refit. "
+            "No live updates; values are normalized, not meters or kilograms."
         )
         self.note.setWordWrap(True)
         layout.addWidget(self.note)
@@ -118,6 +119,15 @@ class CharacterPane(QWidget):
         generate_layout.addWidget(generation_note)
         layout.addWidget(generation)
 
+        self.apply_body = QPushButton("Apply saved body controls to existing master...")
+        self.apply_body.setToolTip(
+            "Uses real MPFB targets and refits the existing rig on a staged copy. "
+            "Preserves the original master and independently checks bone weights."
+        )
+        self.apply_body.setEnabled(False)
+        self.apply_body.clicked.connect(self.refit_human_requested.emit)
+        layout.addWidget(self.apply_body)
+
         self.preview_master = QPushButton("Preview saved master in UCC...")
         self.preview_master.setToolTip(
             "Uses your installed Blender to export a temporary untextured static GLB "
@@ -139,6 +149,7 @@ class CharacterPane(QWidget):
         self.identity.setEnabled(active)
         self.morph_box.setEnabled(active)
         self.generate.setEnabled(active)
+        self.apply_body.setEnabled(False)
         self.preview_master.setEnabled(False)
         self.open_master.setEnabled(False)
         if not active:
@@ -157,6 +168,8 @@ class CharacterPane(QWidget):
         self.geometry.setText(view.geometry_state.replace("_", " ").title())
         self.open_master.setEnabled(view.master_blend is not None)
         self.preview_master.setEnabled(view.master_blend is not None)
+        self.apply_body.setEnabled(view.master_blend is not None and
+                                   view.geometry_state != "not_generated")
         for key, value in view.morphs:
             if key in self.sliders:
                 slider = self.sliders[key]

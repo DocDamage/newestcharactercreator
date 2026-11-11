@@ -20,6 +20,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from ucc.core.models import CharacterProject
 from ucc.core.storage import ProjectStore
 from ucc.jobs.humanoid_generation import generate_humanoid
+from ucc.jobs.body_revision import apply_saved_body_revision
 from ucc.jobs.master_preview import preview_saved_master
 
 
@@ -126,6 +127,50 @@ def verify(blender: Path, root: Path) -> dict:
             "Static GLB preview did not reflect actual changed MPFB body geometry"
         )
 
+    # Apply a second phenotype to the EXISTING model on an isolated copy.
+    # No fresh basemesh generation is permitted within refit_human.
+    refit_values = {"height": .66, "muscle": .76, "weight": .33}
+    edited = store.save(
+        replace(reopened, parameters=tuple(sorted(refit_values.items())),
+                revision=reopened.revision + 1),
+        expected_revision=reopened.revision,
+    )
+    refitted = apply_saved_body_revision(
+        store, blender_exe=blender,
+        worker_script=ROOT / "blender_bridge" / "entrypoint.py",
+        expected_project_id=edited.project_id,
+        expected_revision=edited.revision,
+        expected_master_blend=edited.master_blend,
+        timeout_s=300,
+    )
+    new_project = ProjectStore(store.root).load()
+    revised_master = store.root / new_project.master_blend
+    if (new_project.geometry_state != "generated_unverified"
+            or new_project.revision != edited.revision + 1
+            or new_project.project_id != edited.project_id
+            or new_project.master_blend == edited.master_blend
+            or not revised_master.is_file()
+            or _hash(master) != transaction.revision.sha256
+            or _hash(revised_master) != refitted.revision.sha256
+            or refitted.observed["macro_parameters_observed"] != refit_values
+            or not refitted.observed["rig_binding_verified"]
+            or not refitted.observed["morph_save_reopen_verified"]
+            or refitted.observed["macro_evaluated_sha256"] ==
+               transaction.observed["macro_evaluated_sha256"]):
+        raise RuntimeError("Existing MPFB rig/body was not safely refitted and reopened")
+    refit_preview = preview_saved_master(
+        store, blender_exe=blender,
+        worker_script=ROOT / "blender_bridge" / "entrypoint.py",
+        expected_project_id=new_project.project_id,
+        expected_revision=new_project.revision,
+        expected_master_blend=new_project.master_blend,
+        timeout_s=300,
+    )
+    if refit_preview.mesh.triangles == preview.mesh.triangles:
+        raise RuntimeError("Refitted real character GLB preview geometry did not change")
+    if ProjectStore(store.root).load() != new_project:
+        raise RuntimeError("Refit preview modified the UCC project")
+
     return {
         "status": "REAL_LINUX_PROJECT_GENERATE_REOPEN_STAGED",
         "blender_version": transaction.observed["blender_version"],
@@ -151,6 +196,19 @@ def verify(blender: Path, root: Path) -> dict:
         "preview_master_sha256": preview.master_sha256,
         "preview_skinning_evaluated": False,
         "preview_animation_evaluated": False,
+        "refit_status": "REAL_LINUX_EXISTING_MPFb_RIG_REFIT_REOPEN_PASSED",
+        "refit_requested_macros": refit_values,
+        "refit_observed_macros": refitted.observed["macro_parameters_observed"],
+        "refit_original_master_sha256": transaction.revision.sha256,
+        "refit_new_master_sha256": refitted.revision.sha256,
+        "refit_body_sha256": refitted.observed["macro_evaluated_sha256"],
+        "refit_weight_sha256": refitted.observed["weight_sha256"],
+        "refit_weighted_vertices": refitted.observed["weighted_vertices"],
+        "refit_bones": refitted.observed["reopened_bones"],
+        "refit_rig_binding_verified": True,
+        "refit_preview_geometry_changed": True,
+        "refit_original_master_preserved": True,
+        "refit_new_project_revision": new_project.revision,
         "windows_verified": False,
         "deformation_verified": False,
         "engine_imports_verified": [],

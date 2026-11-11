@@ -26,6 +26,10 @@ The Character tab can convert an already-saved UCC `.blend` master into a tempor
 
 Height, Muscle and Weight values on the Character tab are **normalized MPFB phenotype controls**. Save the project, then use **Generate humanoid using saved body controls...** to create a fresh model via the installed MPFB extension. The operation does not live-edit the prior master; immutable history is preserved, and part/animation-annotated projects are blocked until compatibility is proved. The frozen executable contains the first-party worker scripts, not Blender or MPFB; the user's Windows runtime still needs testing. See [body controls](../integration/mpfb-body-controls.md).
 
+## Existing character body refit — proposed PR #28
+
+When a saved humanoid master exists, the Character tab offers **Apply saved body controls to existing master...**. This edits a private copy through the user's installed Blender/MPFB and verifies the previous rig's bone links and skin weights before saving a new revision. Original `.blend` files are not overwritten. The portable alpha bundles the first-party `blender_bridge/refit_revision.py` script but does **not** install Blender or MPFB. The frozen startup self-test checks source presence, **not** refit behavior on your Windows PC. Read [the body refit guide](../integration/mpfb-existing-master-refit.md) before using the feature.
+
 ## Source and asset protections
 
 This artifact bundles only open dependency runtime libraries and UCC source code. It intentionally excludes Fab files, model checkpoints, purchased music/animation data, personal project directories, MPFB, Blender, and proprietary reference art. It does **not** automatically scan the computer or contact cloud AI providers.

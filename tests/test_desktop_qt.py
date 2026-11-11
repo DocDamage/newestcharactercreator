@@ -54,6 +54,50 @@ class DesktopQtSmoke(unittest.TestCase):
         self.window.undo()
         self.assertAlmostEqual(dict(self.controller.view().morphs)["muscle"], .5)
 
+    def test_existing_master_refit_button_disabled_until_generated(self):
+        self.assertFalse(self.window.character.apply_body.isEnabled())
+        worker = Path(self.tmp.name) / "contract-worker"
+        worker.mkdir()
+        fake = worker / "fake.blend"
+        fake.write_bytes(b"BLENDER" + b"contract-only" * 170)
+        from ucc.core.master_versions import stage_unverified_master
+        stage_unverified_master(
+            self.controller.store, fake, authorized_source_root=worker,
+        )
+        self.controller.open(Path(self.tmp.name) / "hero")
+        self.window.refresh_project()
+        self.assertTrue(self.window.character.apply_body.isEnabled())
+
+    def test_refit_prompt_shows_saved_values_and_dispatches_only_on_yes(self):
+        self.test_existing_master_refit_button_disabled_until_generated()
+        self.controller.set_morph("muscle", .72)
+        self.controller.save()
+        self.window.refresh_project()
+        fake_exe = Path(self.tmp.name) / "fake-blender-executable"
+        fake_exe.write_text("unit-test-only")
+        with patch.object(QMessageBox, "question",
+                          return_value=QMessageBox.StandardButton.Yes) as dialog:
+            with patch("ucc.desktop.window.QFileDialog.getOpenFileName",
+                       return_value=(str(fake_exe), "")):
+                with patch.object(self.window, "_submit") as submit:
+                    self.window.character.apply_body.click()
+        message = dialog.call_args.args[2]
+        self.assertIn("muscle=0.720", message)
+        self.assertIn("COPY", message)
+        submit.assert_called_once()
+        args, kwargs = submit.call_args
+        self.assertEqual(args[0], "body_refit")
+        self.assertFalse(kwargs["cancel"].is_set())
+
+    def test_dirty_project_blocks_existing_master_refit(self):
+        self.test_existing_master_refit_button_disabled_until_generated()
+        self.controller.set_morph("weight", .82)
+        with (patch.object(self.window, "_error") as error,
+              patch.object(self.window, "_submit") as submit):
+            self.window.apply_saved_body()
+        self.assertIn("Save all body", error.call_args.args[0])
+        submit.assert_not_called()
+
     def test_generate_action_requires_explicit_blender_selection(self):
         self.assertTrue(self.window.character.generate.isEnabled())
         exe = Path(self.tmp.name) / "selected-blender"
