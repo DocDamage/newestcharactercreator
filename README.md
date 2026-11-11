@@ -14,6 +14,10 @@
 
 This does **not** apply draft morph sliders to mesh geometry, animate or retarget a rig, or certify Godot/Unity/Unreal imports. All generated masters remain `generated_unverified` until later real deformation/export validation. The user's Windows Blender installation is still untested. See [generation instructions, failure modes and disk layout](docs/integration/humanoid-generation.md).
 
+## Preview the saved Blender master (development PR #26)
+
+A new **Preview saved master in UCC...** action in the Character tab converts the currently saved, content-addressed Blender `.blend` into a **private, temporary, untextured GLB** using the installed Blender executable you choose, then displays actual static triangles in the existing orbit/pan/zoom viewer. The original master and project metadata are never modified. It does not evaluate rig animation, MPFB morphs, skinning or game-engine imports. The branch's real Linux Blender/MPFB integration test must pass before this feature is described as verified; Windows still requires local testing. [Usage, safety, and verification details](docs/integration/saved-master-preview.md).
+
 ## Goal
 
 A standalone Windows character creator using Blender 5.3 and MPFB to make an editable humanoid foundation, with modular body parts, animation/rigging, selectable local or cloud AI, and validated export to Godot, Unreal Engine, Unity, 2D and 2.5D workflows. The first hardware target is RTX 3060 12 GB. Broader anatomy types and 100+ animations are planned after a reliable end-to-end humanoid pipeline exists.
