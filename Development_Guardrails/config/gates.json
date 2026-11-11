@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "gates": {
+    "P0_SPIKE": {
+      "purpose": "Prove real installed Blender/MPFB integration before creating the UI",
+      "required": [
+        {"id": "ENV-PROBE", "manual_review": false},
+        {"id": "MPFB-CREATE", "manual_review": false},
+        {"id": "MPFB-REOPEN", "manual_review": false}
+      ]
+    },
+    "P0_COMPLETE": {
+      "purpose": "Worker reliability and inventoried dependency versions",
+      "required": [
+        {"id": "WORKER-PROTOCOL", "manual_review": false},
+        {"id": "WORKER-FAILURE-RECOVERY", "manual_review": false},
+        {"id": "DEPENDENCY-LOCK", "manual_review": true},
+        {"id": "LICENSE-BOUNDARY-REVIEW", "manual_review": true}
+      ]
+    },
+    "M1_CHARACTER": {
+      "purpose": "Editable character and independent modular part support",
+      "required": [
+        {"id": "CHARACTER-SAVE-REOPEN", "manual_review": false},
+        {"id": "BODY-MORPH-RANGES", "manual_review": true},
+        {"id": "PART-SWAP-UNDO", "manual_review": true},
+        {"id": "RIG-ANIMATION", "manual_review": true},
+        {"id": "FACE-EXPRESSION", "manual_review": true}
+      ]
+    },
+    "M1_EXPORTS": {
+      "purpose": "Initial universal reuse, not merely file generation",
+      "required": [
+        {"id": "GODOT-IMPORT-ANIMATE", "manual_review": true},
+        {"id": "UNITY-IMPORT-ANIMATE", "manual_review": true},
+        {"id": "UNREAL-IMPORT-ANIMATE", "manual_review": true},
+        {"id": "SPRITE-RENDER", "manual_review": true},
+        {"id": "CRASH-ATOMICITY", "manual_review": false}
+      ]
+    },
+    "M2_ANIMATIONS": {
+      "purpose": "Fab and other authorized imports, hundred-plus animation target",
+      "required": [
+        {"id": "MIXED-SKELETON-RETARGET", "manual_review": true},
+        {"id": "ANIMATION-LICENSE-CLASSIFICATION", "manual_review": true},
+        {"id": "100-CLIP-CATALOG-AND-PREVIEW", "manual_review": true}
+      ]
+    }
+  }
+}

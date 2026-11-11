@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+preflight.json
+ucc-smoke-results/
+*.blend
+*.blend1
+*.safetensors
+*.ckpt
+*.pth
+*.pt
+*.gguf
+*.uasset

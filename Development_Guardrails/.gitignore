@@ -1,0 +1,21 @@
+# Local evidence and outputs are private and/or generated
+evidence/
+**/__pycache__/
+*.pyc
+*.log
+.venv/
+venv/
+*.blend1
+*.blend2
+*.blend@
+*.safetensors
+*.ckpt
+*.gguf
+*.pth
+*.pt
+*.uasset
+*.umap
+**/exports/
+**/render_jobs/
+**/tmp/
+*.zip

@@ -1,0 +1,21 @@
+name: UCC guardrail unit tests
+on:
+  push:
+  pull_request:
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile tools
+        run: python -m compileall -q Development_Guardrails/tools
+      - name: Pure Python unit tests (not Blender validation)
+        run: python -m unittest discover -s Development_Guardrails/tests -v
+      - name: Gate examples must never pass
+        run: |
+          if python Development_Guardrails/tools/verify_gate.py --gate P0_SPIKE --evidence-dir Development_Guardrails/config --evidence Development_Guardrails/config/P0_SPIKE.evidence.example.json; then
+            echo "ERROR: Example evidence incorrectly passed"; exit 1
+          fi
