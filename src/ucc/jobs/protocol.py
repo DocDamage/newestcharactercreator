@@ -54,9 +54,13 @@ class JobRequest:
             if self.options:
                 validate_macro_parameters(self.options["macro_parameters"])
         if self.operation == "inspect_character" and self.options:
-            if set(self.options) != {"macro_parameters"}:
-                raise ValidationError("inspect_character permits only expected MPFB macros")
+            keys = set(self.options)
+            if keys not in ({"macro_parameters"},
+                            {"macro_parameters", "verify_rig_binding"}):
+                raise ValidationError("inspect_character permits only MPFB macros and rig check")
             validate_macro_parameters(self.options["macro_parameters"])
+            if "verify_rig_binding" in keys and self.options["verify_rig_binding"] is not True:
+                raise ValidationError("verify_rig_binding must be true when requested")
         if self.operation == "refit_human":
             if set(self.options) != {"macro_parameters"}:
                 raise ValidationError("refit_human permits only saved MPFB macro parameters")
