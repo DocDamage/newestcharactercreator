@@ -15,6 +15,7 @@ on:
       - 'src/ucc/jobs/geometry_evidence.py'
       - 'src/ucc/jobs/humanoid_generation.py'
       - 'src/ucc/jobs/body_revision.py'
+      - 'src/ucc/jobs/pose_diagnostic.py'
       - 'blender_bridge/refit_revision.py'
       - 'src/ucc/jobs/master_preview.py'
       - 'src/ucc/jobs/protocol.py'
@@ -32,6 +33,7 @@ on:
       - 'src/ucc/jobs/geometry_evidence.py'
       - 'src/ucc/jobs/humanoid_generation.py'
       - 'src/ucc/jobs/body_revision.py'
+      - 'src/ucc/jobs/pose_diagnostic.py'
       - 'blender_bridge/refit_revision.py'
       - 'src/ucc/jobs/master_preview.py'
       - 'src/ucc/jobs/protocol.py'
@@ -126,7 +128,7 @@ jobs:
           python3 ci/verify_production_worker.py \
             --blender "$BLENDER_EXE" \
             --outdir "$RUNNER_TEMP/ucc-production-worker" --timeout 300
-      - name: Verify real generation, saved-master preview, and existing-rig morph refit
+      - name: Verify real MPFB body/refit plus restored skinned pose deformation
         shell: bash
         run: |
           set -euo pipefail
