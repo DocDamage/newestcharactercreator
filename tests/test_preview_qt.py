@@ -101,6 +101,36 @@ class PreviewWidgetTests(unittest.TestCase):
             self.assertIn("No animations", window.log.toPlainText())
             window.close()
 
+    def test_saved_master_preview_discarded_after_external_disk_save(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            controller = DesktopController()
+            controller.create(root / "character", "Saved human")
+            source = root / "mock-only"
+            source.mkdir()
+            blend = source / "fake.blend"
+            blend.write_bytes(b"BLENDER" + b"unit-test-only" * 90)
+            stage_unverified_master(controller.store, blend, authorized_source_root=source)
+            controller.open(root / "character")
+            window = MainWindow(controller)
+            self.addCleanup(window.deleteLater)
+            snapshot = controller.require_project()
+            other = DesktopController()
+            other.open(root / "character")
+            other.rename("Externally changed")
+            other.save()
+            result = MasterPreview(
+                self.mesh(), snapshot.project_id, snapshot.revision,
+                snapshot.master_blend, "1" * 64, "2" * 64, 19158, "5.3.0",
+            )
+            window._work_kind = "saved_master_preview"
+            with patch.object(window, "_error") as error:
+                window._job_success(result)
+            error.assert_called_once()
+            self.assertIn("changed", error.call_args.args[0])
+            self.assertIsNone(window.mesh_viewer.canvas.mesh)
+            window.close()
+
     def test_new_project_clears_old_preview_geometry(self):
         window = MainWindow()
         self.addCleanup(window.deleteLater)
