@@ -16,7 +16,7 @@ This does **not** apply draft morph sliders to mesh geometry, animate or retarge
 
 ## Preview the saved Blender master (development PR #26)
 
-A new **Preview saved master in UCC...** action in the Character tab converts the currently saved, content-addressed Blender `.blend` into a **private, temporary, untextured GLB** using the installed Blender executable you choose, then displays actual static triangles in the existing orbit/pan/zoom viewer. The original master and project metadata are never modified. It does not evaluate rig animation, MPFB morphs, skinning or game-engine imports. The branch's real Linux Blender/MPFB integration test must pass before this feature is described as verified; Windows still requires local testing. [Usage, safety, and verification details](docs/integration/saved-master-preview.md).
+A new **Preview saved master in UCC...** action in the Character tab converts the currently saved, content-addressed Blender `.blend` into a **private, temporary, untextured GLB** using the installed Blender executable you choose, then displays actual static triangles in the existing orbit/pan/zoom viewer. The original master and project metadata are never modified. It does not evaluate rig animation, MPFB morphs, skinning or game-engine imports. The [real Linux Blender/MPFB saved-master preview test passed](https://github.com/DocDamage/newestcharactercreator/actions/runs/43089727477), parsing 36,972 source triangles (1,946 sampled) from an actual MPFB humanoid. Windows Blender/MPFB still requires owner-machine testing. [Usage, safety, and verification details](docs/integration/saved-master-preview.md).
 
 ## Goal
 
