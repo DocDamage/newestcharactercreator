@@ -7,6 +7,7 @@ import contextlib
 import io
 import json
 import tempfile
+from threading import Event
 import unittest
 
 from ucc.core.errors import ProjectConflict, ProjectStorageError, ValidationError
@@ -124,6 +125,43 @@ class MasterRevisionTests(unittest.TestCase):
         (versions / f"{digest}.blend").write_bytes(b"BLENDER" + b"tampered!")
         with self.assertRaisesRegex(ProjectStorageError, "digest mismatch"):
             self.stage()
+        self.assertEqual(self.store.load(), self.initial)
+
+    def test_expected_project_id_revision_and_digest_block_stale_promotions(self):
+        for change in (
+            {"expected_project_id": "some-other-character"},
+            {"expected_revision": 42},
+        ):
+            with self.subTest(change=change), self.assertRaises(ProjectConflict):
+                self.stage(**change)
+            self.assertEqual(self.store.load(), self.initial)
+        with self.assertRaisesRegex(ProjectStorageError, "changed"):
+            self.stage(expected_sha256="0" * 64)
+        self.assertEqual(self.store.load(), self.initial)
+
+    def test_cancel_before_copy_and_before_metadata_pointer_swap(self):
+        cancel = Event()
+        cancel.set()
+        with self.assertRaisesRegex(ProjectStorageError, "cancelled"):
+            self.stage(cancel=cancel)
+        self.assertEqual(self.store.load(), self.initial)
+        self.assertFalse((self.store.root / "master").exists())
+
+        cancel.clear()
+        def stop_at_commit():
+            cancel.set()
+        with self.assertRaisesRegex(ProjectStorageError, "cancelled"):
+            self.stage(cancel=cancel, before_project_save=stop_at_commit)
+        self.assertEqual(self.store.load(), self.initial)
+
+    def test_invalid_expected_precondition_types(self):
+        for change in (
+            {"expected_revision": True},
+            {"expected_project_id": ""},
+            {"expected_sha256": "not-a-digest"},
+        ):
+            with self.subTest(change=change), self.assertRaises(ValidationError):
+                self.stage(**change)
         self.assertEqual(self.store.load(), self.initial)
 
     def test_cli_stage_reports_unverified(self):
