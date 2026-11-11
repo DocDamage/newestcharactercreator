@@ -1,35 +1,39 @@
-# Readiness and validation status
+# UCC development status — November 11, 2026
 
-**As of November 11, 2026:** PRs [#24](https://github.com/DocDamage/newestcharactercreator/pull/24) and [#25](https://github.com/DocDamage/newestcharactercreator/pull/25) are merged into `main`. [PR #26](https://github.com/DocDamage/newestcharactercreator/pull/26) introduces saved-master static GLB preview and is pending review. Linux integration and Windows portable-build CI do not establish the owner's local Windows Blender/MPFB compatibility.
+**Target:** Windows 11 + Blender 5.3 + installed MPFB, PySide6 desktop, optional local ComfyUI/WebUI and future Godot/Unity/Unreal workflows.
 
-## Merged increment: desktop MPFB generation (PR #25)
+**Merged:** PRs [#24–#28](https://github.com/DocDamage/newestcharactercreator/pulls?q=is%3Apr+is%3Amerged). **Current review:** [PR #29 — real rig-pose test and evaluated static GLB fix](https://github.com/DocDamage/newestcharactercreator/pull/29). The PR #29 behavior is **not in main** until merged.
 
-[Pull request #25](https://github.com/DocDamage/newestcharactercreator/pull/25) adds a genuine opt-in PySide6 humanoid generation action, cooperative cancellation, independent Blender worker inspection, checked SHA-256 master staging, project revision/identity concurrency protection and frozen-app bridge files. The **real Linux Blender-to-project test passed** in [run #43086427807](https://github.com/DocDamage/newestcharactercreator/actions/runs/43086427807): 19,158 new human vertices, 163 reopened armature bones and a safely saved project revision 2. The saved output is **generated_unverified**, not deformation- or export-validated. This feature has been merged into `main`; actual Windows Blender/MPFB execution remains unverified.
+## Verified capabilities and remaining gates
 
-**Remaining highest-priority verification:** the owner's actual Windows 11 Blender 5.3 + MPFB installation. No live GUI display, morph deformation, rig animation or Godot/Unity/Unreal import has been certified.
-
-| Capability | Observed evidence | Not yet established |
+| Capability | Actual verification | Outstanding |
 | --- | --- | --- |
-| Product requirements | Locked blueprint and `AGENTS.md` | — |
-| Core and worker contracts | [PR #24 core CI](https://github.com/DocDamage/newestcharactercreator/actions/runs/43082628189) and preflight [CI](https://github.com/DocDamage/newestcharactercreator/actions/runs/43082628138) passed | Actual user-machine integration |
-| Blender 5.3.0 on Linux | Real official archive downloaded and SHA-256 verified in [integration run](https://github.com/DocDamage/newestcharactercreator/actions/runs/43082628064) | User's Windows Blender binary |
-| MPFB HumanService on Linux | Real installed **official MPFB extension** created a substantial human and built-in rig; second-process `.blend` reopen passed | User's Windows MPFB compatibility; **exact MPFB extension version is not pinned/recorded by the current installer** |
-| Production Blender worker on Linux | Real HumanService create/reopen, 19,158 created vertices, 163 reopened rig bones; [live project transaction passed](https://github.com/DocDamage/newestcharactercreator/actions/runs/43087335519) | Windows Blender/MPFB, morph deformation, real rig skinning |
-| PySide6 desktop workstation | Real local MPFB humanoid generation action with independent reopen and immutable master save; read-only local GLB preview; [Qt CI](https://github.com/DocDamage/newestcharactercreator/actions/runs/43087335600) | Live editable deformation and animation; user's Windows Blender installation |
-| Project revision safety | Actual worker-to-project promotion with SHA-256, backups and conflict checks, validated in [real Linux transaction run](https://github.com/DocDamage/newestcharactercreator/actions/runs/43087335519) | Long-running user Windows integration and user edits to real shape geometry |
-| Generated-master preview (PR #26) | [Real Blender/MPFB static GLB export and parser run #43089727477](https://github.com/DocDamage/newestcharactercreator/actions/runs/43089727477) passed: 36,972 source triangles, 1,946 sampled triangles, no original-master/project changes; [offscreen Qt CI](https://github.com/DocDamage/newestcharactercreator/actions/runs/43089728298) passed | Owner's Windows Blender runtime, bone deformation, animation, materials, engine import |
-| Animation sources | Private BVH/glTF metadata intake and Mixamo/UE bone-name mapping candidates | Real retargeting, preview, 100 validated playable clips |
-| Local AI | Explicit opt-in local ComfyUI concept API and API capability probes | Real user-owned local model run and mesh synthesis |
-| 2D / 2.5D | Existing PNG atlas packing | Rendering sprites from the real humanoid |
-| Godot, Unity and Unreal | GLB read-only structural inspection, no certification | Real engine import, rig/deformation and playback |
-| License / paid assets | Conservative source rights and NoAI checks | User-specific licensed asset review; no Fab contents uploaded |
+| Real MPFB humanoid generation | [Linux Blender 5.3 + official MPFB integration](https://github.com/DocDamage/newestcharactercreator/actions/runs/43093757960) generated and reopened a 19,158-vertex human, default 163-bone rig | User Windows Blender/MPFB and asset/rig visual inspection |
+| Saved normalized Height/Muscle/Weight controls | [Real Blender run #43093757960](https://github.com/DocDamage/newestcharactercreator/actions/runs/43093757960) applied 0.82/0.22/0.88 and independently measured a different mesh from the neutral 0.5 baseline | Live slider editing and physical dimension calibration |
+| Existing-master MPFB body refit | [PR #29 real integration #43101713245](https://github.com/DocDamage/newestcharactercreator/actions/runs/43101713245) passed real TargetService/HumanService refit, preserved 163-bone rig and 19,158 weighted vertices, retained prior master | Owner Windows runtime; visual fit and source asset variants |
+| Static GLB viewer | Qt orbit/pan/zoom and bounded geometry reader tested on Windows/Linux | Textures, GPU rendering, rig animation and full viewport editing |
+| **Refitted** shape-baked GLB preview (PR #29) | [Real integration #43101713245](https://github.com/DocDamage/newestcharactercreator/actions/runs/43101713245) baked evaluated MPFB morphs into private static GLB (26,756 source triangles; 1,912 sampled) and detected changed geometry | Windows Blender visual review, PBR materials, engine imports |
+| **Saved-master skin pose response (PR #29)** | [Real integration #43101713245](https://github.com/DocDamage/newestcharactercreator/actions/runs/43101713245): rotated weighted head bone by 20°, 4,451 mesh vertices moved (max 0.0549627 Blender local units); two independent subprocesses agreed and restored the pose | Actual animation clip playback, skinning quality, IK and retargeting |
+| Crash-safe project revisions | Immutable SHA-addressed masters, revision-checked atomic metadata save/backup, cancellation, stale-project checks and content hash validation | User-machine durability testing with large/custom assets |
+| PySide6 and Windows portable app | [PR #29 source/Qt/Windows CI](https://github.com/DocDamage/newestcharactercreator/actions/runs/43101713379) passed frozen EXE startup, bundled worker checks and metadata roundtrip | Owner Windows display/DPI, GPU interaction, real Blender installation |
+| Animation catalog / bone name matching | Private BVH/glTF metadata intake, named mapping candidates | Rig retargeter, frame-by-frame playback, 100 tested clips |
+| Local AI / sprite support | Opt-in localhost ComfyUI concept handling; PNG atlas generation and validation | Local model runtime, AI mesh synthesis, 2D rendering from current 3D human |
+| Godot / Unity / Unreal | GLB structural inspections and export blockers | Actual engine import, skinning, animation playback, export rights |
 
-## Proposed PR #26: static preview of the saved master
+**Important distinction:** A Blender subprocess reporting **real mesh movement** from one temporary bone rotation demonstrates a single static skinning response, **not** general high-quality deformation, animation, retargeting, or game-engine compatibility. The saved project's geometry state remains generated_unverified. Neither PR #29 nor any prior verified Linux smoke establishes Windows success on the owner's PC.
 
-A new Character-tab action converts an existing immutable `.blend` to a **private, temporary, geometry-only GLB** via the installed Blender executable, then shows the real mesh in UCC's existing bounded orbit/pan/zoom viewer. The project master stays immutable; source SHA and saved project ID/revision are rechecked. [Genuine Blender 5.3 + MPFB end-to-end run #43089727477](https://github.com/DocDamage/newestcharactercreator/actions/runs/43089727477) **passed**; all five CI workflows on the initial PR commit passed, including the [frozen Windows alpha test](https://github.com/DocDamage/newestcharactercreator/actions/runs/43089727397). This establishes a static **Linux** conversion and a launchable packaged Windows app, not a verified Windows Blender rendering session. [Usage/limits](integration/saved-master-preview.md).
+## Regression discovered after PR #28 merge
 
-**Evidence scope:** [Linux run #43082628064](https://github.com/DocDamage/newestcharactercreator/actions/runs/43082628064) generated and re-opened an actual Blender master. The CI artifact `mpfb-linux-json-diagnostics` contains JSON-only summaries and expires after its short retention period. No binary model/master, copyrighted third-party character art or asset pack is uploaded.
+The [merged main Linux smoke #43099005719](https://github.com/DocDamage/newestcharactercreator/actions/runs/43099005719) found that an MPFB refit's evaluated geometry changed but the static GLB exported unchanged Basis positions. The [merged main desktop test #43099005745](https://github.com/DocDamage/newestcharactercreator/actions/runs/43099005745) also expected obsolete UI wording, blocking Windows packaging. PR #29 now **bakes evaluated Blender meshes into private GLB preview copies**, and updates the historical test assertion. Both fixes passed in its [real integration #43101713245](https://github.com/DocDamage/newestcharactercreator/actions/runs/43101713245) and [desktop Qt CI #43101713184](https://github.com/DocDamage/newestcharactercreator/actions/runs/43101713184).
 
-**P0 remains open for Windows.** Run `Development_Guardrails/scripts/run_stage0.ps1` with the user's actual Blender 5.3 plus enabled MPFB, keep the generated outputs in private local evidence, and require real mesh/rig save/reopen. This Linux pass must not close [UCC-P0-001 / #2](https://github.com/DocDamage/newestcharactercreator/issues/2).
+## Security, reproducibility and license bounds
 
-**Next development gate:** verify this actual desktop generation workflow with Blender 5.3 + MPFB on the user's Windows PC; visually inspect rig/mesh and validate bone-weight deformation, then map real MPFB morphs. Static GLB preview is not a live deformable viewport. Do not claim animation or engine export until independently demonstrated.
+- The user selects their installed Blender executable. No background drive scan, automatic Blender/MPFB installation, Fab library download, AI checkpoint, cloud generation or unreviewed asset transfer.
+- Worker jobs use isolated private copies under .ucc-jobs/ and run with --disable-autoexec, bounded timeouts and cancellation. Project and source master SHA-256 are checked before/after.
+- CI uses an official SHA-256-checked Blender 5.3.0 archive on Linux and downloads MPFB from Blender's official extension registry into ephemeral runner folders. **MPFB's exact extension release is not yet pinned by version/hash**.
+- Only JSON diagnostic summaries are uploaded. Generated Blender files, GLB models, third-party artwork and purchased Fab assets remain private.
+- The Windows EXE is an unsigned **internal testing** artifact, not a public release. Distribution licensing for bundled libraries and any paid assets requires review.
+
+## Single next gate
+
+Verify the latest PR #29 commit's complete CI matrix, merge only after passing, then perform a real Blender deformation and preview run on the owner's Windows system. The next functional milestone is **frame-by-frame, source-licensed animation clip playback with measurable skinning**, followed by actual reimport into Godot/Unity/Unreal.

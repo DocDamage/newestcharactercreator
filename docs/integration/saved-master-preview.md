@@ -17,7 +17,7 @@ The temporary GLB is **private and local** inside `.ucc-jobs/<uuid>/`. It is not
 
 ## Explicit output restrictions
 
-The Blender adapter exports only substantial mesh objects (more than 100 vertices each), excluding the startup cube. It disables materials, image textures, UV coordinates, animation, skins, morph export, lights and cameras. The output is **untextured static triangle geometry only**; it cannot demonstrate deformed bone weights, animation frames or face expressions. The viewer samples at most 2,000 faces and announces the number of source faces and any downgrade/warnings.
+The Blender adapter selects only substantial mesh objects (more than 100 vertices each), excluding the startup cube, and creates temporary **evaluated-geometry-baked** unrigged copies so active MPFB shape keys appear as current static geometry. It disables materials, image textures, UV coordinates, animation, skins, live morph export, lights and cameras. The output is **untextured static triangle geometry only**; it cannot demonstrate deformed bone weights, animation frames or face expressions. The viewer samples at most 2,000 faces and announces the number of source faces and any downgrade/warnings.
 
 **Safety checks:** fixed allowlisted `export_preview_glb` worker command, no arbitrary user Python/workflow, no external GLB buffers, at most 128 MiB output, at most 250,000 selected mesh vertices, strict accessors/transforms and finite coordinates, no symlinks or path traversal, SHA-256 recheck of original and worker-staged masters, explicit cancellation and stale project detection. Original `.blend` revisions are never rewritten.
 
@@ -39,6 +39,8 @@ The Blender adapter exports only substantial mesh objects (more than 100 vertice
 [Blender/MPFB integration run #43089727477](https://github.com/DocDamage/newestcharactercreator/actions/runs/43089727477) **passed**: Blender 5.3.0 created a real 19,158-vertex MPFB humanoid with 163 reopened bones; its persisted UCC master was reopened in another Blender process and converted to a real GLB. UCC's actual static parser read **36,972 source triangles and 1,946 sampled triangles**, with no animation or skinning evaluated. The real project revision and master SHA-256 remained unchanged by the preview operation. The CI retained **JSON summaries only**, not model files.
 
 The dedicated Windows/Linux Qt offscreen tests, preflight/core unit suites, and the frozen Windows alpha build also passed for the initial PR #26 commit. **No test has run Blender/MPFB on the owner's Windows installation**, nor proven live physical morphs or animation. Current PR tests should be checked at its latest commit before merging.
+
+**PR #29 regression repair (November 11, 2026):** [Real Blender integration #43101713245](https://github.com/DocDamage/newestcharactercreator/actions/runs/43101713245) confirmed that evaluated MPFB refit geometry is baked before static GLB export. The previously merged PR #28 failed because the glTF exporter omitted active morph targets and displayed the unchanged Basis, despite genuinely changed evaluated body geometry. The repaired static GLB contained 26,756 source triangles, 1,912 sampled triangles, and different positions for the refitted body. Saved original source files and UCC metadata were unchanged. The diagnostic still contains no animation, rig or engine-ready export data.
 
 ## Verification and boundaries
 

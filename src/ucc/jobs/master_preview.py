@@ -114,6 +114,7 @@ def preview_saved_master(
     details = outcome.details
     if (details.get("staged_glb") != "preview.glb" or
             details.get("static_only") is not True or
+            details.get("evaluated_geometry_baked") is not True or
             details.get("animation_exported") is not False or
             details.get("skinning_exported") is not False or
             details.get("textures_included") is not False or

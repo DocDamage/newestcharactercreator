@@ -25,9 +25,10 @@ from blender_bridge.mpfb_service import (
 from blender_bridge.morphs import check_macro_values, inspect_applied_macro
 from blender_bridge.preview_export import export_static_glb
 from blender_bridge.refit_revision import apply_body_revision, rig_fingerprint
+from blender_bridge.pose_deformation import probe_pose_deformation
 
 PROTOCOL_VERSION = 1
-OPERATIONS = {"inspect_environment", "inspect_character", "create_human", "export_preview_glb", "refit_human"}
+OPERATIONS = {"inspect_environment", "inspect_character", "create_human", "export_preview_glb", "refit_human", "verify_skin_deformation"}
 
 
 def arguments() -> argparse.Namespace:
@@ -100,6 +101,14 @@ def export_preview_glb(job: dict, root: Path) -> dict:
     return export_static_glb(bpy, source, output)
 
 
+def verify_skin_deformation(job: dict, root: Path) -> dict:
+    """Measure a fixed transient bone test on the staged .blend, never save it."""
+    if job["options"]:
+        raise ValueError("Skin diagnostic accepts no dynamic arguments")
+    source = member(root, job["input_project"])
+    return probe_pose_deformation(bpy, source)
+
+
 def refit_human(job: dict, root: Path) -> dict:
     """Morph/refit a private staged copy; never save over the authoritative master."""
     options = job["options"]
@@ -167,7 +176,8 @@ def main() -> int:
                   "inspect_character": inspect_character,
                   "create_human": create_human,
                   "export_preview_glb": export_preview_glb,
-                  "refit_human": refit_human}[operation]
+                  "refit_human": refit_human,
+                  "verify_skin_deformation": verify_skin_deformation}[operation]
         reply["details"] = action(data, root)
         reply["status"] = "ok"
         reply["error"] = None

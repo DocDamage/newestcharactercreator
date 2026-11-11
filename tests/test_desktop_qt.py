@@ -98,6 +98,55 @@ class DesktopQtSmoke(unittest.TestCase):
         self.assertIn("Save all body", error.call_args.args[0])
         submit.assert_not_called()
 
+    def test_rig_pose_check_available_only_when_master_exists(self):
+        self.assertFalse(self.window.character.check_rig_pose.isEnabled())
+        self.test_existing_master_refit_button_disabled_until_generated()
+        self.assertTrue(self.window.character.check_rig_pose.isEnabled())
+        blender = Path(self.tmp.name) / "test-blender-ignored"
+        blender.write_bytes(b"not an actual executable")
+        with patch("ucc.desktop.window.QFileDialog.getOpenFileName",
+                   return_value=(str(blender), "")):
+            with patch.object(self.window, "_submit") as submit:
+                self.window.character.check_rig_pose.click()
+        submit.assert_called_once()
+        args, options = submit.call_args
+        self.assertEqual(args[0], "skin_pose_check")
+        self.assertTrue(callable(args[1]))
+        self.assertFalse(options["cancel"].is_set())
+
+    def test_rig_pose_result_reports_measurement_but_does_not_modify_revision(self):
+        from ucc.jobs.pose_diagnostic import SavedMasterPoseCheck
+        self.test_existing_master_refit_button_disabled_until_generated()
+        current = self.controller.require_project()
+        result = SavedMasterPoseCheck(
+            current.project_id, current.revision, current.master_blend,
+            "a" * 64,
+            {
+                "selected_deform_bone": "UpperArm.L",
+                "rotation_degrees": 20.0,
+                "rotation_axis_index": 0,
+                "moved_vertex_count": 450,
+                "evaluated_vertex_count": 19158,
+                "max_vertex_displacement_local": .03,
+            },
+            ("mock-first", "mock-second"),
+        )
+        self.window._work_kind = "skin_pose_check"
+        self.window._job_success(result)
+        self.assertIn("450", self.window.log.toPlainText())
+        self.assertIn("NOT an animation clip", self.window.log.toPlainText())
+        self.assertEqual(self.controller.require_project().revision, current.revision)
+        self.assertEqual(self.controller.require_project().master_blend, current.master_blend)
+
+    def test_rig_pose_check_requires_saved_metadata(self):
+        self.test_existing_master_refit_button_disabled_until_generated()
+        self.controller.set_morph("muscle", .81)
+        with patch.object(self.window, "_error") as error:
+            with patch.object(self.window, "_submit") as submit:
+                self.window.verify_saved_rig_pose()
+        self.assertIn("Save metadata", error.call_args.args[0])
+        submit.assert_not_called()
+
     def test_generate_action_requires_explicit_blender_selection(self):
         self.assertTrue(self.window.character.generate.isEnabled())
         exe = Path(self.tmp.name) / "selected-blender"
@@ -182,7 +231,7 @@ class DesktopQtSmoke(unittest.TestCase):
     def test_tools_are_real_and_cannot_claim_geometry(self):
         self.assertIn("PNG", self.window.tools.pack.text())
         self.assertFalse(self.window.character.open_master.isEnabled())
-        self.assertIn("does not live-edit", self.window.character.note.text())
+        self.assertIn("No live updates", self.window.character.note.text())
         self.assertIn("local", self.window.tools.ai.text())
 
 

@@ -22,13 +22,21 @@ The portable archive includes the UCC-owned `blender_bridge` Python worker scrip
 
 The Character tab can convert an already-saved UCC `.blend` master into a temporary static GLB, displayed in the existing UCC viewer. The user must explicitly choose an installed Blender executable if one was not already selected during the current app session. No Blender binaries or third-party assets are bundled, downloaded or uploaded. The generated GLB is a private local preview only; animation, mesh deformation, textures and engine import are **not** verified. See [saved-master preview guide](../integration/saved-master-preview.md).
 
-## Saved MPFB body slider generation — proposed PR #27
+## Saved MPFB body slider generation — merged PR #27
 
 Height, Muscle and Weight values on the Character tab are **normalized MPFB phenotype controls**. Save the project, then use **Generate humanoid using saved body controls...** to create a fresh model via the installed MPFB extension. The operation does not live-edit the prior master; immutable history is preserved, and part/animation-annotated projects are blocked until compatibility is proved. The frozen executable contains the first-party worker scripts, not Blender or MPFB; the user's Windows runtime still needs testing. See [body controls](../integration/mpfb-body-controls.md).
 
-## Existing character body refit — proposed PR #28
+## Existing character body refit — merged PR #28
 
 When a saved humanoid master exists, the Character tab offers **Apply saved body controls to existing master...**. This edits a private copy through the user's installed Blender/MPFB and verifies the previous rig's bone links and skin weights before saving a new revision. Original `.blend` files are not overwritten. The portable alpha bundles the first-party `blender_bridge/refit_revision.py` script but does **not** install Blender or MPFB. The frozen startup self-test checks source presence, **not** refit behavior on your Windows PC. Read [the body refit guide](../integration/mpfb-existing-master-refit.md) before using the feature.
+
+## Static rig pose test and corrected GLB shape preview — PR #29
+
+The Character tab includes **Test saved rig deformation in Blender...**. After a saved master exists, this opt-in operation runs two isolated copies through the installed Blender binary, temporarily rotates one real weighted bone by 20°, measures evaluated vertex movement and verifies the pose was restored. It **never saves or overwrites the master**. [Linux Blender integration #43101713245](https://github.com/DocDamage/newestcharactercreator/actions/runs/43101713245) observed 4,451 moved vertices under a head-bone test, with matching results from two independent Blender processes.
+
+A related fix bakes active MPFB shape-key geometry into a temporary unrigged static GLB before display. It solves the real PR #28 regression where a refitted .blend contained modified shape keys but its GLB preview displayed unchanged Basis coordinates.
+
+The Windows portable bundle includes the first-party pose helper, but **its frozen self-test does not execute installed Blender or MPFB**. The owner's Windows runtime, animation clip playback, deformation quality and game-engine imports remain unverified. [Pose test guide](../integration/rig-pose-deformation.md).
 
 ## Source and asset protections
 
