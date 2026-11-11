@@ -44,6 +44,12 @@ The Character tab's **Validate one-second Blender keyframe timeline...** option 
 
 The portable application bundles its first-party timeline worker script and checks that the file is present at startup. This is not proof that installed Blender/MPFB works on the owner's Windows computer. [Full diagnostic guide](../integration/keyframed-timeline-diagnostic.md).
 
+## Explicit user-selected local BVH motion — PR #31
+
+In the Animation library tab, **Test selected BVH motion on saved MPFB rig...** can test one locally chosen .bvh source against the saved MPFB humanoid after the user enters their actual source provider/license/URI and confirms those rights permit local Blender preview (not UE-only). This does not automatically grant a license or upload, train on, export or redistribute any source data. It is deliberately a direct-name single-bone rotation-delta test, not complete Fab/Mixamo/UE retargeting.
+
+The first-party offline BVH reader and worker are included in the frozen build; Blender and MPFB remain separately installed by the owner. Frozen self-tests verify file presence, not real Blender/MPFB execution on Windows. See [the local BVH guide](../integration/local-bvh-source-motion.md).
+
 ## Source and asset protections
 
 This artifact bundles only open dependency runtime libraries and UCC source code. It intentionally excludes Fab files, model checkpoints, purchased music/animation data, personal project directories, MPFB, Blender, and proprietary reference art. It does **not** automatically scan the computer or contact cloud AI providers.
