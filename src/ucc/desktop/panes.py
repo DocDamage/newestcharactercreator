@@ -211,6 +211,7 @@ class CharacterPane(QWidget):
 class AnimationPane(QWidget):
     inspect_requested = Signal(str)
     index_requested = Signal(str, str, str, str, str)
+    local_bvh_requested = Signal(str, str, str, str, bool)
     refresh_requested = Signal()
 
     def __init__(self) -> None:
@@ -239,6 +240,13 @@ class AnimationPane(QWidget):
                              ("License", self.license), ("Source URL", self.uri)):
             form.addRow(title, field)
         layout.addLayout(form)
+        self.local_preview_review = QCheckBox(
+            "I reviewed the actual license and confirm this BVH may be used "
+            "locally in Blender (not UE-only); no AI/cloud or export."
+        )
+        layout.addWidget(self.local_preview_review)
+        for field in (self.selected, self.provider, self.license, self.uri):
+            field.textChanged.connect(lambda _text: self.local_preview_review.setChecked(False))
         row = QHBoxLayout()
         self.inspect = QPushButton("Inspect selected file")
         self.inspect.clicked.connect(lambda: self.inspect_requested.emit(self.selected.text()))
@@ -248,9 +256,20 @@ class AnimationPane(QWidget):
             self.license.text(), self.uri.text()))
         self.refresh = QPushButton("Refresh catalog")
         self.refresh.clicked.connect(self.refresh_requested.emit)
+        self.test_local_bvh = QPushButton("Test selected BVH motion on saved MPFB rig...")
+        self.test_local_bvh.setToolTip(
+            "Reads one locally selected BVH, applies limited direct-name rotation "
+            "deltas on an immutable character copy, and measures real skinned "
+            "Blender frames. Not general retargeting or an engine-ready export."
+        )
+        self.test_local_bvh.clicked.connect(lambda: self.local_bvh_requested.emit(
+            self.selected.text(), self.provider.text(), self.license.text(),
+            self.uri.text(), self.local_preview_review.isChecked()
+        ))
         for button in (self.inspect, self.index, self.refresh):
             row.addWidget(button)
         layout.addLayout(row)
+        layout.addWidget(self.test_local_bvh)
         self.catalog = QTableWidget(0, 4)
         self.catalog.setHorizontalHeaderLabels(["Asset ID", "Format", "Declared clips", "Status"])
         self.catalog.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)

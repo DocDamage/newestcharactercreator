@@ -30,12 +30,14 @@ from ucc.jobs.body_revision import BodyRevisionResult
 from ucc.jobs.master_preview import MasterPreview
 from ucc.jobs.pose_diagnostic import SavedMasterPoseCheck
 from ucc.jobs.timeline_diagnostic import SavedTimelineDiagnostic
+from ucc.jobs.bvh_clip_diagnostic import LocalBvhClipCheck
 
 from .background import BackgroundJobs
 from .controller import DesktopController, ProjectView
 from .generation import (
     generate_from_desktop, preview_master_from_desktop, refit_from_desktop,
     inspect_rig_from_desktop, inspect_timeline_from_desktop,
+    test_local_bvh_from_desktop,
 )
 from .panes import AnimationPane, CharacterPane, ToolsPane
 from .mesh_viewer import MeshViewer
@@ -134,6 +136,7 @@ class MainWindow(QMainWindow):
         self.character.pose_check_requested.connect(self.verify_saved_rig_pose)
         self.character.timeline_check_requested.connect(self.verify_saved_timeline)
         self.character.preview_master_requested.connect(self.preview_saved_master)
+        self.animations.local_bvh_requested.connect(self.test_selected_bvh)
         self.animations.inspect_requested.connect(self.inspect_animation)
         self.animations.index_requested.connect(self.index_animation)
         self.animations.refresh_requested.connect(self.refresh_catalog)
@@ -281,7 +284,7 @@ class MainWindow(QMainWindow):
             self.undo_action.setEnabled(not busy and state.can_undo)
             self.redo_action.setEnabled(not busy and state.can_redo)
         self.cancel_generation_action.setEnabled(
-            busy and self._work_kind in {"generate_humanoid", "saved_master_preview", "body_refit", "skin_pose_check", "keyframed_timeline"}
+            busy and self._work_kind in {"generate_humanoid", "saved_master_preview", "body_refit", "skin_pose_check", "keyframed_timeline", "local_bvh_motion"}
         )
         self.statusBar().showMessage(
             ("Generating real MPFB humanoid in Blender..."
@@ -292,8 +295,10 @@ class MainWindow(QMainWindow):
              if self._work_kind == "skin_pose_check" else
              "Evaluating actual keyframed Blender animation timeline..."
              if self._work_kind == "keyframed_timeline" else
+             "Testing explicitly authorized BVH source motion in Blender..."
+             if self._work_kind == "local_bvh_motion" else
              "Converting saved Blender master to a static GLB preview...")
-            if busy and self._work_kind in {"generate_humanoid", "saved_master_preview", "body_refit", "skin_pose_check", "keyframed_timeline"}
+            if busy and self._work_kind in {"generate_humanoid", "saved_master_preview", "body_refit", "skin_pose_check", "keyframed_timeline", "local_bvh_motion"}
             else ("Working on local files..." if busy else "Local task finished")
         )
 
@@ -377,6 +382,50 @@ class MainWindow(QMainWindow):
                 "The prior master is preserved. Live motion, retargeting and game-engine "
                 "imports are NOT yet certified."
             )
+        elif self._work_kind == "local_bvh_motion":
+            assert isinstance(result, LocalBvhClipCheck)
+            if not self.controller.has_project or self.controller.store is None:
+                self._error("Character closed during BVH preview; discard evidence")
+                return
+            local = self.controller.require_project()
+            try:
+                saved = self.controller.store.load()
+            except (UCCError, OSError, ValueError) as exc:
+                self._error(f"Cannot confirm current MPFB master: {type(exc).__name__}: {exc}")
+                return
+            if (self.controller.dirty or
+                    local.project_id != result.project_id or
+                    saved.project_id != result.project_id or
+                    local.revision != result.revision or
+                    saved.revision != result.revision or
+                    local.master_blend != result.master_blend or
+                    saved.master_blend != result.master_blend):
+                self._error("Saved character changed during BVH motion test; results discarded")
+                return
+            p = result.evidence
+            lines = [
+                "REAL USER-SELECTED BVH SOURCE MOTION EVALUATED IN BLENDER.",
+                f"Saved project revision: {result.revision}",
+                f"Selected BVH clip: {result.clip_name}",
+                f"Source SHA-256: {result.clip_sha256}",
+                f"Mapped direct source bone: {p['source_bone']} → {p['target_bone']}",
+                f"BVH source frames: {p['source_frame_count']}",
+                f"Distinct skinned geometry states: {p['distinct_geometry_states']}",
+                "Measured real skinned vertices:",
+            ]
+            for frame in p["sampled_frames"]:
+                lines.append(
+                    f"Frame {frame['frame']}: {frame['moved_vertices']:,} moved vertices "
+                    f"(maximum {frame['max_displacement_local']:.6f} local units)"
+                )
+            lines.extend([
+                "Two Blender workers agreed; no master or source BVH was modified.",
+                "Permission is USER-ATTESTED for local preview, not independently licensed.",
+                "Mapping is exact-name rotation DELTAS ONLY. BVH translation and ",
+                "rest-orientation conversion are not applied. NOT certified retargeting,",
+                "visual quality, UCC viewport playback or Godot/Unity/Unreal import.",
+            ])
+            self.log.setPlainText("\n".join(lines))
         elif self._work_kind == "keyframed_timeline":
             assert isinstance(result, SavedTimelineDiagnostic)
             if not self.controller.has_project or self.controller.store is None:
@@ -743,6 +792,72 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(
                 "Cancellation requested. Waiting for Blender worker shutdown..."
             )
+
+    def test_selected_bvh(
+        self, filename: str, provider: str, license_name: str,
+        source_uri: str, reviewed_local_rights: bool,
+    ) -> None:
+        """Explicit local BVH rights confirmation; no library scan or asset upload."""
+        if self.jobs.busy:
+            self._error("Another local task is still running")
+            return
+        if not self.controller.has_project or self.controller.store is None:
+            self._error("Open a character with a saved MPFB humanoid master first")
+            return
+        if self.controller.dirty:
+            self._error("Save character metadata before testing a local BVH")
+            return
+        snapshot = self.controller.require_project()
+        if snapshot.master_blend is None:
+            self._error("Generate a real MPFB character before testing BVH motion")
+            return
+        source = Path(filename) if filename else None
+        if (not reviewed_local_rights or not filename or
+                not provider.strip() or not source_uri.strip() or
+                license_name.strip().casefold() in ("", "unreviewed", "unknown", "n/a")):
+            self._error(
+                "Select a BVH, enter the actual provider/license/source and check "
+                "the reviewed-rights consent for local Blender preview. "
+                "Unreviewed or UE-only permissions are insufficient."
+            )
+            return
+        if (source is None or source.suffix.lower() != ".bvh" or
+                source.is_symlink() or not source.is_file()):
+            self._error("Select an existing regular .bvh file; FBX/GLB needs another adapter")
+            return
+        try:
+            reviewed_policy = LicensePolicy(
+                provider=provider.strip(), license_name=license_name.strip(),
+                source_uri=source_uri.strip(), reviewed=True,
+                local_preview_allowed=True,
+            )
+        except (UCCError, ValueError) as exc:
+            self._error(f"License declaration invalid: {exc}")
+            return
+        executable = self._blender_executable
+        if executable is None or executable.is_symlink() or not executable.is_file():
+            file_filter = "Blender executable (*.exe);;All files (*)" if os.name == "nt" else "All files (*)"
+            selected, _ = QFileDialog.getOpenFileName(
+                self, "Choose installed Blender for local BVH test", "", file_filter
+            )
+            if not selected:
+                return
+            executable = Path(selected)
+            if executable.is_symlink() or not executable.is_file():
+                self._error("Select a regular installed Blender executable")
+                return
+            self._blender_executable = executable
+        store = self.controller.store
+        cancel = Event()
+        self._submit(
+            "local_bvh_motion",
+            lambda: test_local_bvh_from_desktop(
+                store, blender_exe=executable, source_bvh=source,
+                permission=reviewed_policy,
+                project_id=snapshot.project_id, revision=snapshot.revision,
+                master_blend=snapshot.master_blend, cancel=cancel,
+            ), cancel=cancel,
+        )
 
     def inspect_animation(self, file: str) -> None:
         if not file:
