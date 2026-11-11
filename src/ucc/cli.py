@@ -13,6 +13,8 @@ from ucc.core.anatomy import slot_catalog
 from ucc.jobs.protocol import JobRequest
 from ucc.jobs.runner import BlenderJobRunner
 from ucc.sprites.plan import CameraProfile, build_plan
+from ucc.sprites.atlas import pack_frames
+from ucc.ai.probe import probe_comfyui, probe_webui
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -30,15 +32,23 @@ def main(argv: list[str] | None = None) -> int:
     sp.add_parser("slots", help="List known humanoid attachment slots")
     validate = sp.add_parser("validate", help="Read and validate a project without modifying it")
     validate.add_argument("project_json", type=Path)
+    api = sp.add_parser("probe-ai", help="Read-only probes of existing loopback AI APIs")
+    api.add_argument("--comfyui", default="http://127.0.0.1:8188")
+    api.add_argument("--webui", default="http://127.0.0.1:7860")
     probe = sp.add_parser("probe-blender", help="Run Blender inspect_environment via real subprocess")
     probe.add_argument("--blender", type=Path, required=True)
     probe.add_argument("--jobs", type=Path, required=True)
     render = sp.add_parser("plan-sprites", help="Output metadata only; no images are rendered")
-    render.add_argument("--directions", type=int, default=8)
-    render.add_argument("--width", type=int, default=128)
-    render.add_argument("--height", type=int, default=128)
-    render.add_argument("--fps", type=int, default=12)
-    render.add_argument("--clip", action="append", required=True, help="ID:frame_count")
+    pack = sp.add_parser("pack-sprites", help="Pack existing PNG frames into actual atlases")
+    for parser in (render, pack):
+        parser.add_argument("--directions", type=int, default=8)
+        parser.add_argument("--width", type=int, default=128)
+        parser.add_argument("--height", type=int, default=128)
+        parser.add_argument("--fps", type=int, default=12)
+        parser.add_argument("--clip", action="append", required=True, help="ID:frame_count")
+    pack.add_argument("--frames-dir", type=Path, required=True)
+    pack.add_argument("--output-dir", type=Path, required=True)
+    pack.add_argument("--max-sheet-side", type=int, default=2048)
     args = p.parse_args(argv)
     try:
         if args.command == "new":
@@ -58,6 +68,8 @@ def main(argv: list[str] | None = None) -> int:
                     for s in slot_catalog()]
         elif args.command == "validate":
             data = CharacterProject.from_dict(json.loads(args.project_json.read_text(encoding="utf-8"))).to_dict()
+        elif args.command == "probe-ai":
+            data = [probe_comfyui(args.comfyui).to_dict(), probe_webui(args.webui).to_dict()]
         elif args.command == "probe-blender":
             root = Path(__file__).resolve().parents[2]
             runner = BlenderJobRunner(args.blender, args.jobs, root / "blender_bridge" / "entrypoint.py")
@@ -71,8 +83,16 @@ def main(argv: list[str] | None = None) -> int:
                 if not sep:
                     raise ValueError("clip must have ID:frame_count format")
                 clips[name] = int(frames)
-            data = build_plan(clips, CameraProfile(directions=args.directions),
-                              width=args.width, height=args.height, fps=args.fps).to_dict()
+            render_plan = build_plan(clips, CameraProfile(directions=args.directions),
+                                     width=args.width, height=args.height, fps=args.fps)
+            if args.command == "pack-sprites":
+                artifact = pack_frames(render_plan, args.frames_dir, args.output_dir,
+                                       max_sheet_side=args.max_sheet_side)
+                data = {"sheets": list(artifact.sheet_files), "manifest": artifact.manifest,
+                        "frame_count": artifact.frame_count, "output_dir": str(args.output_dir),
+                        "note": "PNG atlas generated; engine import and source geometry remain unverified"}
+            else:
+                data = render_plan.to_dict()
         print(json.dumps(data, indent=2, ensure_ascii=False))
         return 0
     except (UCCError, ValueError, OSError, KeyError, TypeError) as exc:

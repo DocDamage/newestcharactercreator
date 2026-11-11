@@ -10,10 +10,11 @@ This file reports **code verified outside the user's Windows installation**. It 
 | Undo/redo | Yes (session memory) | Revision increments, bounded stack, redo | Persist history and Blender geometry transactions |
 | Atomic project metadata save | Yes | Conflict, backup, disk failure, symlink tests | Atomic promotion of *both* .blend + project JSON |
 | Asset ledger and conservative licenses | Yes | SQLite persistence, SHA256, Fab-like restrictions, duplicate detection | Per-product manual review and verified licenses |
-| Sprite camera/frame planning | Yes | Directions, custom angles, frame limits and deterministic naming | Actual Blender renders, layered Aseprite output |
+| Sprite camera/frame planning and PNG atlas packing | Yes | Directions, custom angles, frame limits, alpha PNG validation, atlas PNGs, rollback and deterministic metadata | Blender-generated frames, layered Aseprite output and engine import |
 | Blender worker JSON contract | Yes | Request validation, mismatch rejection, timeouts and cancellation | Real Blender 5.3/MPFB smoke on user's machine |
 | Blender worker bpy entrypoint | Written, **untested in Blender** | Python syntax compiles outside Blender | Run P0-001; correct actual MPFB context if needed |
 | Python CLI | Yes (metadata/diagnostics) | Create, inspect, morph edit and render-plan tests | GUI application and actual 3D editing |
+| Local AI API connectivity probe | Yes (read-only) | Loopback HTTP tests with mock ComfyUI/WebUI server and URL/credential rejection | Actual local installations, authorized generation workflows |
 | Automated testing | Yes | Core unit tests run in development container | Windows/GitHub CI, target-engine validation |
 | PySide6 UI / Three.js viewport | Not started | — | Evaluate only once MPFB foundation is proven |
 | Actual animation imports / retarget | Not started | — | Wait for permitted files and rig evidence |

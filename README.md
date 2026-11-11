@@ -65,3 +65,13 @@ py -3 -m ucc plan-sprites --directions 8 --clip idle:8
 Included: strict character/project data model, semantic body-part slots, reversible metadata edits, atomic revision-checked project saves, SQLite asset-provenance ledger, sprite camera/frame planner, and a cancellable Blender subprocess protocol. Its `blender_bridge/entrypoint.py` is an **untested real Blender integration candidate**. No physical character geometry, animation export, or engine import is claimed until [UCC-P0-001](https://github.com/DocDamage/newestcharactercreator/issues/2) passes on Windows.
 
 **Unit tests are not Blender tests.** The real create/save/reopen test remains in `Stage0_Starter/` and `Development_Guardrails/`. Source checkpoints, purchased Fab animations, evidence containing personal paths, and project masters remain excluded from this public repo.
+
+
+### Existing-PNG sprite atlases and local AI probes
+
+These are implemented independently of Blender (no example character artwork is bundled):
+
+- With the optional free Pillow library: \`py -3 -m pip install "Pillow>=11,<13"\`, then \`py -3 -m ucc pack-sprites --frames-dir "C:\UCC\ExistingFrames" --output-dir "C:\UCC\Atlases" --directions 8 --width 128 --height 128 --clip idle:8\`. The input files must match the generated frame plan. The tool produces real RGBA PNG sheets, a manifest with frame coordinates and source hashes, and rolls back partial output on failure.
+- \`py -3 -m ucc probe-ai\` checks only loopback local ComfyUI and Stable Diffusion WebUI HTTP APIs, returning availability and limited capability metadata. It makes no POST requests, uploads or downloads, and does not reveal model filenames. See [AI probes](docs/integration/ai-probes.md).
+
+The Stage 0 real Blender smoke remains the blocker. New pure-Python tests cannot replace it.

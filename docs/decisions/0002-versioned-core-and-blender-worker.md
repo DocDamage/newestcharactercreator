@@ -14,8 +14,9 @@ MPFB's Blender operators and Blender Python cannot be assumed to run safely insi
 - `PartAsset` entries must include family, slot, socket, type, license record ID and (for skinning) rig and rest-pose fingerprint. Metadata selection creates only a `proposed` attachment. Independent Blender fit and deformation checks will have to promote it; a model not yet verified cannot be considered export-ready.
 - Any Blender job is JSON `protocol_version=1`, uses a UUID, allowlisted operation, isolated per-job folder, no shell invocation, timeout, cancellation and evidence logs. Results are staged; no direct authoritative model mutation or automatic promotion.
 - Approved job commands initially cover inspection and MPFB default human creation. The exact MPFB operator and headless behavior require actual Windows testing, and must not be inferred from code compiling.
-- Sprite generation starts as an immutable deterministic **plan**; no claims of real images without rendering.
+- Sprite generation starts as an immutable deterministic **plan**; a separate Pillow adapter packs existing validated PNG frames into actual RGBA atlases with atomic publishing, no claims of character art generation.
 - A local SQLite metadata catalog tracks source SHA256 and explicit, conservative asset license flags. It is outside the repo and contains no purchased binary assets.
+- Local ComfyUI and Stable Diffusion WebUI integration begins with read-only, loopback-only, no-redirect probes and masked model-name discovery. No workflow submission or cloud communication occurs until explicit provider consent and graph validation exist.
 
 ## Alternatives rejected
 

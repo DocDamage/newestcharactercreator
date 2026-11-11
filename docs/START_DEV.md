@@ -22,9 +22,19 @@ py -3 -m ucc info "$env:USERPROFILE\Documents\UCC\FirstHuman"
 py -3 -m ucc morph "$env:USERPROFILE\Documents\UCC\FirstHuman" height 0.65
 py -3 -m ucc slots
 py -3 -m ucc plan-sprites --directions 8 --width 128 --height 128 --clip idle:8 --clip walk:12
+py -3 -m ucc probe-ai
 ```
 
-**These commands edit only project metadata and generate a sprite render *plan*.** A morph value does not physically change Blender geometry until MPFB target mapping is verified and integrated. A render plan does not generate PNGs.
+To assemble real spritesheets from **existing** transparent PNG frames (e.g., future Blender renders), install free Pillow into your development environment and use:
+
+```powershell
+py -3 -m pip install "Pillow>=11,<13"
+py -3 -m ucc pack-sprites --frames-dir "C:\UCC\ExistingFrames" --output-dir "C:\UCC\Atlases" --directions 8 --width 128 --height 128 --clip idle:8
+```
+
+The PNG folder must contain `idle/dir-00/frame-0000.png`, etc., matching the exact plan. The packer verifies real pixels, RGBA, sizes, hashes, and metadata, and rejects missing frames. No generated character images are supplied in the repo.
+
+**The project commands edit only metadata and can generate a sprite render *plan*.** A morph value does not physically change Blender geometry until MPFB target mapping is verified and integrated. A render plan does not generate PNGs.
 
 ## Local files and privacy
 
