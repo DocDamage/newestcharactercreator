@@ -171,7 +171,7 @@ class BlenderJobRunner:
                             failure.operation == job.operation and
                             failure.status == "error"):
                         error_detail = str(failure.error)[:1000]
-            except (OSError, ValueError, TypeError):
+            except (OSError, ValueError, TypeError, ValidationError):
                 pass
             raise WorkerFailure(
                 f"Blender failed ({outcome.return_code}): {error_detail}; "
