@@ -33,16 +33,12 @@ jobs:
       - name: Validate JSON schemas are parseable
         run: python -c "import json,pathlib; [json.loads(p.read_text(encoding='utf-8')) for p in pathlib.Path('docs/schemas').glob('*.json')]"
   mpfb-real-integration:
-    name: MPFB cloud smoke integration check
-    if: ${{ startsWith(github.head_ref, 'ci/mpfb-') }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
+    name: Real MPFB Blender 5.3 cloud smoke (MPFB branches only)
+    if: ${{ startsWith(github.head_ref, 'ci/mpfb-') || startsWith(github.head_ref, 'feat/mpfb-') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
-      - name: Verify smoke runner inputs
+      - name: Run official Blender and MPFB with actual mesh and rig
         shell: bash
-        run: |
-          set -euo pipefail
-          test -f Stage0_Starter/tools/run_mpfb_smoke.py
-          test -f blender_bridge/mpfb_service.py
-          echo 'MPFB smoke test scripts available; actual Blender run is still outstanding'
+        run: bash ci/run_mpfb_cloud_smoke.sh
