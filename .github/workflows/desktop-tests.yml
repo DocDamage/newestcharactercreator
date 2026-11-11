@@ -1,0 +1,45 @@
+name: Desktop Qt Smoke Tests
+on:
+  pull_request:
+    paths:
+      - 'src/ucc/desktop/**'
+      - 'tests/test_desktop_*.py'
+      - 'pyproject.toml'
+      - '.github/workflows/desktop-tests.yml'
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  qt-offscreen:
+    name: PySide6 offscreen / ${{ matrix.os }} / Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+        python-version: ['3.12', '3.13']
+    env:
+      QT_QPA_PLATFORM: offscreen
+      UCC_REQUIRE_QT: '1'
+      PYTHONPATH: src
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install Linux Qt runtime libraries (offscreen)
+        if: runner.os == 'Linux'
+        run: |
+          timeout 120s sudo apt-get install -y -qq --no-install-recommends libegl1 libgl1 libopengl0 libxkbcommon-x11-0 libxcb-cursor0 libxcb-xinerama0
+      - name: Install Qt dependencies
+        run: python -m pip install "PySide6>=6.8,<7"
+      - name: Validate desktop source imports
+        run: python -m compileall -q src/ucc/desktop
+      - name: Fail early if PySide6 UI cannot be imported
+        run: python -c "from PySide6.QtWidgets import QApplication; from ucc.desktop.window import MainWindow"
+      - name: Run real offscreen Qt widgets
+        run: python -m unittest discover -s tests -p test_desktop_qt.py -v
+      - name: Run dependency-free controller tests
+        run: python -m unittest discover -s tests -p test_desktop_controller.py -v

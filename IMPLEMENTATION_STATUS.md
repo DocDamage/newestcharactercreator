@@ -24,6 +24,10 @@ This file reports **code verified outside the user's Windows installation**. It 
 
 **No placeholders or demo geometry are committed.** Synthetic byte strings in unit tests are explicitly used to test structural validation, never accepted as real Blender evidence.
 
+## Desktop workstation increment (pending PR review)
+
+The PySide6 desktop workstation adds real versioned metadata editing, input inspection, private animation cataloging and pixel atlas creation. A successful Qt offscreen CI run verifies widget startup and event handling, not a character viewport or MPFB/engine integration.
+
 ## Next blocker
 
 Run [UCC-P0-001](https://github.com/DocDamage/newestcharactercreator/issues/2) on a Windows system with Blender 5.3 + MPFB enabled. Do not change the gate status based on CI unit-test results. A result file only proves the contract was followed; real mesh creation and fresh-process reopen are independently necessary.
