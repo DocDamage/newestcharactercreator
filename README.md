@@ -112,3 +112,13 @@ py -3 -m ucc.desktop
 Or run \`ucc-desktop\`. No IDE is required. No third-party character assets, AI models, or game engines are installed by this command. See [Desktop v0.1 usage and limits](docs/integration/desktop-v0.1.md).
 
 The Qt workflow tests real widgets using \`QT_QPA_PLATFORM=offscreen\` on Windows/Linux. A passing offscreen test is not proof of GPU rendering or working MPFB in Blender.
+
+
+## Experimental Windows portable desktop alpha (no IDE required)
+
+The desktop now includes an **opt-in GitHub Actions Windows alpha builder**. It packages the actual PySide6 workstation into a Windows x64 `UCC-Desktop-Alpha.exe` folder, exercises a **real frozen-executable Qt plus character project save/reopen diagnostic**, then archives the executable and SHA-256 hash as an ephemeral GitHub Actions artifact. It does not bundle Blender, MPFB, Fab assets, checkpoints, characters, or game engines. The archive is for private QA, **not a public release or distribution license decision**.
+
+- [Windows alpha package setup and restrictions](docs/packaging/WINDOWS_ALPHA_README.md)
+- [Actions build workflow](.github/workflows/windows-alpha-package.yml) — after a successful build, open the workflow run and download `UCC-Desktop-Alpha-Windows-x64` under Artifacts.
+- The binary's `--self-test --self-test-report FILE.json` performs an actual Qt widget startup and temporary local project save/reopen; **it does not prove Blender/MPFB geometry, animation, GPU rendering or engine imports**.
+
