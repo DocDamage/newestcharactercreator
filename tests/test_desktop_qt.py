@@ -231,7 +231,7 @@ class DesktopQtSmoke(unittest.TestCase):
     def test_tools_are_real_and_cannot_claim_geometry(self):
         self.assertIn("PNG", self.window.tools.pack.text())
         self.assertFalse(self.window.character.open_master.isEnabled())
-        self.assertIn("does not live-edit", self.window.character.note.text())
+        self.assertIn("No live updates", self.window.character.note.text())
         self.assertIn("local", self.window.tools.ai.text())
 
 
