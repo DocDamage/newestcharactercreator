@@ -98,3 +98,17 @@ Replace paths and URL with real user-owned data; the example above is intentiona
 ## MPFB HumanService Stage 0 route (pending real Blender test)
 
 The Stage 0 and production Blender scripts now prefer MPFB's officially documented `HumanService.create_human()` and `HumanService.add_builtin_rig()` scripting API instead of UI-operator `poll()` in background mode. A real human **and** built-in default armature must be saved and reopened in a separate Blender subprocess. The included service adapter is tested with mock extension objects, not actual Blender/MPFB; do not mark issue #2 complete from CI alone. See [integration notes](docs/integration/mpfb-humanservice.md).
+
+
+## New: standalone UCC desktop development workstation
+
+UCC now has a **functional PySide6 desktop UI** for character metadata editing, safe saves with revision/backup protection, undo/redo, a private animation source catalog, GLB structural inspection, read-only local AI API checks, and real sprite atlas packing from existing PNGs. This is **not yet a finished 3D character editor**; mesh deformation/retargeting and Godot/Unity/Unreal import need real integration evidence. Beginner and advanced metadata modes are included, and a saved Blender master can be opened externally in the user's installed Blender.
+
+On Windows, with Python 3.12+:
+\`\`\`powershell
+py -3 -m pip install -e ".[desktop,sprites]"
+py -3 -m ucc.desktop
+\`\`\`
+Or run \`ucc-desktop\`. No IDE is required. No third-party character assets, AI models, or game engines are installed by this command. See [Desktop v0.1 usage and limits](docs/integration/desktop-v0.1.md).
+
+The Qt workflow tests real widgets using \`QT_QPA_PLATFORM=offscreen\` on Windows/Linux. A passing offscreen test is not proof of GPU rendering or working MPFB in Blender.
