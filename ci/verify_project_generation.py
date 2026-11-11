@@ -8,6 +8,7 @@ Does not validate Windows, deformation, animations or game-engine imports.
 from __future__ import annotations
 
 import argparse
+from dataclasses import replace
 from hashlib import sha256
 import json
 from pathlib import Path
@@ -32,7 +33,13 @@ def _hash(path: Path) -> str:
 
 def verify(blender: Path, root: Path) -> dict:
     store = ProjectStore(root / "isolated-project")
-    original = store.save(CharacterProject.new("CI Rigged Humanoid"))
+    started = store.save(CharacterProject.new("CI Rigged Humanoid"))
+    desired = {"height": .82, "muscle": .22, "weight": .88}
+    original = store.save(
+        replace(started, parameters=tuple(sorted(desired.items())),
+                revision=started.revision + 1),
+        expected_revision=started.revision,
+    )
     transaction = generate_humanoid(
         store,
         blender_exe=blender,
@@ -61,6 +68,10 @@ def verify(blender: Path, root: Path) -> dict:
         not reopened.export_readiness()
     ):
         raise RuntimeError("Unverified geometry incorrectly reports engine readiness")
+    if (dict(reopened.parameters) != desired or
+            transaction.observed.get("macro_parameters_observed") != desired or
+            not transaction.observed.get("morph_save_reopen_verified")):
+        raise RuntimeError("Saved slider values were not applied to the real MPFB body")
 
     # Fourth real Blender process: export a static GLB from the persisted master,
     # then parse its actual triangles through the exact reader used by Qt.
@@ -86,6 +97,35 @@ def verify(blender: Path, root: Path) -> dict:
             _hash(master) != transaction.revision.sha256):
         raise RuntimeError("Static preview mutated the authoritative project or Blender master")
 
+    # Independent neutral baseline: a second real generated and reopened human.
+    neutral_store = ProjectStore(root / "neutral-baseline")
+    neutral = neutral_store.save(CharacterProject.new("Neutral baseline"))
+    neutral_result = generate_humanoid(
+        neutral_store, blender_exe=blender,
+        worker_script=ROOT / "blender_bridge" / "entrypoint.py",
+        expected_project_id=neutral.project_id,
+        expected_revision=neutral.revision, timeout_s=300,
+    )
+    if (neutral_result.observed["macro_parameters_observed"] !=
+            {"height": .5, "muscle": .5, "weight": .5}):
+        raise RuntimeError("Baseline MPFB phenotype unexpectedly not neutral")
+    if (transaction.observed["macro_evaluated_sha256"] ==
+            neutral_result.observed["macro_evaluated_sha256"]):
+        raise RuntimeError("Changing saved body slider values did not change real Blender geometry")
+    neutral_view = preview_saved_master(
+        neutral_store, blender_exe=blender,
+        worker_script=ROOT / "blender_bridge" / "entrypoint.py",
+        expected_project_id=neutral.project_id,
+        expected_revision=neutral_result.revision.project.revision,
+        expected_master_blend=neutral_result.revision.project.master_blend,
+        timeout_s=300,
+    )
+    if (preview.mesh.source_face_count != neutral_view.mesh.source_face_count or
+            preview.mesh.triangles == neutral_view.mesh.triangles):
+        raise RuntimeError(
+            "Static GLB preview did not reflect actual changed MPFB body geometry"
+        )
+
     return {
         "status": "REAL_LINUX_PROJECT_GENERATE_REOPEN_STAGED",
         "blender_version": transaction.observed["blender_version"],
@@ -97,6 +137,12 @@ def verify(blender: Path, root: Path) -> dict:
         "independent_reopen": True,
         "project_roundtrip": True,
         "geometry_state": reopened.geometry_state,
+        "requested_body_macros": desired,
+        "observed_body_macros": transaction.observed["macro_parameters_observed"],
+        "changed_body_sha256": transaction.observed["macro_evaluated_sha256"],
+        "neutral_body_sha256": neutral_result.observed["macro_evaluated_sha256"],
+        "real_body_shape_different_from_neutral": True,
+        "static_preview_mesh_different_from_neutral": True,
         "preview_status": "REAL_LINUX_STATIC_MASTER_PREVIEW_PARSED",
         "preview_face_count": preview.mesh.source_face_count,
         "preview_sampled_faces": preview.mesh.sample_count,
