@@ -322,10 +322,21 @@ class MainWindow(QMainWindow):
             )
         elif self._work_kind == "saved_master_preview":
             assert isinstance(result, MasterPreview)
+            if not self.controller.has_project or self.controller.store is None:
+                self._error("Project closed while previewing; preview was discarded")
+                return
             project = self.controller.require_project()
+            try:
+                on_disk = self.controller.store.load()
+            except (UCCError, OSError, ValueError) as exc:
+                self._error(f"Cannot confirm current saved master: {type(exc).__name__}: {exc}")
+                return
             if (self.controller.dirty or project.project_id != result.project_id or
                     project.revision != result.revision or
-                    project.master_blend != result.master_blend):
+                    project.master_blend != result.master_blend or
+                    on_disk.project_id != result.project_id or
+                    on_disk.revision != result.revision or
+                    on_disk.master_blend != result.master_blend):
                 self._error("Project changed while previewing; preview was discarded")
                 return
             self.mesh_viewer.show_model(result.mesh)
