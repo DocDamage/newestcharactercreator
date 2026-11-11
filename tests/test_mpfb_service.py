@@ -5,10 +5,12 @@ import sys
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from blender_bridge.mpfb_service import (
-    MpfbServiceError, BUILTIN_RIGS, locate_human_service, inspect_service, create_human_with_rig,
+    MpfbServiceError, BUILTIN_RIGS, locate_human_service, locate_target_service,
+    inspect_service, create_human_with_rig,
 )
 
 
@@ -32,8 +34,10 @@ class FakeService:
         self.ctx = context
         self.fail_rig = False
         self.fail_base = False
+        self.last_macro = None
 
-    def create_human(self):
+    def create_human(self, macro_detail_dict=None):
+        self.last_macro = macro_detail_dict
         if self.fail_base:
             raise RuntimeError("Failed")
         obj = Obj("UCC_Human", "MESH", 2000)
@@ -98,6 +102,56 @@ class MpfbServiceTests(unittest.TestCase):
     def test_defaults_use_toe_rig(self):
         self.assertIn("default", BUILTIN_RIGS)
         self.assertEqual(create_human_with_rig(self.bpy, self.service)["rig_choice"], "default")
+
+    def test_target_service_resolves_in_same_mpfb_namespace_only(self):
+        loaded = []
+        target_stub = SimpleNamespace(
+            get_default_macro_info_dict=lambda: {},
+            get_macro_info_dict_from_basemesh=lambda mesh: {},
+        )
+        def load(name):
+            loaded.append(name)
+            return SimpleNamespace(TargetService=target_stub)
+        target, module = locate_target_service(
+            "bl_ext.blender_org.mpfb.services.humanservice", load
+        )
+        self.assertIs(target, target_stub)
+        self.assertEqual(module, "bl_ext.blender_org.mpfb.services.targetservice")
+        self.assertEqual(loaded, [module])
+        with self.assertRaisesRegex(MpfbServiceError, "Untrusted"):
+            locate_target_service("user.scripts.humanservice", load)
+
+    def test_saved_macro_parameters_use_targetservice_not_metadata_only(self):
+        target_stub = SimpleNamespace(
+            get_default_macro_info_dict=lambda: {
+                "height": .5, "muscle": .5, "weight": .5,
+                "age": .5, "gender": .5, "race": {"asian": .33}
+            },
+        )
+        expected = {"height": .9, "muscle": .1, "weight": .8}
+        fake_evidence = {"macro_evaluated_sha256": "a" * 64,
+                         "macro_evaluated_vertices": 12345,
+                         "macro_shape_evaluated": True}
+        with patch("blender_bridge.mpfb_service.inspect_applied_macro",
+                   return_value=fake_evidence) as audit:
+            result = create_human_with_rig(
+                self.bpy, self.service, macro_parameters=expected,
+                target_service=target_stub,
+            )
+        self.assertEqual(self.service.last_macro["height"], .9)
+        self.assertEqual(self.service.last_macro["muscle"], .1)
+        self.assertEqual(self.service.last_macro["weight"], .8)
+        self.assertEqual(self.service.last_macro["age"], .5)
+        self.assertEqual(result["macro_evaluated_vertices"], 12345)
+        audit.assert_called_once()
+
+    def test_macro_creation_fails_without_targetservice(self):
+        with self.assertRaisesRegex(MpfbServiceError, "create_human"):
+            create_human_with_rig(
+                self.bpy, self.service,
+                macro_parameters={"height": .9, "muscle": .5, "weight": .5}
+            )
+        self.assertEqual(len(self.bpy.data.objects), 1)
 
     def test_no_extra_unapproved_rigs(self):
         with self.assertRaisesRegex(MpfbServiceError, "Unapproved"):
