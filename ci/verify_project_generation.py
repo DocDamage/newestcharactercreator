@@ -11,6 +11,7 @@ import argparse
 from dataclasses import replace
 from hashlib import sha256
 import json
+import math
 from pathlib import Path
 import sys
 
@@ -24,6 +25,8 @@ from ucc.jobs.body_revision import apply_saved_body_revision
 from ucc.jobs.master_preview import preview_saved_master
 from ucc.jobs.pose_diagnostic import check_saved_master_pose
 from ucc.jobs.timeline_diagnostic import check_saved_master_timeline
+from ucc.jobs.bvh_clip_diagnostic import check_selected_bvh
+from ucc.library.provenance import LicensePolicy
 
 
 def _hash(path: Path) -> str:
@@ -224,6 +227,46 @@ def verify(blender: Path, root: Path) -> dict:
             _hash(revised_master) != refitted.revision.sha256):
         raise RuntimeError("Animation test modified the saved Blender master/project")
 
+    # The original CI-only BVH is generated here, from scratch. No purchased,
+    # third-party or user-owned animation file is ever uploaded.
+    source_clip = root / "ci-original-bvh-head.bvh"
+    hierarchy = (
+        "HIERARCHY\nROOT head\n{\nOFFSET 0 0 0\n"
+        "CHANNELS 3 Xrotation Yrotation Zrotation\n"
+        "End Site\n{\nOFFSET 0 0.1 0\n}\n}\n"
+        "MOTION\nFrames: 25\nFrame Time: 0.041666667\n"
+    )
+    rows = [f"{20 * math.sin(math.pi * index / 24):.7f} 0 0"
+            for index in range(25)]
+    source_clip.write_text(hierarchy + "\n".join(rows) + "\n", encoding="utf-8")
+    local_authorization = LicensePolicy(
+        provider="UCC CI - original", license_name="original self-authored test",
+        source_uri="ci-original://bvh-head-25-frames", reviewed=True,
+        local_preview_allowed=True, no_ai=True,
+    )
+    selected = check_selected_bvh(
+        store, blender_exe=blender,
+        worker_script=ROOT / "blender_bridge" / "entrypoint.py",
+        source_bvh=source_clip, permission=local_authorization,
+        expected_project_id=new_project.project_id,
+        expected_revision=new_project.revision,
+        expected_master_blend=new_project.master_blend,
+        timeout_s=300,
+    )
+    bv = selected.evidence
+    if (bv["source_bone"] != "head" or bv["target_bone"] != "head"
+            or bv["source_frame_count"] != 25 or
+            len(bv["sampled_frames"]) != 5 or
+            bv["distinct_geometry_states"] < 3 or
+            bv["retargeting_verified"] is not False or
+            bv["source_orientation_calibrated"] is not False or
+            bv["user_clip_evaluated_in_blender"] is not True or
+            len(selected.worker_job_ids) != 2):
+        raise RuntimeError("Original BVH source-driven Blender deformation was not proved")
+    if (ProjectStore(store.root).load() != new_project
+            or _hash(revised_master) != refitted.revision.sha256):
+        raise RuntimeError("Local BVH preview modified the saved master or project")
+
     return {
         "status": "REAL_LINUX_PROJECT_GENERATE_REOPEN_STAGED",
         "blender_version": transaction.observed["blender_version"],
@@ -285,6 +328,19 @@ def verify(blender: Path, root: Path) -> dict:
         "keyframed_timeline_two_processes_agreed": True,
         "keyframed_timeline_saved_master_unchanged": True,
         "keyframed_timeline_user_clip_playback_verified": False,
+        "local_bvh_status": bv["status"],
+        "local_bvh_source_sha256": selected.clip_sha256,
+        "local_bvh_bone": bv["target_bone"],
+        "local_bvh_source_frames": bv["source_frame_count"],
+        "local_bvh_sampled_frames": [
+            {"frame": row["frame"], "moved_vertices": row["moved_vertices"],
+             "sha256": row["evaluated_sha256"]}
+            for row in bv["sampled_frames"]
+        ],
+        "local_bvh_direct_bone_mapping": True,
+        "local_bvh_two_blender_processes_agreed": True,
+        "local_bvh_master_unchanged": True,
+        "local_bvh_retargeting_verified": False,
         "windows_verified": False,
         "deformation_verified": False,
         "engine_imports_verified": [],
