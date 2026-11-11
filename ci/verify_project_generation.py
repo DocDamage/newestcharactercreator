@@ -23,6 +23,7 @@ from ucc.jobs.humanoid_generation import generate_humanoid
 from ucc.jobs.body_revision import apply_saved_body_revision
 from ucc.jobs.master_preview import preview_saved_master
 from ucc.jobs.pose_diagnostic import check_saved_master_pose
+from ucc.jobs.timeline_diagnostic import check_saved_master_timeline
 
 
 def _hash(path: Path) -> str:
@@ -196,6 +197,33 @@ def verify(blender: Path, root: Path) -> dict:
             _hash(revised_master) != refitted.revision.sha256):
         raise RuntimeError("Transient pose test modified the saved Blender master")
 
+    # A real diagnostic Action is keyed at frames 1/13/25, then Blender must
+    # evaluate interpolated frame 7 and frame 19 (not just script-driven poses).
+    # Both independent processes must agree; neither may save the master.
+    timeline = check_saved_master_timeline(
+        store, blender_exe=blender,
+        worker_script=ROOT / "blender_bridge" / "entrypoint.py",
+        expected_project_id=new_project.project_id,
+        expected_revision=new_project.revision,
+        expected_master_blend=new_project.master_blend,
+        timeout_s=300,
+    )
+    animation = timeline.evidence
+    samples = animation["sampled_frames"]
+    if (animation["status"] != "REAL_BLENDER_KEYFRAMED_SKIN_TIMELINE_MEASURED"
+            or animation["keyframes"] != [1, 13, 25]
+            or [row["frame"] for row in samples] != [1, 7, 13, 19, 25]
+            or samples[0]["evaluated_sha256"] != samples[4]["evaluated_sha256"]
+            or samples[0]["evaluated_sha256"] == samples[2]["evaluated_sha256"]
+            or samples[1]["moved_vertices"] < 16
+            or samples[2]["moved_vertices"] < 16
+            or samples[3]["moved_vertices"] < 16
+            or len(timeline.worker_job_ids) != 2):
+        raise RuntimeError("Real frame-by-frame Blender animation timeline was not proven")
+    if (ProjectStore(store.root).load() != new_project or
+            _hash(revised_master) != refitted.revision.sha256):
+        raise RuntimeError("Animation test modified the saved Blender master/project")
+
     return {
         "status": "REAL_LINUX_PROJECT_GENERATE_REOPEN_STAGED",
         "blender_version": transaction.observed["blender_version"],
@@ -246,6 +274,17 @@ def verify(blender: Path, root: Path) -> dict:
         "pose_test_source_master_unchanged": True,
         "pose_test_two_processes_agreed": True,
         "pose_test_animation_playback_verified": False,
+        "keyframed_timeline_status": animation["status"],
+        "keyframed_timeline_fps": animation["fps"],
+        "keyframed_timeline_bone": animation["selected_deform_bone"],
+        "keyframed_timeline_frames": [
+            {"frame": row["frame"], "moved_vertices": row["moved_vertices"],
+             "sha256": row["evaluated_sha256"]}
+            for row in samples
+        ],
+        "keyframed_timeline_two_processes_agreed": True,
+        "keyframed_timeline_saved_master_unchanged": True,
+        "keyframed_timeline_user_clip_playback_verified": False,
         "windows_verified": False,
         "deformation_verified": False,
         "engine_imports_verified": [],

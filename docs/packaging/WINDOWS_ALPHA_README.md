@@ -38,6 +38,12 @@ A related fix bakes active MPFB shape-key geometry into a temporary unrigged sta
 
 The Windows portable bundle includes the first-party pose helper, but **its frozen self-test does not execute installed Blender or MPFB**. The owner's Windows runtime, animation clip playback, deformation quality and game-engine imports remain unverified. [Pose test guide](../integration/rig-pose-deformation.md).
 
+## One-second Blender keyframe test — proposed PR #30
+
+The Character tab's **Validate one-second Blender keyframe timeline...** option creates an original, temporary three-keyframe Blender Action on a private copy of a saved MPFB humanoid, and measures actual vertex movement at five timeline frames. It does not save an Action, modify the original Blender master, copy any third-party animation, display live playback, or certify rig retargeting/engine export.
+
+The portable application bundles its first-party timeline worker script and checks that the file is present at startup. This is not proof that installed Blender/MPFB works on the owner's Windows computer. [Full diagnostic guide](../integration/keyframed-timeline-diagnostic.md).
+
 ## Source and asset protections
 
 This artifact bundles only open dependency runtime libraries and UCC source code. It intentionally excludes Fab files, model checkpoints, purchased music/animation data, personal project directories, MPFB, Blender, and proprietary reference art. It does **not** automatically scan the computer or contact cloud AI providers.

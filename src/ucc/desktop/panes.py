@@ -23,6 +23,7 @@ class CharacterPane(QWidget):
     preview_master_requested = Signal()
     refit_human_requested = Signal()
     pose_check_requested = Signal()
+    timeline_check_requested = Signal()
 
     def __init__(self) -> None:
         super().__init__()
@@ -138,6 +139,16 @@ class CharacterPane(QWidget):
         self.check_rig_pose.clicked.connect(self.pose_check_requested.emit)
         layout.addWidget(self.check_rig_pose)
 
+        self.test_timeline = QPushButton("Validate one-second Blender keyframe timeline...")
+        self.test_timeline.setToolTip(
+            "Creates an original temporary three-keyframe motion and measures "
+            "actual evaluated skin deformation on five frames in Blender. "
+            "Does not import, save, retarget or play an external animation clip."
+        )
+        self.test_timeline.setEnabled(False)
+        self.test_timeline.clicked.connect(self.timeline_check_requested.emit)
+        layout.addWidget(self.test_timeline)
+
         self.preview_master = QPushButton("Preview saved master in UCC...")
         self.preview_master.setToolTip(
             "Uses your installed Blender to export a temporary untextured static GLB "
@@ -161,6 +172,7 @@ class CharacterPane(QWidget):
         self.generate.setEnabled(active)
         self.apply_body.setEnabled(False)
         self.check_rig_pose.setEnabled(False)
+        self.test_timeline.setEnabled(False)
         self.preview_master.setEnabled(False)
         self.open_master.setEnabled(False)
         if not active:
@@ -180,6 +192,7 @@ class CharacterPane(QWidget):
         self.open_master.setEnabled(view.master_blend is not None)
         self.preview_master.setEnabled(view.master_blend is not None)
         self.check_rig_pose.setEnabled(view.master_blend is not None)
+        self.test_timeline.setEnabled(view.master_blend is not None)
         self.apply_body.setEnabled(view.master_blend is not None and
                                    view.geometry_state != "not_generated")
         for key, value in view.morphs:

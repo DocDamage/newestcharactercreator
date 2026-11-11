@@ -16,6 +16,7 @@ on:
       - 'src/ucc/jobs/humanoid_generation.py'
       - 'src/ucc/jobs/body_revision.py'
       - 'src/ucc/jobs/pose_diagnostic.py'
+      - 'src/ucc/jobs/timeline_diagnostic.py'
       - 'blender_bridge/refit_revision.py'
       - 'src/ucc/jobs/master_preview.py'
       - 'src/ucc/jobs/protocol.py'
@@ -34,6 +35,7 @@ on:
       - 'src/ucc/jobs/humanoid_generation.py'
       - 'src/ucc/jobs/body_revision.py'
       - 'src/ucc/jobs/pose_diagnostic.py'
+      - 'src/ucc/jobs/timeline_diagnostic.py'
       - 'blender_bridge/refit_revision.py'
       - 'src/ucc/jobs/master_preview.py'
       - 'src/ucc/jobs/protocol.py'
@@ -128,7 +130,7 @@ jobs:
           python3 ci/verify_production_worker.py \
             --blender "$BLENDER_EXE" \
             --outdir "$RUNNER_TEMP/ucc-production-worker" --timeout 300
-      - name: Verify real MPFB body/refit plus restored skinned pose deformation
+      - name: Verify genuine MPFB skin pose plus keyed timeline frame interpolation
         shell: bash
         run: |
           set -euo pipefail

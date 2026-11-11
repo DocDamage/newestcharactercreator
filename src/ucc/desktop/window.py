@@ -29,12 +29,13 @@ from ucc.jobs.humanoid_generation import HumanoidGeneration
 from ucc.jobs.body_revision import BodyRevisionResult
 from ucc.jobs.master_preview import MasterPreview
 from ucc.jobs.pose_diagnostic import SavedMasterPoseCheck
+from ucc.jobs.timeline_diagnostic import SavedTimelineDiagnostic
 
 from .background import BackgroundJobs
 from .controller import DesktopController, ProjectView
 from .generation import (
     generate_from_desktop, preview_master_from_desktop, refit_from_desktop,
-    inspect_rig_from_desktop,
+    inspect_rig_from_desktop, inspect_timeline_from_desktop,
 )
 from .panes import AnimationPane, CharacterPane, ToolsPane
 from .mesh_viewer import MeshViewer
@@ -131,6 +132,7 @@ class MainWindow(QMainWindow):
         self.character.generate_human_requested.connect(self.generate_humanoid)
         self.character.refit_human_requested.connect(self.apply_saved_body)
         self.character.pose_check_requested.connect(self.verify_saved_rig_pose)
+        self.character.timeline_check_requested.connect(self.verify_saved_timeline)
         self.character.preview_master_requested.connect(self.preview_saved_master)
         self.animations.inspect_requested.connect(self.inspect_animation)
         self.animations.index_requested.connect(self.index_animation)
@@ -279,7 +281,7 @@ class MainWindow(QMainWindow):
             self.undo_action.setEnabled(not busy and state.can_undo)
             self.redo_action.setEnabled(not busy and state.can_redo)
         self.cancel_generation_action.setEnabled(
-            busy and self._work_kind in {"generate_humanoid", "saved_master_preview", "body_refit", "skin_pose_check"}
+            busy and self._work_kind in {"generate_humanoid", "saved_master_preview", "body_refit", "skin_pose_check", "keyframed_timeline"}
         )
         self.statusBar().showMessage(
             ("Generating real MPFB humanoid in Blender..."
@@ -288,8 +290,10 @@ class MainWindow(QMainWindow):
              if self._work_kind == "body_refit" else
              "Measuring real skinned vertex movement in Blender..."
              if self._work_kind == "skin_pose_check" else
+             "Evaluating actual keyframed Blender animation timeline..."
+             if self._work_kind == "keyframed_timeline" else
              "Converting saved Blender master to a static GLB preview...")
-            if busy and self._work_kind in {"generate_humanoid", "saved_master_preview", "body_refit", "skin_pose_check"}
+            if busy and self._work_kind in {"generate_humanoid", "saved_master_preview", "body_refit", "skin_pose_check", "keyframed_timeline"}
             else ("Working on local files..." if busy else "Local task finished")
         )
 
@@ -373,6 +377,48 @@ class MainWindow(QMainWindow):
                 "The prior master is preserved. Live motion, retargeting and game-engine "
                 "imports are NOT yet certified."
             )
+        elif self._work_kind == "keyframed_timeline":
+            assert isinstance(result, SavedTimelineDiagnostic)
+            if not self.controller.has_project or self.controller.store is None:
+                self._error("Character closed while Blender timeline ran; discard results")
+                return
+            local = self.controller.require_project()
+            try:
+                saved = self.controller.store.load()
+            except (UCCError, OSError, ValueError) as exc:
+                self._error(f"Cannot verify saved timeline project: {type(exc).__name__}: {exc}")
+                return
+            if (self.controller.dirty or
+                    local.project_id != result.project_id or
+                    saved.project_id != result.project_id or
+                    local.revision != result.revision or
+                    saved.revision != result.revision or
+                    local.master_blend != result.master_blend or
+                    saved.master_blend != result.master_blend):
+                self._error("Project changed during animation timeline check; discard results")
+                return
+            proof = result.evidence
+            samples = proof["sampled_frames"]
+            lines = [
+                "REAL BLENDER KEYFRAMED TIMELINE EVALUATED (DIAGNOSTIC).",
+                f"Character revision: {result.revision}",
+                f"Existing deform bone: {proof['selected_deform_bone']}",
+                f"Actual Blender Action: 3 keys, frames 1 / 13 / 25 at 24 fps",
+                "Measured skinned geometry across five timeline frames:",
+            ]
+            for frame in samples:
+                lines.append(
+                    f"Frame {frame['frame']:>2}: {frame['moved_vertices']:,} moved vertices; "
+                    f"maximum displacement {frame['max_displacement_local']:.6f} local units"
+                )
+            lines.extend([
+                f"Original master SHA-256: {result.master_sha256}",
+                "Two independent Blender processes agreed, with frame 25 matching frame 1.",
+                "No Action, keyframes, or new master was saved. This is an original",
+                "diagnostic motion, NOT your own imported animation clip, retargeting,",
+                "interactive playback, visual quality, or game-engine compatibility.",
+            ])
+            self.log.setPlainText("\n".join(lines))
         elif self._work_kind == "skin_pose_check":
             assert isinstance(result, SavedMasterPoseCheck)
             if not self.controller.has_project or self.controller.store is None:
@@ -565,6 +611,47 @@ class MainWindow(QMainWindow):
         self._submit(
             "body_refit",
             lambda: refit_from_desktop(
+                store, blender_exe=executable, project_id=snapshot.project_id,
+                revision=snapshot.revision, master_blend=snapshot.master_blend,
+                cancel=cancel,
+            ),
+            cancel=cancel,
+        )
+
+    def verify_saved_timeline(self) -> None:
+        """Read-only Blender Action/keyframe test on an immutable master copy."""
+        if self.jobs.busy:
+            self._error("Another local task is still running")
+            return
+        if not self.controller.has_project or self.controller.store is None:
+            self._error("Open a project with a saved humanoid to check animation")
+            return
+        if self.controller.dirty:
+            self._error("Save metadata before testing the saved Blender timeline")
+            return
+        snapshot = self.controller.require_project()
+        if snapshot.master_blend is None:
+            self._error("Generate a real MPFB master before testing its animation timeline")
+            return
+        executable = self._blender_executable
+        if executable is None or executable.is_symlink() or not executable.is_file():
+            file_filter = "Blender executable (*.exe);;All files (*)" if os.name == "nt" else "All files (*)"
+            selected, _ = QFileDialog.getOpenFileName(
+                self, "Choose installed Blender for frame-by-frame animation test", "",
+                file_filter,
+            )
+            if not selected:
+                return
+            executable = Path(selected)
+            if executable.is_symlink() or not executable.is_file():
+                self._error("Choose an existing regular Blender executable")
+                return
+            self._blender_executable = executable
+        cancel = Event()
+        store = self.controller.store
+        self._submit(
+            "keyframed_timeline",
+            lambda: inspect_timeline_from_desktop(
                 store, blender_exe=executable, project_id=snapshot.project_id,
                 revision=snapshot.revision, master_blend=snapshot.master_blend,
                 cancel=cancel,
