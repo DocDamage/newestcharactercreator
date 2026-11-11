@@ -26,10 +26,11 @@ from ucc.sprites.atlas import pack_frames
 from ucc.sprites.plan import CameraProfile, build_plan
 from ucc.preview.glb_mesh import PreviewMesh, load_glb_preview
 from ucc.jobs.humanoid_generation import HumanoidGeneration
+from ucc.jobs.master_preview import MasterPreview
 
 from .background import BackgroundJobs
 from .controller import DesktopController, ProjectView
-from .generation import generate_from_desktop
+from .generation import generate_from_desktop, preview_master_from_desktop
 from .panes import AnimationPane, CharacterPane, ToolsPane
 from .mesh_viewer import MeshViewer
 
@@ -69,6 +70,7 @@ class MainWindow(QMainWindow):
         self.mesh_dock.setWidget(self.mesh_viewer)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.mesh_dock)
         self.mesh_dock.hide()
+        self._blender_executable: Path | None = None  # Session-only; no disk scan.
         self._make_menu()
         self.jobs = BackgroundJobs(self._job_success, self._job_error, self._busy_changed)
         self._work_kind = ""
@@ -92,12 +94,17 @@ class MainWindow(QMainWindow):
         self.redo_action.setEnabled(False)
         character_menu = self.menuBar().addMenu("&Character")
         self.cancel_generation_action = self._action(
-            character_menu, "&Cancel current humanoid generation", "",
+            character_menu, "&Cancel current Blender operation", "",
             self.cancel_generation,
         )
         self.cancel_generation_action.setEnabled(False)
         view_menu = self.menuBar().addMenu("&View")
         self.mesh_action = self._action(view_menu, "&Preview local GLB model...", "Ctrl+Shift+M", self.open_mesh_preview)
+        self.preview_master_action = self._action(
+            view_menu, "Preview current saved &Blender master...", "",
+            self.preview_saved_master,
+        )
+        self.preview_master_action.setEnabled(False)
         self.mesh_toggle = self.mesh_dock.toggleViewAction()
         view_menu.addAction(self.mesh_toggle)
         help_menu = self.menuBar().addMenu("&Help")
@@ -117,6 +124,7 @@ class MainWindow(QMainWindow):
         self.character.morph_requested.connect(self.set_morph)
         self.character.open_master_requested.connect(self.open_master_in_blender)
         self.character.generate_human_requested.connect(self.generate_humanoid)
+        self.character.preview_master_requested.connect(self.preview_saved_master)
         self.animations.inspect_requested.connect(self.inspect_animation)
         self.animations.index_requested.connect(self.index_animation)
         self.animations.refresh_requested.connect(self.refresh_catalog)
@@ -140,6 +148,7 @@ class MainWindow(QMainWindow):
     def refresh_project(self) -> None:
         state = self.controller.view()
         self.character.display(state)
+        self.preview_master_action.setEnabled(state.master_blend is not None and not self.jobs.busy)
         self.save_action.setEnabled(state.dirty)
         self.undo_action.setEnabled(state.can_undo)
         self.redo_action.setEnabled(state.can_redo)
@@ -149,6 +158,10 @@ class MainWindow(QMainWindow):
             + f" — {state.geometry_state}"
         )
         self.setWindowTitle("Universal Character Creator — " + state.name + (" *" if state.dirty else ""))
+
+    def _clear_preview(self) -> None:
+        self.mesh_viewer.clear_model()
+        self.mesh_dock.hide()
 
     def _confirm_discard(self) -> bool:
         if not self.controller.dirty:
@@ -168,14 +181,20 @@ class MainWindow(QMainWindow):
             return
         folder = QFileDialog.getExistingDirectory(self, "Select an empty project folder")
         if folder:
-            self._apply(lambda: self.controller.create(folder, name))
+            def create() -> None:
+                self.controller.create(folder, name)
+                self._clear_preview()
+            self._apply(create)
 
     def open_project(self) -> None:
         if not self._confirm_discard():
             return
         folder = QFileDialog.getExistingDirectory(self, "Open an existing UCC project directory")
         if folder:
-            self._apply(lambda: self.controller.open(folder))
+            def open_existing() -> None:
+                self.controller.open(folder)
+                self._clear_preview()
+            self._apply(open_existing)
 
     def save_project(self) -> None:
         self._apply(self.controller.save)
@@ -211,6 +230,7 @@ class MainWindow(QMainWindow):
                 raise ValidationError("Choose an existing non-symlink Blender executable")
             # No shell invocation and disable auto-execution in untrusted .blend projects.
             subprocess.Popen([str(exe), "--disable-autoexec", str(target)], shell=False)
+            self._blender_executable = exe
             self.statusBar().showMessage("Opening saved master in external Blender")
         self._apply(execute)
 
@@ -240,6 +260,10 @@ class MainWindow(QMainWindow):
         self.animations.setEnabled(not busy)
         self.tools.setEnabled(not busy)
         self.mesh_action.setEnabled(not busy)
+        self.preview_master_action.setEnabled(
+            not busy and self.controller.has_project and
+            self.controller.require_project().master_blend is not None
+        )
         self.new_action.setEnabled(not busy)
         self.open_action.setEnabled(not busy)
         self.save_action.setEnabled(not busy and self.controller.dirty)
@@ -248,11 +272,13 @@ class MainWindow(QMainWindow):
             self.undo_action.setEnabled(not busy and state.can_undo)
             self.redo_action.setEnabled(not busy and state.can_redo)
         self.cancel_generation_action.setEnabled(
-            busy and self._work_kind == "generate_humanoid"
+            busy and self._work_kind in {"generate_humanoid", "saved_master_preview"}
         )
         self.statusBar().showMessage(
-            "Generating real MPFB humanoid in Blender..."
-            if busy and self._work_kind == "generate_humanoid"
+            ("Generating real MPFB humanoid in Blender..."
+             if self._work_kind == "generate_humanoid" else
+             "Converting saved Blender master to a static GLB preview...")
+            if busy and self._work_kind in {"generate_humanoid", "saved_master_preview"}
             else ("Working on local files..." if busy else "Local task finished")
         )
 
@@ -269,6 +295,7 @@ class MainWindow(QMainWindow):
                 self._error("Project selection changed during Blender work; inspect saved revisions")
                 return
             try:
+                self._clear_preview()
                 self.controller.open(self.controller.store.root)
                 actual = self.controller.require_project()
                 if (actual.revision != result.revision.project.revision
@@ -292,6 +319,26 @@ class MainWindow(QMainWindow):
                 "Geometry state: generated_unverified. Open the saved master in Blender "
                 "for visual inspection. Morph sliders are draft metadata, and this is "
                 "NOT a verified animated model or Godot/Unity/Unreal export."
+            )
+        elif self._work_kind == "saved_master_preview":
+            assert isinstance(result, MasterPreview)
+            project = self.controller.require_project()
+            if (self.controller.dirty or project.project_id != result.project_id or
+                    project.revision != result.revision or
+                    project.master_blend != result.master_blend):
+                self._error("Project changed while previewing; preview was discarded")
+                return
+            self.mesh_viewer.show_model(result.mesh)
+            self.mesh_dock.show()
+            self.log.setPlainText(
+                f"STATIC PREVIEW OF SAVED UCC MASTER — revision {result.revision}\n"
+                f"Source SHA-256: {result.master_sha256}\n"
+                f"GLB SHA-256: {result.glb_sha256}\n"
+                f"Mesh vertices selected: {result.selected_vertex_count}\n"
+                f"Actual triangles: {result.mesh.sample_count} sampled of "
+                f"{result.mesh.source_face_count}.\n"
+                "No animations, textures, live skinning, editable morphs or "
+                "Godot/Unity/Unreal import have been validated."
             )
         elif self._work_kind == "mesh_preview":
             assert isinstance(result, PreviewMesh)
@@ -339,6 +386,7 @@ class MainWindow(QMainWindow):
         if exe.is_symlink() or not exe.is_file():
             self._error("Choose an existing regular Blender executable")
             return
+        self._blender_executable = exe
         store = self.controller.store
         snapshot = self.controller.require_project()
         cancel = Event()
@@ -347,6 +395,45 @@ class MainWindow(QMainWindow):
             lambda: generate_from_desktop(
                 store, blender_exe=exe, project_id=snapshot.project_id,
                 revision=snapshot.revision, cancel=cancel,
+            ),
+            cancel=cancel,
+        )
+
+    def preview_saved_master(self) -> None:
+        if self.jobs.busy:
+            self._error("Another local task is still running")
+            return
+        if not self.controller.has_project or self.controller.store is None:
+            self._error("Open a saved character project to preview a Blender master")
+            return
+        if self.controller.dirty:
+            self._error("Save metadata edits before previewing the saved master")
+            return
+        snapshot = self.controller.require_project()
+        if snapshot.master_blend is None:
+            self._error("This project does not have a generated Blender master yet")
+            return
+        executable = self._blender_executable
+        if executable is None or executable.is_symlink() or not executable.is_file():
+            file_filter = "Blender executable (*.exe);;All files (*)" if os.name == "nt" else "All files (*)"
+            selected, _ = QFileDialog.getOpenFileName(
+                self, "Choose installed Blender for a static master preview", "", file_filter,
+            )
+            if not selected:
+                return
+            executable = Path(selected)
+            if executable.is_symlink() or not executable.is_file():
+                self._error("Select a real installed Blender executable")
+                return
+            self._blender_executable = executable
+        store = self.controller.store
+        cancel = Event()
+        self._submit(
+            "saved_master_preview",
+            lambda: preview_master_from_desktop(
+                store, blender_exe=executable, project_id=snapshot.project_id,
+                revision=snapshot.revision, master_blend=snapshot.master_blend,
+                cancel=cancel,
             ),
             cancel=cancel,
         )
