@@ -24,7 +24,7 @@ from blender_bridge.mpfb_service import (
 )
 from blender_bridge.morphs import check_macro_values, inspect_applied_macro
 from blender_bridge.preview_export import export_static_glb
-from blender_bridge.refit_revision import apply_body_revision
+from blender_bridge.refit_revision import apply_body_revision, rig_fingerprint
 
 PROTOCOL_VERSION = 1
 OPERATIONS = {"inspect_environment", "inspect_character", "create_human", "export_preview_glb", "refit_human"}
@@ -78,8 +78,9 @@ def inspect_character(job: dict, root: Path) -> dict:
               "visual_deformation_verified": False}
     options = job["options"]
     if options:
-        if set(options) != {"macro_parameters"}:
-            raise ValueError("Only explicit MPFB macro inspection is supported")
+        if set(options) not in ({"macro_parameters"},
+                                {"macro_parameters", "verify_rig_binding"}):
+            raise ValueError("Only explicit MPFB macro/rig inspection is supported")
         requested = check_macro_values(options["macro_parameters"])
         candidates = [m for m in meshes if len(m.data.vertices) > 100]
         if len(candidates) != 1:
@@ -87,6 +88,8 @@ def inspect_character(job: dict, root: Path) -> dict:
         _, human_module = locate_human_service()
         target_service, _ = locate_target_service(human_module)
         result.update(inspect_applied_macro(bpy, candidates[0], target_service, requested))
+        if options.get("verify_rig_binding") is True:
+            result["rig_binding"] = rig_fingerprint(bpy, candidates[0])
     return result
 
 
