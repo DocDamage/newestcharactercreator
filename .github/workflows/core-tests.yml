@@ -34,7 +34,7 @@ jobs:
         run: python -c "import json,pathlib; [json.loads(p.read_text(encoding='utf-8')) for p in pathlib.Path('docs/schemas').glob('*.json')]"
   mpfb-real-integration:
     name: Blender 5.3 + MPFB 2.0.18 real mesh/rig smoke
-    if: github.event_name == 'pull_request' && (startsWith(github.head_ref, 'ci/mpfb-') || startsWith(github.head_ref, 'feat/mpfb-'))
+    if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'ci/mpfb-') || startsWith(github.head_ref, 'feat/mpfb-')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
