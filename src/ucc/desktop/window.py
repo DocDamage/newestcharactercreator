@@ -1,4 +1,4 @@
-"""Standalone UCC project and asset workstation. No pretend mesh/viewport functionality."""
+"""Standalone UCC workstation with a real, limited static GLB triangle preview."""
 from __future__ import annotations
 
 import json
@@ -11,7 +11,7 @@ from typing import Any, Callable
 from PySide6.QtCore import QStandardPaths, Qt
 from PySide6.QtGui import QAction, QCloseEvent
 from PySide6.QtWidgets import (
-    QFileDialog, QInputDialog, QLabel, QMainWindow, QMessageBox,
+    QDockWidget, QFileDialog, QInputDialog, QLabel, QMainWindow, QMessageBox,
     QPushButton, QTabWidget, QTextEdit, QVBoxLayout, QWidget,
 )
 
@@ -23,10 +23,12 @@ from ucc.export.inspect_glb import inspect_glb
 from ucc.library.provenance import LicensePolicy
 from ucc.sprites.atlas import pack_frames
 from ucc.sprites.plan import CameraProfile, build_plan
+from ucc.preview.glb_mesh import PreviewMesh, load_glb_preview
 
 from .background import BackgroundJobs
 from .controller import DesktopController, ProjectView
 from .panes import AnimationPane, CharacterPane, ToolsPane
+from .mesh_viewer import MeshViewer
 
 
 class MainWindow(QMainWindow):
@@ -49,7 +51,7 @@ class MainWindow(QMainWindow):
         self.log.setMaximumHeight(150)
         self.log.setPlainText(
             "Ready. The application edits project metadata and existing files. "
-            "Actual humanoid creation and 3D viewport remain contingent on a real Blender/MPFB smoke test."
+            "Actual humanoid creation remains unverified; View has a read-only sampled GLB mesh preview."
         )
         container = QWidget()
         layout = QVBoxLayout(container)
@@ -57,6 +59,12 @@ class MainWindow(QMainWindow):
         layout.addWidget(QLabel("Results and diagnostics (local only)"))
         layout.addWidget(self.log)
         self.setCentralWidget(container)
+        self.mesh_viewer = MeshViewer()
+        self.mesh_dock = QDockWidget("Read-only GLB 3D Preview", self)
+        self.mesh_dock.setObjectName("GLBPreviewDock")
+        self.mesh_dock.setWidget(self.mesh_viewer)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.mesh_dock)
+        self.mesh_dock.hide()
         self._make_menu()
         self.jobs = BackgroundJobs(self._job_success, self._job_error, self._busy_changed)
         self._work_kind = ""
@@ -78,6 +86,10 @@ class MainWindow(QMainWindow):
         self.redo_action = self._action(edit, "&Redo", "Ctrl+Shift+Z", self.redo)
         self.undo_action.setEnabled(False)
         self.redo_action.setEnabled(False)
+        view_menu = self.menuBar().addMenu("&View")
+        self.mesh_action = self._action(view_menu, "&Preview local GLB model...", "Ctrl+Shift+M", self.open_mesh_preview)
+        self.mesh_toggle = self.mesh_dock.toggleViewAction()
+        view_menu.addAction(self.mesh_toggle)
         help_menu = self.menuBar().addMenu("&Help")
         self.about_action = self._action(help_menu, "Capabilities and limitations", "", self.about)
 
@@ -212,6 +224,7 @@ class MainWindow(QMainWindow):
     def _busy_changed(self, busy: bool) -> None:
         self.animations.setEnabled(not busy)
         self.tools.setEnabled(not busy)
+        self.mesh_action.setEnabled(not busy)
         self.statusBar().showMessage("Working on local files..." if busy else "Local task finished")
 
     def _job_success(self, result: object) -> None:
@@ -219,6 +232,12 @@ class MainWindow(QMainWindow):
             assert isinstance(result, list)
             self.animations.display_catalog(result)
             self.log.setPlainText(f"Catalog contains {len(result)} source files. Metadata only; no retargeting verified.")
+        elif self._work_kind == "mesh_preview":
+            assert isinstance(result, PreviewMesh)
+            self.mesh_viewer.show_model(result)
+            self.mesh_dock.show()
+            self.log.setPlainText(f"Read-only GLB preview loaded: {result.sample_count} sampled of "
+                                  f"{result.source_face_count} triangles. No rig/animation/export validation.")
         else:
             self.log.setPlainText(json.dumps(result, ensure_ascii=False, indent=2, default=str)[:100000])
         self.statusBar().showMessage("Local operation completed; review results above")
@@ -253,6 +272,12 @@ class MainWindow(QMainWindow):
     def inspect_glb_file(self, file: str) -> None:
         self._submit("glb", lambda: inspect_glb(Path(file)).to_dict())
 
+    def open_mesh_preview(self) -> None:
+        path, _ = QFileDialog.getOpenFileName(self, "Select a local GLB model to preview", "",
+                                               "Binary glTF 2.0 (*.glb)")
+        if path:
+            self._submit("mesh_preview", lambda: load_glb_preview(Path(path)))
+
     def probe_ai(self) -> None:
         self._submit("ai", lambda: [probe_comfyui().to_dict(), probe_webui().to_dict()])
 
@@ -274,7 +299,7 @@ class MainWindow(QMainWindow):
         QMessageBox.information(self, "Development desktop",
             "Functional: project editing, atomic metadata saves, undo/redo, private animation "
             "catalog, local AI API probes, GLB structural inspection and PNG atlas generation.\n\n"
-            "Not yet delivered: embedded 3D viewport, MPFB mesh deformation, rig retargeting "
+            "Limited: static GLB triangle preview only. Not yet delivered: live MPFB mesh deformation, rig retargeting "
             "and real Godot/Unity/Unreal import verification.")
 
     def closeEvent(self, event: QCloseEvent) -> None:
