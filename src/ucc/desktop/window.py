@@ -270,6 +270,12 @@ class MainWindow(QMainWindow):
                 return
             try:
                 self.controller.open(self.controller.store.root)
+                actual = self.controller.require_project()
+                if (actual.revision != result.revision.project.revision
+                        or actual.master_blend != result.revision.project.master_blend):
+                    raise ValidationError(
+                        "Another editor changed this project after generation committed"
+                    )
                 self.refresh_project()
             except (UCCError, OSError, ValueError) as exc:
                 self._error(
