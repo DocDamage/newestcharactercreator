@@ -1,45 +1,35 @@
-# Universal Character Creator — Stage 0 Starter Kit
+# Universal Character Creator — Stage 0 smoke
 
-**What this is:** A *read-only* Windows environment audit and an *actual* Blender/MPFB generation smoke test. It is not the character creator app and it does not download/install any software.
+This runs a read-only local environment audit and a real Blender/MPFB human creation, rigging, save and fresh-process reopen test. The tests do not install or enable third-party software.
 
-**Preconditions:** Existing Blender 5.3, Python 3, and MPFB extension. MPFB may need to be enabled inside Blender first.
+## 1. Prerequisites
 
-## 1. Environment audit (PowerShell)
+Install and enable Blender 5.3 and the official MPFB extension in Blender. Python 3.12+ is needed for the outer tests. The MPFB `HumanService` API is used rather than the UI `create_human` operator, reducing dependence on an interactive context. Compatibility remains unverified until you actually run the smoke.
 
-```powershell
-py -3 .\tools\audit_local.py --output .\preflight.json
-```
+## 2. Run the complete quality gate (PowerShell)
 
-By default, this **does not scan drives**. It probes common Blender/Aseprite paths and local ComfyUI/WebUI endpoints. To find existing models in specific selected directories:
+From the repository root, substituting your actual Blender path:
 
 ```powershell
-py -3 .\tools\audit_local.py --scan-root "D:\AI\models" --scan-root "F:\ComfyUI\models" --output .\preflight.json
+powershell -ExecutionPolicy Bypass -File .\Development_Guardrails\scripts\run_stage0.ps1 -BlenderPath 'C:\Program Files\Blender Foundation\Blender 5.3\blender.exe'
 ```
 
-Use your *actual* model paths in place of these examples. Generated JSON may reveal private local paths: keep it on your PC and review before sharing.
+This writes private evidence into `evidence/`, checks MPFB generated an actual human mesh **with a built-in rig**, saves a `.blend`, and uses a separate Blender process to reopen it and count meshes, vertices and armature bones. A failed test is **not passed** by a dummy cube, generated metadata or a synthetic fixture. The script exits nonzero if the required gate fails.
 
-## 2. MPFB smoke test (PowerShell)
+## 3. Optional read-only model inventory
 
 ```powershell
-py -3 .\tools\run_mpfb_smoke.py --blender "C:\Program Files\Blender Foundation\Blender 5.3\blender.exe"
+py -3 .\Stage0_Starter\tools\audit_local.py --scan-root 'D:\AI\models' --output 'evidence\preflight.json'
 ```
 
-This creates `ucc-smoke-results/mpfb_created.blend` and a JSON report **only if the MPFB operator is available and completes**. Then it opens the generated `.blend` in a fresh Blender subprocess to verify that real mesh geometry persists.
+Do not scan other folders without your explicit approval. Local file names, paths and model inventories must not be posted in this public GitHub repo.
 
-If it says `NOT PASSED`, open the report and examine the creation logs; **do not use a dummy cube as a replacement or claim MPFB integration works**. In some Blender add-on setups the operator needs interactive Blender context or an alternate verified MPFB service call.
-
-## 3. Official free dependency links
-
-- MPFB: https://extensions.blender.org/add-ons/mpfb/
-- MPFB source/API docs: https://github.com/makehumancommunity/mpfb2
-- Aseprite source updating/build instructions: https://github.com/aseprite/aseprite/blob/main/INSTALL.md
-
-**No automatic third-party executable download is performed.** The assistant cannot inspect your actual Windows hard drives from this workspace.
-
-## 4. Run the dependency-free unit tests
+## 4. Unit tests (not Blender tests)
 
 ```powershell
-py -3 -m unittest discover -s .\tests -v
+py -3 -m unittest discover -s tests -v
+py -3 -m unittest discover -s Stage0_Starter/tests -v
+py -3 -m unittest discover -s Development_Guardrails/tests -v
 ```
 
-They test only read-only model scanner behavior; **they do not prove MPFB/Blender compatibility**. The latter requires the real Windows installation and the smoke runner above.
+Read [MPFB HumanService integration notes](../docs/integration/mpfb-humanservice.md) and [quality gates](../Development_Guardrails/docs/QUALITY_GATES.md).

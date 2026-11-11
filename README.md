@@ -94,3 +94,7 @@ py -3 -m ucc list-animations --database "$env:LOCALAPPDATA\UCC\animation_library
 \`\`\`
 
 Replace paths and URL with real user-owned data; the example above is intentionally unreviewed. It does **not** download the user's Fab library, retarget a rig, or certify any animation's playback. See [animation intake guide](docs/integration/animation-intake.md) and [feature tracker #9](https://github.com/DocDamage/newestcharactercreator/issues/9).
+
+## MPFB HumanService Stage 0 route (pending real Blender test)
+
+The Stage 0 and production Blender scripts now prefer MPFB's officially documented `HumanService.create_human()` and `HumanService.add_builtin_rig()` scripting API instead of UI-operator `poll()` in background mode. A real human **and** built-in default armature must be saved and reopened in a separate Blender subprocess. The included service adapter is tested with mock extension objects, not actual Blender/MPFB; do not mark issue #2 complete from CI alone. See [integration notes](docs/integration/mpfb-humanservice.md).
