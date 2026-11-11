@@ -74,7 +74,8 @@ class MultiBoneFixtureTests(unittest.TestCase):
         self.assertEqual(result[0]["weighted_vertices"], 120)
         self.assertEqual(result[1]["weighted_vertices"], 120)
         self.assertGreater(result[1]["rest_alignment_cos"], .99)
-        self.assertTrue(evidence["rest_scale_consistency_verified"])
+        self.assertTrue(evidence["rest_length_scale_measured"])
+        self.assertFalse(evidence["rest_scale_consistency_verified"])
         self.assertFalse(evidence["bone_roll_calibrated"])
 
     def test_explicit_wrong_axis_fails_without_fallback(self):
