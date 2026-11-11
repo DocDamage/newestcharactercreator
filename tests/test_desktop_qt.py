@@ -286,6 +286,7 @@ class DesktopQtSmoke(unittest.TestCase):
         project = self.controller.require_project()
         report = {
             "axis_profile": "Y_UP_TO_Z_UP", "mapped_bone_count": 2,
+            "rest_scale_consistency_verified": False,
             "mapped_bones": [
                 {"source": "neck03", "target": "neck03",
                  "parent": None, "rest_alignment_cos": None},
