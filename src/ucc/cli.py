@@ -9,6 +9,7 @@ from ucc.core.commands import CharacterSession
 from ucc.core.errors import UCCError
 from ucc.core.models import CharacterProject
 from ucc.core.storage import ProjectStore
+from ucc.core.master_versions import stage_unverified_master
 from ucc.core.anatomy import slot_catalog
 from ucc.jobs.protocol import JobRequest
 from ucc.jobs.runner import BlenderJobRunner
@@ -33,6 +34,10 @@ def main(argv: list[str] | None = None) -> int:
     sp.add_parser("slots", help="List known humanoid attachment slots")
     validate = sp.add_parser("validate", help="Read and validate a project without modifying it")
     validate.add_argument("project_json", type=Path)
+    staged = sp.add_parser("stage-blend", help="Preserve worker-produced .blend as an UNVERIFIED immutable revision")
+    staged.add_argument("project", type=Path)
+    staged.add_argument("blend", type=Path)
+    staged.add_argument("--worker-output-root", type=Path, required=True)
     glb = sp.add_parser("inspect-glb", help="Offline GLB structure inspection (not engine validation)")
     glb.add_argument("path", type=Path)
     api = sp.add_parser("probe-ai", help="Read-only probes of existing loopback AI APIs")
@@ -71,6 +76,13 @@ def main(argv: list[str] | None = None) -> int:
                     for s in slot_catalog()]
         elif args.command == "validate":
             data = CharacterProject.from_dict(json.loads(args.project_json.read_text(encoding="utf-8"))).to_dict()
+        elif args.command == "stage-blend":
+            result = stage_unverified_master(ProjectStore(args.project), args.blend,
+                                             authorized_source_root=args.worker_output_root)
+            data = {"revision": result.project.revision, "geometry_state": result.status,
+                    "sha256": result.sha256, "bytes": result.bytes_copied,
+                    "master": str(result.master_path), "reused": result.reused,
+                    "note": "UNVERIFIED: Blender must reopen/inspect before engine export"}
         elif args.command == "inspect-glb":
             data = inspect_glb(args.path).to_dict()
         elif args.command == "probe-ai":

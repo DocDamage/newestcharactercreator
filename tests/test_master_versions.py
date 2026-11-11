@@ -1,0 +1,146 @@
+"""Tests for non-destructive staging of Blender bytes (never a Blender test)."""
+from __future__ import annotations
+from dataclasses import replace
+from hashlib import sha256
+from pathlib import Path
+import contextlib
+import io
+import json
+import tempfile
+import unittest
+
+from ucc.core.errors import ProjectConflict, ProjectStorageError, ValidationError
+from ucc.core.models import CharacterProject
+from ucc.core.storage import ProjectStore
+from ucc.core.master_versions import stage_unverified_master
+from ucc.cli import main
+
+
+class MasterRevisionTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        self.jobs = self.root / "worker" / "jobs"
+        self.jobs.mkdir(parents=True)
+        self.store = ProjectStore(self.root / "project")
+        self.initial = self.store.save(CharacterProject.new("One Human"))
+        self.src = self.jobs / "model.blend"
+        # Synthetic test-only bytes: NOT a real Blender file, not live MPFB proof.
+        self.data = b"BLENDER" + b"synthetic-structural-test-only" * 10
+        self.src.write_bytes(self.data)
+
+    def stage(self, **kwargs):
+        return stage_unverified_master(self.store, self.src, authorized_source_root=self.jobs, **kwargs)
+
+    def test_content_addressed_revision_and_pointer(self):
+        result = self.stage()
+        self.assertEqual(result.sha256, sha256(self.data).hexdigest())
+        self.assertEqual(result.project.geometry_state, "generated_unverified")
+        self.assertIsNone(result.project.rig_profile)
+        self.assertEqual(result.project.revision, self.initial.revision + 1)
+        self.assertEqual(result.master_path.read_bytes(), self.data)
+        self.assertEqual(self.store.load().master_blend, f"master/versions/{result.sha256}.blend")
+        self.assertFalse(result.reused)
+
+    def test_identical_content_reuses_immutable_revision(self):
+        first = self.stage()
+        second = self.stage()
+        self.assertEqual(first.master_path, second.master_path)
+        self.assertTrue(second.reused)
+        self.assertEqual(second.project.revision, first.project.revision + 1)
+
+    def test_new_revision_does_not_modify_original_master(self):
+        first = self.stage()
+        self.src.write_bytes(b"BLENDER" + b"second-model-content" * 20)
+        second = self.stage()
+        self.assertNotEqual(first.master_path, second.master_path)
+        self.assertEqual(first.master_path.read_bytes(), self.data)
+        self.assertNotEqual(second.master_path.read_bytes(), self.data)
+        self.assertEqual(len(self.store.list_backups()), 2)
+
+    def test_invalid_source_does_not_change_metadata(self):
+        self.src.write_bytes(b"GLTF" + b"not-blender" * 9)
+        with self.assertRaises(ProjectStorageError):
+            self.stage()
+        self.assertEqual(self.store.load(), self.initial)
+
+    def test_source_outside_authorized_root_rejected(self):
+        outside = self.root / "unauthorized.blend"
+        outside.write_bytes(self.data)
+        with self.assertRaises(ProjectStorageError):
+            stage_unverified_master(self.store, outside, authorized_source_root=self.jobs)
+        self.assertEqual(self.store.load(), self.initial)
+
+    def test_source_symlink_rejected(self):
+        pointer = self.jobs / "pointer.blend"
+        try:
+            pointer.symlink_to(self.src)
+        except (OSError, NotImplementedError):
+            self.skipTest("OS did not grant symlink permission")
+        with self.assertRaises(ProjectStorageError):
+            stage_unverified_master(self.store, pointer, authorized_source_root=self.jobs)
+
+    def test_versions_directory_symlink_rejected(self):
+        master = self.store.root / "master"
+        master.mkdir()
+        try:
+            (master / "versions").symlink_to(self.jobs, target_is_directory=True)
+        except (OSError, NotImplementedError):
+            self.skipTest("OS did not grant symlink permission")
+        with self.assertRaises(ProjectStorageError):
+            self.stage()
+
+    def test_oversized_source_rejected_and_temp_cleaned(self):
+        with self.assertRaises(ProjectStorageError):
+            self.stage(max_bytes=24)
+        versions = self.store.root / "master" / "versions"
+        self.assertEqual(list(versions.glob("*.tmp")), [])
+        self.assertEqual(self.store.load(), self.initial)
+
+    def test_failure_before_pointer_swap_preserves_original(self):
+        def fail():
+            raise RuntimeError("Simulated forced failure before metadata commit")
+        with self.assertRaisesRegex(RuntimeError, "Simulated forced failure"):
+            self.stage(before_project_save=fail)
+        self.assertEqual(self.store.load(), self.initial)
+        # Fully staged, orphaned SHA-256 object is intentionally left for safe recovery.
+        self.assertEqual(len(list((self.store.root / "master" / "versions").glob("*.blend"))), 1)
+
+    def test_revision_conflict_preserves_authoritative_state(self):
+        def conflicting_edit():
+            original = self.store.load()
+            changed = replace(original, name="Concurrent editor", revision=original.revision + 1)
+            self.store.save(changed, expected_revision=original.revision)
+        with self.assertRaises(ProjectConflict):
+            self.stage(before_project_save=conflicting_edit)
+        self.assertEqual(self.store.load().name, "Concurrent editor")
+        self.assertEqual(self.store.load().geometry_state, "not_generated")
+
+    def test_existing_corrupted_hash_revision_rejected(self):
+        digest = sha256(self.data).hexdigest()
+        versions = self.store.root / "master" / "versions"
+        versions.mkdir(parents=True)
+        (versions / f"{digest}.blend").write_bytes(b"BLENDER" + b"tampered!")
+        with self.assertRaisesRegex(ProjectStorageError, "digest mismatch"):
+            self.stage()
+        self.assertEqual(self.store.load(), self.initial)
+
+    def test_cli_stage_reports_unverified(self):
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            status = main(["stage-blend", str(self.store.root), str(self.src),
+                           "--worker-output-root", str(self.jobs)])
+        self.assertEqual(status, 0)
+        parsed = json.loads(output.getvalue())
+        self.assertEqual(parsed["geometry_state"], "generated_unverified")
+        self.assertIn("UNVERIFIED", parsed["note"])
+        self.assertNotEqual(self.store.load().export_readiness(), ())
+
+    def test_bad_size_limit(self):
+        with self.assertRaises(ValidationError):
+            self.stage(max_bytes=0)
+
+
+if __name__ == "__main__":
+    unittest.main()
