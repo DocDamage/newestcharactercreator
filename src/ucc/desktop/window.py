@@ -54,9 +54,9 @@ class MainWindow(QMainWindow):
         self.log.setReadOnly(True)
         self.log.setMaximumHeight(150)
         self.log.setPlainText(
-            "Ready. Humanoid generation requires your installed Blender and MPFB. "
-            "Every generated master is reopened before staging, but its deformation and "
-            "game-engine compatibility remain unverified; GLB preview is read-only."
+            "Ready. Save Height, Muscle and Weight sliders before generating a humanoid. "
+            "MPFB applies these normalized macro targets when creating the new master; "
+            "live editing, animation skinning and engine compatibility are not certified."
         )
         container = QWidget()
         layout = QVBoxLayout(container)
@@ -316,9 +316,16 @@ class MainWindow(QMainWindow):
                 f"Reopened bones: {result.observed['reopened_bone_count']}\n"
                 f"Saved revision: {result.revision.project.revision}\n"
                 f"SHA-256: {result.revision.sha256}\n"
-                "Geometry state: generated_unverified. Open the saved master in Blender "
-                "for visual inspection. Morph sliders are draft metadata, and this is "
-                "NOT a verified animated model or Godot/Unity/Unreal export."
+                "Applied normalized body macros: "
+                + ", ".join(
+                    f"{key}={value:.3f}" for key, value in
+                    sorted(result.observed["macro_parameters_observed"].items())
+                )
+                + "\n"
+                f"Evaluated body SHA-256: {result.observed['macro_evaluated_sha256']}\n"
+                "MPFB evaluated shape survived a separate Blender reopen. "
+                "Geometry state: generated_unverified. This is NOT live morph editing, "
+                "verified animation skinning or a Godot/Unity/Unreal export."
             )
         elif self._work_kind == "saved_master_preview":
             assert isinstance(result, MasterPreview)
@@ -375,13 +382,26 @@ class MainWindow(QMainWindow):
         if self.controller.dirty:
             self._error("Save all metadata edits before generating a new humanoid master")
             return
+        snapshot = self.controller.require_project()
+        if snapshot.parts or snapshot.animations:
+            self._error(
+                "New base generation is blocked while part or animation references "
+                "are attached. Create a clean project until compatibility is validated."
+            )
+            return
+        macros = dict(snapshot.parameters)
+        body_summary = ", ".join(
+            f"{key}={macros[key]:.3f}" for key in ("height", "muscle", "weight")
+        )
         answer = QMessageBox.question(
-            self, "Generate actual MPFB humanoid",
-            "Run your installed Blender and enabled MPFB to create a real default humanoid?\n\n"
-            "This takes two Blender processes: creation and independent save/reopen. "
-            "A previous master remains in immutable history. Morph sliders are NOT "
-            "applied to this geometry; animation and engine export are NOT verified. "
-            "Continue?",
+            self, "Generate new MPFB humanoid from saved body controls",
+            "Use your installed Blender and enabled MPFB to generate a REAL human "
+            f"from saved controls ({body_summary})?\n\n"
+            "This CREATES a new Blender master; it does not live-edit an existing "
+            "mesh. Previous immutable masters remain available, but manual Blender "
+            "edits are not copied into the new one. Values are normalized MPFB "
+            "phenotype weights, not measurements. Skinning, animations and "
+            "engine import still require separate verification. Continue?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )
@@ -509,10 +529,11 @@ class MainWindow(QMainWindow):
         QMessageBox.information(self, "Development desktop",
             "Functional: project editing, atomic metadata saves, undo/redo, private animation "
             "catalog, local AI API probes, GLB structural inspection and PNG atlas generation.\n\n"
-            "Generation: optional real Blender/MPFB human creation with independent "
-            "reopen and immutable master save; requires your local installation. "
-            "Limited: static GLB triangle preview only, no physical morph sliders, "
-            "verified skinning, retargeting or game-engine import certification.")
+            "Generation: saved Height/Muscle/Weight controls apply to a freshly "
+            "generated MPFB body through real macro targets, with independent mesh "
+            "reopen verification and immutable master save. Requires installed Blender. "
+            "Limited: no LIVE morph editing, verified skinning/animation, retargeting "
+            "or game-engine import certification.")
 
     def closeEvent(self, event: QCloseEvent) -> None:
         if self.jobs.busy:

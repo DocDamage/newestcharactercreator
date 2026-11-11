@@ -4,6 +4,8 @@
 
 This adds the first end-to-end desktop project flow from an actual Blender-generated mesh. It is **not** an animated character editor, a morph-binding system, a licensed Fab retargeter or a certified Godot/Unity/Unreal export adapter.
 
+> **Current proposed extension:** [PR #27](https://github.com/DocDamage/newestcharactercreator/pull/27) applies saved normalized Height/Muscle/Weight values to a new real MPFB base. See [MPFB body controls](mpfb-body-controls.md). Historical sentences below describe the first PR #25 default-only generation stage; they do not imply that editing a slider updates existing geometry in-place.
+
 ## How to use on Windows
 
 1. Open a new or existing UCC project in the desktop and **save any metadata edits** first.

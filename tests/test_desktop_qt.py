@@ -69,6 +69,23 @@ class DesktopQtSmoke(unittest.TestCase):
         self.assertTrue(callable(args[1]))
         self.assertFalse(kwargs["cancel"].is_set())
 
+    def test_dialog_shows_saved_body_controls_not_unsaved_slider_values(self):
+        self.controller.set_morph("height", .8)
+        self.controller.set_morph("weight", .2)
+        self.controller.save()
+        self.window.refresh_project()
+        exe = Path(self.tmp.name) / "test-selected-blender"
+        exe.write_bytes(b"test fake executable not launched")
+        with patch.object(QMessageBox, "question",
+                          return_value=QMessageBox.StandardButton.No) as dialog:
+            with patch.object(self.window, "_submit") as submit:
+                self.window.generate_humanoid()
+        submit.assert_not_called()
+        message = dialog.call_args.args[2]
+        self.assertIn("height=0.800", message)
+        self.assertIn("weight=0.200", message)
+        self.assertIn("new Blender master", message)
+
     def test_dirty_metadata_blocks_generation_without_a_worker(self):
         self.controller.rename("Unsaved hero")
         with patch.object(self.window, "_error") as error:
@@ -102,20 +119,26 @@ class DesktopQtSmoke(unittest.TestCase):
             self.controller.store, master, authorized_source_root=worker
         )
         outcome = HumanoidGeneration(
-            result, {"created_vertex_count": 2000, "reopened_bone_count": 60},
+            result, {
+                "created_vertex_count": 2000, "reopened_bone_count": 60,
+                "macro_parameters_observed": {"height": .5, "muscle": .5, "weight": .5},
+                "macro_evaluated_sha256": "a" * 64,
+            },
             "unit-create", "unit-inspect",
         )
         self.window._work_kind = "generate_humanoid"
         self.window._job_success(outcome)
         self.assertEqual(self.window.controller.view().geometry_state, "generated_unverified")
         self.assertTrue(self.window.character.open_master.isEnabled())
-        self.assertIn("NOT a verified animated model", self.window.log.toPlainText())
+        self.assertIn("MPFB evaluated shape", self.window.log.toPlainText())
+        self.assertIn("height=0.500", self.window.log.toPlainText())
+        self.assertIn("NOT live morph editing", self.window.log.toPlainText())
         self.assertIn("Master geometry has not passed", self.window.character.blockers.toPlainText())
 
     def test_tools_are_real_and_cannot_claim_geometry(self):
         self.assertIn("PNG", self.window.tools.pack.text())
         self.assertFalse(self.window.character.open_master.isEnabled())
-        self.assertIn("not yet implemented", self.window.character.note.text())
+        self.assertIn("does not live-edit", self.window.character.note.text())
         self.assertIn("local", self.window.tools.ai.text())
 
 

@@ -50,7 +50,7 @@ class CharacterPane(QWidget):
         identity_form.addRow("3D master", self.geometry)
         layout.addWidget(self.identity)
 
-        self.morph_box = QGroupBox("Body controls (draft metadata)")
+        self.morph_box = QGroupBox("Body phenotype controls (normalized MPFB macros)")
         morph_form = QFormLayout(self.morph_box)
         self.sliders: dict[str, QSlider] = {}
         self.morph_values: dict[str, QLabel] = {}
@@ -71,8 +71,9 @@ class CharacterPane(QWidget):
             self.morph_values[key] = output
         layout.addWidget(self.morph_box)
         self.note = QLabel(
-            "Morph sliders edit and save real project metadata. Physical mesh deformation "
-            "requires validated MPFB slider mapping and is not yet implemented."
+            "Save these values, then generate/regenerate a humanoid to apply them "
+            "through MPFB macro targets. Changing sliders does not live-edit an "
+            "existing .blend. Values are normalized, not measured height/weight."
         )
         self.note.setWordWrap(True)
         layout.addWidget(self.note)
@@ -100,17 +101,18 @@ class CharacterPane(QWidget):
 
         generation = QGroupBox("MPFB humanoid generation (requires installed Blender + MPFB)")
         generate_layout = QVBoxLayout(generation)
-        self.generate = QPushButton("Generate real MPFB humanoid...")
+        self.generate = QPushButton("Generate humanoid using saved body controls...")
         self.generate.setToolTip(
-            "Runs installed Blender in a background process; reopens and saves an "
-            "immutable .blend revision. Morph metadata is NOT applied to geometry."
+            "Runs MPFB's real macro-target system using saved Height, Muscle and Weight, "
+            "creates a new Blender master, independently reopens and validates geometry."
         )
         self.generate.clicked.connect(self.generate_human_requested.emit)
         self.generate.setEnabled(False)
         generate_layout.addWidget(self.generate)
         generation_note = QLabel(
-            "Requires a saved project and your chosen Blender executable with MPFB enabled. "
-            "Generated geometry remains unverified for skinning, animation and engine export."
+            "Save slider changes first. Generating again creates a new immutable master "
+            "and preserves older revisions; previously edited mesh parts are not carried "
+            "forward. Animation skinning and game-engine export remain unverified."
         )
         generation_note.setWordWrap(True)
         generate_layout.addWidget(generation_note)

@@ -20,7 +20,9 @@ if str(REPO_ROOT) not in sys.path:
 
 from blender_bridge.mpfb_service import (
     create_human_with_rig, inspect_service, locate_human_service,
+    locate_target_service,
 )
+from blender_bridge.morphs import check_macro_values, inspect_applied_macro
 from blender_bridge.preview_export import export_static_glb
 
 PROTOCOL_VERSION = 1
@@ -65,14 +67,26 @@ def inspect_character(job: dict, root: Path) -> dict:
     meshes = [o for o in bpy.data.objects if o.type == "MESH"]
     if not meshes or sum(len(o.data.vertices) for o in meshes) <= 100:
         raise RuntimeError("Insufficient 3D mesh geometry")
-    return {"blender_version": bpy.app.version_string,
-            "mesh_count": len(meshes),
-            "vertex_count": sum(len(o.data.vertices) for o in meshes),
-            "armatures": [{"name": a.name, "bone_count": len(a.data.bones)}
-                          for a in bpy.data.objects if a.type == "ARMATURE"],
-            "shape_keys": {m.name: ([key.name for key in m.data.shape_keys.key_blocks]
-                                    if m.data.shape_keys else []) for m in meshes},
-            "visual_deformation_verified": False}
+    result = {"blender_version": bpy.app.version_string,
+              "mesh_count": len(meshes),
+              "vertex_count": sum(len(o.data.vertices) for o in meshes),
+              "armatures": [{"name": a.name, "bone_count": len(a.data.bones)}
+                            for a in bpy.data.objects if a.type == "ARMATURE"],
+              "shape_keys": {m.name: ([key.name for key in m.data.shape_keys.key_blocks]
+                                      if m.data.shape_keys else []) for m in meshes},
+              "visual_deformation_verified": False}
+    options = job["options"]
+    if options:
+        if set(options) != {"macro_parameters"}:
+            raise ValueError("Only explicit MPFB macro inspection is supported")
+        requested = check_macro_values(options["macro_parameters"])
+        candidates = [m for m in meshes if len(m.data.vertices) > 100]
+        if len(candidates) != 1:
+            raise RuntimeError("Expected exactly one substantial MPFB basemesh")
+        _, human_module = locate_human_service()
+        target_service, _ = locate_target_service(human_module)
+        result.update(inspect_applied_macro(bpy, candidates[0], target_service, requested))
+    return result
 
 
 def export_preview_glb(job: dict, root: Path) -> dict:
@@ -82,9 +96,20 @@ def export_preview_glb(job: dict, root: Path) -> dict:
     return export_static_glb(bpy, source, output)
 
 
-def create_human(_: dict, root: Path) -> dict:
+def create_human(job: dict, root: Path) -> dict:
     service, module = locate_human_service()
-    details = create_human_with_rig(bpy, service, "default")
+    options = job["options"]
+    if options:
+        if set(options) != {"macro_parameters"}:
+            raise ValueError("Only saved MPFB macro controls may be used")
+        values = check_macro_values(options["macro_parameters"])
+        target_service, _ = locate_target_service(module)
+        details = create_human_with_rig(
+            bpy, service, "default", macro_parameters=values,
+            target_service=target_service,
+        )
+    else:
+        details = create_human_with_rig(bpy, service, "default")
     path = member(root, "generated_human.blend")
     # The project master staging contract requires the canonical BLENDER header;
     # default per-install compression settings must not change file format.
@@ -110,6 +135,8 @@ def main() -> int:
         raise SystemExit("Unsupported request version")
     import uuid
     uuid.UUID(data["job_id"])
+    if type(data["options"]) is not dict:
+        raise SystemExit("Worker options must be a JSON object")
     operation = data["operation"]
     if operation not in OPERATIONS:
         raise SystemExit("Unknown operation")

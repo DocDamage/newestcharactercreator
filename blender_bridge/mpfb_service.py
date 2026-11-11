@@ -15,6 +15,8 @@ import importlib
 import sys
 from typing import Any, Callable, Mapping
 
+from blender_bridge.morphs import build_macro_info, inspect_applied_macro
+
 
 class MpfbServiceError(RuntimeError):
     """MPFB service is absent, ambiguous, or returned an invalid character."""
@@ -67,6 +69,30 @@ def locate_human_service(
     return cls, name
 
 
+def locate_target_service(
+    human_module: str,
+    loader: Callable[[str], Any] | None = None,
+) -> tuple[Any, str]:
+    """Use the same already-enabled MPFB namespace as HumanService."""
+    if not isinstance(human_module, str) or not (
+        human_module == "mpfb.services.humanservice"
+        or human_module.endswith(".mpfb.services.humanservice")
+    ):
+        raise MpfbServiceError("Untrusted MPFB HumanService module name")
+    module_name = human_module.rsplit(".", 1)[0] + ".targetservice"
+    importer = importlib.import_module if loader is None else loader
+    try:
+        mod = importer(module_name)
+    except (ImportError, AttributeError, RuntimeError) as exc:
+        raise MpfbServiceError("MPFB TargetService could not be imported") from exc
+    target = getattr(mod, "TargetService", None)
+    if target is None or any(not callable(getattr(target, method, None)) for method in (
+        "get_default_macro_info_dict", "get_macro_info_dict_from_basemesh"
+    )):
+        raise MpfbServiceError("MPFB TargetService macro API is unavailable")
+    return target, module_name
+
+
 def inspect_service(registry: Mapping[str, Any] | None = None,
                     loader: Callable[[str], Any] | None = None) -> dict[str, Any]:
     """Report discoverability; never claim geometry creation or rigging."""
@@ -82,7 +108,11 @@ def _new_meshes(bpy: Any, before: set[int]) -> list[Any]:
     return [obj for obj in bpy.data.objects if obj.type == "MESH" and obj.as_pointer() not in before]
 
 
-def create_human_with_rig(bpy: Any, service: Any, rig_name: str = "default") -> dict[str, Any]:
+def create_human_with_rig(
+    bpy: Any, service: Any, rig_name: str = "default", *,
+    macro_parameters: dict[str, float] | None = None,
+    target_service: Any | None = None,
+) -> dict[str, Any]:
     """Create actual MPFB mesh + built-in armature in the caller's Blender process.
 
     Save/reopen and visual deformation checks happen outside this function.
@@ -93,7 +123,13 @@ def create_human_with_rig(bpy: Any, service: Any, rig_name: str = "default") -> 
     old_meshes = {o.as_pointer() for o in bpy.data.objects if o.type == "MESH"}
     old_rigs = {o.as_pointer() for o in bpy.data.objects if o.type == "ARMATURE"}
     try:
-        base = service.create_human()
+        if macro_parameters is None:
+            base = service.create_human()
+        else:
+            if target_service is None:
+                raise MpfbServiceError("MPFB TargetService required for macro creation")
+            macro_info = build_macro_info(target_service, macro_parameters)
+            base = service.create_human(macro_detail_dict=macro_info)
     except Exception as exc:
         raise MpfbServiceError("MPFB HumanService.create_human() failed") from exc
     if getattr(base, "type", None) != "MESH" or base.as_pointer() in old_meshes:
@@ -110,6 +146,16 @@ def create_human_with_rig(bpy: Any, service: Any, rig_name: str = "default") -> 
     rigs = [o for o in bpy.data.objects if o.type == "ARMATURE" and o.as_pointer() not in old_rigs]
     if rig not in rigs or len(rig.data.bones) < 5:
         raise MpfbServiceError("New MPFB armature has insufficient bones")
+    macro_evidence = {}
+    if macro_parameters is not None:
+        try:
+            macro_evidence = inspect_applied_macro(
+                bpy, base, target_service, macro_parameters,
+            )
+        except Exception as exc:
+            raise MpfbServiceError(
+                "MPFB macro shapes were not verified on generated humanoid"
+            ) from exc
     return {
         "method": "HumanService",
         "rig_choice": rig_name,
@@ -124,4 +170,5 @@ def create_human_with_rig(bpy: Any, service: Any, rig_name: str = "default") -> 
         "geometry_verified": False,
         "verified_reopen": False,
         "visual_deformation_verified": False,
+        **macro_evidence,
     }
