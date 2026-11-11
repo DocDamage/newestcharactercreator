@@ -21,9 +21,10 @@ if str(REPO_ROOT) not in sys.path:
 from blender_bridge.mpfb_service import (
     create_human_with_rig, inspect_service, locate_human_service,
 )
+from blender_bridge.preview_export import export_static_glb
 
 PROTOCOL_VERSION = 1
-OPERATIONS = {"inspect_environment", "inspect_character", "create_human"}
+OPERATIONS = {"inspect_environment", "inspect_character", "create_human", "export_preview_glb"}
 
 
 def arguments() -> argparse.Namespace:
@@ -74,6 +75,13 @@ def inspect_character(job: dict, root: Path) -> dict:
             "visual_deformation_verified": False}
 
 
+def export_preview_glb(job: dict, root: Path) -> dict:
+    """Export a static GLB from the staged .blend; never save the master."""
+    source = member(root, job["input_project"])
+    output = member(root, "preview.glb")
+    return export_static_glb(bpy, source, output)
+
+
 def create_human(_: dict, root: Path) -> dict:
     service, module = locate_human_service()
     details = create_human_with_rig(bpy, service, "default")
@@ -110,7 +118,8 @@ def main() -> int:
     try:
         action = {"inspect_environment": inspect_environment,
                   "inspect_character": inspect_character,
-                  "create_human": create_human}[operation]
+                  "create_human": create_human,
+                  "export_preview_glb": export_preview_glb}[operation]
         reply["details"] = action(data, root)
         reply["status"] = "ok"
         reply["error"] = None

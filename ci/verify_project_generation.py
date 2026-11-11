@@ -19,6 +19,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from ucc.core.models import CharacterProject
 from ucc.core.storage import ProjectStore
 from ucc.jobs.humanoid_generation import generate_humanoid
+from ucc.jobs.master_preview import preview_saved_master
 
 
 def _hash(path: Path) -> str:
@@ -60,6 +61,31 @@ def verify(blender: Path, root: Path) -> dict:
         not reopened.export_readiness()
     ):
         raise RuntimeError("Unverified geometry incorrectly reports engine readiness")
+
+    # Fourth real Blender process: export a static GLB from the persisted master,
+    # then parse its actual triangles through the exact reader used by Qt.
+    preview = preview_saved_master(
+        store, blender_exe=blender,
+        worker_script=ROOT / "blender_bridge" / "entrypoint.py",
+        expected_project_id=reopened.project_id,
+        expected_revision=reopened.revision,
+        expected_master_blend=reopened.master_blend,
+        timeout_s=300,
+    )
+    if (preview.mesh.source_face_count <= 100 or
+            preview.mesh.sample_count <= 0 or
+            preview.mesh.sample_count > 2000 or
+            preview.mesh.animation_count != 0 or
+            preview.mesh.skin_count != 0 or
+            preview.certified_for_engine_import or
+            preview.master_sha256 != transaction.revision.sha256):
+        raise RuntimeError("Blender static GLB preview did not meet the bounded preview gate")
+    # Preview is a diagnostic; no extra authoritative revision or master mutation.
+    if (ProjectStore(store.root).load() != reopened or
+            not master.is_file() or
+            _hash(master) != transaction.revision.sha256):
+        raise RuntimeError("Static preview mutated the authoritative project or Blender master")
+
     return {
         "status": "REAL_LINUX_PROJECT_GENERATE_REOPEN_STAGED",
         "blender_version": transaction.observed["blender_version"],
@@ -71,6 +97,14 @@ def verify(blender: Path, root: Path) -> dict:
         "independent_reopen": True,
         "project_roundtrip": True,
         "geometry_state": reopened.geometry_state,
+        "preview_status": "REAL_LINUX_STATIC_MASTER_PREVIEW_PARSED",
+        "preview_face_count": preview.mesh.source_face_count,
+        "preview_sampled_faces": preview.mesh.sample_count,
+        "preview_mesh_vertices": preview.selected_vertex_count,
+        "preview_glb_sha256": preview.glb_sha256,
+        "preview_master_sha256": preview.master_sha256,
+        "preview_skinning_evaluated": False,
+        "preview_animation_evaluated": False,
         "windows_verified": False,
         "deformation_verified": False,
         "engine_imports_verified": [],

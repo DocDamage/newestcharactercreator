@@ -38,6 +38,9 @@ ucc-smoke-results/
 .DS_Store
 Thumbs.db
 
+# Private Blender worker job workspaces may contain local paths, copies and JSON evidence
+**/.ucc-jobs/
+
 # UCC local metadata, licensing index and project workspaces
 **/project.ucc.json
 *.db

@@ -14,6 +14,8 @@ on:
       - 'ci/verify_project_generation.py'
       - 'src/ucc/jobs/geometry_evidence.py'
       - 'src/ucc/jobs/humanoid_generation.py'
+      - 'src/ucc/jobs/master_preview.py'
+      - 'src/ucc/jobs/protocol.py'
       - 'src/ucc/core/master_versions.py'
   push:
     branches:
@@ -27,6 +29,8 @@ on:
       - 'ci/verify_project_generation.py'
       - 'src/ucc/jobs/geometry_evidence.py'
       - 'src/ucc/jobs/humanoid_generation.py'
+      - 'src/ucc/jobs/master_preview.py'
+      - 'src/ucc/jobs/protocol.py'
       - 'src/ucc/core/master_versions.py'
 
 permissions:
@@ -118,7 +122,7 @@ jobs:
           python3 ci/verify_production_worker.py \
             --blender "$BLENDER_EXE" \
             --outdir "$RUNNER_TEMP/ucc-production-worker" --timeout 300
-      - name: Verify complete Blender-to-project humanoid transaction
+      - name: Verify genuine Blender-to-project generation plus saved-master GLB preview
         shell: bash
         run: |
           set -euo pipefail

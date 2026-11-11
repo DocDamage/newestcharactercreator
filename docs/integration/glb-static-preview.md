@@ -19,6 +19,10 @@ No PBR materials, textures, normal maps, morph target evaluation, skinning, anim
 
 This viewer is **CPU software rendered**. It proves the project can load and interactively view real selected geometry before MPFB validation, but does not replace the eventually planned hardware-accelerated character editor. Extremely large meshes are sampled for UI responsiveness.
 
+## Preview an existing UCC Blender master
+
+On supported builds, the Character tab also offers **Preview saved master in UCC...**. This explicitly runs the user's installed Blender through the versioned worker to create a private static GLB from the project's saved, immutable `.blend`. The same bounded reader and CPU viewer draw its real exported triangles. This **does not** change the authoritative Blender file or certify animation/engine export. See [saved-master preview integration](saved-master-preview.md) and its real Blender CI evidence.
+
 ## Verification
 
 Synthetic GLB fixtures are used only inside unit tests to verify buffer math, node rotations/transforms, bounds, indices, symlink rejection, unexpected formats and triangle sampling. GitHub's dedicated offscreen PySide6 workflow also instantiates the actual viewer, renders through Qt into an image, and checks docking/reset behavior on Windows/Linux. These checks are **not** a real game-engine import or evidence of MPFB working on Windows.

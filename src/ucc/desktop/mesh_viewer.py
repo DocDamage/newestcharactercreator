@@ -137,6 +137,12 @@ class MeshViewer(QWidget):
         self.note.setWordWrap(True)
         layout.addWidget(self.note)
 
+    def clear_model(self) -> None:
+        """Never leave another project's character visible after project change."""
+        self.canvas.mesh = None
+        self.canvas.reset_view()
+        self.status.setText("No model loaded. Select a local GLB or preview the saved master.")
+
     def show_model(self, model: PreviewMesh) -> None:
         self.canvas.set_mesh(model)
         self.status.setText(f"Parsed {model.source_face_count:,} source triangles; previewing "

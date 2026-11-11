@@ -20,6 +20,7 @@ class CharacterPane(QWidget):
     morph_requested = Signal(str, float)
     open_master_requested = Signal()
     generate_human_requested = Signal()
+    preview_master_requested = Signal()
 
     def __init__(self) -> None:
         super().__init__()
@@ -115,6 +116,16 @@ class CharacterPane(QWidget):
         generate_layout.addWidget(generation_note)
         layout.addWidget(generation)
 
+        self.preview_master = QPushButton("Preview saved master in UCC...")
+        self.preview_master.setToolTip(
+            "Uses your installed Blender to export a temporary untextured static GLB "
+            "from the saved .blend; shows actual triangles with orbit/pan/zoom. "
+            "No skinning, motion or engine certification."
+        )
+        self.preview_master.clicked.connect(self.preview_master_requested.emit)
+        self.preview_master.setEnabled(False)
+        layout.addWidget(self.preview_master)
+
         self.open_master = QPushButton("Open saved master in Blender...")
         self.open_master.setToolTip("Launches your installed Blender with the existing project file; never generates fake geometry")
         self.open_master.clicked.connect(self.open_master_requested.emit)
@@ -126,6 +137,7 @@ class CharacterPane(QWidget):
         self.identity.setEnabled(active)
         self.morph_box.setEnabled(active)
         self.generate.setEnabled(active)
+        self.preview_master.setEnabled(False)
         self.open_master.setEnabled(False)
         if not active:
             self.heading.setText("Open or create a character project to begin")
@@ -142,6 +154,7 @@ class CharacterPane(QWidget):
         self.revision.setText(f"{view.revision} ({'unsaved' if view.dirty else 'on disk'})")
         self.geometry.setText(view.geometry_state.replace("_", " ").title())
         self.open_master.setEnabled(view.master_blend is not None)
+        self.preview_master.setEnabled(view.master_blend is not None)
         for key, value in view.morphs:
             if key in self.sliders:
                 slider = self.sliders[key]
