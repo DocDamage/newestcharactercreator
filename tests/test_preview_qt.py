@@ -7,10 +7,15 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from pathlib import Path
 import sys
 import unittest
+import tempfile
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 try:
-    from PySide6.QtWidgets import QApplication
+    from PySide6.QtWidgets import QApplication, QFileDialog
+    from ucc.desktop.controller import DesktopController
+    from ucc.core.master_versions import stage_unverified_master
+    from ucc.jobs.master_preview import MasterPreview
     from ucc.desktop.mesh_viewer import MeshViewer
     from ucc.desktop.window import MainWindow
     from ucc.preview.glb_mesh import PreviewMesh
@@ -58,6 +63,61 @@ class PreviewWidgetTests(unittest.TestCase):
         viewer.reset.click()
         self.assertAlmostEqual(viewer.canvas.yaw, math.radians(-30))
         self.assertEqual(viewer.canvas.zoom, 1.0)
+
+    def test_saved_master_preview_button_uses_explicit_blender_selection(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            controller = DesktopController()
+            controller.create(root / "character", "Preview Test")
+            source = root / "mock-only-staging"
+            source.mkdir()
+            blend = source / "fake.blend"
+            blend.write_bytes(b"BLENDER" + b"unit-test-only" * 90)
+            stage_unverified_master(controller.store, blend, authorized_source_root=source)
+            controller.open(root / "character")
+            window = MainWindow(controller)
+            self.addCleanup(window.deleteLater)
+            self.assertTrue(window.character.preview_master.isEnabled())
+            self.assertTrue(window.preview_master_action.isEnabled())
+            exe = root / "fake-test-blender"
+            exe.write_bytes(b"not executed")
+            with patch.object(QFileDialog, "getOpenFileName", return_value=(str(exe), "")):
+                with patch.object(window, "_submit") as submit:
+                    window.character.preview_master.click()
+            submit.assert_called_once()
+            args, kwargs = submit.call_args
+            self.assertEqual(args[0], "saved_master_preview")
+            self.assertTrue(callable(args[1]))
+            self.assertFalse(kwargs["cancel"].is_set())
+            snapshot = controller.require_project()
+            result = MasterPreview(
+                self.mesh(), snapshot.project_id, snapshot.revision,
+                snapshot.master_blend, "1" * 64, "2" * 64, 19158, "5.3.0",
+            )
+            window._work_kind = "saved_master_preview"
+            window._job_success(result)
+            self.assertIsNotNone(window.mesh_viewer.canvas.mesh)
+            self.assertIn("STATIC PREVIEW", window.log.toPlainText())
+            self.assertIn("No animations", window.log.toPlainText())
+            window.close()
+
+    def test_new_project_clears_old_preview_geometry(self):
+        window = MainWindow()
+        self.addCleanup(window.deleteLater)
+        window._work_kind = "mesh_preview"
+        window._job_success(self.mesh())
+        self.assertIsNotNone(window.mesh_viewer.canvas.mesh)
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            controller = DesktopController()
+            controller.create(root / "character", "Other Character")
+            with patch.object(QFileDialog, "getExistingDirectory",
+                              return_value=str(root / "character")):
+                window.open_project()
+        self.assertIsNone(window.mesh_viewer.canvas.mesh)
+        self.assertTrue(window.mesh_dock.isHidden())
+        self.assertFalse(window.preview_master_action.isEnabled())
+        window.close()
 
     def test_main_window_wires_real_preview_dock_without_fake_geometry(self):
         window = MainWindow()
