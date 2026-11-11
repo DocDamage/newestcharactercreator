@@ -24,6 +24,13 @@ This is **not full skeleton retargeting**, rest-bone orientation calibration, a 
 - This is a read-only diagnostic, not an editor action that adds an animation to the saved character. The MPFB saved master remains generated_unverified.
 - The user's actual Windows Blender/MPFB session is still a separate acceptance gate, as are visual deformation quality, interactive UCC playback and Godot/Unity/Unreal reimport.
 
+## Real MPFB integration evidence — November 11, 2026
+
+[Real Linux Blender 5.3.0 / MPFB run #43116913629](https://github.com/DocDamage/newestcharactercreator/actions/runs/43116913629) **PASSED** with a self-authored 25-frame source BVH containing `neck03 → head` (not from Fab or the user's library). The actual Blender MPFB armature contained both named bones in the corresponding parent/child hierarchy, and the Y-up-to-Z-up converted child rest offset aligned at a measured cosine of **0.9948647**. Temporary independent 12-degree poses moved **4,451 actual evaluated vertices from neck03** and **4,451 from head**. The multi-bone action produced three distinct evaluated skinned geometry states across the five selected timeline frames; two separate Blender processes reported matching bone, source/rig and frame evidence. All original source/master/project SHA-256 checks remained unchanged.
+
+This verifies physical **multi-bone animation response and a rest-direction preflight**, not target bone roll, full BVH retargeting, visual quality, the user's purchased clips or engine import. Final CI still must pass on the latest PR commit after any documentation/source changes.
+
+## Verification boundary
 ## Verification boundary
 
 Contract tests validate BVH hierarchy/order/offset parsing, wrong up-axis rejection, bad parent/skin weights, and fabricated multi-bone evidence. The genuine Linux Blender 5.3/official MPFB test authors a private **two-bone neck03→head original BVH** at runtime using reference MPFB default rest vectors. The real target's rest-direction alignment is independently inspected; real neck/head deformation, two-worker agreement, static frame hashes and byte-for-byte source/master preservation are required to pass.
