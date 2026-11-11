@@ -112,3 +112,9 @@ py -3 -m ucc.desktop
 Or run \`ucc-desktop\`. No IDE is required. No third-party character assets, AI models, or game engines are installed by this command. See [Desktop v0.1 usage and limits](docs/integration/desktop-v0.1.md).
 
 The Qt workflow tests real widgets using \`QT_QPA_PLATFORM=offscreen\` on Windows/Linux. A passing offscreen test is not proof of GPU rendering or working MPFB in Blender.
+
+## Read-only GLB geometry viewer (preview-only)
+
+The optional PySide6 desktop now supports **View → Preview local GLB model...** (Ctrl+Shift+M). It renders a sampled subset of actual embedded glTF 2.0 triangle geometry with Qt's CPU painter. Orbit, pan, zoom and reset work without OpenGL drivers or third-party asset packs. The parser validates container relationships, transform bounds, vertex/index accessors and a hard aggregate face limit. It **does not** skin meshes, run motion, evaluate morphs, import materials or certify engine compatibility; this viewer is not the eventual animated character editor. See [GLB static preview](docs/integration/glb-static-preview.md).
+
+The desktop CI requires real, non-skipped Qt widget tests on Windows and Linux, and a separate metadata/mesh parser test suite. No demo character art or proprietary asset has been committed.

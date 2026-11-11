@@ -41,5 +41,9 @@ jobs:
         run: python -c "from PySide6.QtWidgets import QApplication; from ucc.desktop.window import MainWindow"
       - name: Run real offscreen Qt widgets
         run: python -m unittest discover -s tests -p test_desktop_qt.py -v
+      - name: Exercise actual offscreen static GLB viewer widgets (no skips)
+        run: python -m unittest discover -s tests -p test_preview_qt.py -v
+      - name: Verify bounded GLB mesh decoding and malicious-input handling
+        run: python -m unittest discover -s tests -p test_glb_mesh_preview.py -v
       - name: Run dependency-free controller tests
         run: python -m unittest discover -s tests -p test_desktop_controller.py -v
