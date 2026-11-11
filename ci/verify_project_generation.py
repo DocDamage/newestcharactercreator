@@ -22,6 +22,7 @@ from ucc.core.storage import ProjectStore
 from ucc.jobs.humanoid_generation import generate_humanoid
 from ucc.jobs.body_revision import apply_saved_body_revision
 from ucc.jobs.master_preview import preview_saved_master
+from ucc.jobs.pose_diagnostic import check_saved_master_pose
 
 
 def _hash(path: Path) -> str:
@@ -171,6 +172,30 @@ def verify(blender: Path, root: Path) -> dict:
     if ProjectStore(store.root).load() != new_project:
         raise RuntimeError("Refit preview modified the UCC project")
 
+    # Two further genuine Blender processes must rotate a weighted deform bone,
+    # observe real evaluated vertex movement, restore the pose and agree on hashes.
+    pose = check_saved_master_pose(
+        store, blender_exe=blender,
+        worker_script=ROOT / "blender_bridge" / "entrypoint.py",
+        expected_project_id=new_project.project_id,
+        expected_revision=new_project.revision,
+        expected_master_blend=new_project.master_blend,
+        timeout_s=300,
+    )
+    p = pose.evidence
+    if (p["moved_vertex_count"] < 16 or
+            p["neutral_evaluated_sha256"] == p["posed_evaluated_sha256"] or
+            p["neutral_evaluated_sha256"] != p["restored_evaluated_sha256"] or
+            p["animation_clip_playback_verified"] is not False or
+            p["engine_import_verified"] is not False or
+            p["source_master_saved"] is not False or
+            not p["rig_binding_verified"] or
+            len(pose.worker_job_ids) != 2):
+        raise RuntimeError("Existing refitted rig failed real two-process pose test")
+    if (ProjectStore(store.root).load() != new_project or
+            _hash(revised_master) != refitted.revision.sha256):
+        raise RuntimeError("Transient pose test modified the saved Blender master")
+
     return {
         "status": "REAL_LINUX_PROJECT_GENERATE_REOPEN_STAGED",
         "blender_version": transaction.observed["blender_version"],
@@ -209,6 +234,18 @@ def verify(blender: Path, root: Path) -> dict:
         "refit_preview_geometry_changed": True,
         "refit_original_master_preserved": True,
         "refit_new_project_revision": new_project.revision,
+        "pose_test_status": p["status"],
+        "pose_test_bone": p["selected_deform_bone"],
+        "pose_test_axis": p["rotation_axis_index"],
+        "pose_test_rotation_degrees": p["rotation_degrees"],
+        "pose_test_moved_vertices": p["moved_vertex_count"],
+        "pose_test_max_displacement_local": p["max_vertex_displacement_local"],
+        "pose_test_restored_neutral_sha256": p["restored_evaluated_sha256"],
+        "pose_test_original_sha256": p["neutral_evaluated_sha256"],
+        "pose_test_deformed_sha256": p["posed_evaluated_sha256"],
+        "pose_test_source_master_unchanged": True,
+        "pose_test_two_processes_agreed": True,
+        "pose_test_animation_playback_verified": False,
         "windows_verified": False,
         "deformation_verified": False,
         "engine_imports_verified": [],
