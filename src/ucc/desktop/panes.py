@@ -19,6 +19,7 @@ class CharacterPane(QWidget):
     name_requested = Signal(str)
     morph_requested = Signal(str, float)
     open_master_requested = Signal()
+    generate_human_requested = Signal()
 
     def __init__(self) -> None:
         super().__init__()
@@ -96,6 +97,24 @@ class CharacterPane(QWidget):
         self.mode.currentIndexChanged.connect(lambda index: self.advanced.setVisible(index == 1))
         self.advanced.hide()
 
+        generation = QGroupBox("MPFB humanoid generation (requires installed Blender + MPFB)")
+        generate_layout = QVBoxLayout(generation)
+        self.generate = QPushButton("Generate real MPFB humanoid...")
+        self.generate.setToolTip(
+            "Runs installed Blender in a background process; reopens and saves an "
+            "immutable .blend revision. Morph metadata is NOT applied to geometry."
+        )
+        self.generate.clicked.connect(self.generate_human_requested.emit)
+        self.generate.setEnabled(False)
+        generate_layout.addWidget(self.generate)
+        generation_note = QLabel(
+            "Requires a saved project and your chosen Blender executable with MPFB enabled. "
+            "Generated geometry remains unverified for skinning, animation and engine export."
+        )
+        generation_note.setWordWrap(True)
+        generate_layout.addWidget(generation_note)
+        layout.addWidget(generation)
+
         self.open_master = QPushButton("Open saved master in Blender...")
         self.open_master.setToolTip("Launches your installed Blender with the existing project file; never generates fake geometry")
         self.open_master.clicked.connect(self.open_master_requested.emit)
@@ -106,6 +125,7 @@ class CharacterPane(QWidget):
     def set_active(self, active: bool) -> None:
         self.identity.setEnabled(active)
         self.morph_box.setEnabled(active)
+        self.generate.setEnabled(active)
         self.open_master.setEnabled(False)
         if not active:
             self.heading.setText("Open or create a character project to begin")
