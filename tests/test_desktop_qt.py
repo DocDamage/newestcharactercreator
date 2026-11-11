@@ -195,6 +195,62 @@ class DesktopQtSmoke(unittest.TestCase):
         self.assertIn("Save metadata", error.call_args.args[0])
         submit.assert_not_called()
 
+    def test_local_bvh_preview_requires_license_review_before_running(self):
+        self.test_existing_master_refit_button_disabled_until_generated()
+        clip = Path(self.tmp.name) / "original-preview.bvh"
+        clip.write_text("test-only UI path, worker not launched", encoding="utf-8")
+        pane = self.window.animations
+        pane.selected.setText(str(clip))
+        pane.provider.setText("original")
+        pane.license.setText("original self-authored")
+        pane.uri.setText("local-original://unit-test")
+        with (patch.object(self.window, "_error") as error,
+              patch.object(self.window, "_submit") as submit):
+            self.window.test_selected_bvh(
+                str(clip), pane.provider.text(), pane.license.text(),
+                pane.uri.text(), False,
+            )
+        self.assertIn("reviewed-rights", error.call_args.args[0])
+        submit.assert_not_called()
+        pane.local_preview_review.setChecked(True)
+        blender = Path(self.tmp.name) / "test-blender-not-executed"
+        blender.write_bytes(b"mock-binary")
+        with patch("ucc.desktop.window.QFileDialog.getOpenFileName",
+                   return_value=(str(blender), "")):
+            with patch.object(self.window, "_submit") as submit:
+                pane.test_local_bvh.click()
+        submit.assert_called_once()
+        args, options = submit.call_args
+        self.assertEqual(args[0], "local_bvh_motion")
+        self.assertFalse(options["cancel"].is_set())
+        pane.uri.setText("changed-source-uri")
+        self.assertFalse(pane.local_preview_review.isChecked())
+
+    def test_local_bvh_result_reports_source_motion_without_retarget_claim(self):
+        from ucc.jobs.bvh_clip_diagnostic import LocalBvhClipCheck
+        self.test_existing_master_refit_button_disabled_until_generated()
+        snapshot = self.controller.require_project()
+        evidence = {
+            "source_bone": "head", "target_bone": "head",
+            "source_frame_count": 25, "distinct_geometry_states": 3,
+            "sampled_frames": [
+                {"frame": i, "moved_vertices": v, "max_displacement_local": .03}
+                for i, v in ((1, 0), (7, 100), (13, 300), (19, 100), (25, 0))
+            ],
+        }
+        result = LocalBvhClipCheck(
+            snapshot.project_id, snapshot.revision, snapshot.master_blend,
+            "a" * 64, "b" * 64, "Original Motion", evidence,
+            ("first", "second"),
+        )
+        self.window._work_kind = "local_bvh_motion"
+        self.window._job_success(result)
+        log = self.window.log.toPlainText()
+        self.assertIn("REAL USER-SELECTED BVH", log)
+        self.assertIn("Frame 13", log)
+        self.assertIn("NOT certified retargeting", log)
+        self.assertEqual(self.controller.require_project().revision, snapshot.revision)
+
     def test_generate_action_requires_explicit_blender_selection(self):
         self.assertTrue(self.window.character.generate.isEnabled())
         exe = Path(self.tmp.name) / "selected-blender"
