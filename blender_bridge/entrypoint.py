@@ -26,9 +26,10 @@ from blender_bridge.morphs import check_macro_values, inspect_applied_macro
 from blender_bridge.preview_export import export_static_glb
 from blender_bridge.refit_revision import apply_body_revision, rig_fingerprint
 from blender_bridge.pose_deformation import probe_pose_deformation
+from blender_bridge.timeline_animation import verify_keyframed_timeline as verify_real_timeline
 
 PROTOCOL_VERSION = 1
-OPERATIONS = {"inspect_environment", "inspect_character", "create_human", "export_preview_glb", "refit_human", "verify_skin_deformation"}
+OPERATIONS = {"inspect_environment", "inspect_character", "create_human", "export_preview_glb", "refit_human", "verify_skin_deformation", "verify_keyframed_timeline"}
 
 
 def arguments() -> argparse.Namespace:
@@ -99,6 +100,13 @@ def export_preview_glb(job: dict, root: Path) -> dict:
     source = member(root, job["input_project"])
     output = member(root, "preview.glb")
     return export_static_glb(bpy, source, output)
+
+
+def verify_keyframed_timeline(job: dict, root: Path) -> dict:
+    """Create and sample original diagnostic keyframes without ever saving them."""
+    if job["options"]:
+        raise ValueError("Keyframed diagnostic has no user-editable options")
+    return verify_real_timeline(bpy, member(root, job["input_project"]))
 
 
 def verify_skin_deformation(job: dict, root: Path) -> dict:
@@ -177,7 +185,8 @@ def main() -> int:
                   "create_human": create_human,
                   "export_preview_glb": export_preview_glb,
                   "refit_human": refit_human,
-                  "verify_skin_deformation": verify_skin_deformation}[operation]
+                  "verify_skin_deformation": verify_skin_deformation,
+                  "verify_keyframed_timeline": verify_keyframed_timeline}[operation]
         reply["details"] = action(data, root)
         reply["status"] = "ok"
         reply["error"] = None
