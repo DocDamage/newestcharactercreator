@@ -30,12 +30,24 @@ class HumanoidGenerationTests(unittest.TestCase):
         self.script.write_text("# not executed", encoding="utf-8")
         self.bytes = b"BLENDER" + b"synthetic-not-a-real-mpfb-file" * 200
         self.calls = []
+        self.requests = []
         self.cancel = Event()
 
     def responses(self, job, **kwargs):
         path = self.store.root / ".ucc-jobs" / job.job_id
         path.mkdir(parents=True, exist_ok=False)
         self.calls.append(job.operation)
+        self.requests.append(job)
+        controls = job.options["macro_parameters"]
+        shape = {
+            "macro_parameters_observed": dict(controls),
+            "macro_evaluated_vertices": 19158,
+            "macro_evaluated_sha256": "a" * 64,
+            "macro_active_shape_keys": 3,
+            "macro_shape_evaluated": True,
+            "visual_deformation_verified": False,
+            "engine_import_verified": False,
+        }
         if job.operation == "create_human":
             (path / "generated_human.blend").write_bytes(self.bytes)
             details = {
@@ -43,6 +55,7 @@ class HumanoidGenerationTests(unittest.TestCase):
                 "rig_choice": "default", "blender_version": "5.3.0",
                 "created_meshes": [{"vertex_count": 19158}],
                 "rigs": [{"bone_count": 163}],
+                **shape,
             }
         else:
             source = kwargs["staged_inputs"]["candidate.blend"]
@@ -50,6 +63,7 @@ class HumanoidGenerationTests(unittest.TestCase):
             details = {
                 "blender_version": "5.3.0", "mesh_count": 2,
                 "vertex_count": 19166, "armatures": [{"bone_count": 163}],
+                **shape,
             }
         return JobResult(job.job_id, job.operation, "ok", details), path
 
@@ -67,6 +81,11 @@ class HumanoidGenerationTests(unittest.TestCase):
     def test_independently_inspected_worker_promotes_unverified_master(self):
         output = self.run_generation()
         self.assertEqual(self.calls, ["create_human", "inspect_character"])
+        self.assertEqual(self.requests[0].options, {
+            "macro_parameters": {"height": .5, "muscle": .5, "weight": .5},
+        })
+        self.assertEqual(self.requests[1].options, self.requests[0].options)
+        self.assertTrue(output.observed["morph_save_reopen_verified"])
         self.assertEqual(output.revision.project.revision, 2)
         self.assertEqual(output.geometry_state, "generated_unverified")
         self.assertEqual(self.store.load().geometry_state, "generated_unverified")
@@ -75,6 +94,55 @@ class HumanoidGenerationTests(unittest.TestCase):
         self.assertEqual(output.observed["reopened_bone_count"], 163)
         self.assertEqual(len(self.store.list_backups()), 1)
         self.assertIn("not passed", " ".join(self.store.load().export_readiness()))
+
+    def test_saved_nondefault_controls_are_sent_and_persisted(self):
+        changed = replace(
+            self.saved, parameters=(("height", .85), ("muscle", .2), ("weight", .9)),
+            revision=self.saved.revision + 1,
+        )
+        self.saved = self.store.save(changed, expected_revision=self.saved.revision)
+        result = self.run_generation()
+        self.assertEqual(self.requests[0].options["macro_parameters"], {
+            "height": .85, "muscle": .2, "weight": .9,
+        })
+        self.assertEqual(result.observed["macro_parameters_observed"]["weight"], .9)
+        self.assertEqual(self.store.load().parameters, self.saved.parameters)
+
+    def test_wrong_mpbf_macro_or_evaluated_shape_hash_does_not_commit(self):
+        for fault in ("macro_value", "reopened_hash"):
+            with self.subTest(fault=fault):
+                self.requests.clear()
+                def altered(job, **kwargs):
+                    result, folder = self.responses(job, **kwargs)
+                    if job.operation == "inspect_character":
+                        details = dict(result.details)
+                        if fault == "macro_value":
+                            details["macro_parameters_observed"] = {
+                                "height": .9, "muscle": .5, "weight": .5
+                            }
+                        else:
+                            details["macro_evaluated_sha256"] = "b" * 64
+                        return replace(result, details=details), folder
+                    return result, folder
+                with patch("ucc.jobs.humanoid_generation.BlenderJobRunner.run",
+                           side_effect=altered):
+                    with self.assertRaises(ValidationError):
+                        generate_humanoid(
+                            self.store, blender_exe=self.blender, worker_script=self.script,
+                            expected_project_id=self.saved.project_id,
+                            expected_revision=self.saved.revision,
+                        )
+                self.assertEqual(self.store.load(), self.saved)
+                self.assertFalse((self.store.root / "master").exists())
+
+    def test_regeneration_blocks_unmapped_parts_or_animations(self):
+        with self.assertRaisesRegex(ValidationError, "animation"):
+            current = self.store.load()
+            changed = replace(current, animations=("external-reference",),
+                              revision=current.revision + 1)
+            self.saved = self.store.save(changed, expected_revision=current.revision)
+            self.run_generation()
+        self.assertEqual(self.calls, [])
 
     def test_project_id_and_revision_checked_before_worker(self):
         with self.assertRaises(ProjectConflict):
