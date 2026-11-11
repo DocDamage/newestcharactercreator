@@ -85,7 +85,8 @@ class MasterPreviewContract(unittest.TestCase):
         details = {
             "staged_glb": "preview.glb", "selected_mesh_count": 1,
             "selected_vertex_count": 19000, "blender_version": "5.3.0",
-            "static_only": True, "textures_included": False,
+            "static_only": True, "evaluated_geometry_baked": True,
+            "textures_included": False,
             "animation_exported": False, "skinning_exported": False,
             "engine_import_verified": False,
         }
