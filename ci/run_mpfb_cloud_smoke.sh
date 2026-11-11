@@ -20,12 +20,12 @@ blender="$(find "$workdir" -maxdepth 3 -type f -name blender | head -n 1)"
 test -n "$blender" && test -x "$blender"
 "$blender" --background --version | head -n 5
 cd "$GITHUB_WORKSPACE"
-echo 'Installing MPFB via official Blender Extensions repository, isolated from any user machine'
+echo 'Installing MPFB via official Blender Extensions repository, isolated from any user machine'\necho 'Temporary online mode is used only for extension installation; generation stays offline.'
 "$blender" --command extension repo-add ucc_blender_org \
   --name 'Blender Extensions' --url 'https://extensions.blender.org/api/v1/extensions/'
-"$blender" --command extension sync
+"$blender" --online-mode --command extension sync
 "$blender" --command extension repo-info ucc_blender_org
-"$blender" --command extension install -s -e mpfb
+"$blender" --online-mode --command extension install -s -e mpfb
 "$blender" --command extension list | grep -i mpfb
 echo 'Generating ACTUAL humanoid mesh and rig; saving and reopening in a separate Blender process'
 result="$RUNNER_TEMP/ucc-mpfb-smoke"
