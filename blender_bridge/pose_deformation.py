@@ -57,7 +57,8 @@ def _pose_candidates(human: Any, rig: Any) -> list[str]:
         bone.name for bone in rig.data.bones
         if getattr(bone, "use_deform", False) and bone.parent is not None
     }
-    eligible.intersection_update({bone.name for bone in rig.pose.bones})
+    # bpy_prop_collection and a dict both expose pose bone names via keys().
+    eligible.intersection_update(set(rig.pose.bones.keys()))
     counts: dict[str, int] = defaultdict(int)
     for vertex in human.data.vertices:
         for assignment in vertex.groups:
