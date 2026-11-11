@@ -22,6 +22,7 @@ class CharacterPane(QWidget):
     generate_human_requested = Signal()
     preview_master_requested = Signal()
     refit_human_requested = Signal()
+    pose_check_requested = Signal()
 
     def __init__(self) -> None:
         super().__init__()
@@ -128,6 +129,15 @@ class CharacterPane(QWidget):
         self.apply_body.clicked.connect(self.refit_human_requested.emit)
         layout.addWidget(self.apply_body)
 
+        self.check_rig_pose = QPushButton("Test saved rig deformation in Blender...")
+        self.check_rig_pose.setToolTip(
+            "Uses a temporary Blender pose to measure real skinned vertex movement; "
+            "restores pose, never saves the .blend, and does not certify animations."
+        )
+        self.check_rig_pose.setEnabled(False)
+        self.check_rig_pose.clicked.connect(self.pose_check_requested.emit)
+        layout.addWidget(self.check_rig_pose)
+
         self.preview_master = QPushButton("Preview saved master in UCC...")
         self.preview_master.setToolTip(
             "Uses your installed Blender to export a temporary untextured static GLB "
@@ -150,6 +160,7 @@ class CharacterPane(QWidget):
         self.morph_box.setEnabled(active)
         self.generate.setEnabled(active)
         self.apply_body.setEnabled(False)
+        self.check_rig_pose.setEnabled(False)
         self.preview_master.setEnabled(False)
         self.open_master.setEnabled(False)
         if not active:
@@ -168,6 +179,7 @@ class CharacterPane(QWidget):
         self.geometry.setText(view.geometry_state.replace("_", " ").title())
         self.open_master.setEnabled(view.master_blend is not None)
         self.preview_master.setEnabled(view.master_blend is not None)
+        self.check_rig_pose.setEnabled(view.master_blend is not None)
         self.apply_body.setEnabled(view.master_blend is not None and
                                    view.geometry_state != "not_generated")
         for key, value in view.morphs:
