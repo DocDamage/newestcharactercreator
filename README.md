@@ -113,6 +113,15 @@ Or run \`ucc-desktop\`. No IDE is required. No third-party character assets, AI 
 
 The Qt workflow tests real widgets using \`QT_QPA_PLATFORM=offscreen\` on Windows/Linux. A passing offscreen test is not proof of GPU rendering or working MPFB in Blender.
 
+
+## Experimental Windows portable desktop alpha (no IDE required)
+
+The desktop now includes an **opt-in GitHub Actions Windows alpha builder**. It packages the actual PySide6 workstation into a Windows x64 `UCC-Desktop-Alpha.exe` folder, exercises a **real frozen-executable Qt plus character project save/reopen diagnostic**, then archives the executable and SHA-256 hash as an ephemeral GitHub Actions artifact. It does not bundle Blender, MPFB, Fab assets, checkpoints, characters, or game engines. The archive is for private QA, **not a public release or distribution license decision**.
+
+- [Windows alpha package setup and restrictions](docs/packaging/WINDOWS_ALPHA_README.md)
+- [Actions build workflow](.github/workflows/windows-alpha-package.yml) — after a successful build, open the workflow run and download `UCC-Desktop-Alpha-Windows-x64` under Artifacts.
+- The binary's `--self-test --self-test-report FILE.json` performs an actual Qt widget startup and temporary local project save/reopen; **it does not prove Blender/MPFB geometry, animation, GPU rendering or engine imports**.
+
 ## Read-only GLB geometry viewer (preview-only)
 
 The optional PySide6 desktop now supports **View → Preview local GLB model...** (Ctrl+Shift+M). It renders a sampled subset of actual embedded glTF 2.0 triangle geometry with Qt's CPU painter. Orbit, pan, zoom and reset work without OpenGL drivers or third-party asset packs. The parser validates container relationships, transform bounds, vertex/index accessors and a hard aggregate face limit. It **does not** skin meshes, run motion, evaluate morphs, import materials or certify engine compatibility; this viewer is not the eventual animated character editor. See [GLB static preview](docs/integration/glb-static-preview.md).
