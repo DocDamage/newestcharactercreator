@@ -124,8 +124,7 @@ class KeyframeContractTests(unittest.TestCase):
         self.assertEqual(result["keyframes"], [1, 13, 25])
         self.assertEqual([x["frame"] for x in result["sampled_frames"]],
                          [1, 7, 13, 19, 25])
-        self.assertEqual([frame for frame, _ in self.bone.keys]
-                         if False else [frame for frame, _ in self.bpy.bone.keys],
+        self.assertEqual([frame for frame, _ in self.bpy.bone.keys],
                          [1, 13, 25])
         self.assertGreater(result["sampled_frames"][2]["moved_vertices"], 16)
         self.assertEqual(result["sampled_frames"][0]["evaluated_sha256"],
