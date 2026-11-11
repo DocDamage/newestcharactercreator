@@ -135,6 +135,7 @@ class ProbeUnitContracts(unittest.TestCase):
             def matrix_basis(self, basis):
                 pass
         self.blender.arm = BrokenBasis("Arm")
+        self.blender.rig.pose.bones["Arm"] = self.blender.arm
         with self.assertRaisesRegex(PoseProbeError, "restore"):
             self.probe()
 
