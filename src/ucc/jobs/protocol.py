@@ -10,7 +10,7 @@ from ucc.core.errors import ValidationError
 from ucc.core.models import safe_relative_path
 
 PROTOCOL_VERSION = 1
-SUPPORTED_OPERATIONS = {"inspect_environment", "inspect_character", "create_human"}
+SUPPORTED_OPERATIONS = {"inspect_environment", "inspect_character", "create_human", "export_preview_glb"}
 MAX_REQUEST_BYTES = 256 * 1024
 
 
@@ -47,8 +47,10 @@ class JobRequest:
         _check_json(self.as_dict())
         if self.operation == "create_human" and self.options:
             raise ValidationError("MPFB creation options are not verified yet; use defaults")
-        if self.operation == "inspect_character" and not self.input_project:
-            raise ValidationError("inspect_character needs input_project")
+        if self.operation in {"inspect_character", "export_preview_glb"} and not self.input_project:
+            raise ValidationError(f"{self.operation} needs input_project")
+        if self.operation == "export_preview_glb" and self.options:
+            raise ValidationError("Preview export uses fixed, offline safe settings")
 
     @classmethod
     def new(cls, operation: str, **kwargs: Any) -> "JobRequest":
