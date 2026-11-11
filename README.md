@@ -1,6 +1,12 @@
 # Universal AI Character Creator
 
-**Project stage: preparation and environment validation.** This repository is a development foundation, not a finished character creator.
+**Project stage: functional PySide6 desktop alpha, versioned core and verified Linux Blender/MPFB generation.** This is not yet a complete interactive rigged-character editor or a certified engine export pipeline.
+
+## Current verified milestone (November 11, 2026)
+
+[Pull request #24](https://github.com/DocDamage/newestcharactercreator/pull/24) removes the broken GitHub Actions runner-context expression and adds a **real Linux production-worker verification**, with evidence at [Actions run #43082628064](https://github.com/DocDamage/newestcharactercreator/actions/runs/43082628064): Blender 5.3.0 with the official installed MPFB extension generated an editable `.blend` master (19,158 new mesh vertices, 163 reopened armature bones). A separate Blender worker process reopened an identical master successfully. The core/preflight CI checks also passed.
+
+**Not verified:** user's Windows Blender 5.3 + MPFB installation, specific MPFB release version (the CI registry install is not version-pinned), animated skinning, in-app model generation/morph editing, Godot/Unity/Unreal imports. **The feature remains on the PR branch until merged.** See [current evidence/status](docs/STATUS.md). Older sections below describe incremental history, not the current readiness gate.
 
 ## Goal
 
@@ -62,7 +68,7 @@ py -3 -m ucc slots
 py -3 -m ucc plan-sprites --directions 8 --clip idle:8
 ```
 
-Included: strict character/project data model, semantic body-part slots, reversible metadata edits, atomic revision-checked project saves, SQLite asset-provenance ledger, sprite camera/frame planner, and a cancellable Blender subprocess protocol. Its `blender_bridge/entrypoint.py` is an **untested real Blender integration candidate**. No physical character geometry, animation export, or engine import is claimed until [UCC-P0-001](https://github.com/DocDamage/newestcharactercreator/issues/2) passes on Windows.
+Included: strict character/project data model, semantic body-part slots, reversible metadata edits, atomic revision-checked project saves, SQLite asset-provenance ledger, sprite camera/frame planner, and a cancellable Blender subprocess protocol. Its `blender_bridge/entrypoint.py` now has successful **Linux** integration evidence in PR #24; Windows Blender/MPFB remains unverified. No physical character geometry, animation export, or engine import is claimed until [UCC-P0-001](https://github.com/DocDamage/newestcharactercreator/issues/2) passes on Windows.
 
 **Unit tests are not Blender tests.** The real create/save/reopen test remains in `Stage0_Starter/` and `Development_Guardrails/`. Source checkpoints, purchased Fab animations, evidence containing personal paths, and project masters remain excluded from this public repo.
 
@@ -74,7 +80,7 @@ These are implemented independently of Blender (no example character artwork is 
 - With the optional free Pillow library: \`py -3 -m pip install "Pillow>=11,<13"\`, then \`py -3 -m ucc pack-sprites --frames-dir "C:\UCC\ExistingFrames" --output-dir "C:\UCC\Atlases" --directions 8 --width 128 --height 128 --clip idle:8\`. The input files must match the generated frame plan. The tool produces real RGBA PNG sheets, a manifest with frame coordinates and source hashes, and rolls back partial output on failure.
 - \`py -3 -m ucc probe-ai\` checks only loopback local ComfyUI and Stable Diffusion WebUI HTTP APIs, returning availability and limited capability metadata. It makes no POST requests, uploads or downloads, and does not reveal model filenames. See [AI probes](docs/integration/ai-probes.md).
 
-The Stage 0 real Blender smoke remains the blocker. New pure-Python tests cannot replace it.
+The **Windows** Stage 0 real Blender smoke remains a blocker. New pure-Python tests cannot replace it.
 
 
 ### GLB export preflight, not an engine certification
@@ -97,7 +103,7 @@ Replace paths and URL with real user-owned data; the example above is intentiona
 
 ## MPFB HumanService Stage 0 route (pending real Blender test)
 
-The Stage 0 and production Blender scripts now prefer MPFB's officially documented `HumanService.create_human()` and `HumanService.add_builtin_rig()` scripting API instead of UI-operator `poll()` in background mode. A real human **and** built-in default armature must be saved and reopened in a separate Blender subprocess. The included service adapter is tested with mock extension objects, not actual Blender/MPFB; do not mark issue #2 complete from CI alone. See [integration notes](docs/integration/mpfb-humanservice.md).
+The Stage 0 and production Blender scripts now prefer MPFB's officially documented `HumanService.create_human()` and `HumanService.add_builtin_rig()` scripting API instead of UI-operator `poll()` in background mode. A real human **and** built-in default armature must be saved and reopened in a separate Blender subprocess. The included service adapter passed a real **Linux** Blender/MPFB workflow in PR #24; mock-based tests alone are insufficient, and issue #2 remains open pending real Windows verification. See [integration notes](docs/integration/mpfb-humanservice.md).
 
 
 ## New: standalone UCC desktop development workstation

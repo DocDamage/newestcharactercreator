@@ -10,6 +10,7 @@ on:
       - 'blender_bridge/**'
       - 'Stage0_Starter/blender_bridge/**'
       - 'Stage0_Starter/tools/run_mpfb_smoke.py'
+      - 'ci/verify_production_worker.py'
   push:
     branches:
       - main
@@ -18,6 +19,7 @@ on:
       - 'blender_bridge/**'
       - 'Stage0_Starter/blender_bridge/**'
       - 'Stage0_Starter/tools/run_mpfb_smoke.py'
+      - 'ci/verify_production_worker.py'
 
 permissions:
   contents: read
@@ -31,11 +33,18 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
-      BLENDER_USER_CONFIG: ${{ runner.temp }}/ucc-blender-config
-      BLENDER_USER_SCRIPTS: ${{ runner.temp }}/ucc-blender-scripts
       PYTHONUNBUFFERED: '1'
     steps:
       - uses: actions/checkout@v4
+      # Job-level env cannot reference the runner context. Set the isolated
+      # paths from RUNNER_TEMP in a running step and persist them for later steps.
+      - name: Configure isolated Blender extension directories
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'BLENDER_USER_CONFIG=%s\n' "$RUNNER_TEMP/ucc-blender-config" >> "$GITHUB_ENV"
+          printf 'BLENDER_USER_SCRIPTS=%s\n' "$RUNNER_TEMP/ucc-blender-scripts" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/ucc-blender-config" "$RUNNER_TEMP/ucc-blender-scripts"
       - name: Download Blender 5.3.0 and check official SHA-256
         shell: bash
         run: |
@@ -94,6 +103,13 @@ jobs:
           print('LINUX SMOKE: actual Blender-produced human + rig saved and reopened')
           print('THIS DOES NOT VERIFY: Windows 5.3, deformation, animation retargeting, or engine import')
           PY
+      - name: Verify production Blender JSON worker creates and reopens a humanoid
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ci/verify_production_worker.py \
+            --blender "$BLENDER_EXE" \
+            --outdir "$RUNNER_TEMP/ucc-production-worker" --timeout 300
       - name: Retain JSON diagnostics only; no assets or .blend in artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -103,5 +119,6 @@ jobs:
             ${{ runner.temp }}/ucc-mpfb-smoke/summary.json
             ${{ runner.temp }}/ucc-mpfb-smoke/mpfb_create_result.json
             ${{ runner.temp }}/ucc-mpfb-smoke/reopen_result.json
+            ${{ runner.temp }}/ucc-production-worker/production_summary.json
           if-no-files-found: ignore
           retention-days: 3

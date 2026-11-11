@@ -1,6 +1,6 @@
-# UCC implementation status (v0.1 alpha backend)
+# UCC implementation status (v0.1 alpha backend — historical)
 
-This file reports **code verified outside the user's Windows installation**. It does not assert Blender 5.3, MPFB, Godot, Unreal, or Unity have been tested.
+> **Historical v0.1 backend snapshot — not the current feature inventory.** After this snapshot, the PySide6 desktop, static GLB preview, and Windows portable alpha were merged. The actual Linux Blender 5.3 + official MPFB generation and production worker save/reopen also passed in [PR #24](https://github.com/DocDamage/newestcharactercreator/pull/24), [run #43082628064](https://github.com/DocDamage/newestcharactercreator/actions/runs/43082628064). For current, evidence-linked status and the still-unverified Windows gate, use [docs/STATUS.md](docs/STATUS.md). The following table is retained for implementation history.\n\nThis file reports **code verified outside the user's Windows installation**. It does not assert Blender 5.3, MPFB, Godot, Unreal, or Unity have been tested.
 
 | Feature | Implemented | Verified proof | Remaining boundary |
 | --- | --- | --- | --- |
