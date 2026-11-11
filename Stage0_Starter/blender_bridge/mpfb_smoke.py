@@ -33,7 +33,8 @@ def create_human(blend_path: Path) -> dict:
     service, module = locate_human_service()
     details = create_human_with_rig(bpy, service, "default")
     blend_path.parent.mkdir(parents=True, exist_ok=True)
-    bpy.ops.wm.save_as_mainfile(filepath=str(blend_path))
+    # Stage 0 and production both produce canonical, uncompressed Blender bytes.
+    bpy.ops.wm.save_as_mainfile(filepath=str(blend_path), compress=False)
     if not blend_path.is_file() or blend_path.stat().st_size < 16:
         raise RuntimeError("MPFB human and rig were created but .blend was not saved")
     return {**details, "mpfb_service_module": module,
