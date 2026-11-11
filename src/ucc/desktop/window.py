@@ -26,11 +26,12 @@ from ucc.sprites.atlas import pack_frames
 from ucc.sprites.plan import CameraProfile, build_plan
 from ucc.preview.glb_mesh import PreviewMesh, load_glb_preview
 from ucc.jobs.humanoid_generation import HumanoidGeneration
+from ucc.jobs.body_revision import BodyRevisionResult
 from ucc.jobs.master_preview import MasterPreview
 
 from .background import BackgroundJobs
 from .controller import DesktopController, ProjectView
-from .generation import generate_from_desktop, preview_master_from_desktop
+from .generation import generate_from_desktop, preview_master_from_desktop, refit_from_desktop
 from .panes import AnimationPane, CharacterPane, ToolsPane
 from .mesh_viewer import MeshViewer
 
@@ -124,6 +125,7 @@ class MainWindow(QMainWindow):
         self.character.morph_requested.connect(self.set_morph)
         self.character.open_master_requested.connect(self.open_master_in_blender)
         self.character.generate_human_requested.connect(self.generate_humanoid)
+        self.character.refit_human_requested.connect(self.apply_saved_body)
         self.character.preview_master_requested.connect(self.preview_saved_master)
         self.animations.inspect_requested.connect(self.inspect_animation)
         self.animations.index_requested.connect(self.index_animation)
@@ -272,13 +274,15 @@ class MainWindow(QMainWindow):
             self.undo_action.setEnabled(not busy and state.can_undo)
             self.redo_action.setEnabled(not busy and state.can_redo)
         self.cancel_generation_action.setEnabled(
-            busy and self._work_kind in {"generate_humanoid", "saved_master_preview"}
+            busy and self._work_kind in {"generate_humanoid", "saved_master_preview", "body_refit"}
         )
         self.statusBar().showMessage(
             ("Generating real MPFB humanoid in Blender..."
              if self._work_kind == "generate_humanoid" else
+             "Refitting existing MPFB human on a private Blender copy..."
+             if self._work_kind == "body_refit" else
              "Converting saved Blender master to a static GLB preview...")
-            if busy and self._work_kind in {"generate_humanoid", "saved_master_preview"}
+            if busy and self._work_kind in {"generate_humanoid", "saved_master_preview", "body_refit"}
             else ("Working on local files..." if busy else "Local task finished")
         )
 
@@ -326,6 +330,41 @@ class MainWindow(QMainWindow):
                 "MPFB evaluated shape survived a separate Blender reopen. "
                 "Geometry state: generated_unverified. This is NOT live morph editing, "
                 "verified animation skinning or a Godot/Unity/Unreal export."
+            )
+        elif self._work_kind == "body_refit":
+            assert isinstance(result, BodyRevisionResult)
+            if (self.controller.store is None or not self.controller.has_project or
+                    self.controller.require_project().project_id != result.revision.project.project_id):
+                self._error("Character selection changed; inspect staged body revision manually")
+                return
+            try:
+                self.controller.open(self.controller.store.root)
+                current = self.controller.require_project()
+                if (current.revision != result.revision.project.revision or
+                        current.master_blend != result.revision.project.master_blend):
+                    raise ValidationError("Another editor changed the saved character after refit")
+                self._clear_preview()
+                self.refresh_project()
+            except (UCCError, OSError, ValueError) as exc:
+                self._error(
+                    f"Body refit was saved, but UI refresh failed: {type(exc).__name__}: {exc}"
+                )
+                return
+            state = result.observed
+            self.log.setPlainText(
+                "EXISTING MPFB MASTER MORPHED, RIG REFITTED AND REOPENED.\n"
+                f"Saved revision: {result.revision.project.revision}\n"
+                f"Previous master SHA-256: {state['previous_master_sha256']}\n"
+                f"New master SHA-256: {result.revision.sha256}\n"
+                "Applied controls: " + ", ".join(
+                    f"{key}={value:.3f}" for key, value in
+                    sorted(state["macro_parameters_observed"].items())
+                ) + "\n"
+                f"Existing rig bones retained: {state['reopened_bones']}\n"
+                f"Weighted vertices retained: {state['weighted_vertices']}\n"
+                "Both body coordinates and rig weights survived a fresh Blender reopen. "
+                "The prior master is preserved. Live motion, retargeting and game-engine "
+                "imports are NOT yet certified."
             )
         elif self._work_kind == "saved_master_preview":
             assert isinstance(result, MasterPreview)
@@ -426,6 +465,66 @@ class MainWindow(QMainWindow):
             lambda: generate_from_desktop(
                 store, blender_exe=exe, project_id=snapshot.project_id,
                 revision=snapshot.revision, cancel=cancel,
+            ),
+            cancel=cancel,
+        )
+
+    def apply_saved_body(self) -> None:
+        """Explicit staged MPFB macro refit; never overwrite the original master."""
+        if self.jobs.busy:
+            self._error("Another local task is still running")
+            return
+        if not self.controller.has_project or self.controller.store is None:
+            self._error("Open a character project before applying saved body changes")
+            return
+        if self.controller.dirty:
+            self._error("Save all body slider changes before refitting the master")
+            return
+        snapshot = self.controller.require_project()
+        if snapshot.master_blend is None:
+            self._error("Generate a real MPFB humanoid master before applying changes")
+            return
+        if snapshot.parts or snapshot.animations:
+            self._error("Existing-master refit with attached parts or animations is not validated")
+            return
+        parameters = dict(snapshot.parameters)
+        description = ", ".join(
+            f"{key}={parameters[key]:.3f}" for key in ("height", "muscle", "weight")
+        )
+        answer = QMessageBox.question(
+            self, "Refit existing Blender humanoid",
+            f"Apply saved MPFB body controls ({description}) to a COPY of the existing "
+            "Blender master and refit its original rig?\n\n"
+            "The previous master remains immutable. A new revision is saved only "
+            "after validating real geometry, vertex weights, rig binding, and a "
+            "fresh Blender reopen. There is no live animation or engine-import "
+            "certification. Continue?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        executable = self._blender_executable
+        if executable is None or executable.is_symlink() or not executable.is_file():
+            file_filter = "Blender executable (*.exe);;All files (*)" if os.name == "nt" else "All files (*)"
+            selected, _ = QFileDialog.getOpenFileName(
+                self, "Choose installed Blender executable for MPFB refit", "", file_filter
+            )
+            if not selected:
+                return
+            executable = Path(selected)
+            if executable.is_symlink() or not executable.is_file():
+                self._error("Select an existing Blender executable")
+                return
+            self._blender_executable = executable
+        cancel = Event()
+        store = self.controller.store
+        self._submit(
+            "body_refit",
+            lambda: refit_from_desktop(
+                store, blender_exe=executable, project_id=snapshot.project_id,
+                revision=snapshot.revision, master_blend=snapshot.master_blend,
+                cancel=cancel,
             ),
             cancel=cancel,
         )
