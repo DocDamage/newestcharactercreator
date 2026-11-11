@@ -212,6 +212,7 @@ class AnimationPane(QWidget):
     inspect_requested = Signal(str)
     index_requested = Signal(str, str, str, str, str)
     local_bvh_requested = Signal(str, str, str, str, bool)
+    multi_bvh_requested = Signal(str, str, str, str, bool, str)
     refresh_requested = Signal()
 
     def __init__(self) -> None:
@@ -270,6 +271,36 @@ class AnimationPane(QWidget):
             row.addWidget(button)
         layout.addLayout(row)
         layout.addWidget(self.test_local_bvh)
+
+        self.source_axes = QComboBox()
+        self.source_axes.addItem(
+            "Choose BVH source up-axis for multi-bone rest check...", ""
+        )
+        self.source_axes.addItem(
+            "BVH Y-up → Blender Z-up", "Y_UP_TO_Z_UP"
+        )
+        self.source_axes.addItem(
+            "BVH Z-up (same axes as Blender)", "Z_UP_IDENTITY"
+        )
+        self.source_axes.setToolTip(
+            "Source coordinate preset must be selected explicitly. "
+            "Direction and hierarchy must match; bone roll remains uncalibrated."
+        )
+        layout.addWidget(self.source_axes)
+        self.test_multi_bvh = QPushButton(
+            "Test 2–4 bone BVH chain against saved MPFB rig..."
+        )
+        self.test_multi_bvh.setToolTip(
+            "Requires every BVH joint to match an existing weighted MPFB bone, "
+            "direct parent links and aligned rest directions. Source motion "
+            "is only local Euler deltas; not full retargeting or engine import."
+        )
+        self.test_multi_bvh.clicked.connect(lambda: self.multi_bvh_requested.emit(
+            self.selected.text(), self.provider.text(), self.license.text(),
+            self.uri.text(), self.local_preview_review.isChecked(),
+            self.source_axes.currentData(),
+        ))
+        layout.addWidget(self.test_multi_bvh)
         self.catalog = QTableWidget(0, 4)
         self.catalog.setHorizontalHeaderLabels(["Asset ID", "Format", "Declared clips", "Status"])
         self.catalog.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
