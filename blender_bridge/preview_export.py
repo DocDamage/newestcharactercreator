@@ -40,14 +40,34 @@ def export_static_glb(bpy: Any, source: Path, destination: Path) -> dict:
     ):
         raise PreviewExportError("No bounded, substantial humanoid meshes in saved master")
 
-    # All adjustments below affect only this in-memory Blender subprocess.
-    # The actual source .blend is NEVER saved by the preview operation.
+    # A plain export with export_morph=False can export the original Basis,
+    # ignoring active MPFB shape keys. Bake each *evaluated* mesh into a new,
+    # unrigged in-memory object, so GLB positions reflect the current phenotype.
+    # The original scene and saved .blend are never written to disk.
+    bpy.context.view_layer.update()
+    graph = bpy.context.evaluated_depsgraph_get()
+    baked = []
+    total_baked = 0
+    for index, original in enumerate(meshes):
+        evaluated = original.evaluated_get(graph)
+        mesh = bpy.data.meshes.new_from_object(
+            evaluated, preserve_all_data_layers=False, depsgraph=graph,
+        )
+        total_baked += len(mesh.vertices)
+        if not 100 < total_baked <= MAX_SELECTED_VERTICES:
+            bpy.data.meshes.remove(mesh)
+            raise PreviewExportError("Evaluated Blender preview mesh exceeds safe limits")
+        temporary = bpy.data.objects.new(f"UCC_Evaluated_Static_{index}", mesh)
+        scene.collection.objects.link(temporary)
+        temporary.matrix_world = original.matrix_world.copy()
+        temporary.hide_set(False)
+        baked.append(temporary)
+
     for obj in scene.objects:
         obj.select_set(False)
-    for obj in meshes:
-        obj.hide_set(False)
+    for obj in baked:
         obj.select_set(True)
-    bpy.context.view_layer.objects.active = meshes[0]
+    bpy.context.view_layer.objects.active = baked[0]
 
     result = bpy.ops.export_scene.gltf(
         filepath=str(destination),
@@ -80,8 +100,9 @@ def export_static_glb(bpy: Any, source: Path, destination: Path) -> dict:
 
     return {
         "staged_glb": destination.name,
-        "selected_mesh_count": len(meshes),
-        "selected_vertex_count": count,
+        "selected_mesh_count": len(baked),
+        "selected_vertex_count": total_baked,
+        "evaluated_geometry_baked": True,
         "preview_bytes": size,
         "static_only": True,
         "textures_included": False,
