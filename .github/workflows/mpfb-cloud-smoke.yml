@@ -1,12 +1,23 @@
 name: MPFB 2.0.18 / Blender 5.3 Linux smoke (experimental)
 
-# This is a one-time branch-level compatibility investigation, not proof of the
-# user's Windows installation. After merging, it remains manually runnable.
+# Integration investigation only. Pull requests touching this workflow or MPFB
+# bridge can run a real Linux smoke; does not prove Windows compatibility.
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/mpfb-cloud-smoke.yml'
+      - 'blender_bridge/**'
+      - 'Stage0_Starter/blender_bridge/**'
+      - 'Stage0_Starter/tools/run_mpfb_smoke.py'
   push:
     branches:
-      - feat/mpfb-humanservice-stage0
+      - main
+    paths:
+      - '.github/workflows/mpfb-cloud-smoke.yml'
+      - 'blender_bridge/**'
+      - 'Stage0_Starter/blender_bridge/**'
+      - 'Stage0_Starter/tools/run_mpfb_smoke.py'
 
 permissions:
   contents: read
