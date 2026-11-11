@@ -157,7 +157,26 @@ class BlenderJobRunner:
         if outcome.timed_out:
             raise WorkerFailure(f"Blender timed out; staged logs: {output_dir}")
         if outcome.return_code != 0:
-            raise WorkerFailure(f"Blender failed ({outcome.return_code}); {outcome.stderr_tail[-900:]}; logs: {output_dir}")
+            # The Blender bridge catches runtime exceptions and writes a
+            # versioned JSON error, even when Blender exits nonzero. Surface
+            # that actionable cause rather than only an empty stderr tail.
+            error_detail = ""
+            try:
+                if (result.is_file() and not result.is_symlink() and
+                        result.stat().st_size <= MAX_REQUEST_BYTES):
+                    failure = JobResult.from_dict(
+                        json.loads(result.read_text(encoding="utf-8"))
+                    )
+                    if (failure.job_id == job.job_id and
+                            failure.operation == job.operation and
+                            failure.status == "error"):
+                        error_detail = str(failure.error)[:1000]
+            except (OSError, ValueError, TypeError):
+                pass
+            raise WorkerFailure(
+                f"Blender failed ({outcome.return_code}): {error_detail}; "
+                f"{outcome.stderr_tail[-500:]}; staged logs: {output_dir}"
+            )
         if not result.is_file() or result.stat().st_size > MAX_REQUEST_BYTES:
             raise WorkerFailure("Worker reported success but result was missing/oversized")
         try:
