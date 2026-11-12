@@ -130,21 +130,21 @@ class MultiBoneFixtureTests(unittest.TestCase):
     def test_manual_reviewed_three_bone_names_preserve_parent_and_skin_evidence(self):
         source = self.source.with_name("ci-only-review-roles.bvh")
         header = (
-            "HIERARCHY\\nROOT SourceNeck02\\n{\\nOFFSET 0 0 0\\n"
-            "CHANNELS 3 Xrotation Yrotation Zrotation\\n"
-            "JOINT SourceNeck03\\n{\\nOFFSET 0 0.05 0\\n"
-            "CHANNELS 3 Xrotation Yrotation Zrotation\\n"
-            "JOINT SourceHead\\n{\\nOFFSET 0 0.033 0.017\\n"
-            "CHANNELS 3 Xrotation Yrotation Zrotation\\n"
-            "End Site\\n{\\nOFFSET 0 0.1 0\\n}\\n}\\n}\\n}\\n"
-            "MOTION\\nFrames: 25\\nFrame Time: 0.041666667\\n"
+            "HIERARCHY\nROOT SourceNeck02\n{\nOFFSET 0 0 0\n"
+            "CHANNELS 3 Xrotation Yrotation Zrotation\n"
+            "JOINT SourceNeck03\n{\nOFFSET 0 0.05 0\n"
+            "CHANNELS 3 Xrotation Yrotation Zrotation\n"
+            "JOINT SourceHead\n{\nOFFSET 0 0.033 0.017\n"
+            "CHANNELS 3 Xrotation Yrotation Zrotation\n"
+            "End Site\n{\nOFFSET 0 0.1 0\n}\n}\n}\n}\n"
+            "MOTION\nFrames: 25\nFrame Time: 0.041666667\n"
         )
         rows = [
             " ".join(f"{x * math.sin(math.pi * i / 24):.7f} 0 0"
                      for x in (9, 14, 19))
             for i in range(25)
         ]
-        source.write_text(header + "\\n".join(rows) + "\\n", encoding="utf-8")
+        source.write_text(header + "\n".join(rows) + "\n", encoding="utf-8")
         motion = read_local_bvh(source)
         mapping = [
             {"source": "SourceNeck02", "target": "neck02"},
