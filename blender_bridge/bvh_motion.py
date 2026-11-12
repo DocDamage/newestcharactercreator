@@ -7,7 +7,7 @@ certification. The original BVH is only read, never rewritten.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import math
 from pathlib import Path
 
@@ -27,6 +27,9 @@ class LocalBvhMotion:
     frames: int
     rotations: dict[str, tuple[tuple[float, float, float], ...]]
     source_bones: tuple[str, ...]
+    parents: dict[str, str | None] = field(default_factory=dict)
+    offsets: dict[str, tuple[float, float, float]] = field(default_factory=dict)
+    channel_orders: dict[str, tuple[str, ...]] = field(default_factory=dict)
 
     def eligible_rotation(self, preferred_names: list[str]) -> tuple[str, str, tuple[tuple[float, float, float], ...]]:
         """Return one explicit matching MPFB bone, not inferred Mixamo/UE aliases."""
@@ -78,6 +81,9 @@ def read_local_bvh(source: Path) -> LocalBvhMotion:
     stack: list[str] = []
     pending: str | None = None
     bones: list[str] = []
+    parents: dict[str, str | None] = {}
+    offsets: dict[str, tuple[float, float, float]] = {}
+    channel_orders: dict[str, tuple[str, ...]] = {}
     channels: list[tuple[str, tuple[str, ...], int]] = []
     offset = 0
     for line in lines[1:motion_at]:
@@ -88,6 +94,9 @@ def read_local_bvh(source: Path) -> LocalBvhMotion:
                 raise LocalBvhError("Unsupported or ambiguously named BVH joint")
             if name.casefold() in {item.casefold() for item in bones}:
                 raise LocalBvhError("Duplicate BVH joint names are not permitted")
+            if stack and stack[-1] == "#end_site":
+                raise LocalBvhError("BVH joint cannot descend from End Site")
+            parents[name.casefold()] = stack[-1].casefold() if stack else None
             bones.append(name)
             if len(bones) > MAX_SOURCE_BONES:
                 raise LocalBvhError("Too many source BVH joints")
@@ -119,19 +128,35 @@ def read_local_bvh(source: Path) -> LocalBvhMotion:
                 "Xposition", "Yposition", "Zposition",
             } for name in names):
                 raise LocalBvhError("Unsupported BVH channel type")
+            if stack[-1].casefold() in channel_orders:
+                raise LocalBvhError("BVH bone has multiple CHANNELS declarations")
+            channel_orders[stack[-1].casefold()] = names
             channels.append((stack[-1], names, offset))
             offset += len(names)
             if offset > MAX_CHANNELS:
                 raise LocalBvhError("Too many BVH animation channels")
         elif line.startswith("OFFSET "):
-            if len(line.split()) != 4:
+            if len(line.split()) != 4 or not stack:
                 raise LocalBvhError("Malformed BVH bone offset")
+            try:
+                triplet = tuple(float(x) for x in line.split()[1:])
+            except ValueError as exc:
+                raise LocalBvhError("Non-numeric BVH bone offset") from exc
+            if any(not math.isfinite(v) or abs(v) > 1e6 for v in triplet):
+                raise LocalBvhError("Non-finite/extreme BVH rest offset")
+            if stack[-1] != "#end_site":
+                key = stack[-1].casefold()
+                if key in offsets:
+                    raise LocalBvhError("Duplicate BVH rest offset")
+                offsets[key] = triplet
         else:
             raise LocalBvhError("Unknown BVH hierarchy element")
     if stack or pending is not None or not bones or not channels:
         raise LocalBvhError("BVH hierarchy is not fully closed")
     if any(name not in {row[0] for row in channels} for name in bones):
         raise LocalBvhError("BVH joint missing its channel declaration")
+    if any(name.casefold() not in offsets for name in bones):
+        raise LocalBvhError("BVH source joint missing rest offset")
     frame_line = lines[motion_at + 1]
     time_line = lines[motion_at + 2]
     if not frame_line.startswith("Frames:") or not time_line.startswith("Frame Time:"):
@@ -174,5 +199,5 @@ def read_local_bvh(source: Path) -> LocalBvhMotion:
             collected[name.casefold()].append(angles)
     return LocalBvhMotion(
         dt, frames, {key: tuple(angles) for key, angles in collected.items()},
-        tuple(bones),
+        tuple(bones), parents, offsets, channel_orders,
     )

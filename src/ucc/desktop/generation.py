@@ -35,6 +35,7 @@ def bundled_worker_path() -> Path:
     timeline = worker.parent / "timeline_animation.py"
     bvh_parser = worker.parent / "bvh_motion.py"
     bvh_probe = worker.parent / "bvh_clip_probe.py"
+    multi_chain = worker.parent / "bvh_multichain.py"
     if (not worker.is_file() or worker.is_symlink()
             or not service.is_file() or service.is_symlink()
             or not preview.is_file() or preview.is_symlink()
@@ -43,7 +44,8 @@ def bundled_worker_path() -> Path:
             or not pose.is_file() or pose.is_symlink()
             or not timeline.is_file() or timeline.is_symlink()
             or not bvh_parser.is_file() or bvh_parser.is_symlink()
-            or not bvh_probe.is_file() or bvh_probe.is_symlink()):
+            or not bvh_probe.is_file() or bvh_probe.is_symlink()
+            or not multi_chain.is_file() or multi_chain.is_symlink()):
         raise ValidationError(
             "Blender worker bridge is unavailable. Run from the repo checkout "
             "or a complete Windows alpha archive."
@@ -139,10 +141,12 @@ def test_local_bvh_from_desktop(
     revision: int,
     master_blend: str,
     cancel: Event,
+    multi_axis_profile: str | None = None,
 ) -> LocalBvhClipCheck:
     return check_selected_bvh(
         store, blender_exe=blender_exe, worker_script=bundled_worker_path(),
         source_bvh=source_bvh, permission=permission,
         expected_project_id=project_id, expected_revision=revision,
         expected_master_blend=master_blend, cancel=cancel, timeout_s=300,
+        multi_axis_profile=multi_axis_profile,
     )

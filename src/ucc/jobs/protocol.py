@@ -11,7 +11,7 @@ from ucc.core.models import safe_relative_path
 from .phenotype import validate_macro_parameters
 
 PROTOCOL_VERSION = 1
-SUPPORTED_OPERATIONS = {"inspect_environment", "inspect_character", "create_human", "export_preview_glb", "refit_human", "verify_skin_deformation", "verify_keyframed_timeline", "verify_local_bvh_motion"}
+SUPPORTED_OPERATIONS = {"inspect_environment", "inspect_character", "create_human", "export_preview_glb", "refit_human", "verify_skin_deformation", "verify_keyframed_timeline", "verify_local_bvh_motion", "verify_multi_bvh_chain"}
 MAX_REQUEST_BYTES = 256 * 1024
 
 
@@ -64,11 +64,16 @@ class JobRequest:
         if self.operation in {"verify_skin_deformation", "verify_keyframed_timeline", "verify_local_bvh_motion"}:
             if self.options:
                 raise ValidationError("Animation diagnostic uses fixed non-editable test settings")
+        if self.operation == "verify_multi_bvh_chain":
+            if set(self.options) != {"axis_profile"} or self.options["axis_profile"] not in (
+                "Y_UP_TO_Z_UP", "Z_UP_IDENTITY"
+            ):
+                raise ValidationError("Multi-bone BVH requires one fixed, explicit up-axis profile")
         if self.operation == "refit_human":
             if set(self.options) != {"macro_parameters"}:
                 raise ValidationError("refit_human permits only saved MPFB macro parameters")
             validate_macro_parameters(self.options["macro_parameters"])
-        if self.operation in {"inspect_character", "export_preview_glb", "refit_human", "verify_skin_deformation", "verify_keyframed_timeline", "verify_local_bvh_motion"} and not self.input_project:
+        if self.operation in {"inspect_character", "export_preview_glb", "refit_human", "verify_skin_deformation", "verify_keyframed_timeline", "verify_local_bvh_motion", "verify_multi_bvh_chain"} and not self.input_project:
             raise ValidationError(f"{self.operation} needs input_project")
         if self.operation == "export_preview_glb" and self.options:
             raise ValidationError("Preview export uses fixed, offline safe settings")

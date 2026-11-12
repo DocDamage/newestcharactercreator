@@ -186,6 +186,47 @@ class LocalBvhPreviewContractTests(unittest.TestCase):
             self.invoke(expected_revision=99)
         self.assertEqual(self.calls, 0)
 
+    def test_multibone_job_preserves_rights_and_checks_real_evidence_contract(self):
+        # Synthetic-only multi-bone frame/rig report; independent real Blender
+        # CI is what proves actual neck03 -> head deformation.
+        data = report(self.source)
+        data.update({
+            "status": "REAL_MPFB_MULTIBONE_BVH_CHAIN_GEOMETRY_MEASURED",
+            "axis_profile": "Y_UP_TO_Z_UP",
+            "rest_direction_alignment_verified": True,
+            "rest_length_scale_measured": True,
+            "rest_scale_consistency_verified": False,
+            "relative_rest_length_scale": .99,
+            "bone_roll_calibrated": False,
+            "mapped_bone_count": 2,
+            "mapped_bones": [
+                {"source": "neck03", "target": "neck03",
+                 "parent": None, "weighted_vertices": 110,
+                 "max_delta_degrees": 10.0, "rest_alignment_cos": None},
+                {"source": "head", "target": "head",
+                 "parent": "neck03", "weighted_vertices": 450,
+                 "max_delta_degrees": 20.0, "rest_alignment_cos": .99},
+            ],
+            "per_bone_deformation": [
+                {"bone": "neck03", "moved_vertices": 200,
+                 "max_displacement_local": .02},
+                {"bone": "head", "moved_vertices": 1000,
+                 "max_displacement_local": .04},
+            ],
+            "keyframes_inserted": 50,
+        })
+        self.details = data
+        result = self.invoke(multi_axis_profile="Y_UP_TO_Z_UP")
+        self.assertEqual(result.evidence["mapped_bone_count"], 2)
+        self.assertEqual(self.calls, 2)
+        self.assertFalse(result.retargeting_verified)
+        self.assertEqual(self.store.load(), self.saved)
+
+    def test_multibone_rejects_unselected_axis_before_worker(self):
+        with self.assertRaisesRegex(ValidationError, "up-axis"):
+            self.invoke(multi_axis_profile="AUTO_GUESS")
+        self.assertEqual(self.calls, 0)
+
     def test_cancellation_and_concurrent_source_change_discard_evidence(self):
         self.cancel.set()
         with self.assertRaisesRegex(ProjectStorageError, "cancelled"):

@@ -18,6 +18,9 @@ from ucc.core.storage import ProjectStore
 from ucc.library.provenance import AssetPolicyError, LicensePolicy
 
 from .master_preview import _digest, _master_file
+from .multibone_evidence import (
+    compare_multibone_evidence, validate_multibone_evidence,
+)
 from .protocol import JobRequest
 from .runner import BlenderJobRunner
 
@@ -157,8 +160,13 @@ def check_selected_bvh(
     expected_master_blend: str,
     cancel: Event | None = None,
     timeout_s: float = 300,
+    multi_axis_profile: str | None = None,
 ) -> LocalBvhClipCheck:
-    """Run two actual source-driven Blender jobs without promoting any file."""
+    """Run two Blender jobs; optionally test a strict multi-bone source chain."""
+
+    if (multi_axis_profile is not None and
+            multi_axis_profile not in {"Y_UP_TO_Z_UP", "Z_UP_IDENTITY"}):
+        raise ValidationError("Choose an explicit supported BVH source up-axis profile")
     allowed, reason = permission.allow("local_preview")
     if not allowed:
         raise AssetPolicyError("Selected BVH is blocked for local preview: " + reason)
@@ -196,7 +204,13 @@ def check_selected_bvh(
     reports, ids = [], []
     for _ in range(2):
         _check_cancel(cancel)
-        request = JobRequest.new("verify_local_bvh_motion", input_project="candidate.blend")
+        options = ({"axis_profile": multi_axis_profile}
+                   if multi_axis_profile is not None else {})
+        operation = ("verify_multi_bvh_chain" if multi_axis_profile is not None
+                     else "verify_local_bvh_motion")
+        request = JobRequest.new(
+            operation, input_project="candidate.blend", options=options,
+        )
         result, folder = runner.run(
             request, timeout_s=timeout_s, cancel=cancel,
             staged_inputs={"candidate.blend": master, "motion.bvh": clip},
@@ -209,12 +223,21 @@ def check_selected_bvh(
                 _digest(master, cancel) != master_hash or
                 _digest(clip, cancel) != source_hash):
             raise ProjectStorageError("Local clip or MPFB master changed during BVH preview")
-        evidence = validate_local_bvh_report(result.details)
+        evidence = (
+            validate_multibone_evidence(
+                result.details, axis_profile=multi_axis_profile,
+            ) if multi_axis_profile is not None else
+            validate_local_bvh_report(result.details)
+        )
         if evidence["source_sha256"] != source_hash or evidence["source_frame_count"] != parsed.clips[0].frame_count:
             raise BvhPreviewEvidenceError("BVH metadata/bytes do not match Blender source")
         reports.append(evidence)
         ids.append(request.job_id)
-    observed = compare_local_bvh_reports(reports[0], reports[1])
+    observed = (
+        compare_multibone_evidence(reports[0], reports[1], multi_axis_profile)
+        if multi_axis_profile is not None else
+        compare_local_bvh_reports(reports[0], reports[1])
+    )
     _check_cancel(cancel)
     newest = store.load()
     if (newest.project_id != expected_project_id or

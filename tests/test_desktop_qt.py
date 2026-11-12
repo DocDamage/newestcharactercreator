@@ -251,6 +251,75 @@ class DesktopQtSmoke(unittest.TestCase):
         self.assertIn("NOT certified retargeting", log)
         self.assertEqual(self.controller.require_project().revision, snapshot.revision)
 
+    def test_two_bone_bvh_requires_explicit_axis_and_current_license_review(self):
+        self.test_existing_master_refit_button_disabled_until_generated()
+        clip = Path(self.tmp.name) / "unit-only-two-bone.bvh"
+        clip.write_text("UI-only unit test, never passed to Blender", encoding="utf-8")
+        pane = self.window.animations
+        pane.selected.setText(str(clip))
+        pane.provider.setText("original")
+        pane.license.setText("self-authored")
+        pane.uri.setText("original-local://two-bone-unit")
+        pane.local_preview_review.setChecked(True)
+        self.assertEqual(pane.source_axes.currentData(), "")
+        with (patch.object(self.window, "_error") as error,
+              patch.object(self.window, "_submit") as submit):
+            pane.test_multi_bvh.click()
+        self.assertIn("up-axis", error.call_args.args[0])
+        submit.assert_not_called()
+        pane.source_axes.setCurrentIndex(1)
+        blender = Path(self.tmp.name) / "fake-blender-not-started"
+        blender.write_bytes(b"unit-test")
+        with patch("ucc.desktop.window.QFileDialog.getOpenFileName",
+                   return_value=(str(blender), "")):
+            with patch.object(self.window, "_submit") as submit:
+                pane.test_multi_bvh.click()
+        args, kwargs = submit.call_args
+        self.assertEqual(args[0], "multi_bvh_chain")
+        self.assertFalse(kwargs["cancel"].is_set())
+        pane.selected.setText(str(clip.with_name("different.bvh")))
+        self.assertFalse(pane.local_preview_review.isChecked())
+
+    def test_two_bone_bvh_result_discloses_rest_axis_vs_uncalibrated_bone_roll(self):
+        from ucc.jobs.bvh_clip_diagnostic import LocalBvhClipCheck
+        self.test_existing_master_refit_button_disabled_until_generated()
+        project = self.controller.require_project()
+        report = {
+            "axis_profile": "Y_UP_TO_Z_UP", "mapped_bone_count": 2,
+            "rest_scale_consistency_verified": False,
+            "mapped_bones": [
+                {"source": "neck03", "target": "neck03",
+                 "parent": None, "rest_alignment_cos": None},
+                {"source": "head", "target": "head",
+                 "parent": "neck03", "rest_alignment_cos": .97},
+            ],
+            "per_bone_deformation": [
+                {"bone": "neck03", "moved_vertices": 200},
+                {"bone": "head", "moved_vertices": 500},
+            ],
+            "source_frame_count": 25,
+            "distinct_geometry_states": 5,
+            "sampled_frames": [
+                {"frame": frame, "moved_vertices": moved,
+                 "max_displacement_local": .03 if moved else 0}
+                for frame, moved in ((1, 0), (7, 200), (13, 600), (19, 200), (25, 0))
+            ],
+        }
+        outcome = LocalBvhClipCheck(
+            project.project_id, project.revision, project.master_blend,
+            "a" * 64, "b" * 64, "Unit source", report, ("first", "second"),
+        )
+        self.window._work_kind = "multi_bvh_chain"
+        self.window._job_success(outcome)
+        message = self.window.log.toPlainText()
+        self.assertIn("2–4 BONE BVH SOURCE CHAIN", message)
+        self.assertIn("neck03 → neck03", message)
+        self.assertIn("head → head", message)
+        self.assertIn("rest DIRECTION", message)
+        self.assertIn("NOT calibrated", message)
+        self.assertIn("NOT certified retargeting", message)
+        self.assertEqual(self.controller.require_project().revision, project.revision)
+
     def test_generate_action_requires_explicit_blender_selection(self):
         self.assertTrue(self.window.character.generate.isEnabled())
         exe = Path(self.tmp.name) / "selected-blender"

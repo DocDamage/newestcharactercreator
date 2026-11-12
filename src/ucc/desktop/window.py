@@ -41,6 +41,7 @@ from .generation import (
 )
 from .panes import AnimationPane, CharacterPane, ToolsPane
 from .mesh_viewer import MeshViewer
+from .animation_results import format_bvh_motion_evidence
 
 
 class MainWindow(QMainWindow):
@@ -137,6 +138,7 @@ class MainWindow(QMainWindow):
         self.character.timeline_check_requested.connect(self.verify_saved_timeline)
         self.character.preview_master_requested.connect(self.preview_saved_master)
         self.animations.local_bvh_requested.connect(self.test_selected_bvh)
+        self.animations.multi_bvh_requested.connect(self.test_selected_multi_bvh)
         self.animations.inspect_requested.connect(self.inspect_animation)
         self.animations.index_requested.connect(self.index_animation)
         self.animations.refresh_requested.connect(self.refresh_catalog)
@@ -284,7 +286,7 @@ class MainWindow(QMainWindow):
             self.undo_action.setEnabled(not busy and state.can_undo)
             self.redo_action.setEnabled(not busy and state.can_redo)
         self.cancel_generation_action.setEnabled(
-            busy and self._work_kind in {"generate_humanoid", "saved_master_preview", "body_refit", "skin_pose_check", "keyframed_timeline", "local_bvh_motion"}
+            busy and self._work_kind in {"generate_humanoid", "saved_master_preview", "body_refit", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain"}
         )
         self.statusBar().showMessage(
             ("Generating real MPFB humanoid in Blender..."
@@ -297,8 +299,10 @@ class MainWindow(QMainWindow):
              if self._work_kind == "keyframed_timeline" else
              "Testing explicitly authorized BVH source motion in Blender..."
              if self._work_kind == "local_bvh_motion" else
+             "Verifying source BVH parent/rest-axis chain against MPFB rig..."
+             if self._work_kind == "multi_bvh_chain" else
              "Converting saved Blender master to a static GLB preview...")
-            if busy and self._work_kind in {"generate_humanoid", "saved_master_preview", "body_refit", "skin_pose_check", "keyframed_timeline", "local_bvh_motion"}
+            if busy and self._work_kind in {"generate_humanoid", "saved_master_preview", "body_refit", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain"}
             else ("Working on local files..." if busy else "Local task finished")
         )
 
@@ -382,7 +386,7 @@ class MainWindow(QMainWindow):
                 "The prior master is preserved. Live motion, retargeting and game-engine "
                 "imports are NOT yet certified."
             )
-        elif self._work_kind == "local_bvh_motion":
+        elif self._work_kind in {"local_bvh_motion", "multi_bvh_chain"}:
             assert isinstance(result, LocalBvhClipCheck)
             if not self.controller.has_project or self.controller.store is None:
                 self._error("Character closed during BVH preview; discard evidence")
@@ -402,30 +406,9 @@ class MainWindow(QMainWindow):
                     saved.master_blend != result.master_blend):
                 self._error("Saved character changed during BVH motion test; results discarded")
                 return
-            p = result.evidence
-            lines = [
-                "REAL USER-SELECTED BVH SOURCE MOTION EVALUATED IN BLENDER.",
-                f"Saved project revision: {result.revision}",
-                f"Selected BVH clip: {result.clip_name}",
-                f"Source SHA-256: {result.clip_sha256}",
-                f"Mapped direct source bone: {p['source_bone']} → {p['target_bone']}",
-                f"BVH source frames: {p['source_frame_count']}",
-                f"Distinct skinned geometry states: {p['distinct_geometry_states']}",
-                "Measured real skinned vertices:",
-            ]
-            for frame in p["sampled_frames"]:
-                lines.append(
-                    f"Frame {frame['frame']}: {frame['moved_vertices']:,} moved vertices "
-                    f"(maximum {frame['max_displacement_local']:.6f} local units)"
-                )
-            lines.extend([
-                "Two Blender workers agreed; no master or source BVH was modified.",
-                "Permission is USER-ATTESTED for local preview, not independently licensed.",
-                "Mapping is exact-name rotation DELTAS ONLY. BVH translation and ",
-                "rest-orientation conversion are not applied. NOT certified retargeting,",
-                "visual quality, UCC viewport playback or Godot/Unity/Unreal import.",
-            ])
-            self.log.setPlainText("\n".join(lines))
+            self.log.setPlainText(format_bvh_motion_evidence(
+                result, multibone=self._work_kind == "multi_bvh_chain",
+            ))
         elif self._work_kind == "keyframed_timeline":
             assert isinstance(result, SavedTimelineDiagnostic)
             if not self.controller.has_project or self.controller.store is None:
@@ -796,6 +779,7 @@ class MainWindow(QMainWindow):
     def test_selected_bvh(
         self, filename: str, provider: str, license_name: str,
         source_uri: str, reviewed_local_rights: bool,
+        multi_axis_profile: str | None = None,
     ) -> None:
         """Explicit local BVH rights confirmation; no library scan or asset upload."""
         if self.jobs.busy:
@@ -812,6 +796,10 @@ class MainWindow(QMainWindow):
             self._error("Generate a real MPFB character before testing BVH motion")
             return
         source = Path(filename) if filename else None
+        if (multi_axis_profile is not None and
+                multi_axis_profile not in {"Y_UP_TO_Z_UP", "Z_UP_IDENTITY"}):
+            self._error("Select an explicit BVH source up-axis conversion for multi-bone mapping")
+            return
         if (not reviewed_local_rights or not filename or
                 not provider.strip() or not source_uri.strip() or
                 license_name.strip().casefold() in ("", "unreviewed", "unknown", "n/a")):
@@ -850,13 +838,27 @@ class MainWindow(QMainWindow):
         store = self.controller.store
         cancel = Event()
         self._submit(
-            "local_bvh_motion",
+            "multi_bvh_chain" if multi_axis_profile is not None else "local_bvh_motion",
             lambda: test_local_bvh_from_desktop(
                 store, blender_exe=executable, source_bvh=source,
                 permission=reviewed_policy,
                 project_id=snapshot.project_id, revision=snapshot.revision,
                 master_blend=snapshot.master_blend, cancel=cancel,
+                multi_axis_profile=multi_axis_profile,
             ), cancel=cancel,
+        )
+
+    def test_selected_multi_bvh(
+        self, filename: str, provider: str, license_name: str,
+        source_uri: str, reviewed_local_rights: bool, axis_profile: str,
+    ) -> None:
+        """Keep user-selected source and rights gates shared with one-bone preview."""
+        if axis_profile not in {"Y_UP_TO_Z_UP", "Z_UP_IDENTITY"}:
+            self._error("Choose the BVH source up-axis before testing multi-bone motion")
+            return
+        self.test_selected_bvh(
+            filename, provider, license_name, source_uri,
+            reviewed_local_rights, multi_axis_profile=axis_profile,
         )
 
     def inspect_animation(self, file: str) -> None:
