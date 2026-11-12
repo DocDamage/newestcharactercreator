@@ -577,13 +577,48 @@ class DesktopQtSmoke(unittest.TestCase):
         self.assertIsNone(service.call_args.kwargs["mapping_profile"])
         self.assertIs(service.call_args.kwargs["cancel"], submit.call_args.kwargs["cancel"])
         self.assertTrue(service.call_args.kwargs["permission"].no_ai)
-        for kind in ("native_body", "fbx_intake"):
+        for kind in ("native_body", "native_playback", "fbx_intake"):
             self.window._work_kind = kind
             self.window._busy_changed(True)
             self.assertTrue(self.window.cancel_generation_action.isEnabled())
             self.assertFalse(self.window.character.isEnabled())
             self.window._busy_changed(False)
             self.assertFalse(self.window.cancel_generation_action.isEnabled())
+
+    def test_cached_motion_button_requires_current_preview_and_dispatches_with_cancel(self):
+        from types import SimpleNamespace
+        from ucc.desktop.native_body import start_native_playback
+        pane=self.window.animations
+        self.assertFalse(pane.load_native_motion.isEnabled())
+        with patch.object(self.window,"_error") as error,patch.object(self.window,"_submit") as submit:
+            start_native_playback(self.window)
+        self.assertIn("preview",error.call_args.args[0]);submit.assert_not_called()
+        pane.provider.setText("original");pane.license.setText("Original retained rights");pane.uri.setText("original-unit://clip")
+        pane.local_preview_review.setChecked(True)
+        executable=Path(self.tmp.name)/"unit-not-executed";executable.write_bytes(b"UNIT_ONLY")
+        self.window._blender_executable=executable
+        self.window._native_review=SimpleNamespace()
+        pane.load_native_motion.setEnabled(True)
+        with patch.object(self.window,"_submit") as submit,patch("ucc.desktop.native_body.prepare_native_playback") as prepare:
+            pane.load_native_motion.click();submit.call_args.args[1]()
+        self.assertEqual(submit.call_args.args[0],"native_playback")
+        self.assertIs(prepare.call_args.kwargs["cancel"],submit.call_args.kwargs["cancel"])
+        self.assertTrue(prepare.call_args.kwargs["permission"].no_ai)
+
+    def test_dirty_character_and_license_changes_clear_cached_motion(self):
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+        self.window.motion_viewer=Mock();self.window.motion_dock=Mock()
+        project=self.controller.require_project()
+        self.window._native_review=SimpleNamespace(project_id=project.project_id,revision=project.revision)
+        self.window.animations.load_native_motion.setEnabled(True)
+        self.window.rename("Dirty character")
+        self.assertIsNone(self.window._native_review);self.window.motion_viewer.clear.assert_called()
+        self.assertFalse(self.window.animations.load_native_motion.isEnabled())
+        for field in (self.window.animations.provider,self.window.animations.license,self.window.animations.uri):
+            self.window._native_review=object();self.window.animations.load_native_motion.setEnabled(True)
+            field.setText("new licence details")
+            self.assertIsNone(self.window._native_review);self.assertFalse(self.window.animations.load_native_motion.isEnabled())
 
     def test_native_results_clear_when_source_or_mapping_changes(self):
         pane = self.window.animations

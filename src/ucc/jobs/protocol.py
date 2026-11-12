@@ -11,7 +11,7 @@ from ucc.core.models import safe_relative_path
 from .phenotype import validate_macro_parameters
 
 PROTOCOL_VERSION = 1
-SUPPORTED_OPERATIONS = {"inspect_environment", "inspect_character", "create_human", "export_preview_glb", "refit_human", "verify_skin_deformation", "verify_keyframed_timeline", "verify_local_bvh_motion", "verify_multi_bvh_chain", "verify_calibrated_bvh_chain", "verify_reviewed_bvh_chain", "inspect_fbx_animation", "verify_native_fbx_body", "reopen_native_fbx_body"}
+SUPPORTED_OPERATIONS = {"inspect_environment", "inspect_character", "create_human", "export_preview_glb", "refit_human", "verify_skin_deformation", "verify_keyframed_timeline", "verify_local_bvh_motion", "verify_multi_bvh_chain", "verify_calibrated_bvh_chain", "verify_reviewed_bvh_chain", "inspect_fbx_animation", "verify_native_fbx_body", "reopen_native_fbx_body", "cache_native_fbx_body"}
 MAX_REQUEST_BYTES = 256 * 1024
 
 
@@ -56,7 +56,7 @@ class JobRequest:
             if (self.input_project!="candidate.blend" or set(self.options)!=hashes|{"render_private_frames"} or
                     type(self.options["render_private_frames"]) is not bool or any(not is_sha256(self.options[k]) for k in hashes)):
                 raise ValidationError("Native body jobs require exact source/snapshot/map/master identities")
-        if self.operation == "reopen_native_fbx_body":
+        if self.operation in {"reopen_native_fbx_body", "cache_native_fbx_body"}:
             from ucc.animations.source_rest_frames import is_sha256
             hashes={"source_sha256","snapshot_sha256","mapping_sha256","master_sha256","review_sha256","timeline_sha256"}
             if self.input_project!="candidate.blend" or set(self.options)!=hashes or any(not is_sha256(self.options[k]) for k in hashes):

@@ -12,6 +12,7 @@ from ucc.core.storage import ProjectStore
 from ucc.library.provenance import LicensePolicy
 from ucc.jobs.fbx_intake import inspect_selected_fbx
 from ucc.jobs.native_body import preview_native_body
+from ucc.jobs.native_playback import prepare_native_playback
 from ucc.animations import native_math as nm
 
 
@@ -64,6 +65,17 @@ def verify_native_body(blender: Path,store: ProjectStore,folder: Path,*,hip_anch
             "max_original_master_stretch":max(r["max_edge_stretch_ratio"] for r in data["master_relative_frames"]),
             "bind_and_mid_action_settings_faults_restored":True,"rehashed_saved_settings_tamper_rejected":True,
             "rehashed_saved_object_transform_tamper_rejected":True}
+        playback=prepare_native_playback(store,result,source_fbx=source,permission=policy,
+            blender_exe=blender,worker_script=ROOT/"blender_bridge/entrypoint.py")
+        cache=playback.cache
+        if cache.frame_count!=300 or cache.vertex_count!=data["skin_deformation"]["neutral_vertex_count"]:
+            raise RuntimeError("Cached playback dropped frames or visible skin vertices")
+        indices={sha256(cache.frame(i)[1]).hexdigest() for i in range(cache.frame_count)}
+        skin_evidence["verified_skin_cache"]={"frames":cache.frame_count,"visible_vertices":cache.vertex_count,
+            "triangles_per_frame":cache.triangle_count,"packed_bytes":len(cache.packed),
+            "all_vertex_skin_hashes_reproduced":True,"saved_action_reopened_before_cache":True,
+            "distinct_actual_triangle_buffers":len(indices),"source_fps":cache.fps,
+            "gpu_playback_tested_in_this_gate":False,"engine_import_verified":False}
     if hip_anchor:
         hip_travel=math.dist(data["full_timeline_frames"][-1]["hip_midpoint_world"],data["hip_anchor"]["target_bind_midpoint_world"])
         if hip_travel<3.99:raise RuntimeError("Native hip anchor lost the authored four-meter anatomical trajectory")

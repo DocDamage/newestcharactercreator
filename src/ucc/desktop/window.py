@@ -82,6 +82,9 @@ class MainWindow(QMainWindow):
         self.mesh_dock.hide()
         self._blender_executable: Path | None = None  # Session-only; no disk scan.
         self._native_review = None
+        self.motion_viewer = None
+        self.motion_dock = None
+        self._motion_watcher = None
         self._make_menu()
         self.jobs = BackgroundJobs(self._job_success, self._job_error, self._busy_changed)
         self._work_kind = ""
@@ -143,11 +146,13 @@ class MainWindow(QMainWindow):
         self.animations.multi_bvh_requested.connect(self.test_selected_multi_bvh)
         self.animations.calibrated_bvh_requested.connect(self.test_calibrated_bvh)
         self.animations.reviewed_bvh_requested.connect(self.test_reviewed_bvh)
-        from .native_body import start_native_body, open_native_result
+        from .native_body import start_native_body, open_native_result, start_native_playback
         self.animations.native_body_requested.connect(lambda:start_native_body(self))
         self.animations.native_animation_open_requested.connect(lambda:open_native_result(self))
         self.animations.native_renders_open_requested.connect(lambda:open_native_result(self,rendered=True))
-        for field in (self.animations.selected,self.animations.native_body_profile):
+        self.animations.native_playback_requested.connect(lambda:start_native_playback(self))
+        self.animations.local_preview_review.toggled.connect(lambda _checked:self._clear_native_review())
+        for field in (self.animations.selected,self.animations.native_body_profile,self.animations.provider,self.animations.license,self.animations.uri):
             field.textChanged.connect(lambda _text:self._clear_native_review())
         self.animations.inspect_requested.connect(self.inspect_animation)
         self.animations.index_requested.connect(self.index_animation)
@@ -171,6 +176,9 @@ class MainWindow(QMainWindow):
 
     def refresh_project(self) -> None:
         state = self.controller.view()
+        if self._native_review is not None and (state.dirty or state.revision!=self._native_review.revision or
+                self.controller.require_project().project_id!=self._native_review.project_id):
+            self._clear_native_review()
         self.character.display(state)
         self.preview_master_action.setEnabled(state.master_blend is not None and not self.jobs.busy)
         self.save_action.setEnabled(state.dirty)
@@ -190,8 +198,15 @@ class MainWindow(QMainWindow):
 
     def _clear_native_review(self) -> None:
         self._native_review=None
+        if self._motion_watcher is not None:
+            self._motion_watcher.blockSignals(True)
+            paths=self._motion_watcher.files()+self._motion_watcher.directories()
+            if paths:self._motion_watcher.removePaths(paths)
+        if self.motion_viewer is not None:
+            self.motion_viewer.clear();self.motion_dock.hide()
         self.animations.open_native_animation.setEnabled(False)
         self.animations.open_native_renders.setEnabled(False)
+        self.animations.load_native_motion.setEnabled(False)
 
     def _confirm_discard(self) -> bool:
         if not self.controller.dirty:
@@ -302,7 +317,7 @@ class MainWindow(QMainWindow):
             self.undo_action.setEnabled(not busy and state.can_undo)
             self.redo_action.setEnabled(not busy and state.can_redo)
         self.cancel_generation_action.setEnabled(
-            busy and self._work_kind in {"generate_humanoid", "saved_master_preview", "body_refit", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain", "native_body", "fbx_intake"}
+            busy and self._work_kind in {"generate_humanoid", "saved_master_preview", "body_refit", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain", "native_body", "native_playback", "fbx_intake"}
         )
         self.statusBar().showMessage(
             ("Generating real MPFB humanoid in Blender..."
@@ -323,10 +338,12 @@ class MainWindow(QMainWindow):
              if self._work_kind == "reviewed_bvh_chain" else
              "Checking private native FBX body motion and rendering review views..."
              if self._work_kind == "native_body" else
+             "Preparing complete verified skin playback inside UCC..."
+             if self._work_kind == "native_playback" else
              "Measuring native FBX source skeleton and complete timeline..."
              if self._work_kind == "fbx_intake" else
              "Converting saved Blender master to a static GLB preview...")
-            if busy and self._work_kind in {"generate_humanoid", "saved_master_preview", "body_refit", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain", "native_body", "fbx_intake"}
+            if busy and self._work_kind in {"generate_humanoid", "saved_master_preview", "body_refit", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain", "native_body", "native_playback", "fbx_intake"}
             else ("Working on local files..." if busy else "Local task finished")
         )
 
@@ -568,7 +585,13 @@ class MainWindow(QMainWindow):
             self._native_review=result
             self.animations.open_native_animation.setEnabled(True)
             self.animations.open_native_renders.setEnabled(True)
+            self.animations.load_native_motion.setEnabled(result.evidence.get("skin_deformation_policy")=="BOUND_CORRECTIVE_SMOOTH_V1")
             self.log.setPlainText(native_result_text(result))
+        elif self._work_kind == "native_playback":
+            from .native_playback import publish_playback
+            try:publish_playback(self,result)
+            except (UCCError,OSError,ValueError) as error:
+                self._error(str(error));return
         else:
             self.log.setPlainText(json.dumps(result, ensure_ascii=False, indent=2, default=str)[:100000])
         self.statusBar().showMessage("Local operation completed; review results above")
@@ -1062,4 +1085,5 @@ class MainWindow(QMainWindow):
         if not self._confirm_discard():
             event.ignore()
             return
+        self._clear_native_review()
         event.accept()
