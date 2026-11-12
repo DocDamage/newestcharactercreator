@@ -31,6 +31,7 @@ from blender_bridge.bvh_clip_probe import source_motion_probe
 from blender_bridge.bvh_multichain import verify_multibone_source
 from blender_bridge.bvh_calibration_probe import calibrate_bvh_source
 from blender_bridge.result_encoding import encode_result
+from blender_bridge.channel_bone_conversion import CONVENTION
 
 PROTOCOL_VERSION = 1
 OPERATIONS = {"inspect_environment", "inspect_character", "create_human", "export_preview_glb", "refit_human", "verify_skin_deformation", "verify_keyframed_timeline", "verify_local_bvh_motion", "verify_multi_bvh_chain", "verify_calibrated_bvh_chain", "verify_reviewed_bvh_chain"}
@@ -122,10 +123,9 @@ def verify_calibrated_bvh_chain(job: dict, root: Path) -> dict:
 def verify_reviewed_bvh_chain(job: dict, root: Path) -> dict:
     """Animate only the explicitly paired 3–64 bone hierarchy in a private copy."""
     options = job["options"]
-    if set(options) not in (
-        {"axis_profile", "reviewed_mapping"},
-        {"axis_profile", "reviewed_mapping", "source_rest_profile_sha256"},
-    ) or options["axis_profile"] not in (
+    if (not {"axis_profile", "reviewed_mapping"}.issubset(options) or
+        set(options) - {"axis_profile", "reviewed_mapping", "source_rest_profile_sha256",
+                        "source_frame_conversion", "render_private_frames"}) or options["axis_profile"] not in (
         "Y_UP_TO_Z_UP", "Z_UP_IDENTITY",
     ):
         raise ValueError("Reviewed BVH needs exact bone pairs and explicit source axes")
@@ -137,12 +137,22 @@ def verify_reviewed_bvh_chain(job: dict, root: Path) -> dict:
         type(rest_sha) is not str or len(rest_sha) != 64 or any(c not in "0123456789abcdef" for c in rest_sha)
     ):
         raise ValueError("Source rest profile SHA-256 must be exact lowercase hex")
+    if "source_frame_conversion" in options and (
+        options["source_frame_conversion"] != CONVENTION or rest_sha is None
+    ):
+        raise ValueError("Only the explicit bound BVH conversion convention is supported")
+    if "render_private_frames" in options and (
+        options["render_private_frames"] is not True or "source_frame_conversion" not in options
+    ):
+        raise ValueError("Private rendering requires audited source-frame conversion")
     return calibrate_bvh_source(
         bpy, member(root, job["input_project"]), member(root, "motion.bvh"),
         options["axis_profile"], reviewed_mapping=pairs,
         review_path=member(root, "review_motion.blend"),
         source_rest_profile=member(root, "source_rest_frames.json") if rest_sha is not None else None,
         source_rest_profile_sha256=rest_sha,
+        audit_source_frames="source_frame_conversion" in options,
+        render_private_frames=options.get("render_private_frames", False),
     )
 
 

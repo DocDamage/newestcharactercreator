@@ -22,6 +22,8 @@ from blender_bridge.bvh_review_timeline import evaluate_review_timeline
 from blender_bridge.motion_quality import JointMotion
 from blender_bridge.pose_environment import validate_pose_environment
 from blender_bridge.source_rest_intake import inspect_source_rest_profile
+from blender_bridge.channel_bone_conversion import ConversionTrace, CONVENTION, ChannelBoneConversionError
+from blender_bridge.private_review_render import render_private_review
 import json
 from blender_bridge.bvh_motion import read_local_bvh
 from blender_bridge.bvh_multichain import (
@@ -92,11 +94,18 @@ def calibrate_bvh_source(bpy: Any, master: Path, source_bvh: Path,
                          reviewed_mapping: list[dict[str, str]] | None = None,
                          review_path: Path | None = None,
                          source_rest_profile: Path | None = None,
-                         source_rest_profile_sha256: str | None = None) -> dict[str, Any]:
+                         source_rest_profile_sha256: str | None = None,
+                         audit_source_frames: bool = False,
+                         render_private_frames: bool = False) -> dict[str, Any]:
     """Create only ephemeral, measured, axis-calibrated source BVH rotations."""
     motion = read_local_bvh(source_bvh)
     source_sha = _file_digest(source_bvh)
     source_intake = None
+    source_rotations = {}
+    if (type(audit_source_frames) is not bool or type(render_private_frames) is not bool or
+            (audit_source_frames and source_rest_profile is None) or
+            (render_private_frames and not audit_source_frames)):
+        raise BvhCalibrationProbeError("Audited conversion requires bound rest frames; rendering requires the audit")
     if (source_rest_profile is None) != (source_rest_profile_sha256 is None):
         raise BvhCalibrationProbeError("Source rest profile and SHA-256 must accompany each other")
     if source_rest_profile is not None:
@@ -105,6 +114,7 @@ def calibrate_bvh_source(bpy: Any, master: Path, source_bvh: Path,
         source_intake = inspect_source_rest_profile(
             source_rest_profile, source_rest_profile_sha256, motion, source_sha,
             axis_profile, reviewed_mapping,
+            validated_rotations=source_rotations,
         )
     if (master.is_symlink() or not master.is_file() or
             master.suffix.lower() != ".blend"):
@@ -228,6 +238,7 @@ def calibrate_bvh_source(bpy: Any, master: Path, source_bvh: Path,
         previous_quaternions = {}
         max_quaternion_steps = {item["target"]: 0.0 for item in selected}
         joint_metrics = {item["target"]: JointMotion(item["target"]) for item in selected}
+        conversion_traces = {item["target"]: ConversionTrace() for item in selected}
         for frame in range(motion.frames):
             for item in selected:
                 name, bone = item["target"], item["pose"]
@@ -236,11 +247,17 @@ def calibrate_bvh_source(bpy: Any, master: Path, source_bvh: Path,
                     item["angles"][frame],
                 )
                 try:
-                    converted = calibrated_local_delta(
-                        initial_motion[name], current,
-                        calibration.source_axes_to_target, rest_frames[name],
-                    )
-                except RestCalibrationError as exc:
+                    if audit_source_frames:
+                        converted = conversion_traces[name].apply(
+                            frame + 1, initial_motion[name], current, source_rotations[item["source"]],
+                            calibration.source_axes_to_target, rest_frames[name],
+                        )
+                    else:
+                        converted = calibrated_local_delta(
+                            initial_motion[name], current,
+                            calibration.source_axes_to_target, rest_frames[name],
+                        )
+                except (RestCalibrationError, ChannelBoneConversionError) as exc:
                     raise BvhCalibrationProbeError(
                         f"Source frame {frame + 1}, bone {name} rotation refused: {exc}"
                     ) from exc
@@ -326,6 +343,30 @@ def calibrate_bvh_source(bpy: Any, master: Path, source_bvh: Path,
                 "target_pose_environment_checked": True,
                 "source_rest_frame_intake": source_intake,
             })
+            if audit_source_frames:
+                traces = [conversion_traces[item["target"]].report() for item in selected]
+                review_metrics["source_frame_conversion"] = {
+                    "convention": CONVENTION, "coordinate_change_applied": True,
+                    "source_channel_interpretation_changed": False,
+                    "target_motion_changed_by_source_roll": False,
+                    "profile_sha256": source_rest_profile_sha256,
+                    "mapping_sha256": review_metrics["reviewed_mapping_sha256"],
+                    "joint_count": len(selected), "source_frame_count": motion.frames,
+                    "max_roundtrip_residual": max(t["max_roundtrip_residual"] for t in traces),
+                    "max_target_equivalence_residual": max(t["max_target_equivalence_residual"] for t in traces),
+                    "traces": traces,
+                }
+            if render_private_frames:
+                review_metrics["private_review_renders"] = render_private_review(
+                    bpy, human, motion.frames, review_path,
+                    {"source_bvh_sha256": source_sha,
+                     "source_rest_profile_sha256": source_rest_profile_sha256,
+                     "source_master_sha256": _file_digest(master),
+                     "review_action_sha256": review_metrics["visual_review_blend"]["sha256"],
+                     "conversion_convention": CONVENTION},
+                )
+                if rig_fingerprint(bpy, human) != rig_before:
+                    raise BvhCalibrationProbeError("Private rendering altered rig/rest/skin weights")
         return {
             "status": ("REAL_REVIEWED_BVH_FULL_TIMELINE_MOTION"
                        if reviewed_mapping is not None else

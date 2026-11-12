@@ -7,6 +7,7 @@ from uuid import uuid4
 from blender_bridge.result_encoding import encode_result
 from ucc.jobs.protocol import JobResult, MAX_REQUEST_BYTES
 from test_reviewed_evidence import reviewed
+from test_channel_bone_conversion import proof
 
 
 class SourceRestWireCapacity(unittest.TestCase):
@@ -41,6 +42,14 @@ class SourceRestWireCapacity(unittest.TestCase):
                  "rest_rotation_sha256": "c" * 64, "rest_head_error_local": 1.2345678901234567e-7,
                  "terminal_tail_error_local": 1.2345678901234567e-7,
                  "tail_axis_error_degrees": .12345678901234567} for i, s in enumerate(sources)]}
+        data["source_frame_conversion"] = proof(64, 240)
+        for trace in data["source_frame_conversion"]["traces"]:
+            trace.update(max_roundtrip_residual=1.2345678901234567e-15,
+                         max_target_equivalence_residual=1.2345678901234567e-15)
+        data["private_review_renders"] = {
+            "manifest": {"name": "manifest.json", "bytes": 30000, "sha256": "d"*64},
+            "index": {"name": "index.html", "bytes": 2000, "sha256": "e"*64},
+            "image_count": 15, "animation_visual_quality_verified": False}
         reply = JobResult(str(uuid4()), "verify_reviewed_bvh_chain", "ok", data).as_dict()
         original = deepcopy(reply)
         encoded = encode_result(reply)

@@ -520,6 +520,13 @@ class DesktopQtSmoke(unittest.TestCase):
         self.assertEqual(len(parse_review_mapping(received[0][6])), 64)
         self.assertFalse(received[0][4])
 
+    def test_audited_render_requires_descriptor_before_dispatch(self):
+        with patch.object(self.window, "_error") as error, patch.object(self.window, "test_selected_bvh") as submit:
+            self.window.test_reviewed_bvh("", "", "", "", False, "Y_UP_TO_Z_UP", "A -> B", "", True)
+        error.assert_called_once()
+        self.assertIn("SHA-bound", error.call_args.args[0])
+        submit.assert_not_called()
+
     def test_tools_are_real_and_cannot_claim_geometry(self):
         self.assertIn("PNG", self.window.tools.pack.text())
         self.assertFalse(self.window.character.open_master.isEnabled())
@@ -535,7 +542,7 @@ class DesktopQtSmoke(unittest.TestCase):
             pane.choose_rest_profile.click()
         self.assertEqual(pane.source_rest_profile.text(), str(rest))
         self.assertFalse(pane.local_preview_review.isChecked())
-        self.assertIn("validation only", pane.source_rest_profile.placeholderText())
+        self.assertIn("source rest-frame JSON", pane.source_rest_profile.placeholderText())
         clip = Path(self.tmp.name) / "ui-only.bvh"
         clip.write_text("Not executed", encoding="utf-8")
         pane.selected.setText(str(clip))
@@ -545,6 +552,9 @@ class DesktopQtSmoke(unittest.TestCase):
         pane.source_axes.setCurrentIndex(1)
         pane.manual_bone_pairs.setPlainText("A -> neck02\nB -> neck03\nC -> head")
         pane.local_preview_review.setChecked(True)
+        pane.audit_and_render.setChecked(True)
+        self.assertFalse(pane.local_preview_review.isChecked())
+        pane.local_preview_review.setChecked(True)
         blender = Path(self.tmp.name) / "blender-unit-not-running"
         blender.write_bytes(b"TEST_ONLY")
         self.window._blender_executable = blender
@@ -553,6 +563,8 @@ class DesktopQtSmoke(unittest.TestCase):
         with patch("ucc.desktop.window.test_local_bvh_from_desktop") as service:
             submit.call_args.args[1]()
         self.assertEqual(service.call_args.kwargs["source_rest_profile"], rest)
+        self.assertTrue(service.call_args.kwargs["audit_source_frames"])
+        self.assertTrue(service.call_args.kwargs["render_private_frames"])
         pane.source_axes.setCurrentIndex(2)
         self.assertFalse(pane.local_preview_review.isChecked())
         self.assertIn("local", self.window.tools.ai.text())

@@ -77,6 +77,14 @@ class SchemaTests(unittest.TestCase):
                      "source_rest_profile_sha256": "a" * 64}).as_dict()
         validator = Draft202012Validator(self.read_schema("worker-job.v1.schema.json"))
         validator.validate(request)
+        request["options"].update(source_frame_conversion="BVH_XYZ_FIRST_FRAME_DELTA_TO_BONE_V1", render_private_frames=True)
+        validator.validate(request)
+        del request["options"]["source_rest_profile_sha256"]
+        self.assertTrue(list(validator.iter_errors(request)))
+        request["options"]["source_rest_profile_sha256"] = "a"*64
+        del request["options"]["source_frame_conversion"]
+        self.assertTrue(list(validator.iter_errors(request)))
+        request["options"]["source_frame_conversion"] = "BVH_XYZ_FIRST_FRAME_DELTA_TO_BONE_V1"
         result = JobResult(request["job_id"], request["operation"], "ok",
                            {"source_rest_frame_intake": None}).as_dict()
         Draft202012Validator(self.read_schema("worker-result.v1.schema.json")).validate(result)

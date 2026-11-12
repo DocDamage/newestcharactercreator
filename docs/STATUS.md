@@ -2,9 +2,9 @@
 
 **Target:** Windows 11 + Blender 5.3 + installed MPFB, PySide6 desktop, optional local ComfyUI/WebUI and future Godot/Unity/Unreal workflows.
 
-**Merged:** PRs #24–#36. Authoritative `main` was verified at `62bda3381b80969722cbdef8c28a3bff025da6bf`. PR #36's final head `776c3b4d31319b7fcf8b51a6fc7313f6901b274e` passed all five workflows, including 36 MPFB joints and 26,756 evaluated edges over 25 frames, independent quality remeasurement and partial-Action cleanup.
+**Merged:** PRs #24–#37. Authoritative `main` was verified at `6e765d817134864db4019fd5cebb0c986395ce30` (PR #37). Existing numerical guards cover 36 MPFB joints and 26,756 evaluated edges over 25 frames, independent quality remeasurement and partial-Action cleanup.
 
-**In development:** UCC-P1-ANIM-006C adds optional SHA-bound per-joint source bone rest metadata intake. Application and worker independently validate it, both file hashes are guarded, actual BVH rest origins/End Sites are checked, and the existing mapped-review UI reports validation-only evidence. The descriptor does not change BVH channel interpretation or certify source roll. See [source-rest acceptance and format](acceptance/UCC-P1-ANIM-006C.md), [numerical guards](acceptance/UCC-P1-ANIM-006B.md), and [initial branching slice](acceptance/UCC-P1-ANIM-006.md).
+**In development:** [UCC-P1-ANIM-006D](acceptance/UCC-P1-ANIM-006D.md) adds explicit audited channel-to-bone basis conversion followed by 15 private rendered skin views. Both workers measure every frame and agree on conversion traces. The app independently checks PNG pixels and SHA-bound provenance. Conversion preserves existing first-frame-relative target motion; source roll correction, arbitrary rest-pose/FK retargeting, human visual approval and purchased asset compatibility remain unverified. See [source-rest format](acceptance/UCC-P1-ANIM-006C.md), [numerical guards](acceptance/UCC-P1-ANIM-006B.md), and [initial branching slice](acceptance/UCC-P1-ANIM-006.md).
 
 ## Verified capabilities and remaining gates
 

@@ -14,7 +14,7 @@ from typing import Any
 
 from ucc.animations.metadata import inspect_bvh, AnimationMetadataError
 from ucc.animations.review_mapping import validate_review_mapping
-from ucc.animations.source_rest_frames import read_source_rest_profile
+from ucc.animations.source_rest_frames import read_source_rest_profile, CONVERSION_CONVENTION
 from ucc.core.errors import ProjectConflict, ProjectStorageError, ValidationError
 from ucc.core.storage import ProjectStore
 from ucc.library.provenance import AssetPolicyError, LicensePolicy
@@ -29,6 +29,7 @@ from .calibrated_evidence import (
 from .reviewed_evidence import compare_reviewed_evidence, validate_reviewed_evidence
 from .protocol import JobRequest
 from .runner import BlenderJobRunner
+from .private_render_evidence import verify_private_renders
 
 
 class BvhPreviewEvidenceError(ValidationError):
@@ -47,6 +48,7 @@ class LocalBvhClipCheck:
     worker_job_ids: tuple[str, str]
     permission_evidence: str = "USER_CONFIRMED_REVIEWED_LOCAL_ONLY"
     private_visual_review_blend: str | None = None
+    private_render_review: str | None = None
 
     @property
     def retargeting_verified(self) -> bool:
@@ -171,9 +173,15 @@ def check_selected_bvh(
     calibrate_rest_axes: bool = False,
     reviewed_mapping: list[dict[str, str]] | None = None,
     source_rest_profile: Path | None = None,
+    audit_source_frames: bool = False,
+    render_private_frames: bool = False,
 ) -> LocalBvhClipCheck:
     """Run two Blender jobs; optionally measure source-to-target rest rotation axes."""
 
+    if (type(audit_source_frames) is not bool or type(render_private_frames) is not bool or
+            (audit_source_frames and source_rest_profile is None) or
+            (render_private_frames and not audit_source_frames)):
+        raise ValidationError("Audited conversion needs bound source rest frames; renders require the audit")
     if source_rest_profile is not None and reviewed_mapping is None:
         raise ValidationError("Source rest-frame intake requires explicit reviewed mapping")
     if reviewed_mapping is not None:
@@ -231,7 +239,8 @@ def check_selected_bvh(
     runner = BlenderJobRunner(executable, jobs, bridge)
     reports, ids = [], []
     visual_review_path = None
-    for _ in range(2):
+    render_review_path = None
+    for run_index in range(2):
         _check_cancel(cancel)
         options = ({"axis_profile": multi_axis_profile}
                    if multi_axis_profile is not None else {})
@@ -241,6 +250,10 @@ def check_selected_bvh(
         if rest_path is not None:
             options["source_rest_profile_sha256"] = rest_sha
             staged_inputs["source_rest_frames.json"] = rest_path
+        if audit_source_frames:
+            options["source_frame_conversion"] = CONVERSION_CONVENTION
+        if render_private_frames and run_index == 0:
+            options["render_private_frames"] = True
         operation = (
             "verify_reviewed_bvh_chain" if reviewed_mapping is not None else
             "verify_calibrated_bvh_chain" if calibrate_rest_axes else
@@ -272,6 +285,7 @@ def check_selected_bvh(
             validate_reviewed_evidence(
                 result.details, multi_axis_profile, reviewed_mapping,
                 source_rest_profile=rest_profile, source_rest_profile_sha256=rest_sha,
+                audit_source_frames=audit_source_frames,
             ) if reviewed_mapping is not None else
             validate_calibrated_evidence(
                 result.details, axis_profile=multi_axis_profile,
@@ -292,12 +306,19 @@ def check_selected_bvh(
                 raise ProjectStorageError("Private Blender Action review file failed SHA-256")
             if visual_review_path is None:
                 visual_review_path = str(artifact)
+        if render_private_frames and run_index == 0:
+            render_review_path = verify_private_renders(
+                folder, evidence, source_sha=source_hash, profile_sha=rest_sha, master_sha=master_hash,
+            )
+        elif evidence.get("private_review_renders") is not None:
+            raise BvhPreviewEvidenceError("Worker produced unrequested private render evidence")
         reports.append(evidence)
         ids.append(request.job_id)
     observed = (
         compare_reviewed_evidence(
             reports[0], reports[1], multi_axis_profile, reviewed_mapping,
             source_rest_profile=rest_profile, source_rest_profile_sha256=rest_sha,
+            audit_source_frames=audit_source_frames,
         ) if reviewed_mapping is not None else
         compare_calibrated_evidence(reports[0], reports[1], multi_axis_profile)
         if calibrate_rest_axes else
@@ -321,4 +342,5 @@ def check_selected_bvh(
         master_hash, source_hash, parsed.clips[0].name,
         observed, (ids[0], ids[1]),
         private_visual_review_blend=visual_review_path,
+        private_render_review=render_review_path,
     )

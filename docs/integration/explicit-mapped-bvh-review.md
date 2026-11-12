@@ -45,4 +45,10 @@ Two workers must agree on all quality evidence. Private Action reopen tests inde
 
 The mapped-review editor accepts an optional source rest-frame JSON via **Choose rest frames...**. It must name the original BVH SHA-256, explicit selected axis preset and exactly one bone frame for every reviewed source pair. Changing axes or the descriptor clears rights consent. Both files are SHA-guarded through two workers; the worker checks the descriptor before opening the staged master. Results show the descriptor hash and count as **validation only**. Existing BVH channel axes and timeline behavior stay unchanged.
 
-Use actual source bind/rest metadata following the [format and acceptance contract](../acceptance/UCC-P1-ANIM-006C.md). SHA binding and proper matrices are not independent source-roll, license or visual approval. A future explicit channel-to-bone conversion contract is required before applying those frames to retargeting.
+Use actual source bind/rest metadata following the [format and acceptance contract](../acceptance/UCC-P1-ANIM-006C.md). SHA binding and proper matrices are not independent source-roll, license or visual approval.
+
+## Audited conversion and private rendered views (ANIM-006D)
+
+After choosing the descriptor, optionally select **Audit channel-to-bone conversion and render private views**, then reaffirm the local preview rights. Missing descriptors fail before dispatch. This uses the [fixed conversion contract](../acceptance/UCC-P1-ANIM-006D.md): supplied bone axes re-express existing channel deltas, with measured roundtrip/equivalence residuals and two-worker agreement. Target motion stays equivalent to the existing calibration; this is not a new source-roll or rest-pose correction algorithm.
+
+Success reports a local `review_frames/index.html` beside the private Action. Open that index locally to compare front/side/quarter clay renders at five sampled frames; scrub **all** frames in `review_motion.blend` for actual quality review. CPU rendering adds runtime and can fail on timeout, clipping, blank images or integrity mismatch. Every frame is numerically measured, while only five frames are rendered. Neither automated image checks nor these sampled renders grant human visual, arbitrary-rig, Fab or engine acceptance. Images stay in the private job directory; CI retains only JSON diagnostics.

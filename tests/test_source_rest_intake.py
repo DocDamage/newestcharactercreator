@@ -171,6 +171,22 @@ class SourceRestIntakeTests(unittest.TestCase):
         with self.assertRaisesRegex(ReviewedEvidenceError, "disagree"):
             compare_reviewed_evidence(data, second, "Y_UP_TO_Z_UP", PAIRS, **options)
 
+    def test_audited_workers_must_agree_on_conversion_traces(self):
+        from test_channel_bone_conversion import proof
+        data = reviewed()
+        value = profile(data["source_sha256"])
+        digest = self.write(value)
+        data["source_rest_frame_intake"] = inspect_source_rest_profile(
+            self.path, digest, motion(), data["source_sha256"], "Y_UP_TO_Z_UP", PAIRS)
+        data["source_frame_conversion"] = proof(data["mapped_bone_count"], data["source_frame_count"])
+        data["source_frame_conversion"].update(profile_sha256=digest, mapping_sha256=data["reviewed_mapping_sha256"])
+        options = {"source_rest_profile": value, "source_rest_profile_sha256": digest, "audit_source_frames": True}
+        compare_reviewed_evidence(data, data, "Y_UP_TO_Z_UP", PAIRS, **options)
+        second = deepcopy(data)
+        second["source_frame_conversion"]["traces"][-1]["trace_sha256"] = "f"*64
+        with self.assertRaisesRegex(ReviewedEvidenceError, "channel/bone"):
+            compare_reviewed_evidence(data, second, "Y_UP_TO_Z_UP", PAIRS, **options)
+
     def test_symlink_is_rejected_when_host_supports_it(self):
         self.write(profile())
         link = self.path.with_name("redirected.json")
