@@ -16,6 +16,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from ucc.jobs.bvh_clip_diagnostic import check_selected_bvh
 from ucc.jobs.runner import WorkerFailure
+from ucc.core.errors import ValidationError
 
 
 def verify_branching(store, blender, master, project, permission, directory,
@@ -42,6 +43,54 @@ def verify_branching(store, blender, master, project, permission, directory,
         multi_axis_profile="Y_UP_TO_Z_UP", calibrate_rest_axes=True,
         reviewed_mapping=pairs, timeout_s=300)
     report = result.evidence
+    rest_path = source.with_suffix(".rest.json")
+    rest_sha = digest(rest_path)
+    profiled = check_selected_bvh(
+        store, blender_exe=blender, worker_script=ROOT / "blender_bridge/entrypoint.py",
+        source_bvh=source, permission=permission, expected_project_id=project.project_id,
+        expected_revision=project.revision, expected_master_blend=project.master_blend,
+        multi_axis_profile="Y_UP_TO_Z_UP", calibrate_rest_axes=True,
+        reviewed_mapping=pairs, source_rest_profile=rest_path, timeout_s=300)
+    intake = profiled.evidence["source_rest_frame_intake"]
+    if (intake["profile_sha256"] != rest_sha or intake["joint_count"] != len(pairs) or
+            not intake["validation_only"] or intake["source_channel_interpretation_changed"] or
+            profiled.evidence["full_timeline_frames"] != report["full_timeline_frames"]):
+        raise RuntimeError("Optional source rest intake changed channel behavior or binding")
+    bad = json.loads(rest_path.read_text(encoding="utf-8"))
+    bad["source_bvh_sha256"] = "0" * 64
+    bad_path = source.with_suffix(".wrong-binding.json")
+    bad_path.write_text(json.dumps(bad), encoding="utf-8")
+    before_jobs = set((store.root / ".ucc-jobs").iterdir())
+    try:
+        check_selected_bvh(
+            store, blender_exe=blender, worker_script=ROOT / "blender_bridge/entrypoint.py",
+            source_bvh=source, permission=permission, expected_project_id=project.project_id,
+            expected_revision=project.revision, expected_master_blend=project.master_blend,
+            multi_axis_profile="Y_UP_TO_Z_UP", calibrate_rest_axes=True,
+            reviewed_mapping=pairs, source_rest_profile=bad_path)
+    except ValidationError:
+        pass
+    else:
+        raise RuntimeError("Mismatched source-rest BVH binding was accepted")
+    if set((store.root / ".ucc-jobs").iterdir()) != before_jobs:
+        raise RuntimeError("Mismatched BVH binding launched a worker")
+    bad = json.loads(rest_path.read_text(encoding="utf-8"))
+    bad["joint_frames"][0]["head"][0] += .125
+    bad["joint_frames"][0]["tail"][0] += .125
+    bad_path = source.with_suffix(".wrong-origin.json")
+    bad_path.write_text(json.dumps(bad), encoding="utf-8")
+    try:
+        check_selected_bvh(
+            store, blender_exe=blender, worker_script=ROOT / "blender_bridge/entrypoint.py",
+            source_bvh=source, permission=permission, expected_project_id=project.project_id,
+            expected_revision=project.revision, expected_master_blend=project.master_blend,
+            multi_axis_profile="Y_UP_TO_Z_UP", calibrate_rest_axes=True,
+            reviewed_mapping=pairs, source_rest_profile=bad_path)
+    except WorkerFailure as error:
+        if "rest head" not in str(error):
+            raise
+    else:
+        raise RuntimeError("Actual Blender accepted a source rest origin unlike the BVH")
     parents = [b["parent"] for b in report["mapped_bones"] if b["parent"] is not None]
     if len(pairs) < 9 or len(set(parents)) == len(parents):
         raise RuntimeError("Real review did not exercise a branching map beyond eight bones")
@@ -84,7 +133,7 @@ def verify_branching(store, blender, master, project, permission, directory,
             if not same:
                 raise RuntimeError("Independent reopen measured joint swing/twist differs: " + key)
     if (original != (digest(master), digest(metadata)) or source_hash != digest(source)
-            or review_hash != digest(review_path) or store.load() != project):
+            or review_hash != digest(review_path) or rest_sha != digest(rest_path) or store.load() != project):
         raise RuntimeError("Branching diagnostics modified original source/project/review bytes")
     return {
         "mapped_bones": report["mapped_bones"], "mapped_bone_count": len(pairs),
@@ -103,6 +152,12 @@ def verify_branching(store, blender, master, project, permission, directory,
         "third_process_quality_metrics_agree": True,
         "quality_fault_injections_rejected_and_skin_restored": True,
         "partial_action_removed_after_step_failure": True,
+        "source_rest_frame_intake": intake,
+        "source_rest_profile_original_sha256": rest_sha,
+        "source_rest_profile_original_bytes_unchanged": True,
+        "source_rest_wrong_binding_rejected_before_worker": True,
+        "source_rest_wrong_origin_rejected_by_blender": True,
+        "source_rest_validation_did_not_change_motion": True,
         "retargeting_verified": False, "animation_visual_quality_verified": False,
         "engine_import_verified": False,
     }

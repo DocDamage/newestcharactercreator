@@ -17,6 +17,10 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 
+def source_offset(vector):
+    return float(vector.x), float(vector.z), -float(vector.y)
+
+
 def author(master: Path, output: Path) -> None:
     bpy.ops.wm.open_mainfile(filepath=str(master), load_ui=False)
     rig = next(o for o in bpy.data.objects if o.type == "ARMATURE")
@@ -95,12 +99,35 @@ def author(master: Path, output: Path) -> None:
         lines.append(" ".join(
             "0 0 0" if i % 5 == 0 else f"{(2 + i % 3)*factor:.7f} {factor:.7f} 0"
             for i in range(len(ordered))))
-    if output.exists() or output.with_suffix(".json").exists():
+    if output.exists() or output.with_suffix(".json").exists() or output.with_suffix(".rest.json").exists():
         raise RuntimeError("Refuse to overwrite previous fixture evidence")
     output.write_text("\n".join(lines) + "\n", encoding="utf-8")
     output.with_suffix(".json").write_text(json.dumps([
         {"source": sources[b.name], "target": b.name} for b in ordered
     ], indent=2), encoding="utf-8")
+    from hashlib import sha256
+    from blender_bridge.rest_calibration import project_near_rotation
+    rest_frames = []
+    for bone in ordered:
+        rotation, _, _ = project_near_rotation(tuple(tuple(float(v) for v in row)
+                                                      for row in bone.matrix_local.to_3x3()))
+        source_rotation = [list(rotation[0]), list(rotation[2]), [-v for v in rotation[1]]]
+        rest_frames.append({
+            "source": sources[bone.name],
+            "parent": sources[bone.parent.name] if bone.parent and bone.parent.name in chosen else None,
+            "head": list(source_offset(bone.head_local - ordered[0].head_local)),
+            "tail": list(source_offset(bone.tail_local - ordered[0].head_local)),
+            "rotation": source_rotation,
+        })
+    output.with_suffix(".rest.json").write_text(json.dumps({
+        "schema_version": 1, "source_bvh_sha256": sha256(output.read_bytes()).hexdigest(),
+        "axis_profile": "Y_UP_TO_Z_UP", "frame_semantics": "BONE_REST_AXES_ONLY",
+        "matrix_layout": "ROW_MAJOR_LOCAL_TO_BVH_REST",
+        "provenance": {"provider": "UCC original CI fixture",
+                       "method": "Measured target rest for original test source; not independent source-roll proof",
+                       "reference": "Non-shipping CI-only source"},
+        "joint_frames": rest_frames,
+    }, indent=2), encoding="utf-8")
     print("ORIGINAL_CI_BRANCHING_FIXTURE", len(ordered), "actual weighted rig bones")
 
 

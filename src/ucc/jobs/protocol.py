@@ -70,12 +70,19 @@ class JobRequest:
             ):
                 raise ValidationError("Multi-bone BVH requires one fixed, explicit up-axis profile")
         if self.operation == "verify_reviewed_bvh_chain":
-            if set(self.options) != {"axis_profile", "reviewed_mapping"} or (
+            if set(self.options) not in (
+                {"axis_profile", "reviewed_mapping"},
+                {"axis_profile", "reviewed_mapping", "source_rest_profile_sha256"},
+            ) or (
                 self.options["axis_profile"] not in ("Y_UP_TO_Z_UP", "Z_UP_IDENTITY")
             ):
                 raise ValidationError("Reviewed mapping requires explicitly selected BVH axes")
             from ucc.animations.review_mapping import validate_review_mapping
             validate_review_mapping(self.options["reviewed_mapping"])
+            if "source_rest_profile_sha256" in self.options:
+                from ucc.animations.source_rest_frames import is_sha256
+                if not is_sha256(self.options["source_rest_profile_sha256"]):
+                    raise ValidationError("Source rest profile requires an exact lowercase SHA-256")
         if self.operation == "refit_human":
             if set(self.options) != {"macro_parameters"}:
                 raise ValidationError("refit_human permits only saved MPFB macro parameters")

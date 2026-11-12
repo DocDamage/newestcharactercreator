@@ -27,7 +27,7 @@ class SchemaTests(unittest.TestCase):
 
     def test_all_schema_files_load(self):
         files = list((ROOT / "docs" / "schemas").glob("*.schema.json"))
-        self.assertEqual(len(files), 8)
+        self.assertEqual(len(files), 9)
         for path in files:
             with self.subTest(path=path.name):
                 schema = self.read_schema(path.name)
@@ -61,3 +61,24 @@ class SchemaTests(unittest.TestCase):
         data["unknown"] = "unapproved"
         errors = list(Draft202012Validator(self.read_schema("character-project.v1.schema.json")).iter_errors(data))
         self.assertTrue(errors)
+
+    @unittest.skipIf(Draft202012Validator is None, "Optional JSON Schema validator unavailable")
+    def test_source_rest_and_reviewed_worker_contracts(self):
+        from test_source_rest_intake import profile, PAIRS
+        data = profile()
+        schema = self.read_schema("source-rest-frames.v1.schema.json")
+        Draft202012Validator.check_schema(schema)
+        validator = Draft202012Validator(schema)
+        validator.validate(data)
+        data["provenance"]["method"] = "bad\ncontrol"
+        self.assertTrue(list(validator.iter_errors(data)))
+        request = JobRequest.new("verify_reviewed_bvh_chain", input_project="candidate.blend",
+            options={"axis_profile": "Y_UP_TO_Z_UP", "reviewed_mapping": PAIRS,
+                     "source_rest_profile_sha256": "a" * 64}).as_dict()
+        validator = Draft202012Validator(self.read_schema("worker-job.v1.schema.json"))
+        validator.validate(request)
+        result = JobResult(request["job_id"], request["operation"], "ok",
+                           {"source_rest_frame_intake": None}).as_dict()
+        Draft202012Validator(self.read_schema("worker-result.v1.schema.json")).validate(result)
+        request["options"]["profile_path"] = "unapproved/path"
+        self.assertTrue(list(validator.iter_errors(request)))

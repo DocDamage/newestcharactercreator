@@ -214,7 +214,7 @@ class AnimationPane(QWidget):
     local_bvh_requested = Signal(str, str, str, str, bool)
     multi_bvh_requested = Signal(str, str, str, str, bool, str)
     calibrated_bvh_requested = Signal(str, str, str, str, bool, str)
-    reviewed_bvh_requested = Signal(str, str, str, str, bool, str, str)
+    reviewed_bvh_requested = Signal(str, str, str, str, bool, str, str, str)
     refresh_requested = Signal()
 
     def __init__(self) -> None:
@@ -244,7 +244,7 @@ class AnimationPane(QWidget):
             form.addRow(title, field)
         layout.addLayout(form)
         self.local_preview_review = QCheckBox(
-            "I reviewed the actual license and confirm this BVH may be used "
+            "I reviewed the actual license and confirm this BVH and selected rest metadata may be used "
             "locally in Blender (not UE-only); no AI/cloud or export."
         )
         layout.addWidget(self.local_preview_review)
@@ -289,6 +289,9 @@ class AnimationPane(QWidget):
             "Direction and hierarchy must match; bone roll remains uncalibrated."
         )
         layout.addWidget(self.source_axes)
+        self.source_axes.currentIndexChanged.connect(
+            lambda _index: self.local_preview_review.setChecked(False)
+        )
         self.test_multi_bvh = QPushButton(
             "Test 2–4 bone BVH chain against saved MPFB rig..."
         )
@@ -333,6 +336,21 @@ class AnimationPane(QWidget):
             lambda: self.local_preview_review.setChecked(False)
         )
         layout.addWidget(self.manual_bone_pairs)
+        self.source_rest_profile = QLineEdit()
+        self.source_rest_profile.setPlaceholderText("Optional source rest-frame JSON — validation only")
+        self.source_rest_profile.setToolTip(
+            "Must match the selected BVH SHA-256, axes and exact source joints. "
+            "Validates bone rest metadata; does not certify source roll or change BVH channel axes."
+        )
+        self.source_rest_profile.textChanged.connect(
+            lambda _text: self.local_preview_review.setChecked(False)
+        )
+        self.choose_rest_profile = QPushButton("Choose rest frames...")
+        self.choose_rest_profile.clicked.connect(self.choose_source_rest_profile)
+        profile_row = QHBoxLayout()
+        profile_row.addWidget(self.source_rest_profile, 1)
+        profile_row.addWidget(self.choose_rest_profile)
+        layout.addLayout(profile_row)
         self.test_reviewed_bvh = QPushButton(
             "Review explicit 3–64 bone BVH hierarchy across full timeline..."
         )
@@ -344,6 +362,7 @@ class AnimationPane(QWidget):
             self.selected.text(), self.provider.text(), self.license.text(),
             self.uri.text(), self.local_preview_review.isChecked(),
             self.source_axes.currentData(), self.manual_bone_pairs.toPlainText(),
+            self.source_rest_profile.text(),
         ))
         layout.addWidget(self.test_reviewed_bvh)
         self.catalog = QTableWidget(0, 4)
@@ -351,6 +370,13 @@ class AnimationPane(QWidget):
         self.catalog.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.catalog.horizontalHeader().setStretchLastSection(True)
         layout.addWidget(self.catalog, 1)
+
+    def choose_source_rest_profile(self) -> None:
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Choose SHA-bound source rest metadata", "", "Source rest frames (*.json)"
+        )
+        if path:
+            self.source_rest_profile.setText(path)
 
     def choose_animation(self) -> None:
         path, _ = QFileDialog.getOpenFileName(self, "Select your animation source", "",

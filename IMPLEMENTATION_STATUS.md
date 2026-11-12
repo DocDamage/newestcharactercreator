@@ -1,3 +1,5 @@
+> Current follow-up: **UCC-P1-ANIM-006C SHA-bound source rest-frame intake and validation**, based on merged PR #36. [Format, checks and limitations](docs/acceptance/UCC-P1-ANIM-006C.md). Intake is validation-only; supplied bone frames do not silently replace BVH channel axes.
+
 > Current follow-up: **UCC-P1-ANIM-006B numerical joint and local mesh guards**, based on merged PR #35. See [acceptance and limitations](docs/acceptance/UCC-P1-ANIM-006B.md). Independent source rest frames and human visual approval remain unresolved.
 
 > Current development: **UCC-P1-ANIM-006 branching hierarchy slice**, additive to merged PR #34. Implementation, acceptance checks, measured local results and unresolved gates: [ANIM-006](docs/acceptance/UCC-P1-ANIM-006.md). The historical table below is not current acceptance evidence.
