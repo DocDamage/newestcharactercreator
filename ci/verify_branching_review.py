@@ -18,7 +18,8 @@ from ucc.jobs.bvh_clip_diagnostic import check_selected_bvh
 from ucc.jobs.runner import WorkerFailure
 
 
-def verify_branching(store, blender, master, project, permission, directory):
+def verify_branching(store, blender, master, project, permission, directory,
+                     *, required_targets=()):
     script = ROOT / "ci/branching_blender_fixture.py"
     source = directory / "original-branching-contract.bvh"
 
@@ -44,6 +45,8 @@ def verify_branching(store, blender, master, project, permission, directory):
     parents = [b["parent"] for b in report["mapped_bones"] if b["parent"] is not None]
     if len(pairs) < 9 or len(set(parents)) == len(parents):
         raise RuntimeError("Real review did not exercise a branching map beyond eight bones")
+    if not set(required_targets).issubset({p["target"] for p in pairs}):
+        raise RuntimeError("Branching review omitted required full-body endpoints")
     wrong = [dict(p) for p in pairs]
     rows = report["mapped_bones"]
     first, second = next((i, j) for i in range(1, len(rows)) for j in range(i + 1, len(rows))
@@ -78,6 +81,7 @@ def verify_branching(store, blender, master, project, permission, directory):
         "all_frames_evaluated": len(reopened), "two_workers_agree": True,
         "third_process_all_frames_agree": True, "original_bytes_unchanged": True,
         "crossed_target_hierarchy_rejected": True,
+        "required_anatomical_endpoints": list(required_targets),
         "retargeting_verified": False, "animation_visual_quality_verified": False,
         "engine_import_verified": False,
     }

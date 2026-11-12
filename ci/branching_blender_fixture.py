@@ -47,7 +47,23 @@ def author(master: Path, output: Path) -> None:
         selected.append(bone)
         queue.extend(c for c in sorted(bone.children, key=lambda b: b.name) if c.name in eligible)
     chosen = {b.name for b in selected}
+    endpoints = ("head", "hand.L", "hand.R", "foot.L", "foot.R")
+    if all(rig.data.bones.get(name) is not None for name in endpoints):
+        # Prioritize complete torso/head/arm/hand/leg/foot paths rather than
+        # consuming the bounded map on toes before reaching distal arm joints.
+        chosen = set()
+        for name in endpoints:
+            bone = rig.data.bones[name]
+            while bone is not None:
+                if bone.name not in eligible:
+                    raise RuntimeError("Required body path contains an unweighted connector: " + bone.name)
+                chosen.add(bone.name)
+                bone = bone.parent
+        if len(chosen) > 64:
+            raise RuntimeError("Required body paths exceed the supported 64-bone map")
     ordered = [b for b in bones if b.name in chosen]  # BVH declaration/channel order
+    if len(ordered) != len(chosen):
+        raise RuntimeError("Required body endpoints do not belong to one weighted tree")
     if not any(sum(c.name in chosen for c in b.children) > 1 for b in ordered):
         raise RuntimeError("Real weighted hierarchy did not exercise any branching")
     sources = {b.name: f"CI_Source_{i:02}" for i, b in enumerate(ordered)}

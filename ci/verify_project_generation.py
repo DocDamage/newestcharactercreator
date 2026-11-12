@@ -450,7 +450,8 @@ def verify(blender: Path, root: Path) -> dict:
 
     from verify_branching_review import verify_branching
     branching = verify_branching(store, blender, revised_master, new_project,
-                                 local_authorization, root)
+                                 local_authorization, root,
+                                 required_targets=("head", "hand.L", "hand.R", "foot.L", "foot.R"))
 
     return {
         "status": "REAL_LINUX_PROJECT_GENERATE_REOPEN_STAGED",

@@ -16,7 +16,7 @@ The legacy exact-name 2–4-bone diagnostics keep their chain restrictions.
 | Independent evidence | Compare actual tree parents rather than flattening to a fictional chain; account for `links + leaves` rest landmarks; all frames must agree across two workers and a separately reopened private Action | Evidence rejection tests, three real Blender processes |
 | Immutability | Original source, SHA-addressed master and project metadata unchanged after success **and** crossed-parent rejection; retain rights, cancellation, stale-revision and rollback checks | Existing coordinator tests and byte comparisons |
 | UI | Existing map editor accepts 64 rows, explains branching order, invalidates local rights confirmation on edit; no additional consent grants | Actual offscreen Qt |
-| CI | Five existing workflows required on final PR head; real MPFB scenario must exercise ≥9 weighted bones and at least one branch, not merely run the old neck chain | PR checks; pending until linked below |
+| CI | Five existing workflows required on final PR head; real MPFB scenario must exercise ≥9 weighted bones, a branch, and complete connected paths through head, both hands and both feet | [PR #35 checks](https://github.com/DocDamage/newestcharactercreator/pull/35/checks) |
 
 Touched modules: reviewed map validation, Blender selection/calibration/entrypoint,
 shared calibrated/reviewed evidence, existing map editor, focused unit/Qt tests,
@@ -68,6 +68,16 @@ the supported package range and was not used to claim full-suite acceptance.
 The 15 preflight/guardrail tests pass; example acceptance evidence correctly
 fails. Actual executable metadata confirms Unity **6000.4.5f1** and Unreal
 **5.9**; the 6000.6.4f1 directory lacks an editor executable.
+
+First genuine MPFB CI on `da43e7d3c466b27c0c9aab91fb64a364df7e4b03` passed
+[all five workflows](https://github.com/DocDamage/newestcharactercreator/pull/35/checks).
+[Blender run 43142556899](https://github.com/DocDamage/newestcharactercreator/actions/runs/43142556899)
+created 19,158 vertices / 163 bones, measured a 48-bone branching subtree and
+62 rest landmarks, reproduced all 25 frames in a third process, rejected crossed
+parents and preserved original bytes. Maximum rest residual was 0.000003416°.
+That breadth-first fixture omitted hands/head, so the subsequent fixture now
+**requires** their complete paths plus both feet; it must pass again on the final
+head. The initial pass is not final-head acceptance. See PR #35 for final evidence.
 
 Reproduce without installing or downloading anything:
 
