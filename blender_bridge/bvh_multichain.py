@@ -49,13 +49,39 @@ def _unit(vec: tuple[float, float, float]) -> tuple[tuple[float, float, float], 
 
 def select_explicit_chain(
     motion: LocalBvhMotion, human: Any, rig: Any, axis_profile: str,
+    reviewed_mapping: list[dict[str, str]] | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """Only exact-name, direct-parent, substantially weighted chain members."""
+    """Old direct-name chain or explicitly reviewed, ordered source/target names.
+
+    The reviewed mode does not guess aliases or infer whole-body transforms.
+    It additionally requires the separate two-landmark SO(3) calibration.
+    """
     if axis_profile not in AXIS_PROFILES:
         raise MultiBvhError("Choose a supported explicit BVH up-axis preset")
-    names = motion.source_bones
-    if not MIN_SOURCE_BONES <= len(names) <= MAX_SOURCE_BONES:
-        raise MultiBvhError("Only explicit 2–4-joint BVH chains are supported")
+    if reviewed_mapping is None:
+        names = motion.source_bones
+        if not MIN_SOURCE_BONES <= len(names) <= MAX_SOURCE_BONES:
+            raise MultiBvhError("Only explicit 2–4-joint BVH chains are supported")
+        destination = {name.casefold(): name for name in names}
+    else:
+        if (type(reviewed_mapping) is not list or
+                not 3 <= len(reviewed_mapping) <= 8):
+            raise MultiBvhError("Reviewed mapping requires 3–8 ordered bone pairs")
+        names = tuple(row.get("source") if isinstance(row, dict) else None
+                      for row in reviewed_mapping)
+        targets = tuple(row.get("target") if isinstance(row, dict) else None
+                        for row in reviewed_mapping)
+        import re
+        valid = re.compile(r"[A-Za-z0-9_.:-]{1,128}\Z", re.ASCII)
+        if (any(type(n) is not str or not valid.fullmatch(n)
+                for n in (*names, *targets)) or
+                len({n.casefold() for n in names}) != len(names) or
+                len({n.casefold() for n in targets}) != len(targets)):
+            raise MultiBvhError("Reviewed map has missing, unsafe or duplicate bone names")
+        if any(name.casefold() not in {x.casefold() for x in motion.source_bones}
+               for name in names):
+            raise MultiBvhError("Explicitly mapped source bone does not exist in BVH")
+        destination = {src.casefold(): dst for src, dst in zip(names, targets)}
     if len({n.casefold() for n in names}) != len(names):
         raise MultiBvhError("Ambiguous case-insensitive BVH joint names")
     target_map: dict[str, Any] = {}
@@ -66,7 +92,7 @@ def select_explicit_chain(
         target_map[key] = obj
     pose_map = {bone.name.casefold(): bone for bone in rig.pose.bones}
     weights = {group.index: group.name.casefold() for group in human.vertex_groups}
-    coverage = {key: 0 for key in motion.parents}
+    coverage = {name.casefold(): 0 for name in destination.values()}
     for vertex in human.data.vertices:
         for value in vertex.groups:
             name = weights.get(value.group)
@@ -76,10 +102,11 @@ def select_explicit_chain(
     scaling = []
     for name in names:
         key = name.casefold()
-        actual = target_map.get(key)
-        pose = pose_map.get(key)
+        target_key = destination[key].casefold()
+        actual = target_map.get(target_key)
+        pose = pose_map.get(target_key)
         if (actual is None or pose is None or not actual.use_deform
-                or coverage.get(key, 0) < MIN_WEIGHTED_VERTICES):
+                or coverage.get(target_key, 0) < MIN_WEIGHTED_VERTICES):
             raise MultiBvhError("BVH joint has no exact, substantially weighted MPFB deform bone: " + name)
         declared = motion.channel_orders.get(key, ())
         order = tuple(x for x in declared if x.endswith("rotation"))
@@ -102,7 +129,8 @@ def select_explicit_chain(
         elif parent_name is not None:
             raise MultiBvhError("First selected BVH joint must be the source root")
         if parent_name is not None:
-            parent = target_map.get(parent_name)
+            target_parent = destination.get(parent_name)
+            parent = target_map.get(target_parent.casefold()) if target_parent else None
             if parent is None or actual.parent != parent:
                 raise MultiBvhError("Source/target bone parents differ; do not guess rest mapping")
             source_vec = _convert_offset(motion.offsets[key], axis_profile)
@@ -113,7 +141,7 @@ def select_explicit_chain(
             )
             target_unit, target_len = _unit(target_vec)
             cos = sum(a * b for a, b in zip(src_unit, target_unit))
-            if cos < MIN_ALIGNMENT_COS:
+            if reviewed_mapping is None and cos < MIN_ALIGNMENT_COS:
                 raise MultiBvhError(
                     "BVH rest offset does not align with target bone "
                     "under selected axis conversion"
@@ -121,8 +149,8 @@ def select_explicit_chain(
             scaling.append(target_len / src_len)
         selected.append({
             "source": name, "target": actual.name,
-            "weighted_vertices": coverage[key],
-            "parent": parent_name,
+            "weighted_vertices": coverage[target_key],
+            "parent": parent_name, "target_parent": actual.parent.name if actual.parent else None,
             "max_delta_degrees": maximum,
             "rest_alignment_cos": cos if parent_name is not None else None,
             "angles": angles,
@@ -142,6 +170,8 @@ def select_explicit_chain(
         "rest_scale_consistency_verified": len(scaling) > 1,
         "relative_rest_length_scale": scale,
         "bone_roll_calibrated": False,
+        "mapping_method": ("EXPLICIT_USER_REVIEWED_PAIRS"
+                           if reviewed_mapping is not None else "DIRECT_EXACT_NAMES"),
         "retargeting_verified": False,
     }
 

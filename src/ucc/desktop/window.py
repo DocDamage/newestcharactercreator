@@ -31,6 +31,7 @@ from ucc.jobs.master_preview import MasterPreview
 from ucc.jobs.pose_diagnostic import SavedMasterPoseCheck
 from ucc.jobs.timeline_diagnostic import SavedTimelineDiagnostic
 from ucc.jobs.bvh_clip_diagnostic import LocalBvhClipCheck
+from ucc.animations.review_mapping import parse_review_mapping
 
 from .background import BackgroundJobs
 from .controller import DesktopController, ProjectView
@@ -140,6 +141,7 @@ class MainWindow(QMainWindow):
         self.animations.local_bvh_requested.connect(self.test_selected_bvh)
         self.animations.multi_bvh_requested.connect(self.test_selected_multi_bvh)
         self.animations.calibrated_bvh_requested.connect(self.test_calibrated_bvh)
+        self.animations.reviewed_bvh_requested.connect(self.test_reviewed_bvh)
         self.animations.inspect_requested.connect(self.inspect_animation)
         self.animations.index_requested.connect(self.index_animation)
         self.animations.refresh_requested.connect(self.refresh_catalog)
@@ -287,7 +289,7 @@ class MainWindow(QMainWindow):
             self.undo_action.setEnabled(not busy and state.can_undo)
             self.redo_action.setEnabled(not busy and state.can_redo)
         self.cancel_generation_action.setEnabled(
-            busy and self._work_kind in {"generate_humanoid", "saved_master_preview", "body_refit", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain"}
+            busy and self._work_kind in {"generate_humanoid", "saved_master_preview", "body_refit", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain"}
         )
         self.statusBar().showMessage(
             ("Generating real MPFB humanoid in Blender..."
@@ -304,8 +306,10 @@ class MainWindow(QMainWindow):
              if self._work_kind == "multi_bvh_chain" else
              "Calibrating BVH rotations into actual MPFB rest-bone axes..."
              if self._work_kind == "calibrated_bvh_chain" else
+             "Reviewing explicitly mapped BVH deformation across every Blender frame..."
+             if self._work_kind == "reviewed_bvh_chain" else
              "Converting saved Blender master to a static GLB preview...")
-            if busy and self._work_kind in {"generate_humanoid", "saved_master_preview", "body_refit", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain"}
+            if busy and self._work_kind in {"generate_humanoid", "saved_master_preview", "body_refit", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain"}
             else ("Working on local files..." if busy else "Local task finished")
         )
 
@@ -389,7 +393,7 @@ class MainWindow(QMainWindow):
                 "The prior master is preserved. Live motion, retargeting and game-engine "
                 "imports are NOT yet certified."
             )
-        elif self._work_kind in {"local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain"}:
+        elif self._work_kind in {"local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain"}:
             assert isinstance(result, LocalBvhClipCheck)
             if not self.controller.has_project or self.controller.store is None:
                 self._error("Character closed during BVH preview; discard evidence")
@@ -411,7 +415,8 @@ class MainWindow(QMainWindow):
                 return
             self.log.setPlainText(format_bvh_motion_evidence(
                 result, multibone=self._work_kind == "multi_bvh_chain",
-                calibrated=self._work_kind == "calibrated_bvh_chain",
+                calibrated=self._work_kind in {"calibrated_bvh_chain", "reviewed_bvh_chain"},
+                reviewed=self._work_kind == "reviewed_bvh_chain",
             ))
         elif self._work_kind == "keyframed_timeline":
             assert isinstance(result, SavedTimelineDiagnostic)
@@ -785,6 +790,7 @@ class MainWindow(QMainWindow):
         source_uri: str, reviewed_local_rights: bool,
         multi_axis_profile: str | None = None,
         calibrate_rest_axes: bool = False,
+        reviewed_mapping: list[dict[str, str]] | None = None,
     ) -> None:
         """Explicit local BVH rights confirmation; no library scan or asset upload."""
         if self.jobs.busy:
@@ -846,6 +852,7 @@ class MainWindow(QMainWindow):
         store = self.controller.store
         cancel = Event()
         self._submit(
+            "reviewed_bvh_chain" if reviewed_mapping is not None else
             "calibrated_bvh_chain" if calibrate_rest_axes else
             "multi_bvh_chain" if multi_axis_profile is not None else "local_bvh_motion",
             lambda: test_local_bvh_from_desktop(
@@ -855,6 +862,7 @@ class MainWindow(QMainWindow):
                 master_blend=snapshot.master_blend, cancel=cancel,
                 multi_axis_profile=multi_axis_profile,
                 calibrate_rest_axes=calibrate_rest_axes,
+                reviewed_mapping=reviewed_mapping,
             ), cancel=cancel,
         )
 
@@ -883,6 +891,26 @@ class MainWindow(QMainWindow):
             filename, provider, license_name, source_uri,
             reviewed_local_rights, multi_axis_profile=axis_profile,
             calibrate_rest_axes=True,
+        )
+
+    def test_reviewed_bvh(
+        self, filename: str, provider: str, license_name: str,
+        source_uri: str, reviewed_local_rights: bool, axis_profile: str,
+        mapping_text: str,
+    ) -> None:
+        """No inferred aliases or rights: only explicit, user-reviewed bones."""
+        if axis_profile not in {"Y_UP_TO_Z_UP", "Z_UP_IDENTITY"}:
+            self._error("Choose the explicit BVH up-axis before mapped review")
+            return
+        try:
+            pairs = parse_review_mapping(mapping_text)
+        except ValidationError as exc:
+            self._error(f"Reviewed bone mapping rejected: {exc}")
+            return
+        self.test_selected_bvh(
+            filename, provider, license_name, source_uri,
+            reviewed_local_rights, multi_axis_profile=axis_profile,
+            calibrate_rest_axes=True, reviewed_mapping=pairs,
         )
 
     def inspect_animation(self, file: str) -> None:

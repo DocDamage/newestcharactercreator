@@ -12,6 +12,7 @@ from dataclasses import replace
 from hashlib import sha256
 import json
 import math
+import subprocess
 from pathlib import Path
 import sys
 
@@ -396,6 +397,57 @@ def verify(blender: Path, root: Path) -> dict:
             or _hash(bad_source) != bad_sha):
         raise RuntimeError("Rejected calibration modified project, master or BVH")
 
+    # ANIM-005: create a separate, original CI-only BVH from the ACTUAL
+    # refitted MPFB rest bone locations. This is NOT a real purchased clip or
+    # independent cross-skeleton compatibility evidence. It tests differing
+    # explicit names, three connected weighted bones, and every source frame.
+    source_review = root / "ci-original-reviewed-3-bone.bvh"
+    script = ROOT / "ci" / "review_blender_fixture.py"
+    subprocess.run([
+        str(blender), "--background", "--disable-autoexec",
+        "--python-exit-code", "13", "--python", str(script), "--",
+        "--mode", "create", "--blend", str(revised_master),
+        "--output", str(source_review),
+    ], check=True, timeout=180)
+    reviewed_pairs = [
+        {"source": "UCC_Source_Neck02", "target": "neck02"},
+        {"source": "UCC_Source_Neck03", "target": "neck03"},
+        {"source": "UCC_Source_Head", "target": "head"},
+    ]
+    reviewed = check_selected_bvh(
+        store, blender_exe=blender,
+        worker_script=ROOT / "blender_bridge" / "entrypoint.py",
+        source_bvh=source_review, permission=local_authorization,
+        expected_project_id=new_project.project_id,
+        expected_revision=new_project.revision,
+        expected_master_blend=new_project.master_blend,
+        multi_axis_profile="Y_UP_TO_Z_UP",
+        calibrate_rest_axes=True, reviewed_mapping=reviewed_pairs,
+        timeout_s=300,
+    )
+    review = reviewed.evidence
+    if (review["status"] != "REAL_REVIEWED_BVH_FULL_TIMELINE_MOTION"
+            or review["mapped_bone_count"] != 3
+            or review["rest_landmark_count"] != 3
+            or review["max_rest_residual_degrees"] > 5
+            or len(review["full_timeline_frames"]) != 25
+            or not review["visual_review_artifact_created"]
+            or review["animation_visual_quality_verified"] is not False
+            or review["retargeting_verified"] is not False
+            or len(reviewed.worker_job_ids) != 2
+            or not reviewed.private_visual_review_blend):
+        raise RuntimeError("Three-bone real MPFB mapped full-timeline review was unproven")
+    # A third real Blender process reopens the private unsaved-to-master Action.
+    subprocess.run([
+        str(blender), "--background", "--disable-autoexec",
+        "--python-exit-code", "13", "--python", str(script), "--",
+        "--mode", "inspect", "--blend", reviewed.private_visual_review_blend,
+    ], check=True, timeout=180)
+    if (ProjectStore(store.root).load() != new_project
+            or _hash(revised_master) != refitted.revision.sha256
+            or _hash(source_review) != reviewed.clip_sha256):
+        raise RuntimeError("Reviewed BVH test modified source or authoritative master")
+
     return {
         "status": "REAL_LINUX_PROJECT_GENERATE_REOPEN_STAGED",
         "blender_version": transaction.observed["blender_version"],
@@ -501,6 +553,17 @@ def verify(blender: Path, root: Path) -> dict:
         "calibration_source_master_unchanged": True,
         "calibration_retargeting_verified": False,
         "calibration_bone_roll_independently_verified": False,
+        "anim005_status": review["status"],
+        "anim005_explicit_mapped_bones": review["mapped_bones"],
+        "anim005_all_frames_evaluated": len(review["full_timeline_frames"]),
+        "anim005_max_quaternion_step_deg": review["max_bone_quaternion_step_degrees"],
+        "anim005_max_adjacent_mesh_step_local": review["max_adjacent_mesh_step_local"],
+        "anim005_three_bone_real_blender_motion": True,
+        "anim005_two_blender_workers_agree": True,
+        "anim005_private_action_reopened": True,
+        "anim005_visual_quality_verified": False,
+        "anim005_retargeting_verified": False,
+        "anim005_sources_master_project_unchanged": True,
         "windows_verified": False,
         "deformation_verified": False,
         "engine_imports_verified": [],

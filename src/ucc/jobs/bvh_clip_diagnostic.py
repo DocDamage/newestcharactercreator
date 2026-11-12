@@ -13,6 +13,7 @@ from threading import Event
 from typing import Any
 
 from ucc.animations.metadata import inspect_bvh, AnimationMetadataError
+from ucc.animations.review_mapping import validate_review_mapping
 from ucc.core.errors import ProjectConflict, ProjectStorageError, ValidationError
 from ucc.core.storage import ProjectStore
 from ucc.library.provenance import AssetPolicyError, LicensePolicy
@@ -24,6 +25,7 @@ from .multibone_evidence import (
 from .calibrated_evidence import (
     compare_calibrated_evidence, validate_calibrated_evidence,
 )
+from .reviewed_evidence import compare_reviewed_evidence, validate_reviewed_evidence
 from .protocol import JobRequest
 from .runner import BlenderJobRunner
 
@@ -43,6 +45,7 @@ class LocalBvhClipCheck:
     evidence: dict[str, Any]
     worker_job_ids: tuple[str, str]
     permission_evidence: str = "USER_CONFIRMED_REVIEWED_LOCAL_ONLY"
+    private_visual_review_blend: str | None = None
 
     @property
     def retargeting_verified(self) -> bool:
@@ -165,9 +168,14 @@ def check_selected_bvh(
     timeout_s: float = 300,
     multi_axis_profile: str | None = None,
     calibrate_rest_axes: bool = False,
+    reviewed_mapping: list[dict[str, str]] | None = None,
 ) -> LocalBvhClipCheck:
     """Run two Blender jobs; optionally measure source-to-target rest rotation axes."""
 
+    if reviewed_mapping is not None:
+        if not calibrate_rest_axes or multi_axis_profile is None:
+            raise ValidationError("Manual mapping requires calibrated source axes")
+        reviewed_mapping = validate_review_mapping(reviewed_mapping)
     if type(calibrate_rest_axes) is not bool or (
         calibrate_rest_axes and multi_axis_profile is None
     ):
@@ -210,11 +218,15 @@ def check_selected_bvh(
         raise ProjectStorageError("Private Blender jobs path is redirected")
     runner = BlenderJobRunner(executable, jobs, bridge)
     reports, ids = [], []
+    visual_review_path = None
     for _ in range(2):
         _check_cancel(cancel)
         options = ({"axis_profile": multi_axis_profile}
                    if multi_axis_profile is not None else {})
+        if reviewed_mapping is not None:
+            options["reviewed_mapping"] = reviewed_mapping
         operation = (
+            "verify_reviewed_bvh_chain" if reviewed_mapping is not None else
             "verify_calibrated_bvh_chain" if calibrate_rest_axes else
             "verify_multi_bvh_chain" if multi_axis_profile is not None else
             "verify_local_bvh_motion"
@@ -235,6 +247,9 @@ def check_selected_bvh(
                 _digest(clip, cancel) != source_hash):
             raise ProjectStorageError("Local clip or MPFB master changed during BVH preview")
         evidence = (
+            validate_reviewed_evidence(
+                result.details, multi_axis_profile, reviewed_mapping,
+            ) if reviewed_mapping is not None else
             validate_calibrated_evidence(
                 result.details, axis_profile=multi_axis_profile,
             ) if calibrate_rest_axes else
@@ -245,9 +260,21 @@ def check_selected_bvh(
         )
         if evidence["source_sha256"] != source_hash or evidence["source_frame_count"] != parsed.clips[0].frame_count:
             raise BvhPreviewEvidenceError("BVH metadata/bytes do not match Blender source")
+        if reviewed_mapping is not None:
+            artifact = folder / "review_motion.blend"
+            record = evidence["visual_review_blend"]
+            if (artifact.is_symlink() or not artifact.is_file() or
+                    artifact.stat().st_size != record["bytes"] or
+                    _digest(artifact, cancel) != record["sha256"]):
+                raise ProjectStorageError("Private Blender Action review file failed SHA-256")
+            if visual_review_path is None:
+                visual_review_path = str(artifact)
         reports.append(evidence)
         ids.append(request.job_id)
     observed = (
+        compare_reviewed_evidence(
+            reports[0], reports[1], multi_axis_profile, reviewed_mapping,
+        ) if reviewed_mapping is not None else
         compare_calibrated_evidence(reports[0], reports[1], multi_axis_profile)
         if calibrate_rest_axes else
         compare_multibone_evidence(reports[0], reports[1], multi_axis_profile)
@@ -266,4 +293,5 @@ def check_selected_bvh(
         snapshot.project_id, snapshot.revision, expected_master_blend,
         master_hash, source_hash, parsed.clips[0].name,
         observed, (ids[0], ids[1]),
+        private_visual_review_blend=visual_review_path,
     )

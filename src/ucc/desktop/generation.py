@@ -38,6 +38,7 @@ def bundled_worker_path() -> Path:
     multi_chain = worker.parent / "bvh_multichain.py"
     calibration_math = worker.parent / "rest_calibration.py"
     calibration_worker = worker.parent / "bvh_calibration_probe.py"
+    review_timeline = worker.parent / "bvh_review_timeline.py"
     if (not worker.is_file() or worker.is_symlink()
             or not service.is_file() or service.is_symlink()
             or not preview.is_file() or preview.is_symlink()
@@ -49,7 +50,8 @@ def bundled_worker_path() -> Path:
             or not bvh_probe.is_file() or bvh_probe.is_symlink()
             or not multi_chain.is_file() or multi_chain.is_symlink()
             or not calibration_math.is_file() or calibration_math.is_symlink()
-            or not calibration_worker.is_file() or calibration_worker.is_symlink()):
+            or not calibration_worker.is_file() or calibration_worker.is_symlink()
+            or not review_timeline.is_file() or review_timeline.is_symlink()):
         raise ValidationError(
             "Blender worker bridge is unavailable. Run from the repo checkout "
             "or a complete Windows alpha archive."
@@ -147,6 +149,7 @@ def test_local_bvh_from_desktop(
     cancel: Event,
     multi_axis_profile: str | None = None,
     calibrate_rest_axes: bool = False,
+    reviewed_mapping: list[dict[str, str]] | None = None,
 ) -> LocalBvhClipCheck:
     return check_selected_bvh(
         store, blender_exe=blender_exe, worker_script=bundled_worker_path(),
@@ -155,4 +158,5 @@ def test_local_bvh_from_desktop(
         expected_master_blend=master_blend, cancel=cancel, timeout_s=300,
         multi_axis_profile=multi_axis_profile,
         calibrate_rest_axes=calibrate_rest_axes,
+        reviewed_mapping=reviewed_mapping,
     )
