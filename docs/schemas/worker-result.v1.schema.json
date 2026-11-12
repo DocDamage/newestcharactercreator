@@ -1,14 +1,53 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "UCC Blender worker response v1",
-  "type": "object", "additionalProperties": false,
-  "required": ["protocol_version", "job_id", "operation", "status", "details", "error"],
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocol_version",
+    "job_id",
+    "operation",
+    "status",
+    "details",
+    "error"
+  ],
   "properties": {
-    "protocol_version": {"const": 1},
-    "job_id": {"type": "string", "format": "uuid"},
-    "operation": {"enum": ["inspect_environment", "inspect_character", "create_human"]},
-    "status": {"enum": ["ok", "error"]},
-    "details": {"type": "object"},
-    "error": {"type": ["string", "null"]}
+    "protocol_version": {
+      "const": 1
+    },
+    "job_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "operation": {
+      "enum": [
+        "inspect_environment",
+        "inspect_character",
+        "create_human",
+        "export_preview_glb",
+        "refit_human",
+        "verify_skin_deformation",
+        "verify_keyframed_timeline",
+        "verify_local_bvh_motion",
+        "verify_multi_bvh_chain",
+        "verify_calibrated_bvh_chain",
+        "verify_reviewed_bvh_chain"
+      ]
+    },
+    "status": {
+      "enum": [
+        "ok",
+        "error"
+      ]
+    },
+    "details": {
+      "type": "object"
+    },
+    "error": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
   }
 }

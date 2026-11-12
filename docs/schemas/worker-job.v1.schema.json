@@ -1,13 +1,104 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "UCC isolated Blender worker request v1",
-  "type": "object", "additionalProperties": false,
-  "required": ["protocol_version", "job_id", "operation", "input_project", "options"],
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocol_version",
+    "job_id",
+    "operation",
+    "input_project",
+    "options"
+  ],
   "properties": {
-    "protocol_version": {"const": 1},
-    "job_id": {"type": "string", "format": "uuid"},
-    "operation": {"enum": ["inspect_environment", "inspect_character", "create_human"]},
-    "input_project": {"type": ["string", "null"]},
-    "options": {"type": "object"}
-  }
+    "protocol_version": {
+      "const": 1
+    },
+    "job_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "operation": {
+      "enum": [
+        "inspect_environment",
+        "inspect_character",
+        "create_human",
+        "export_preview_glb",
+        "refit_human",
+        "verify_skin_deformation",
+        "verify_keyframed_timeline",
+        "verify_local_bvh_motion",
+        "verify_multi_bvh_chain",
+        "verify_calibrated_bvh_chain",
+        "verify_reviewed_bvh_chain"
+      ]
+    },
+    "input_project": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "options": {
+      "type": "object"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "verify_reviewed_bvh_chain"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "axis_profile",
+              "reviewed_mapping"
+            ],
+            "properties": {
+              "axis_profile": {
+                "enum": [
+                  "Y_UP_TO_Z_UP",
+                  "Z_UP_IDENTITY"
+                ]
+              },
+              "source_rest_profile_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "reviewed_mapping": {
+                "type": "array",
+                "minItems": 3,
+                "maxItems": 64,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "source",
+                    "target"
+                  ],
+                  "properties": {
+                    "source": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_.:-]{1,128}$"
+                    },
+                    "target": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_.:-]{1,128}$"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
 }

@@ -2,9 +2,9 @@
 
 **Target:** Windows 11 + Blender 5.3 + installed MPFB, PySide6 desktop, optional local ComfyUI/WebUI and future Godot/Unity/Unreal workflows.
 
-**Merged:** PRs #24–#35. Authoritative `main` was verified at `be31dc40117fbc0dcba79d3d019a229f9f165ecd`. PR #35's final head `cf4e78f87864d77107b6385d28adacfdcdc403f8` passed all five workflows, including a genuine 36-bone MPFB branching body map, 40 landmarks, 25 fully evaluated frames, and independent Action reopen.
+**Merged:** PRs #24–#36. Authoritative `main` was verified at `62bda3381b80969722cbdef8c28a3bff025da6bf`. PR #36's final head `776c3b4d31319b7fcf8b51a6fc7313f6901b274e` passed all five workflows, including 36 MPFB joints and 26,756 evaluated edges over 25 frames, independent quality remeasurement and partial-Action cleanup.
 
-**In development:** UCC-P1-ANIM-006B adds per-bone target-local swing/twist, full-frame evaluated edge-strain/topology checks, rest-local FK environment guards, strict two-worker evidence and third-process remeasurement. See [quality acceptance](acceptance/UCC-P1-ANIM-006B.md). Numerical guards do not establish anatomical/visual approval or independent source-roll compatibility. [Initial branching slice](acceptance/UCC-P1-ANIM-006.md).
+**In development:** UCC-P1-ANIM-006C adds optional SHA-bound per-joint source bone rest metadata intake. Application and worker independently validate it, both file hashes are guarded, actual BVH rest origins/End Sites are checked, and the existing mapped-review UI reports validation-only evidence. The descriptor does not change BVH channel interpretation or certify source roll. See [source-rest acceptance and format](acceptance/UCC-P1-ANIM-006C.md), [numerical guards](acceptance/UCC-P1-ANIM-006B.md), and [initial branching slice](acceptance/UCC-P1-ANIM-006.md).
 
 ## Verified capabilities and remaining gates
 

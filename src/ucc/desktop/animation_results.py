@@ -96,6 +96,14 @@ def format_bvh_motion_evidence(result: LocalBvhClipCheck,
             lines.append(f"{joint['bone']}: swing {joint['max_swing_degrees']:.3f}° "
                          f"at frame {joint['max_swing_frame']}, twist "
                          f"{joint['max_twist_degrees']:.3f}° at frame {joint['max_twist_frame']}")
+        intake = data.get("source_rest_frame_intake")
+        if intake is not None:
+            lines.extend([
+                f"Source rest-frame metadata validated: {intake['joint_count']} joints",
+                f"Rest profile SHA-256: {intake['profile_sha256']}",
+                "Validation only: source bone frames were not applied to BVH channel axes.",
+                "Supplied provenance and source roll are not independently certified.",
+            ])
     lines.append("Measured real skinned vertices from Blender:")
     for row in data["sampled_frames"]:
         lines.append(

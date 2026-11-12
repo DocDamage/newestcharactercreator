@@ -14,6 +14,7 @@ from typing import Any
 
 from ucc.animations.metadata import inspect_bvh, AnimationMetadataError
 from ucc.animations.review_mapping import validate_review_mapping
+from ucc.animations.source_rest_frames import read_source_rest_profile
 from ucc.core.errors import ProjectConflict, ProjectStorageError, ValidationError
 from ucc.core.storage import ProjectStore
 from ucc.library.provenance import AssetPolicyError, LicensePolicy
@@ -169,9 +170,12 @@ def check_selected_bvh(
     multi_axis_profile: str | None = None,
     calibrate_rest_axes: bool = False,
     reviewed_mapping: list[dict[str, str]] | None = None,
+    source_rest_profile: Path | None = None,
 ) -> LocalBvhClipCheck:
     """Run two Blender jobs; optionally measure source-to-target rest rotation axes."""
 
+    if source_rest_profile is not None and reviewed_mapping is None:
+        raise ValidationError("Source rest-frame intake requires explicit reviewed mapping")
     if reviewed_mapping is not None:
         if not calibrate_rest_axes or multi_axis_profile is None:
             raise ValidationError("Manual mapping requires calibrated source axes")
@@ -210,6 +214,14 @@ def check_selected_bvh(
             not 5 <= parsed.clips[0].frame_count <= 240):
         raise AnimationMetadataError("BVH preview supports one complete clip with 5–240 frames")
     source_hash = _digest(clip, cancel)
+    rest_profile, rest_sha = None, None
+    rest_path = Path(source_rest_profile) if source_rest_profile is not None else None
+    if rest_path is not None:
+        _check_cancel(cancel)
+        rest_profile, rest_sha = read_source_rest_profile(
+            rest_path, source_hash, multi_axis_profile, reviewed_mapping,
+        )
+        _check_cancel(cancel)
     master, master_hash = _master_file(store, expected_master_blend)
     if _digest(master, cancel) != master_hash:
         raise ProjectStorageError("Saved Blender master digest mismatch")
@@ -225,6 +237,10 @@ def check_selected_bvh(
                    if multi_axis_profile is not None else {})
         if reviewed_mapping is not None:
             options["reviewed_mapping"] = reviewed_mapping
+        staged_inputs = {"candidate.blend": master, "motion.bvh": clip}
+        if rest_path is not None:
+            options["source_rest_profile_sha256"] = rest_sha
+            staged_inputs["source_rest_frames.json"] = rest_path
         operation = (
             "verify_reviewed_bvh_chain" if reviewed_mapping is not None else
             "verify_calibrated_bvh_chain" if calibrate_rest_axes else
@@ -236,8 +252,14 @@ def check_selected_bvh(
         )
         result, folder = runner.run(
             request, timeout_s=timeout_s, cancel=cancel,
-            staged_inputs={"candidate.blend": master, "motion.bvh": clip},
+            staged_inputs=staged_inputs,
         )
+        if rest_path is not None:
+            staged_rest = folder / "source_rest_frames.json"
+            if (staged_rest.is_symlink() or not staged_rest.is_file() or
+                    rest_path.is_symlink() or not rest_path.is_file() or
+                    _digest(staged_rest, cancel) != rest_sha or _digest(rest_path, cancel) != rest_sha):
+                raise ProjectStorageError("Source rest profile changed during Blender intake")
         staged_model, staged_clip = folder / "candidate.blend", folder / "motion.bvh"
         if (staged_model.is_symlink() or staged_clip.is_symlink() or
                 not staged_model.is_file() or not staged_clip.is_file() or
@@ -249,6 +271,7 @@ def check_selected_bvh(
         evidence = (
             validate_reviewed_evidence(
                 result.details, multi_axis_profile, reviewed_mapping,
+                source_rest_profile=rest_profile, source_rest_profile_sha256=rest_sha,
             ) if reviewed_mapping is not None else
             validate_calibrated_evidence(
                 result.details, axis_profile=multi_axis_profile,
@@ -274,6 +297,7 @@ def check_selected_bvh(
     observed = (
         compare_reviewed_evidence(
             reports[0], reports[1], multi_axis_profile, reviewed_mapping,
+            source_rest_profile=rest_profile, source_rest_profile_sha256=rest_sha,
         ) if reviewed_mapping is not None else
         compare_calibrated_evidence(reports[0], reports[1], multi_axis_profile)
         if calibrate_rest_axes else
@@ -289,6 +313,9 @@ def check_selected_bvh(
             _digest(master, cancel) != master_hash or
             _digest(clip, cancel) != source_hash):
         raise ProjectConflict("Saved master/source was changed during BVH preview")
+    if rest_path is not None and (rest_path.is_symlink() or not rest_path.is_file() or
+                                  _digest(rest_path, cancel) != rest_sha):
+        raise ProjectConflict("Source rest profile changed before diagnostic completion")
     return LocalBvhClipCheck(
         snapshot.project_id, snapshot.revision, expected_master_blend,
         master_hash, source_hash, parsed.clips[0].name,

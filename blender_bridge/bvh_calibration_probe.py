@@ -21,6 +21,7 @@ from blender_bridge.bvh_clip_probe import _file_digest
 from blender_bridge.bvh_review_timeline import evaluate_review_timeline
 from blender_bridge.motion_quality import JointMotion
 from blender_bridge.pose_environment import validate_pose_environment
+from blender_bridge.source_rest_intake import inspect_source_rest_profile
 import json
 from blender_bridge.bvh_motion import read_local_bvh
 from blender_bridge.bvh_multichain import (
@@ -89,10 +90,22 @@ def _landmarks(motion: Any, selected: list[dict], rig: Any) -> tuple[list, list]
 def calibrate_bvh_source(bpy: Any, master: Path, source_bvh: Path,
                          axis_profile: str,
                          reviewed_mapping: list[dict[str, str]] | None = None,
-                         review_path: Path | None = None) -> dict[str, Any]:
+                         review_path: Path | None = None,
+                         source_rest_profile: Path | None = None,
+                         source_rest_profile_sha256: str | None = None) -> dict[str, Any]:
     """Create only ephemeral, measured, axis-calibrated source BVH rotations."""
     motion = read_local_bvh(source_bvh)
     source_sha = _file_digest(source_bvh)
+    source_intake = None
+    if (source_rest_profile is None) != (source_rest_profile_sha256 is None):
+        raise BvhCalibrationProbeError("Source rest profile and SHA-256 must accompany each other")
+    if source_rest_profile is not None:
+        if reviewed_mapping is None:
+            raise BvhCalibrationProbeError("Source rest frames require reviewed source pairs")
+        source_intake = inspect_source_rest_profile(
+            source_rest_profile, source_rest_profile_sha256, motion, source_sha,
+            axis_profile, reviewed_mapping,
+        )
     if (master.is_symlink() or not master.is_file() or
             master.suffix.lower() != ".blend"):
         raise BvhCalibrationProbeError("Expected regular staged MPFB master")
@@ -290,6 +303,8 @@ def calibrate_bvh_source(bpy: Any, master: Path, source_bvh: Path,
             raise BvhCalibrationProbeError("Calibrated test changed original rig weights")
         if _file_digest(source_bvh) != source_sha:
             raise BvhCalibrationProbeError("BVH changed while evaluating motion")
+        if source_rest_profile is not None and _file_digest(source_rest_profile) != source_rest_profile_sha256:
+            raise BvhCalibrationProbeError("Source rest frames changed while evaluating motion")
         review_metrics = {}
         if reviewed_mapping is not None:
             assert review_path is not None
@@ -309,6 +324,7 @@ def calibrate_bvh_source(bpy: Any, master: Path, source_bvh: Path,
                 "max_bone_quaternion_step_degrees": max_quaternion_steps,
                 "joint_motion_metrics": [joint_metrics[item["target"]].report() for item in selected],
                 "target_pose_environment_checked": True,
+                "source_rest_frame_intake": source_intake,
             })
         return {
             "status": ("REAL_REVIEWED_BVH_FULL_TIMELINE_MOTION"

@@ -40,3 +40,9 @@ The ANIM-006 first slice and its remaining full-body gates are documented in [AN
 The reviewed mapping now checks every evaluated skin edge and reports length ratios against frame 1, including an explicit excluded-degenerate count and topology SHA. It rejects >4× stretch, <0.05× compression and changed topology. Each target-rest local-Y swing/twist maximum is reported with its frame. Generic rejection limits are 90° twist, 150° swing and 80° adjacent rotation; these are not anatomical acceptance thresholds. Quaternion signs are kept continuous. Active target/ancestor constraints, rig drivers, non-neutral ancestor poses and reflected/nonuniform/sheared transforms reject rather than being silently disabled.
 
 Two workers must agree on all quality evidence. Private Action reopen tests independently remeasure all frames. Independent source rest/roll remains unverified, and no visual or engine approval follows from passing these checks. [Acceptance and reproduction](../acceptance/UCC-P1-ANIM-006B.md).
+
+## Optional SHA-bound source rest metadata (ANIM-006C)
+
+The mapped-review editor accepts an optional source rest-frame JSON via **Choose rest frames...**. It must name the original BVH SHA-256, explicit selected axis preset and exactly one bone frame for every reviewed source pair. Changing axes or the descriptor clears rights consent. Both files are SHA-guarded through two workers; the worker checks the descriptor before opening the staged master. Results show the descriptor hash and count as **validation only**. Existing BVH channel axes and timeline behavior stay unchanged.
+
+Use actual source bind/rest metadata following the [format and acceptance contract](../acceptance/UCC-P1-ANIM-006C.md). SHA binding and proper matrices are not independent source-roll, license or visual approval. A future explicit channel-to-bone conversion contract is required before applying those frames to retargeting.

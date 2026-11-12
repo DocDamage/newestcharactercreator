@@ -791,6 +791,7 @@ class MainWindow(QMainWindow):
         multi_axis_profile: str | None = None,
         calibrate_rest_axes: bool = False,
         reviewed_mapping: list[dict[str, str]] | None = None,
+        source_rest_profile: Path | None = None,
     ) -> None:
         """Explicit local BVH rights confirmation; no library scan or asset upload."""
         if self.jobs.busy:
@@ -863,6 +864,7 @@ class MainWindow(QMainWindow):
                 multi_axis_profile=multi_axis_profile,
                 calibrate_rest_axes=calibrate_rest_axes,
                 reviewed_mapping=reviewed_mapping,
+                source_rest_profile=source_rest_profile,
             ), cancel=cancel,
         )
 
@@ -896,7 +898,7 @@ class MainWindow(QMainWindow):
     def test_reviewed_bvh(
         self, filename: str, provider: str, license_name: str,
         source_uri: str, reviewed_local_rights: bool, axis_profile: str,
-        mapping_text: str,
+        mapping_text: str, source_rest_profile_text: str = "",
     ) -> None:
         """No inferred aliases or rights: only explicit, user-reviewed bones."""
         if axis_profile not in {"Y_UP_TO_Z_UP", "Z_UP_IDENTITY"}:
@@ -911,6 +913,7 @@ class MainWindow(QMainWindow):
             filename, provider, license_name, source_uri,
             reviewed_local_rights, multi_axis_profile=axis_profile,
             calibrate_rest_axes=True, reviewed_mapping=pairs,
+            source_rest_profile=Path(source_rest_profile_text) if source_rest_profile_text.strip() else None,
         )
 
     def inspect_animation(self, file: str) -> None:

@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "UCC SHA-bound source bone rest-frame descriptor v1",
+  "$comment": "Runtime validation additionally checks SO(3), local Y vs head/tail, exact mapped names/parents, actual BVH origins/End Sites, and both file hashes. Acceptance does not apply these frames to BVH channels.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "source_bvh_sha256",
+    "axis_profile",
+    "frame_semantics",
+    "matrix_layout",
+    "provenance",
+    "joint_frames"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "source_bvh_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "axis_profile": {
+      "enum": [
+        "Y_UP_TO_Z_UP",
+        "Z_UP_IDENTITY"
+      ]
+    },
+    "frame_semantics": {
+      "const": "BONE_REST_AXES_ONLY"
+    },
+    "matrix_layout": {
+      "const": "ROW_MAJOR_LOCAL_TO_BVH_REST"
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "method",
+        "reference"
+      ],
+      "properties": {
+        "provider": {
+          "$ref": "#/$defs/text"
+        },
+        "method": {
+          "$ref": "#/$defs/text"
+        },
+        "reference": {
+          "$ref": "#/$defs/text"
+        }
+      }
+    },
+    "joint_frames": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source",
+          "parent",
+          "head",
+          "tail",
+          "rotation"
+        ],
+        "properties": {
+          "source": {
+            "$ref": "#/$defs/bone"
+          },
+          "parent": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/$defs/bone"
+              }
+            ]
+          },
+          "head": {
+            "$ref": "#/$defs/vector"
+          },
+          "tail": {
+            "$ref": "#/$defs/vector"
+          },
+          "rotation": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 3,
+            "items": {
+              "$ref": "#/$defs/vector"
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "bone": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.:-]{1,128}$"
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^[^\\x00-\\x1f]+$"
+    },
+    "vector": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "number",
+        "minimum": -1000000,
+        "maximum": 1000000
+      }
+    }
+  }
+}

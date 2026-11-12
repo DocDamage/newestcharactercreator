@@ -268,6 +268,7 @@ class DesktopQtSmoke(unittest.TestCase):
         self.assertIn("up-axis", error.call_args.args[0])
         submit.assert_not_called()
         pane.source_axes.setCurrentIndex(1)
+        pane.local_preview_review.setChecked(True)
         blender = Path(self.tmp.name) / "fake-blender-not-started"
         blender.write_bytes(b"unit-test")
         with patch("ucc.desktop.window.QFileDialog.getOpenFileName",
@@ -337,6 +338,7 @@ class DesktopQtSmoke(unittest.TestCase):
         self.assertIn("up-axis", error.call_args.args[0])
         submit.assert_not_called()
         pane.source_axes.setCurrentIndex(1)
+        pane.local_preview_review.setChecked(True)
         blender = Path(self.tmp.name) / "fake-blender-unused"
         blender.write_bytes(b"not-executed")
         with patch("ucc.desktop.window.QFileDialog.getOpenFileName",
@@ -492,6 +494,7 @@ class DesktopQtSmoke(unittest.TestCase):
         self.assertIn("up-axis", error.call_args.args[0])
         submit.assert_not_called()
         pane.source_axes.setCurrentIndex(1)
+        pane.local_preview_review.setChecked(True)
         blender = Path(self.tmp.name) / "fake-blender-not-running"
         blender.write_bytes(b"UNIT_ONLY")
         with patch("ucc.desktop.window.QFileDialog.getOpenFileName",
@@ -514,13 +517,44 @@ class DesktopQtSmoke(unittest.TestCase):
         pane.reviewed_bvh_requested.connect(lambda *args: received.append(args))
         with patch.object(self.window, "_error"):
             pane.test_reviewed_bvh.click()
-        self.assertEqual(len(parse_review_mapping(received[0][-1])), 64)
+        self.assertEqual(len(parse_review_mapping(received[0][6])), 64)
         self.assertFalse(received[0][4])
 
     def test_tools_are_real_and_cannot_claim_geometry(self):
         self.assertIn("PNG", self.window.tools.pack.text())
         self.assertFalse(self.window.character.open_master.isEnabled())
         self.assertIn("No live updates", self.window.character.note.text())
+
+    def test_rest_profile_picker_clears_rights_and_dispatches_selected_path(self):
+        self.test_existing_master_refit_button_disabled_until_generated()
+        pane = self.window.animations
+        rest = Path(self.tmp.name) / "source-rest.json"
+        rest.write_text("{}", encoding="utf-8")  # UI wiring only; coordinator validates contents.
+        pane.local_preview_review.setChecked(True)
+        with patch("ucc.desktop.panes.QFileDialog.getOpenFileName", return_value=(str(rest), "")):
+            pane.choose_rest_profile.click()
+        self.assertEqual(pane.source_rest_profile.text(), str(rest))
+        self.assertFalse(pane.local_preview_review.isChecked())
+        self.assertIn("validation only", pane.source_rest_profile.placeholderText())
+        clip = Path(self.tmp.name) / "ui-only.bvh"
+        clip.write_text("Not executed", encoding="utf-8")
+        pane.selected.setText(str(clip))
+        pane.provider.setText("original")
+        pane.license.setText("original retained rights")
+        pane.uri.setText("local-original://unit")
+        pane.source_axes.setCurrentIndex(1)
+        pane.manual_bone_pairs.setPlainText("A -> neck02\nB -> neck03\nC -> head")
+        pane.local_preview_review.setChecked(True)
+        blender = Path(self.tmp.name) / "blender-unit-not-running"
+        blender.write_bytes(b"TEST_ONLY")
+        self.window._blender_executable = blender
+        with patch.object(self.window, "_submit") as submit:
+            pane.test_reviewed_bvh.click()
+        with patch("ucc.desktop.window.test_local_bvh_from_desktop") as service:
+            submit.call_args.args[1]()
+        self.assertEqual(service.call_args.kwargs["source_rest_profile"], rest)
+        pane.source_axes.setCurrentIndex(2)
+        self.assertFalse(pane.local_preview_review.isChecked())
         self.assertIn("local", self.window.tools.ai.text())
 
 

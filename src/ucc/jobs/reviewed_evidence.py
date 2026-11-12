@@ -13,6 +13,7 @@ from ucc.animations.review_mapping import review_mapping_sha256, validate_review
 from ucc.core.errors import ValidationError
 from .calibrated_evidence import compare_calibrated_evidence, validate_calibrated_evidence
 from .motion_quality_evidence import validate_motion_quality
+from .source_rest_evidence import validate_source_rest_evidence
 
 
 class ReviewedEvidenceError(ValidationError):
@@ -42,7 +43,8 @@ def _canonical(raw: dict[str, Any]) -> dict[str, Any]:
 
 
 def validate_reviewed_evidence(raw: Any, axis_profile: str,
-                               mapping: object) -> dict[str, Any]:
+                               mapping: object, *, source_rest_profile: dict | None = None,
+                               source_rest_profile_sha256: str | None = None) -> dict[str, Any]:
     pairs = validate_review_mapping(mapping)
     if not isinstance(raw, dict) or raw.get("status") != "REAL_REVIEWED_BVH_FULL_TIMELINE_MOTION":
         raise ReviewedEvidenceError("Reviewed source did not execute actual Blender motion")
@@ -111,6 +113,11 @@ def validate_reviewed_evidence(raw: Any, axis_profile: str,
         validate_motion_quality(raw, [p["target"] for p in pairs])
     except ValidationError as exc:
         raise ReviewedEvidenceError("Joint/mesh quality evidence rejected: " + str(exc)) from exc
+    try:
+        validate_source_rest_evidence(raw, source_rest_profile, source_rest_profile_sha256,
+                                     axis_profile, pairs)
+    except ValidationError as exc:
+        raise ReviewedEvidenceError("Source rest-frame intake evidence rejected: " + str(exc)) from exc
     artifact = raw.get("visual_review_blend")
     if (raw.get("visual_review_artifact_created") is not True or
             raw.get("animation_visual_quality_verified") is not False or
@@ -124,9 +131,14 @@ def validate_reviewed_evidence(raw: Any, axis_profile: str,
 
 
 def compare_reviewed_evidence(first: Any, second: Any, axis_profile: str,
-                              mapping: object) -> dict[str, Any]:
-    a = validate_reviewed_evidence(first, axis_profile, mapping)
-    b = validate_reviewed_evidence(second, axis_profile, mapping)
+                              mapping: object, *, source_rest_profile: dict | None = None,
+                              source_rest_profile_sha256: str | None = None) -> dict[str, Any]:
+    options = {"source_rest_profile": source_rest_profile,
+               "source_rest_profile_sha256": source_rest_profile_sha256}
+    a = validate_reviewed_evidence(first, axis_profile, mapping, **options)
+    b = validate_reviewed_evidence(second, axis_profile, mapping, **options)
+    if a.get("source_rest_frame_intake") != b.get("source_rest_frame_intake"):
+        raise ReviewedEvidenceError("Independent workers disagree on source rest-frame intake")
     try:
         compare_calibrated_evidence(_canonical(a), _canonical(b), axis_profile, max_bones=64, branching=True)
     except (ValidationError, ValueError, TypeError, KeyError) as exc:
