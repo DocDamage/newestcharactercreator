@@ -79,7 +79,11 @@ contact problems, unapplied finger/face/toe motion or engine incompatibility.
   It starts at a nonneutral pose (first true-neutral minimum ratio 0.615559),
   retains the fixed 20-degree opposing bend, travels four meters and turns
   through more than 400 degrees. Rehashed observation forgery is rejected.
-- Full combined regression and all five final-head CI workflows remain pending.
+- Full combined Windows regression passes, including the new neutral-reference
+  contract, complete cache and rehashed-observation rejection. Final-head CI
+  remains pending. The first Linux run completed every test and artifact step
+  but hit the 25-minute whole-job boundary; its bounded timeout is now 40 minutes
+  to retain every assertion with setup and runner headroom.
   The new original CI challenge
   begins in the previously tested opposing spine/leg bend and recovers, with
   full turn/travel. It is not a copy of an owned motion or pack compatibility
