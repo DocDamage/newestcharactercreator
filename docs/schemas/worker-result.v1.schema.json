@@ -31,7 +31,8 @@
         "verify_local_bvh_motion",
         "verify_multi_bvh_chain",
         "verify_calibrated_bvh_chain",
-        "verify_reviewed_bvh_chain"
+        "verify_reviewed_bvh_chain",
+        "inspect_fbx_animation"
       ]
     },
     "status": {

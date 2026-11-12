@@ -45,6 +45,11 @@ def main(argv: list[str] | None = None) -> int:
     glb.add_argument("path", type=Path)
     anim = sp.add_parser("inspect-animation", help="Read BVH/glTF metadata without retargeting or moving files")
     anim.add_argument("file", type=Path)
+    fbx = sp.add_parser("inspect-fbx", help="Private two-worker native FBX full-frame/rest inspection; no retargeting")
+    fbx.add_argument("file", type=Path)
+    fbx.add_argument("--blender", type=Path, required=True)
+    fbx.add_argument("--jobs", type=Path, required=True)
+    fbx.add_argument("--policy-file", type=Path, required=True, help="Reviewed local-preview LicensePolicy JSON")
     index_anim = sp.add_parser("index-animation", help="Index one explicitly chosen animation with fail-closed provenance")
     index_anim.add_argument("file", type=Path)
     index_anim.add_argument("--database", type=Path, required=True, help="Private local SQLite catalog")
@@ -102,6 +107,11 @@ def main(argv: list[str] | None = None) -> int:
             data = inspect_glb(args.path).to_dict()
         elif args.command == "inspect-animation":
             data = inspect_animation_file(args.file).to_dict()
+        elif args.command == "inspect-fbx":
+            from ucc.jobs.fbx_intake import inspect_selected_fbx
+            policy = LicensePolicy.from_dict(json.loads(args.policy_file.read_text(encoding="utf-8")))
+            data = inspect_selected_fbx(args.file, blender_exe=args.blender, jobs_root=args.jobs,
+                worker_script=Path(__file__).resolve().parents[3]/"blender_bridge/entrypoint.py", permission=policy)
         elif args.command == "index-animation":
             if args.policy_file is not None:
                 policy_data = json.loads(args.policy_file.read_text(encoding="utf-8"))
