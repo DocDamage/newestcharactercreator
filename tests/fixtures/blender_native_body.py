@@ -35,7 +35,7 @@ def layout():
     return rows
 
 
-def author(master: Path,folder: Path):
+def author(master: Path,folder: Path,*,origin="target-root"):
     folder.mkdir(parents=True,exist_ok=False)
     before=sha256(master.read_bytes()).hexdigest()
     bpy.ops.wm.open_mainfile(filepath=str(master),load_ui=False)
@@ -45,6 +45,10 @@ def author(master: Path,folder: Path):
     world=target.matrix_world.copy()
     heads={b.name:world@b.head_local for b in target.data.bones}
     root=heads["root"].copy()
+    if origin=="hip":root=(heads["upperleg01.L"]+heads["upperleg01.R"])/2
+    if origin=="ground":
+        root=(heads["upperleg01.L"]+heads["upperleg01.R"])/2
+        root.z=0.
     adjusted={n:p.copy() for n,p in heads.items()}
     # Independent geometric T-pose construction, no production reference solver.
     for suffix,direction in ((".L",Vector((1,0,0))),(".R",Vector((-1,0,0)))):
@@ -91,6 +95,7 @@ def author(master: Path,folder: Path):
     for frame in range(1,301):
         t=(frame-1)/299
         rig.location=root+Vector((4*t,0,0));rig.rotation_euler.z=math.radians(400*t)
+        if origin!="target-root":rig.rotation_euler.x=math.radians(20)*math.sin(2*math.pi*t)
         rig.keyframe_insert("location",frame=frame);rig.keyframe_insert("rotation_euler",frame=frame)
         for i,bone in enumerate(rig.pose.bones):
             bone.rotation_mode="XYZ"
@@ -133,6 +138,10 @@ def reopen(review: Path,timeline_path: Path,output: Path):
         if pose_digest(world_values,poses)!=expected["target_pose_sha256"]:raise RuntimeError("Independent reopened native bone poses differ")
         strain=bind.measure(points,evaluated_edges(bpy,human),expected["frame"])
         if any(abs(value-bind_expected[key])>1e-6 for key,value in strain.items()):raise RuntimeError("Independent native bind-relative edge strain differs")
+        if "hip_anchor" in data:
+            actual=[world@rig.pose.bones[name].matrix.translation for name in data["hip_anchor"]["target_bones"]]
+            center=[sum(p[i] for p in actual)/2 for i in range(3)]
+            if math.dist(center,expected["hip_midpoint_world"])>1e-6:raise RuntimeError("Reopened actual native hip trajectory differs")
     if sha256(review.read_bytes()).hexdigest()!=before:raise RuntimeError("Native Action reopen modified private copy bytes")
     output.write_text(json.dumps({"all_frames_reopened":data["source_frame_count"],"all_skin_pose_hashes_agree":True,
         "bind_relative_strain_agrees":True,"review_bytes_unchanged":True},indent=2))
@@ -188,7 +197,8 @@ if __name__=="__main__":
     parser.add_argument("--timeline",type=Path)
     parser.add_argument("--output",type=Path)
     parser.add_argument("--job",type=Path)
+    parser.add_argument("--origin",choices=("target-root","hip","ground"),default="target-root")
     args=parser.parse_args(sys.argv[sys.argv.index("--")+1:])
-    if args.mode=="author":author(args.master,args.folder)
+    if args.mode=="author":author(args.master,args.folder,origin=args.origin)
     elif args.mode=="reopen":reopen(args.review,args.timeline,args.output)
     else:fault(args.master,args.job,args.folder)

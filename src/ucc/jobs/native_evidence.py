@@ -10,6 +10,7 @@ from ucc.animations.source_rest_frames import is_sha256
 from ucc.animations.native_profile import CONVENTION, LANDMARKS
 from ucc.animations import native_math as nm
 from .motion_quality_evidence import validate_motion_quality
+from .native_anchor_evidence import anchor_context, check_anchor_frame, finish_anchor
 
 
 def number(v,low,high): return type(v) in (int,float) and math.isfinite(v) and low<=v<=high
@@ -135,6 +136,7 @@ def validate_native_timeline(data,report,source,profile,bindings,*,cancel_check=
         if not number(data.get(key),0,limit): raise ValidationError("Unbounded native FK/scale/translation residual")
     target_world=data.get("target_armature_world");nm.rotation(target_world)
     root_bind=vector(data.get("target_root_bind_head"))
+    anchor=anchor_context(data,profile,source_points,target_points)
     source_indices={b["name"]:i for i,b in enumerate(source["bones"])}
     source_world_scale=nm.scale(world)
     max_source_translation=max_source_scale=0.
@@ -189,7 +191,9 @@ def validate_native_timeline(data,report,source,profile,bindings,*,cancel_check=
         if max(abs(root[i]-poses[0][i*4+3]) for i in range(3))>1e-6:raise ValidationError("Native root head/pose differ")
         delta=[src["armature_world"][i*4+3]-source["armature_rest_world"][i*4+3] for i in range(3)]
         expected_root=[root_bind[i]+sum(axes[i][j]*delta[j] for j in range(3))*data["root_motion_scale"] for i in range(3)]
-        if math.dist(root,expected_root)>1e-4:raise ValidationError("Native source root displacement was not preserved")
+        if anchor is None:
+            if math.dist(root,expected_root)>1e-4:raise ValidationError("Native source root displacement was not preserved")
+        else:check_anchor_frame(anchor,src,row,data,source_indices,root_bind,poses)
         distance=math.dist(root,previous_root) if previous_root is not None else 0.
         speed=distance*source["fps"]
         if not number(row.get("root_speed_world"),0,20) or abs(speed-row["root_speed_world"])>1e-4:raise ValidationError("Native root velocity differs")
@@ -226,6 +230,7 @@ def validate_native_timeline(data,report,source,profile,bindings,*,cancel_check=
     if any(type(v) is not int for v in (total,measured,excluded)) or not 16<=measured<=total<=750000 or measured+excluded!=total:
         raise ValidationError("Native bind edge coverage is incomplete")
     validate_motion_quality(data,[p["target"] for p in pairs[1:]])
+    finish_anchor(anchor,data)
     return data
 
 

@@ -13,6 +13,10 @@
     "pairs"
   ],
   "properties": {
+    "root_motion_policy": {
+      "type": "string",
+      "enum": ["ARMATURE_ORIGIN_DISPLACEMENT_V1", "SOURCE_HIP_MIDPOINT_V1"]
+    },
     "schema_version": {
       "type": "integer",
       "const": 1
