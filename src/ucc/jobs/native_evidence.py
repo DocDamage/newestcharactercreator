@@ -12,6 +12,7 @@ from ucc.animations import native_math as nm
 from .motion_quality_evidence import validate_motion_quality
 from .native_anchor_evidence import anchor_context, check_anchor_frame, finish_anchor
 from .native_skin_evidence import validate_skin
+from .native_strain_evidence import validate_strain_reference
 
 
 def number(v,low,high): return type(v) in (int,float) and math.isfinite(v) and low<=v<=high
@@ -230,7 +231,8 @@ def validate_native_timeline(data,report,source,profile,bindings,*,cancel_check=
     total,measured,excluded=(bind_mesh.get(k) for k in ("evaluated_edge_count","measured_edge_count","degenerate_baseline_edges_excluded"))
     if any(type(v) is not int for v in (total,measured,excluded)) or not 16<=measured<=total<=750000 or measured+excluded!=total:
         raise ValidationError("Native bind edge coverage is incomplete")
-    validate_motion_quality(data,[p["target"] for p in pairs[1:]])
+    neutral_reference=validate_strain_reference(data,profile)
+    validate_motion_quality(data,[p["target"] for p in pairs[1:]],neutral_reference=neutral_reference)
     finish_anchor(anchor,data)
     validate_skin(data,report,profile)
     return data

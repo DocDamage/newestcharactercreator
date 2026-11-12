@@ -15,11 +15,17 @@
   "properties": {
     "skin_deformation_policy": {
       "type": "string",
-      "enum": ["MASTER_MODIFIERS_V1", "BOUND_CORRECTIVE_SMOOTH_V1"]
+      "enum": [
+        "MASTER_MODIFIERS_V1",
+        "BOUND_CORRECTIVE_SMOOTH_V1"
+      ]
     },
     "root_motion_policy": {
       "type": "string",
-      "enum": ["ARMATURE_ORIGIN_DISPLACEMENT_V1", "SOURCE_HIP_MIDPOINT_V1"]
+      "enum": [
+        "ARMATURE_ORIGIN_DISPLACEMENT_V1",
+        "SOURCE_HIP_MIDPOINT_V1"
+      ]
     },
     "schema_version": {
       "type": "integer",
@@ -303,6 +309,13 @@
           }
         }
       }
+    },
+    "mesh_strain_reference": {
+      "type": "string",
+      "enum": [
+        "FIRST_POSE_AND_NEUTRAL_V1",
+        "TRUE_NEUTRAL_BIND_V2"
+      ]
     }
   }
 }

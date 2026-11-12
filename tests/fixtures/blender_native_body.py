@@ -35,7 +35,7 @@ def layout():
     return rows
 
 
-def author(master: Path,folder: Path,*,origin="target-root",corrective_challenge=False):
+def author(master: Path,folder: Path,*,origin="target-root",corrective_challenge=False,posed_origin_challenge=False):
     folder.mkdir(parents=True,exist_ok=False)
     before=sha256(master.read_bytes()).hexdigest()
     bpy.ops.wm.open_mainfile(filepath=str(master),load_ui=False)
@@ -103,7 +103,10 @@ def author(master: Path,folder: Path,*,origin="target-root",corrective_challenge
             if bone.name==names["upperarm01.L"]:bone.rotation_euler.x+=math.radians(7)
             if corrective_challenge and bone.name in {names["spine05"],names["upperleg01.L"]}:
                 # Original analytic opposing bend, not sampled owner motion.
-                bone.rotation_euler.x+=math.radians(20)*math.sin(math.pi*t)
+                # V2 starts in the already-tested opposing-bend pose and
+                # recovers. A posed origin is deliberately not a neutral bind.
+                amplitude=(1+math.cos(math.pi*t))/2 if posed_origin_challenge else math.sin(math.pi*t)
+                bone.rotation_euler.x+=math.radians(20)*amplitude
             bone.keyframe_insert("rotation_euler",frame=frame)
     scene.frame_set(1)
     bpy.ops.export_scene.fbx(filepath=str(folder/"original-native-body.fbx"),use_selection=True,object_types={"ARMATURE"},
@@ -152,6 +155,7 @@ def reopen(review: Path,timeline_path: Path,output: Path):
         if max(math.dist(a,b) for a,b in zip(original,neutral))>1e-6:raise RuntimeError("Corrective neutral rest shape changed")
         master_bind=EdgeStrain(original,evaluated_edges(bpy,human))
     rig.animation_data.action=action;rig.animation_data.action_slot=slot
+    first_pose_strain=None
     world=rig.matrix_world.copy()
     world_values=[float(v) for row in world for v in row]
     for expected,bind_expected in zip(data["full_timeline_frames"],data["bind_relative_frames"]):
@@ -162,6 +166,13 @@ def reopen(review: Path,timeline_path: Path,output: Path):
         if pose_digest(world_values,poses)!=expected["target_pose_sha256"]:raise RuntimeError("Independent reopened native bone poses differ")
         strain=bind.measure(points,evaluated_edges(bpy,human),expected["frame"])
         if any(abs(value-bind_expected[key])>1e-6 for key,value in strain.items()):raise RuntimeError("Independent native bind-relative edge strain differs")
+        if data.get("mesh_strain_reference")=="TRUE_NEUTRAL_BIND_V2":
+            if first_pose_strain is None:first_pose_strain=EdgeStrain(points,evaluated_edges(bpy,human))
+            observed=first_pose_strain.observe(points,evaluated_edges(bpy,human),expected["frame"])
+            first_expected=data["first_pose_relative_frames"][expected["frame"]-1]
+            if any(abs(v-first_expected[k])>1e-6 for k,v in observed.items()) or first_pose_strain.report()!=data["first_pose_edge_strain"]:
+                raise RuntimeError("Independent original posed-origin observations differ")
+            if any(abs(v-expected[k])>1e-6 for k,v in strain.items()):raise RuntimeError("V2 main quality is not neutral-bound")
         if original is not None:
             from blender_bridge.pose_deformation import _movement
             master_strain=master_bind.measure(points,evaluated_edges(bpy,human),expected["frame"])
@@ -179,6 +190,7 @@ def reopen(review: Path,timeline_path: Path,output: Path):
             if math.dist(center,expected["hip_midpoint_world"])>1e-6:raise RuntimeError("Reopened actual native hip trajectory differs")
     if sha256(review.read_bytes()).hexdigest()!=before:raise RuntimeError("Native Action reopen modified private copy bytes")
     extra={} if original is None else {"bound_skin_and_masks_reopened":True,"uncorrected_frames_reproduced":data["source_frame_count"],"original_master_strain_reproduced":True}
+    if first_pose_strain is not None:extra["posed_origin_observations_reproduced"]=data["source_frame_count"]
     output.write_text(json.dumps({**extra,"all_frames_reopened":data["source_frame_count"],"all_skin_pose_hashes_agree":True,
         "bind_relative_strain_agrees":True,"review_bytes_unchanged":True},indent=2))
     print("NATIVE_ACTION_REOPENED_ALL_SKIN_POSE_FRAMES",data["source_frame_count"])
@@ -242,24 +254,27 @@ def fault(master: Path,job: Path,folder: Path):
     if corrected:
         from blender_bridge.native_review_reopen import reopen_native
         good_review=sha256((job/"review_motion.blend").read_bytes()).hexdigest()
-        for kind in ("settings","world"):
+        new_reference=base_profile.get("mesh_strain_reference")=="TRUE_NEUTRAL_BIND_V2"
+        for kind in (("settings","world","observations") if new_reference else ("settings","world")):
             stage=folder/("fault-saved-"+kind);stage.mkdir(exist_ok=False)
             for name in ("candidate.blend","review_motion.blend","target_timeline.json","source_snapshot.json","native_mapping.json"):
                 shutil.copy2(job/name,stage/name)
-            bpy.ops.wm.open_mainfile(filepath=str(stage/"review_motion.blend"),load_ui=False)
-            human=next(o for o in bpy.data.objects if o.type=="MESH" and len(o.data.vertices)>100)
-            if kind=="settings":human.modifiers[-1].factor=.6
-            else:human.location.x+=.1
-            bpy.ops.wm.save_as_mainfile(filepath=str(stage/"review_motion.blend"),compress=False,copy=True)
+            if kind!="observations":
+                bpy.ops.wm.open_mainfile(filepath=str(stage/"review_motion.blend"),load_ui=False)
+                human=next(o for o in bpy.data.objects if o.type=="MESH" and len(o.data.vertices)>100)
+                if kind=="settings":human.modifiers[-1].factor=.6
+                else:human.location.x+=.1
+                bpy.ops.wm.save_as_mainfile(filepath=str(stage/"review_motion.blend"),compress=False,copy=True)
             data=json.loads((stage/"target_timeline.json").read_text())
             data["visual_review_blend"]={"name":"review_motion.blend","bytes":(stage/"review_motion.blend").stat().st_size,
                 "sha256":sha256((stage/"review_motion.blend").read_bytes()).hexdigest()}
+            if kind=="observations":data["first_pose_relative_frames"][19]["max_edge_stretch_ratio"]+=.5
             (stage/"target_timeline.json").write_text(json.dumps(data))
             options={**data["bindings"],"review_sha256":data["visual_review_blend"]["sha256"],
                 "timeline_sha256":sha256((stage/"target_timeline.json").read_bytes()).hexdigest()}
             try:reopen_native(bpy,stage,options)
             except ValueError as error:
-                expected="corrective binding, settings" if kind=="settings" else "object transforms differ"
+                expected={"settings":"corrective binding, settings","world":"object transforms differ","observations":"first-pose observations differ"}[kind]
                 if expected not in str(error):raise
             else:raise RuntimeError("Actual saved-skin "+kind+" tamper was accepted after rehashing")
         if sha256((job/"review_motion.blend").read_bytes()).hexdigest()!=good_review or sha256(master.read_bytes()).hexdigest()!=original:
@@ -278,7 +293,8 @@ if __name__=="__main__":
     parser.add_argument("--job",type=Path)
     parser.add_argument("--origin",choices=("target-root","hip","ground"),default="target-root")
     parser.add_argument("--corrective-challenge",action="store_true")
+    parser.add_argument("--posed-origin-challenge",action="store_true")
     args=parser.parse_args(sys.argv[sys.argv.index("--")+1:])
-    if args.mode=="author":author(args.master,args.folder,origin=args.origin,corrective_challenge=args.corrective_challenge)
+    if args.mode=="author":author(args.master,args.folder,origin=args.origin,corrective_challenge=args.corrective_challenge,posed_origin_challenge=args.posed_origin_challenge)
     elif args.mode=="reopen":reopen(args.review,args.timeline,args.output)
     else:fault(args.master,args.job,args.folder)

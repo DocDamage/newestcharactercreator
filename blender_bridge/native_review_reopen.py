@@ -41,6 +41,13 @@ def same_world(obj: Any, expected: list) -> bool:
     return all(math.isfinite(float(obj.matrix_world[i][j])) and abs(float(obj.matrix_world[i][j])-expected[i*4+j])<=1e-6 for i in range(4) for j in range(4))
 
 
+def same_strain(measured: dict, expected: Any, frame: int) -> bool:
+    return (type(expected) is dict and set(expected)=={"frame",*measured} and
+            type(expected.get("frame")) is int and expected["frame"]==frame and
+            all(type(expected.get(k)) in (int,float) and math.isfinite(expected[k]) and abs(v-expected[k])<=1e-6
+                for k,v in measured.items()))
+
+
 def reopen_native(bpy: Any, root: Path, options: dict) -> dict:
     from mathutils import Matrix
     paths={"candidate.blend":"master_sha256","review_motion.blend":"review_sha256",
@@ -50,8 +57,19 @@ def reopen_native(bpy: Any, root: Path, options: dict) -> dict:
     source=validate_source(read_json(root/"source_snapshot.json",options["snapshot_sha256"],64*1024*1024),options["source_sha256"])
     profile=validate_profile(read_json(root/"native_mapping.json",options["mapping_sha256"],64*1024),options["source_sha256"],options["snapshot_sha256"],options["master_sha256"])
     data=read_json(root/"target_timeline.json",options["timeline_sha256"],64*1024*1024)
+    reference=profile.get("mesh_strain_reference","FIRST_POSE_AND_NEUTRAL_V1")
+    if data.get("mesh_strain_reference","FIRST_POSE_AND_NEUTRAL_V1")!=reference:
+        raise ValueError("Native reopened strain reference differs from its bound map")
+    neutral_reference=reference=="TRUE_NEUTRAL_BIND_V2"
+    observations=data.get("first_pose_relative_frames")
     rows=data.get("full_timeline_frames");bind_rows=data.get("bind_relative_frames");master_rows=data.get("master_relative_frames")
     count=len(source["frames"])
+    if neutral_reference and (type(observations) is not list or len(observations)!=count or
+            type(data.get("motion_quality_schema_version")) is not int or data["motion_quality_schema_version"]!=2):
+        raise ValueError("Native reopened neutral-reference observations are incomplete")
+    if not neutral_reference and (observations is not None or "first_pose_edge_strain" in data or
+            type(data.get("motion_quality_schema_version")) is not int or data["motion_quality_schema_version"]!=1):
+        raise ValueError("Native reopened legacy strain contains cross-policy observations")
     if (profile.get("skin_deformation_policy")!=POLICY or data.get("skin_deformation_policy")!=POLICY or
             data.get("mapped_pairs")!=profile["pairs"] or data.get("source_frame_count")!=count or
             data.get("bindings")!={k:options[k] for k in ("master_sha256","source_sha256","snapshot_sha256","mapping_sha256")} or
@@ -119,7 +137,10 @@ def reopen_native(bpy: Any, root: Path, options: dict) -> dict:
     if max(math.dist(a,b) for a,b in zip(original,neutral))>1e-6:
         raise ValueError("Native reopened bound neutral changed the original shape")
     bind=EdgeStrain(neutral,evaluated_edges(bpy,human))
+    if neutral_reference and (data.get("mesh_edge_strain")!=bind.report() or data.get("bind_edge_strain")!=bind.report()):
+        raise ValueError("Native reopened quality does not describe neutral-bind topology")
     rig.animation_data.action=action;rig.animation_data.action_slot=slot
+    first_strain=None
     for frame,(row,expect_bind,expect_master) in enumerate(zip(rows,bind_rows,master_rows),1):
         if type(row) is not dict or type(row.get("frame")) is not int or row["frame"]!=frame:
             raise ValueError("Native reopened timeline frames differ")
@@ -127,13 +148,24 @@ def reopen_native(bpy: Any, root: Path, options: dict) -> dict:
         if not same_world(human,original_mesh_world) or not same_world(rig,original_world):
             raise ValueError("Native reopened object transforms are driven outside the bone Action")
         points,skin_sha=_evaluated_vertices(bpy,human)
+        edges=evaluated_edges(bpy,human)
+        if neutral_reference:
+            if first_strain is None:first_strain=EdgeStrain(points,edges)
+            measured=first_strain.observe(points,edges,frame);expected=observations[frame-1]
+            if not same_strain(measured,expected,frame):
+                raise ValueError("Native reopened first-pose observations differ")
+            if first_strain.report()!=data.get("first_pose_edge_strain"):
+                raise ValueError("Native reopened first-pose topology differs")
         poses=[[float(v) for line in rig.matrix_world@rig.pose.bones[p["target"]].matrix for v in line] for p in profile["pairs"]]
         if skin_sha!=row.get("evaluated_sha256") or pose_digest(original_world,poses)!=row.get("target_pose_sha256"):
             raise ValueError("Native saved Action does not reproduce actual skin/poses on frame "+str(frame))
-        for measured,expected in ((bind.measure(points,evaluated_edges(bpy,human),frame),expect_bind),
-                                  (master_strain.measure(points,evaluated_edges(bpy,human),frame),expect_master)):
-            if type(expected) is not dict or expected.get("frame")!=frame or any(abs(v-expected.get(k,math.inf))>1e-6 for k,v in measured.items()):
+        actual_bind=bind.measure(points,edges,frame)
+        for measured,expected in ((actual_bind,expect_bind),(master_strain.measure(points,edges,frame),expect_master)):
+            if not same_strain(measured,expected,frame):
                 raise ValueError("Native reopened original/bound edge strain differs")
+        quality={"frame":frame,**{k:row.get(k) for k in actual_bind}}
+        if neutral_reference and not same_strain(actual_bind,quality,frame):
+            raise ValueError("Native reopened main quality is not neutral-bound")
         mod.show_viewport=False
         try:raw,raw_sha=_evaluated_vertices(bpy,human)
         finally:mod.show_viewport=True
@@ -151,7 +183,8 @@ def reopen_native(bpy: Any, root: Path, options: dict) -> dict:
     for name,key in paths.items():
         path=root/name
         if path.is_symlink() or not path.is_file() or digest(path)!=options[key]:raise ValueError("Native reopen changed staged input bytes")
-    return {"status":"REAL_NATIVE_BODY_REVIEW_REOPENED","bindings":dict(options),"frames_verified":count,
+    reference_evidence={"mesh_strain_reference":reference,"first_pose_observation_frames_verified":count} if neutral_reference else {}
+    return {**reference_evidence,"status":"REAL_NATIVE_BODY_REVIEW_REOPENED","bindings":dict(options),"frames_verified":count,
             "uncorrected_skin_frames_verified":count,"master_strain_frames_verified":count,
             "hip_frames_verified":count if "hip_anchor" in data else 0,"skin_deformation_policy":POLICY,
             "original_master_unchanged":True,"review_unchanged":True,

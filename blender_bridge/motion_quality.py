@@ -2,7 +2,8 @@
 
 Blender bones' longitudinal axis is local Y. Swing/twist is measured in each
 target's actual rest-local quaternion frame; no arbitrary source roll is inferred.
-Mesh edge strain is relative to the first evaluated frame, never a repair.
+Callers supply an explicit edge reference. Enforced neutral strain and optional
+posed-shape observations are distinct; neither changes actual geometry.
 """
 from __future__ import annotations
 
@@ -119,6 +120,14 @@ class EdgeStrain:
 
     def measure(self, points: Sequence[Sequence[float]], edges: Sequence[Sequence[int]],
                 frame: int) -> dict[str, float]:
+        return self._measure(points,edges,frame,enforce=True)
+
+    def observe(self, points: Sequence[Sequence[float]], edges: Sequence[Sequence[int]],
+                frame: int) -> dict[str,float]:
+        """Compare posed shapes for information; this is not a safety verdict."""
+        return self._measure(points,edges,frame,enforce=False)
+
+    def _measure(self, points, edges, frame, *, enforce):
         _points(points)
         if len(points) != self.vertex_count or _edges(edges, len(points)) != self.edges:
             raise MotionQualityError(f"Evaluated edge topology changed on frame {frame}")
@@ -126,7 +135,7 @@ class EdgeStrain:
         for i in self.active:
             a, b = self.edges[i]
             ratio = math.dist(points[a], points[b]) / self.lengths[i]
-            if ratio < MIN_EDGE_RATIO or ratio > MAX_STRETCH:
+            if enforce and (ratio < MIN_EDGE_RATIO or ratio > MAX_STRETCH):
                 raise MotionQualityError(
                     f"Extreme local edge strain on frame {frame}, edge {a}-{b}: {ratio:.6f}x")
             minimum, maximum = min(minimum, ratio), max(maximum, ratio)

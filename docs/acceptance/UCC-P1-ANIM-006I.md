@@ -1,6 +1,7 @@
 # UCC-P1-ANIM-006I — verified cached skin playback inside UCC
 
-In development, stacked on PR #42. Keep main stable; never merge automatically.
+In review as PR #43, stacked on PR #42. All five workflows passed on
+`a533d0f399f74857c3b24277eef48e1b453168e0`. Main stays stable; no automatic merge.
 
 The vertical slice is an interactive, full-surface 3D animation player for the
 existing verified native body result. Blender evaluates the real saved Action;
@@ -63,8 +64,10 @@ does not approve visual quality. Preserve the current knee-angle rejection.
   Current suite: **471 tests run**, success with 13 Windows symlink-privilege
   skips, including 36 desktop widget cases plus three motion transport cases.
   All 15 preflight/guardrail cases, compilation and whitespace checks pass.
-- The combined Windows regression and all five exact-head CI results will be
-  recorded after completion. The original corrective CI case now also exports
+- The combined Windows regression and all five exact-head CI workflows passed;
+  their execution links are recorded in PR #43. The downloaded Linux archive
+  matches SHA-256 `d681aa42d8e78eb1c68a45f23d4ae7e94c1d25312657b7eb0a36bf85d73b0c82`
+  and contains only the five expected JSON summaries. The original corrective CI case also exports
   and independently validates every cache frame. Its JSON reports geometry/fps
   counts only; binary surfaces, transforms, scenes and images stay private.
 

@@ -83,6 +83,12 @@ def validate_reopen_report(report: dict, bindings: dict, data: dict) -> None:
           "hip_frames_verified","skin_deformation_policy","original_master_unchanged","review_unchanged",
           "retargeting_verified","animation_visual_quality_verified","engine_import_verified"}
     count=data["source_frame_count"]
+    neutral_reference=data.get("mesh_strain_reference")=="TRUE_NEUTRAL_BIND_V2"
+    if neutral_reference:
+        keys|={"mesh_strain_reference","first_pose_observation_frames_verified"}
+        if (type(report) is not dict or report.get("mesh_strain_reference")!="TRUE_NEUTRAL_BIND_V2" or
+                type(report.get("first_pose_observation_frames_verified")) is not int or report["first_pose_observation_frames_verified"]!=count):
+            raise ValidationError("Neutral-reference observations were not independently reopened")
     if (type(report) is not dict or set(report)!=keys or report["status"]!="REAL_NATIVE_BODY_REVIEW_REOPENED" or
             report["bindings"]!=bindings or report["skin_deformation_policy"]!=POLICY or
             any(type(report[k]) is not int or report[k]!=count for k in ("frames_verified","uncorrected_skin_frames_verified","master_strain_frames_verified")) or
