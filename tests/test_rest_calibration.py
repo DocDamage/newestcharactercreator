@@ -8,7 +8,7 @@ from blender_bridge.rest_calibration import (
     RestCalibrationError, Y_UP_TO_Z_UP, Z_UP_IDENTITY,
     axis_rotation, bvh_ordered_rotation, calibrate_rest_frames,
     calibrated_local_delta, determinant, multiply, norm, transform,
-    transpose, validate_rotation,
+    transpose, validate_rotation, project_near_rotation,
 )
 
 
@@ -94,6 +94,24 @@ class RestSpaceMathTests(unittest.TestCase):
                 ((1, 0, 0), (0, 1, 0), (0, 0, -1)),
                 "Z_UP_IDENTITY",
             )
+
+    def test_bounded_projection_accepts_small_mpfb_rest_noise_only(self):
+        slightly_scaled = ((1.000014475, 0, 0),
+                           (0, 1.0, 0), (0, 0, 1.0))
+        with self.assertRaises(RestCalibrationError):
+            validate_rotation(slightly_scaled)
+        projected, raw_det, correction = project_near_rotation(slightly_scaled)
+        validate_rotation(projected)
+        self.assertAlmostEqual(raw_det, 1.000014475, places=8)
+        self.assertLess(correction, 0.00002)
+        self.assertLess(max_difference(projected, Z_UP_IDENTITY), 1e-9)
+        for improper in (
+            ((1, 0, 0), (0, 1, 0), (0, 0, -1)),
+            ((1.02, 0, 0), (0, 1, 0), (0, 0, 1)),
+            ((1, .01, 0), (0, 1, 0), (0, 0, 1)),
+        ):
+            with self.subTest(matrix=improper), self.assertRaises(RestCalibrationError):
+                project_near_rotation(improper)
 
     def test_reject_scaled_reflected_invalid_rotation_and_unknown_axis(self):
         with self.assertRaisesRegex(RestCalibrationError, "reflected"):
