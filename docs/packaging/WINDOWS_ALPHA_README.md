@@ -56,6 +56,12 @@ The Animation library tab offers **Test 2–4 bone BVH chain against saved MPFB 
 
 The Windows alpha bundles first-party BVH chain and evidence code; its PyInstaller self-test verifies source availability, not actual MPFB execution on the owner's Windows machine. [Details](../integration/bvh-multibone-rest-gate.md).
 
+## Rotation-calibrated BVH rest-space test — PR #33
+
+The Animation library tab adds **Calibrate BVH rest axes and test 2–4 bone motion...**. This requires an explicitly user-selected local BVH file, actual reviewed Blender-use license confirmation, a selected source up-axis, **two independent, corresponding rest-direction landmarks** (including terminal BVH End Site), and a saved MPFB humanoid. Real Blender computes a proper, measured source-to-target rest orientation and applies ordered BVH relative rotations through the **actual target rest-bone matrix** as quaternion keys. Uncalibratable sources fail; no original master or BVH is overwritten.
+
+[Real Linux Blender/MPFB run #43132955795](https://github.com/DocDamage/newestcharactercreator/actions/runs/43132955795) passed this initial two-bone calibration; the Windows frozen UI self-test checks bundled sources/Qt, **not your installed Windows Blender/MPFB runtime**. User-supplied paid Fab animation quality, full retargeting and engine import remain unverified. See [calibrated BVH guide](../integration/bvh-restspace-quaternion-calibration.md).
+
 ## Source and asset protections
 
 This artifact bundles only open dependency runtime libraries and UCC source code. It intentionally excludes Fab files, model checkpoints, purchased music/animation data, personal project directories, MPFB, Blender, and proprietary reference art. It does **not** automatically scan the computer or contact cloud AI providers.
