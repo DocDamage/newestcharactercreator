@@ -112,6 +112,36 @@ def validate_rotation(a: Matrix3) -> None:
                 raise RestCalibrationError("Rest-axis rotation is not orthonormal")
 
 
+def project_near_rotation(raw: Matrix3) -> tuple[Matrix3, float, float]:
+    """Normalize only tiny MPFB rest matrix roundoff, never reflections/shear.
+
+    Some actual MPFB refitted Blender rest frames include ~1e-5 scaling noise.
+    A near-SO(3) matrix can be projected by Gram-Schmidt with an explicit,
+    measured absolute correction cap. Wrong-handed, stretched or severely
+    sheared transforms fail, and the resulting rotation still satisfies the
+    *strict* 1e-5 SO(3) acceptance tolerance.
+    """
+    if any(not math.isfinite(v) for row in raw for v in row):
+        raise RestCalibrationError("Rest matrix has nonfinite elements")
+    original_det = determinant(raw)
+    if not 0.999 < original_det < 1.001:
+        raise RestCalibrationError("Actual rest matrix is reflected or severely scaled")
+    columns = tuple(tuple(raw[i][j] for i in range(3)) for j in range(3))
+    primary = unit(columns[0])
+    proj = dot(primary, columns[1])
+    secondary = unit(tuple(columns[1][i] - proj * primary[i] for i in range(3)))
+    third = unit(cross(primary, secondary))
+    if dot(third, unit(columns[2])) < 0.999:
+        raise RestCalibrationError("Rest matrix contains reflection or excessive shear")
+    result = _columns(primary, secondary, third)
+    correction = max(abs(result[i][j] - raw[i][j])
+                     for i in range(3) for j in range(3))
+    if correction > 5e-4:
+        raise RestCalibrationError("Rest-bone axes differ too much from a proper rotation")
+    validate_rotation(result)
+    return result, original_det, correction
+
+
 def _angle_degrees(a: Vector3, b: Vector3) -> float:
     return math.degrees(math.acos(max(-1.0, min(1.0, dot(unit(a), unit(b))))))
 
