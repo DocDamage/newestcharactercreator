@@ -78,6 +78,11 @@ parents and preserved original bytes. Maximum rest residual was 0.000003416°.
 That breadth-first fixture omitted hands/head, so the subsequent fixture now
 **requires** their complete paths plus both feet; it must pass again on the final
 head. The initial pass is not final-head acceptance. See PR #35 for final evidence.
+The first strict endpoint attempt correctly failed because MPFB uses **wrist.L/R**
+as hand-base bones, not `hand.L/R`; names were corrected from the actual 163-bone
+inventory, keeping the coverage assertion intact. The local opt-in runner's
+`--humanoid-names` variant executes the same endpoint-selection branch with
+explicitly synthetic labels and passes all frame, hierarchy and byte checks.
 
 Reproduce without installing or downloading anything:
 

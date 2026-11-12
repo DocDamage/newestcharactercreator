@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 
-def create(output: Path) -> None:
+def create(output: Path, humanoid_names: bool = False) -> None:
     bpy.ops.object.select_all(action="SELECT")
     bpy.ops.object.delete(use_global=False)
     data = bpy.data.armatures.new("SYNTHETIC_CONTRACT_ONLY")
@@ -52,6 +52,15 @@ def create(output: Path) -> None:
     human.name = "SYNTHETIC_SKIN_CONTRACT_NOT_A_CHARACTER"
     modifier = human.modifiers.new("Actual Blender skinning contract", "ARMATURE")
     modifier.object = rig
+    if humanoid_names:
+        # Labels exercise endpoint selection only. This is still a synthetic
+        # hierarchy of skinned spheres, never a natural/MPFB human substitute.
+        for index, name in {2: "head", 4: "wrist.L", 6: "wrist.R",
+                            8: "foot.L", 9: "foot.R"}.items():
+            old = f"Contract{index}"
+            group = human.vertex_groups[old]
+            rig.data.bones[old].name = name
+            group.name = name
     bpy.ops.wm.save_as_mainfile(filepath=str(output / "synthetic.blend"), compress=False)
     from ci.branching_blender_fixture import author
     author(output / "synthetic.blend", output / "original-synthetic.bvh")
@@ -60,9 +69,10 @@ def create(output: Path) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--humanoid-names", action="store_true")
     args = parser.parse_args(sys.argv[sys.argv.index("--") + 1:])
     if args.output.exists():
         raise RuntimeError("Output must be a new private test directory")
     args.output.mkdir(parents=True)
-    create(args.output)
+    create(args.output, args.humanoid_names)
     print("SYNTHETIC_BLENDER_CONTRACT_CREATED_NOT_MPFB")

@@ -25,13 +25,14 @@ from ucc.library.provenance import LicensePolicy
 from verify_branching_review import verify_branching
 
 
-def run(blender: Path, output: Path) -> dict:
+def run(blender: Path, output: Path, humanoid_names: bool = False) -> dict:
     if output.exists() or output.is_symlink():
         raise ValueError("Output must be a new private directory")
     subprocess.run([str(blender), "--background", "--factory-startup", "--disable-autoexec",
                     "--python-exit-code", "13", "--python",
                     str(ROOT / "tests/fixtures/blender_branching_contract.py"), "--",
-                    "--output", str(output)], check=True, timeout=180)
+                    "--output", str(output), *(["--humanoid-names"] if humanoid_names else [])],
+                   check=True, timeout=180)
     store = ProjectStore(output / "synthetic-project")
     digest = sha256((output / "synthetic.blend").read_bytes()).hexdigest()
     relative = f"master/versions/{digest}.blend"
@@ -43,7 +44,9 @@ def run(blender: Path, output: Path) -> dict:
     policy = LicensePolicy("UCC original synthetic test fixture", "CC0",
                            "ci-original://synthetic-contract", reviewed=True,
                            local_preview_allowed=True, no_ai=True)
-    report = verify_branching(store, blender, master, project, policy, output)
+    endpoints = ("head", "wrist.L", "wrist.R", "foot.L", "foot.R") if humanoid_names else ()
+    report = verify_branching(store, blender, master, project, policy, output,
+                              required_targets=endpoints)
     pairs = json.loads((output / "original-branching-contract.json").read_text(encoding="utf-8"))
     source = output / "original-branching-contract.bvh"
     source_bytes, metadata_bytes, master_bytes = source.read_bytes(), (
@@ -75,8 +78,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--blender", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--humanoid-names", action="store_true")
     args = parser.parse_args()
-    result = run(args.blender.resolve(strict=True), args.output.resolve())
+    result = run(args.blender.resolve(strict=True), args.output.resolve(), args.humanoid_names)
     (args.output / "synthetic-contract-summary.json").write_text(
         json.dumps(result, indent=2), encoding="utf-8")
     print(json.dumps(result))

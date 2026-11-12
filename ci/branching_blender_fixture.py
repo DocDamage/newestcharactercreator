@@ -47,7 +47,9 @@ def author(master: Path, output: Path) -> None:
         selected.append(bone)
         queue.extend(c for c in sorted(bone.children, key=lambda b: b.name) if c.name in eligible)
     chosen = {b.name for b in selected}
-    endpoints = ("head", "hand.L", "hand.R", "foot.L", "foot.R")
+    # Exact MPFB default-rig names, verified from genuine CI bone inventory.
+    # wrist.L/R are its hand-base deform bones; no invented hand.L/R aliases.
+    endpoints = ("head", "wrist.L", "wrist.R", "foot.L", "foot.R")
     if all(rig.data.bones.get(name) is not None for name in endpoints):
         # Prioritize complete torso/head/arm/hand/leg/foot paths rather than
         # consuming the bounded map on toes before reaching distal arm joints.
