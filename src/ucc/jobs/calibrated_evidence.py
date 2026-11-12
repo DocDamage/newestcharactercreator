@@ -34,6 +34,7 @@ def validate_calibrated_evidence(raw: Any, axis_profile: str) -> dict[str, Any]:
     if axis_profile not in {"Y_UP_TO_Z_UP", "Z_UP_IDENTITY"} or raw.get("axis_profile") != axis_profile:
         raise CalibratedEvidenceError("Source BVH up-axis did not match user-selected preset")
     if (raw.get("rest_axes_calibrated") is not True or
+            raw.get("raw_rest_rotation_projected_with_bound") is not True or
             raw.get("bone_roll_independently_verified") is not False or
             raw.get("real_quaternion_action_inserted") is not True):
         raise CalibratedEvidenceError("Unproven calibrated rest frame or Action")
@@ -75,7 +76,11 @@ def validate_calibrated_evidence(raw: Any, axis_profile: str) -> dict[str, Any]:
             abs(max(residuals) - max_residual) > 1e-5):
         raise CalibratedEvidenceError("Insufficient two-direction measured rest-frame fit")
 
+    max_projection = raw.get("maximum_rest_projection_delta")
+    if not _number(max_projection) or not 0 <= max_projection <= 5e-4:
+        raise CalibratedEvidenceError("Unbounded raw MPFB rest-matrix correction")
     seen = set()
+    projected = []
     for i, (b, movement, proof) in enumerate(zip(bones, movements, axes)):
         if not all(isinstance(item, dict) for item in (b, movement, proof)):
             raise CalibratedEvidenceError("Per-bone evidence must be an object")
@@ -102,6 +107,14 @@ def validate_calibrated_evidence(raw: Any, axis_profile: str) -> dict[str, Any]:
                 not _hex(proof.get("target_rest_matrix_sha256")) or
                 not _hex(proof.get("calibrated_test_delta_sha256"))):
             raise CalibratedEvidenceError("No independently measured rest-bone matrix proof")
+        raw_det = proof.get("measured_rest_raw_determinant")
+        correction = proof.get("bounded_rest_projection_delta")
+        if (not _number(raw_det) or not .999 < raw_det < 1.001 or
+                not _number(correction) or not 0 <= correction <= 5e-4):
+            raise CalibratedEvidenceError("Rest-bone source matrix correction unproven")
+        projected.append(correction)
+    if abs(max(projected) - max_projection) > 1e-6:
+        raise CalibratedEvidenceError("Rest correction summary inconsistent with measured bones")
     frames, dt = raw.get("source_frame_count"), raw.get("source_frame_time")
     if (type(frames) is not int or not 5 <= frames <= 240 or
             not _number(dt) or not .005 <= dt <= .5 or
@@ -150,6 +163,7 @@ def compare_calibrated_evidence(first: Any, second: Any,
     b = validate_calibrated_evidence(second, axis_profile)
     for key in (
         "source_sha256", "axis_profile", "source_to_target_axes_sha256",
+        "raw_rest_rotation_projected_with_bound", "maximum_rest_projection_delta",
         "rest_landmark_count", "rest_reference_pair", "mapped_bones",
         "local_axis_proofs", "source_frame_count", "source_frame_time",
         "mapped_bone_count", "keyframes_inserted", "rig_bone_count",
