@@ -27,7 +27,7 @@ def reviewed() -> dict:
     v["max_rest_residual_degrees"] = .03
     v["mapped_bones"] = [
         {"source": x["source"], "target": x["target"],
-         "parent": PAIRS[i-1]["source"] if i else None,
+         "parent": PAIRS[i-1]["source"].casefold() if i else None,
          "target_parent": PAIRS[i-1]["target"] if i else "neck01"}
         for i, x in enumerate(PAIRS)
     ]
