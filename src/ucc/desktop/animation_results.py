@@ -83,6 +83,19 @@ def format_bvh_motion_evidence(result: LocalBvhClipCheck,
             "Open that private .blend in Blender and inspect its full Action timeline.",
             "Joint twist and visual motion quality have NOT been manually approved.",
         ])
+        mesh = data["mesh_edge_strain"]
+        lines.extend([
+            f"Evaluated skin edges measured: {mesh['measured_edge_count']:,} "
+            f"({mesh['degenerate_baseline_edges_excluded']} degenerate baseline edges excluded)",
+            f"Edge length ratios across all frames: "
+            f"{min(f['min_edge_length_ratio'] for f in data['full_timeline_frames']):.4f}–"
+            f"{max(f['max_edge_stretch_ratio'] for f in data['full_timeline_frames']):.4f}",
+            "Target-rest local Y swing/twist maxima (generic bounds, not anatomical approval):",
+        ])
+        for joint in data["joint_motion_metrics"]:
+            lines.append(f"{joint['bone']}: swing {joint['max_swing_degrees']:.3f}° "
+                         f"at frame {joint['max_swing_frame']}, twist "
+                         f"{joint['max_twist_degrees']:.3f}° at frame {joint['max_twist_frame']}")
     lines.append("Measured real skinned vertices from Blender:")
     for row in data["sampled_frames"]:
         lines.append(

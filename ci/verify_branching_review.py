@@ -66,10 +66,23 @@ def verify_branching(store, blender, master, project, permission, directory,
         raise RuntimeError("Genuine Blender accepted a crossed target hierarchy")
     review_path = Path(result.private_visual_review_blend)
     review_hash = digest(review_path)
+    run("reject-step", master, source.with_suffix(".json"))
     run("inspect", review_path, source.with_suffix(".json"))
     reopened = json.loads(review_path.with_suffix(".reopened.json").read_text(encoding="utf-8"))
     if reopened != [frame["evaluated_sha256"] for frame in report["full_timeline_frames"]]:
         raise RuntimeError("All independently reopened skin frames must match the workers")
+    quality = json.loads(review_path.with_suffix(".quality.json").read_text(encoding="utf-8"))
+    if quality["mesh_edge_strain"] != report["mesh_edge_strain"]:
+        raise RuntimeError("Independent reopen edge topology differs")
+    for first, second in zip(report["full_timeline_frames"], quality["edge_frames"], strict=True):
+        if any(abs(first[key] - second[key]) > 1e-6 for key in second):
+            raise RuntimeError("Independent reopen full-frame local edge strain differs")
+    for first, second in zip(report["joint_motion_metrics"], quality["joint_motion_metrics"], strict=True):
+        for key in first:
+            same = (abs(first[key] - second[key]) <= .001 if key.endswith("_degrees")
+                    else first[key] == second[key])
+            if not same:
+                raise RuntimeError("Independent reopen measured joint swing/twist differs: " + key)
     if (original != (digest(master), digest(metadata)) or source_hash != digest(source)
             or review_hash != digest(review_path) or store.load() != project):
         raise RuntimeError("Branching diagnostics modified original source/project/review bytes")
@@ -82,6 +95,14 @@ def verify_branching(store, blender, master, project, permission, directory,
         "third_process_all_frames_agree": True, "original_bytes_unchanged": True,
         "crossed_target_hierarchy_rejected": True,
         "required_anatomical_endpoints": list(required_targets),
+        "motion_quality_schema_version": report["motion_quality_schema_version"],
+        "mesh_edge_strain": report["mesh_edge_strain"],
+        "joint_motion_metrics": report["joint_motion_metrics"],
+        "min_edge_length_ratio": min(f["min_edge_length_ratio"] for f in report["full_timeline_frames"]),
+        "max_edge_stretch_ratio": max(f["max_edge_stretch_ratio"] for f in report["full_timeline_frames"]),
+        "third_process_quality_metrics_agree": True,
+        "quality_fault_injections_rejected_and_skin_restored": True,
+        "partial_action_removed_after_step_failure": True,
         "retargeting_verified": False, "animation_visual_quality_verified": False,
         "engine_import_verified": False,
     }

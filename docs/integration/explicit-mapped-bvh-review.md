@@ -34,3 +34,9 @@ The first CI case uses a **non-shipping original BVH generated from the actual M
 Only a locally acquired, explicitly permitted animation clip with an accurate source skeleton, reviewed rights and enough anatomical rest information should be submitted for future real compatibility and visual review. Fab account ownership alone does not grant non-Unreal use, AI input, or redistribution rights.
 
 The ANIM-006 first slice and its remaining full-body gates are documented in [ANIM-006 acceptance](../acceptance/UCC-P1-ANIM-006.md). Static source joints are allowed only in explicitly reviewed maps; their targets must still pass the independent weighted skin probe. Unmapped intermediate helpers are rejected, and original per-component 45-degree motion bounds remain.
+
+## Numerical joint and mesh diagnostics (ANIM-006B)
+
+The reviewed mapping now checks every evaluated skin edge and reports length ratios against frame 1, including an explicit excluded-degenerate count and topology SHA. It rejects >4× stretch, <0.05× compression and changed topology. Each target-rest local-Y swing/twist maximum is reported with its frame. Generic rejection limits are 90° twist, 150° swing and 80° adjacent rotation; these are not anatomical acceptance thresholds. Quaternion signs are kept continuous. Active target/ancestor constraints, rig drivers, non-neutral ancestor poses and reflected/nonuniform/sheared transforms reject rather than being silently disabled.
+
+Two workers must agree on all quality evidence. Private Action reopen tests independently remeasure all frames. Independent source rest/roll remains unverified, and no visual or engine approval follows from passing these checks. [Acceptance and reproduction](../acceptance/UCC-P1-ANIM-006B.md).

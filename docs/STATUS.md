@@ -1,10 +1,10 @@
-# UCC development status — November 11, 2026
+# UCC development status — November 12, 2026
 
 **Target:** Windows 11 + Blender 5.3 + installed MPFB, PySide6 desktop, optional local ComfyUI/WebUI and future Godot/Unity/Unreal workflows.
 
-**Merged:** PRs #24–#34. Verified authoritative `main` is `84d5ff89a4174b53b7059a0d63e558e762f8258d` after PR #34. PR #34's final head `0306d7e1030e959c0cd7dfe042d117f3b7e2e867` passed all five workflows. Earlier wording below describes historical gates, not the current merge state.
+**Merged:** PRs #24–#35. Authoritative `main` was verified at `be31dc40117fbc0dcba79d3d019a229f9f165ecd`. PR #35's final head `cf4e78f87864d77107b6385d28adacfdcdc403f8` passed all five workflows, including a genuine 36-bone MPFB branching body map, 40 landmarks, 25 fully evaluated frames, and independent Action reopen.
 
-**In development:** UCC-P1-ANIM-006, first branching hierarchy slice. Explicit 3–64-bone connected maps preserve direct source/target parents, use every link and every terminal leaf as rest evidence, and retain per-bone skin probes, two-worker full timelines, private Action review, licensing and SHA/revision safeguards. This does not complete production full-body retargeting. See [acceptance and local execution](acceptance/UCC-P1-ANIM-006.md).
+**In development:** UCC-P1-ANIM-006B adds per-bone target-local swing/twist, full-frame evaluated edge-strain/topology checks, rest-local FK environment guards, strict two-worker evidence and third-process remeasurement. See [quality acceptance](acceptance/UCC-P1-ANIM-006B.md). Numerical guards do not establish anatomical/visual approval or independent source-roll compatibility. [Initial branching slice](acceptance/UCC-P1-ANIM-006.md).
 
 ## Verified capabilities and remaining gates
 

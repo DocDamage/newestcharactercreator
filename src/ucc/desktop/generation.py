@@ -39,6 +39,8 @@ def bundled_worker_path() -> Path:
     calibration_math = worker.parent / "rest_calibration.py"
     calibration_worker = worker.parent / "bvh_calibration_probe.py"
     review_timeline = worker.parent / "bvh_review_timeline.py"
+    motion_quality = worker.parent / "motion_quality.py"
+    pose_environment = worker.parent / "pose_environment.py"
     if (not worker.is_file() or worker.is_symlink()
             or not service.is_file() or service.is_symlink()
             or not preview.is_file() or preview.is_symlink()
@@ -51,7 +53,9 @@ def bundled_worker_path() -> Path:
             or not multi_chain.is_file() or multi_chain.is_symlink()
             or not calibration_math.is_file() or calibration_math.is_symlink()
             or not calibration_worker.is_file() or calibration_worker.is_symlink()
-            or not review_timeline.is_file() or review_timeline.is_symlink()):
+            or not review_timeline.is_file() or review_timeline.is_symlink()
+            or not motion_quality.is_file() or motion_quality.is_symlink()
+            or not pose_environment.is_file() or pose_environment.is_symlink()):
         raise ValidationError(
             "Blender worker bridge is unavailable. Run from the repo checkout "
             "or a complete Windows alpha archive."
