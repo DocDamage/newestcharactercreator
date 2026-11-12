@@ -133,19 +133,22 @@ def calibrate_bvh_source(bpy: Any, master: Path, source_bvh: Path,
         neutral, neutral_hash = _evaluated_vertices(bpy, human)
         from blender_bridge.rest_calibration import validate_rotation
         rest_frames = {}
+        rest_projections = {}
         initial_motion = {}
         for item in selected:
             name = item["target"]
-            rest = _matrix_tuple(item["pose"].bone.matrix_local.to_3x3())
+            raw_rest = _matrix_tuple(item["pose"].bone.matrix_local.to_3x3())
             try:
-                validate_rotation(rest)
+                from blender_bridge.rest_calibration import project_near_rotation
+                rest, raw_det, projection = project_near_rotation(raw_rest)
             except RestCalibrationError as exc:
                 from blender_bridge.rest_calibration import determinant
                 raise BvhCalibrationProbeError(
                     f"Real Blender rest matrix rejected for bone {name}: "
-                    f"det={determinant(rest):.9f}; {exc}"
+                    f"det={determinant(raw_rest):.9f}; {exc}"
                 ) from exc
             rest_frames[name] = rest
+            rest_projections[name] = (raw_det, projection)
             initial_motion[name] = bvh_ordered_rotation(
                 motion.channel_orders[item["source"].casefold()],
                 item["angles"][0],
@@ -189,6 +192,8 @@ def calibrate_bvh_source(bpy: Any, master: Path, source_bvh: Path,
                 ),
                 "target_rest_matrix_sha256": _digest_matrix(rest_frames[name]),
                 "calibrated_test_delta_sha256": _digest_matrix(calibrated_test),
+                "measured_rest_raw_determinant": rest_projections[name][0],
+                "bounded_rest_projection_delta": rest_projections[name][1],
             })
 
         for frame in range(motion.frames):
@@ -264,6 +269,10 @@ def calibrate_bvh_source(bpy: Any, master: Path, source_bvh: Path,
             "rest_residual_degrees": list(calibration.rest_residual_degrees),
             "max_rest_residual_degrees": calibration.max_rest_residual_degrees,
             "rest_axes_calibrated": True,
+            "raw_rest_rotation_projected_with_bound": True,
+            "maximum_rest_projection_delta": max(
+                item[1] for item in rest_projections.values()
+            ),
             "bone_roll_independently_verified": False,
             "mapped_bone_count": len(selected),
             "mapped_bones": [
