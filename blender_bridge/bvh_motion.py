@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 import math
 from pathlib import Path
+import re
 
 MAX_BYTES = 64 * 1024 * 1024
 MAX_FRAMES = 240
@@ -92,7 +93,8 @@ def read_local_bvh(source: Path) -> LocalBvhMotion:
         if line.startswith(("ROOT ", "JOINT ")):
             tokens = line.split(maxsplit=1)
             name = tokens[1]
-            if pending is not None or not name or len(name) > 128 or ":" in name:
+            if (pending is not None or type(name) is not str or
+                    re.fullmatch(r"[A-Za-z0-9_.:-]{1,128}\Z", name, flags=re.ASCII) is None):
                 raise LocalBvhError("Unsupported or ambiguously named BVH joint")
             if name.casefold() in {item.casefold() for item in bones}:
                 raise LocalBvhError("Duplicate BVH joint names are not permitted")

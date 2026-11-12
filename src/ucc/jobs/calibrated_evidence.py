@@ -26,7 +26,8 @@ def _number(value: Any) -> bool:
     return type(value) in (int, float) and math.isfinite(value)
 
 
-def validate_calibrated_evidence(raw: Any, axis_profile: str) -> dict[str, Any]:
+def validate_calibrated_evidence(raw: Any, axis_profile: str,
+                                 *, max_bones: int = 4) -> dict[str, Any]:
     if not isinstance(raw, dict) or raw.get("status") != (
         "REAL_BVH_REST_AXES_CALIBRATED_MESH_MOTION"
     ):
@@ -58,7 +59,7 @@ def validate_calibrated_evidence(raw: Any, axis_profile: str) -> dict[str, Any]:
         raw.get("mapped_bones"), raw.get("per_bone_deformation"),
         raw.get("local_axis_proofs"),
     )
-    if (type(count) is not int or not 2 <= count <= 4 or
+    if (type(count) is not int or not 2 <= count <= max_bones or
             any(not isinstance(x, list) or len(x) != count
                 for x in (bones, movements, axes))):
         raise CalibratedEvidenceError("Exactly two to four calibrated bones are needed")
@@ -158,9 +159,10 @@ def validate_calibrated_evidence(raw: Any, axis_profile: str) -> dict[str, Any]:
 
 
 def compare_calibrated_evidence(first: Any, second: Any,
-                                axis_profile: str) -> dict[str, Any]:
-    a = validate_calibrated_evidence(first, axis_profile)
-    b = validate_calibrated_evidence(second, axis_profile)
+                                axis_profile: str,
+                                *, max_bones: int = 4) -> dict[str, Any]:
+    a = validate_calibrated_evidence(first, axis_profile, max_bones=max_bones)
+    b = validate_calibrated_evidence(second, axis_profile, max_bones=max_bones)
     for key in (
         "source_sha256", "axis_profile", "source_to_target_axes_sha256",
         "raw_rest_rotation_projected_with_bound", "maximum_rest_projection_delta",
