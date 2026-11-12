@@ -2,7 +2,7 @@
 
 **Target:** Windows 11 + Blender 5.3 + installed MPFB, PySide6 desktop, optional local ComfyUI/WebUI and future Godot/Unity/Unreal workflows.
 
-**Merged:** PRs [#24–#31](https://github.com/DocDamage/newestcharactercreator/pulls?q=is%3Apr+is%3Amerged). **Current review:** [PR #32 — multi-bone BVH rest/axis compatibility](https://github.com/DocDamage/newestcharactercreator/pull/32). The PR #32 action remains on its feature branch until intentionally merged.
+**Merged:** PRs [#24–#32](https://github.com/DocDamage/newestcharactercreator/pulls?q=is%3Apr+is%3Amerged). All five workflows passed after the PR #32 merge on `main` commit `8f55655481e64dd3efe62d7fccb56e8f0ce3cc1c`. **Current review:** [PR #33 — source BVH rest-space quaternion calibration](https://github.com/DocDamage/newestcharactercreator/pull/33). The PR #33 operation is **not on main** until intentionally merged.
 
 ## Verified capabilities and remaining gates
 
