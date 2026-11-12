@@ -343,6 +343,8 @@ def verify(blender: Path, root: Path) -> dict:
             or calibration["rest_landmark_count"] < 2
             or calibration["max_rest_residual_degrees"] > 5
             or calibration["rest_axes_calibrated"] is not True
+            or calibration["raw_rest_rotation_projected_with_bound"] is not True
+            or calibration["maximum_rest_projection_delta"] > .0005
             or calibration["real_quaternion_action_inserted"] is not True
             or calibration["bone_roll_independently_verified"] is not False
             or any(bone["moved_vertices"] < 16 for bone in rest_poses)
@@ -448,6 +450,7 @@ def verify(blender: Path, root: Path) -> dict:
         "calibration_bones": [entry["target"] for entry in calibration["mapped_bones"]],
         "calibration_landmarks": calibration["rest_landmark_count"],
         "calibration_max_rest_error_deg": calibration["max_rest_residual_degrees"],
+        "calibration_max_numeric_rest_projection": calibration["maximum_rest_projection_delta"],
         "calibration_source_to_target_sha256": calibration["source_to_target_axes_sha256"],
         "calibration_per_bone_movement": rest_poses,
         "calibration_sampled_frames": [
