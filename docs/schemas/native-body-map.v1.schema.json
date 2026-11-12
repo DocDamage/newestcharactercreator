@@ -304,7 +304,9 @@
           "secondary": {
             "enum": [
               "UP",
-              "FORWARD"
+              "FORWARD",
+              "PALM_LEFT_V1",
+              "PALM_RIGHT_V1"
             ]
           }
         }
@@ -316,6 +318,92 @@
         "FIRST_POSE_AND_NEUTRAL_V1",
         "TRUE_NEUTRAL_BIND_V2"
       ]
+    },
+    "hand_reference_planes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "planes"
+      ],
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 1
+        },
+        "planes": {
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "properties": {
+            "left": {
+              "$ref": "#/$defs/palm"
+            },
+            "right": {
+              "$ref": "#/$defs/palm"
+            }
+          }
+        }
+      }
     }
-  }
+  },
+  "$defs": {
+    "palm": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "index",
+        "pinky"
+      ],
+      "properties": {
+        "index": {
+          "$ref": "#/properties/landmarks/properties/left_hand"
+        },
+        "pinky": {
+          "$ref": "#/properties/landmarks/properties/left_hand"
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "pairs": {
+            "contains": {
+              "required": [
+                "secondary"
+              ],
+              "properties": {
+                "secondary": {
+                  "enum": [
+                    "PALM_LEFT_V1",
+                    "PALM_RIGHT_V1"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "hand_reference_planes",
+          "skin_deformation_policy"
+        ],
+        "properties": {
+          "skin_deformation_policy": {
+            "const": "BOUND_CORRECTIVE_SMOOTH_V1"
+          }
+        }
+      },
+      "else": {
+        "not": {
+          "required": [
+            "hand_reference_planes"
+          ]
+        }
+      }
+    }
+  ]
 }

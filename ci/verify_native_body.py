@@ -40,6 +40,9 @@ def verify_native_body(blender: Path,store: ProjectStore,folder: Path,*,hip_anch
     if hip_anchor:profile["root_motion_policy"]="SOURCE_HIP_MIDPOINT_V1"
     if corrective:profile["skin_deformation_policy"]="BOUND_CORRECTIVE_SMOOTH_V1"
     if neutral_reference:profile["mesh_strain_reference"]="TRUE_NEUTRAL_BIND_V2"
+    if include_hands:
+        from ucc.animations.native_hands import with_hand_planes
+        profile=with_hand_planes(profile)
     profile_path.write_text(json.dumps(profile,indent=2))
     profile_sha=digest(profile_path)
     result=preview_native_body(store,source_fbx=source,mapping_profile=profile_path,blender_exe=blender,
@@ -75,6 +78,7 @@ def verify_native_body(blender: Path,store: ProjectStore,folder: Path,*,hip_anch
             "max_original_master_stretch":max(r["max_edge_stretch_ratio"] for r in data["master_relative_frames"]),
             "bind_and_mid_action_settings_faults_restored":True,"rehashed_saved_settings_tamper_rejected":True,
             "rehashed_saved_object_transform_tamper_rejected":True})
+        skin_evidence["rehashed_saved_rest_roll_tamper_rejected"]=True
         playback=prepare_native_playback(store,result,source_fbx=source,permission=policy,
             blender_exe=blender,worker_script=ROOT/"blender_bridge/entrypoint.py")
         cache=playback.cache
@@ -113,8 +117,13 @@ def verify_native_body(blender: Path,store: ProjectStore,folder: Path,*,hip_anch
         if not HAND_TARGETS.issubset(probes):raise RuntimeError("Mapped hand joint lacks its independent visible-skin probe")
         hand_motion=hand_local_motion(data)
         if min(hand_motion.values())<1.:raise RuntimeError("Authored finger motion was replaced by inherited wrist motion")
+        if result.reopen_evidence.get("hand_reference_planes_verified")!=2:
+            raise RuntimeError("Both declared palm planes were not verified against actual saved rig rest geometry")
     return {**anchor_evidence,**skin_evidence,"provenance":"ORIGINAL_CI_ARMATURE_ON_REAL_MPFB_NOT_OWNER_OR_FAB_ASSET","frames":300,"mapped_body_bones":len(data["mapped_pairs"]),
         "mapped_hand_joints":38 if include_hands else 0,
+        "hand_reference_planes_verified":2 if include_hands else 0,
+        "rehashed_saved_palm_geometry_tamper_rejected":bool(include_hands),
+        "invalid_palm_branch_rejected_and_restored":bool(include_hands),
         "intrinsic_hand_motion_degrees":hand_motion if include_hands else {},
         "independent_skin_probes":len(data["deformation_probes"]),"root_travel_world":data["root_motion_metrics"]["max_distance_from_bind_world"],
         "root_rotation_path_degrees":angle,"max_source_fk_pose_residual":data["max_global_pose_residual"],

@@ -9,6 +9,7 @@ from ucc.core.errors import ValidationError
 from ucc.animations.source_rest_frames import is_sha256
 from ucc.animations.native_profile import CONVENTION, LANDMARKS
 from ucc.animations import native_math as nm
+from ucc.animations.native_palms import PALM_AXES, palm_evidence
 from .motion_quality_evidence import validate_motion_quality
 from .native_anchor_evidence import anchor_context, check_anchor_frame, finish_anchor
 from .native_skin_evidence import validate_skin
@@ -70,6 +71,7 @@ def validate_native_timeline(data,report,source,profile,bindings,*,cancel_check=
     for p in target_points.values(): vector(p)
     sb,sh=nm.body(*(source_points[landmarks[k]["source"]] for k in ("left_hip","right_hip","head")))
     tb,th=nm.body(*(target_points[k] for k in ("left_hip","right_hip","head")))
+    palm_axes=palm_evidence(data,profile,source_points,{b["name"]:b["parent"] for b in source["bones"]},target_points,sh,th)
     for points,basis,height in (({k:source_points[r["source"]] for k,r in landmarks.items()},sb,sh),(target_points,tb,th)):
         middle=[(points["left_hip"][i]+points["right_hip"][i])/2 for i in range(3)]
         for key,sign in (("left_hand",1),("right_hand",-1),("left_foot",1),("right_foot",-1)):
@@ -104,8 +106,12 @@ def validate_native_timeline(data,report,source,profile,bindings,*,cancel_check=
             if max(abs(proof["source_segment"][i]-(tip[i]-source_points[name][i])) for i in range(3))>1e-5:
                 raise ValidationError("Native anatomical source segment differs")
             column=2 if pair["secondary"]=="UP" else 1;sign=1 if column==2 else -1
-            if (max(abs(proof["source_secondary"][i]-sign*sb[i][column]) for i in range(3))>1e-5 or
-                    max(abs(proof["target_secondary"][i]-sign*tb[i][column]) for i in range(3))>1e-5):
+            expected_source=[sign*sb[i][column] for i in range(3)]
+            expected_target=[sign*tb[i][column] for i in range(3)]
+            if pair["secondary"] in PALM_AXES:
+                expected_source,expected_target=palm_axes[PALM_AXES[pair["secondary"]]]
+            if (max(abs(proof["source_secondary"][i]-expected_source[i]) for i in range(3))>1e-5 or
+                    max(abs(proof["target_secondary"][i]-expected_target[i]) for i in range(3))>1e-5):
                 raise ValidationError("Native secondary anatomical axes differ")
             alignment=nm.product(nm.product(axes,nm.anatomy(proof["source_segment"],proof["source_secondary"])),
                                  nm.transposed(nm.anatomy(proof["target_segment"],proof["target_secondary"])))

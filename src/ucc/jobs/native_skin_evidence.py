@@ -83,6 +83,11 @@ def validate_reopen_report(report: dict, bindings: dict, data: dict) -> None:
           "hip_frames_verified","skin_deformation_policy","original_master_unchanged","review_unchanged",
           "retargeting_verified","animation_visual_quality_verified","engine_import_verified"}
     count=data["source_frame_count"]
+    if "hand_plane_proofs" in data:
+        keys.add("hand_reference_planes_verified")
+        if (type(report) is not dict or type(report.get("hand_reference_planes_verified")) is not int or
+                report["hand_reference_planes_verified"]!=len(data["hand_plane_proofs"]["planes"])):
+            raise ValidationError("Palm rest geometry was not independently reopened")
     neutral_reference=data.get("mesh_strain_reference")=="TRUE_NEUTRAL_BIND_V2"
     if neutral_reference:
         keys|={"mesh_strain_reference","first_pose_observation_frames_verified"}

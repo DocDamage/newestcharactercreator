@@ -1,7 +1,7 @@
 """Original native-body CI source author, independent Action reopen and faults.
 
 Source is a non-shipping armature derived from actual MPFB joint positions,
-with T-pose body gates or measured A-pose hand anatomy, independent bone rolls
+with T-pose body/hand anatomy, independently retained hand planes and bone rolls
 and authored 4m/400-degree travel.
 It is not owner/Fab compatibility evidence. Never upload generated files.
 """
@@ -62,15 +62,18 @@ def author(master: Path,folder: Path,*,origin="target-root",corrective_challenge
     tails={b.name:world@b.tail_local for b in target.data.bones}
     # Independent geometric T-pose construction, no production reference solver.
     for suffix,direction in ((".L",Vector((1,0,0))),(".R",Vector((-1,0,0)))):
-        # The hand challenge retains measured A-pose anatomy. Rotating a hand
-        # using only its middle-ray direction does not specify palm roll and
-        # can generate an incompatible thumb rest frame. Other body gates
-        # continue exercising the independently authored T-pose conversion.
-        if include_hands:continue
         upper,lower,wrist="upperarm01"+suffix,"lowerarm01"+suffix,"wrist"+suffix
         adjusted[lower]=heads[upper]+direction*(heads[lower]-heads[upper]).length
         adjusted[wrist]=adjusted[lower]+direction*(heads[wrist]-heads[lower]).length
         adjusted["finger3-1"+suffix]=adjusted[wrist]+direction*(heads["finger3-1"+suffix]-heads[wrist]).length
+        if include_hands:
+            # Preserve the complete original palm geometry through one rigid
+            # hand rotation, independently of the production plane solver.
+            rotation=(heads["finger3-1"+suffix]-heads[wrist]).rotation_difference(direction)
+            for name in names:
+                if name.endswith(suffix) and name.startswith(("finger","metacarpal")):
+                    adjusted[name]=adjusted[wrist]+rotation@(heads[name]-heads[wrist])
+                    tails[name]=adjusted[wrist]+rotation@(tails[name]-heads[wrist])
     parent_names={}
     selected=set(names)
     for target_name in names:
@@ -222,11 +225,16 @@ def fault(master: Path,job: Path,folder: Path):
     from blender_bridge.native_corrective import CorrectiveSkin
     base_profile=json.loads((job/"native_mapping.json").read_text())
     corrected=base_profile.get("skin_deformation_policy")=="BOUND_CORRECTIVE_SMOOTH_V1"
-    for kind in (("translation","scale","bind_failure","settings_change") if corrected else ("translation","scale")):
+    kinds=("translation","scale","bind_failure","settings_change") if corrected else ("translation","scale")
+    if "hand_reference_planes" in base_profile:kinds+=("palm_branch",)
+    for kind in kinds:
         stage=folder/("fault-"+kind);stage.mkdir(parents=True,exist_ok=False)
         shutil.copy2(master,stage/"candidate.blend")
         source=json.loads((job/"source_snapshot.json").read_text())
         profile=json.loads((job/"native_mapping.json").read_text())
+        if kind=="palm_branch":
+            wrong=next(p for p in profile["pairs"] if p["target"]=="finger2-2.L")
+            profile["hand_reference_planes"]["planes"]["left"]["pinky"]={k:wrong[k] for k in ("source","target")}
         name=profile["pairs"][1]["source"];index=next(i for i,b in enumerate(source["bones"]) if b["name"]==name)
         row=source["frames"][19]
         if kind=="translation":row["poses"][index][3]+=1.
@@ -254,7 +262,7 @@ def fault(master: Path,job: Path,folder: Path):
         try:
             with inject:retarget_native(bpy,stage,options)
         except ValueError as error:
-            expected=("did not bind" if kind=="bind_failure" else "corrective binding" if kind=="settings_change" else "unsupported animated joint translation/scale")
+            expected=("same wrist branch" if kind=="palm_branch" else "did not bind" if kind=="bind_failure" else "corrective binding" if kind=="settings_change" else "unsupported animated joint translation/scale")
             if expected not in str(error):raise
         else:raise RuntimeError("Actual native worker accepted unsupported animated "+kind)
         human=next(o for o in bpy.data.objects if o.type=="MESH" and len(o.data.vertices)>100)
@@ -270,26 +278,39 @@ def fault(master: Path,job: Path,folder: Path):
         from blender_bridge.native_review_reopen import reopen_native
         good_review=sha256((job/"review_motion.blend").read_bytes()).hexdigest()
         new_reference=base_profile.get("mesh_strain_reference")=="TRUE_NEUTRAL_BIND_V2"
-        for kind in (("settings","world","observations") if new_reference else ("settings","world")):
+        kinds=("settings","world","rest_roll","observations") if new_reference else ("settings","world","rest_roll")
+        if "hand_reference_planes" in base_profile:kinds+=("palm_geometry",)
+        for kind in kinds:
             stage=folder/("fault-saved-"+kind);stage.mkdir(exist_ok=False)
             for name in ("candidate.blend","review_motion.blend","target_timeline.json","source_snapshot.json","native_mapping.json"):
                 shutil.copy2(job/name,stage/name)
-            if kind!="observations":
+            if kind not in {"observations","palm_geometry"}:
                 bpy.ops.wm.open_mainfile(filepath=str(stage/"review_motion.blend"),load_ui=False)
                 human=next(o for o in bpy.data.objects if o.type=="MESH" and len(o.data.vertices)>100)
                 if kind=="settings":human.modifiers[-1].factor=.6
+                elif kind=="rest_roll":
+                    rig=next(o for o in bpy.data.objects if o.type=="ARMATURE")
+                    bpy.context.view_layer.objects.active=rig;rig.select_set(True)
+                    bpy.ops.object.mode_set(mode="EDIT")
+                    rig.data.edit_bones["lowerarm02.L"].roll+=.05
+                    bpy.ops.object.mode_set(mode="OBJECT")
                 else:human.location.x+=.1
                 bpy.ops.wm.save_as_mainfile(filepath=str(stage/"review_motion.blend"),compress=False,copy=True)
             data=json.loads((stage/"target_timeline.json").read_text())
             data["visual_review_blend"]={"name":"review_motion.blend","bytes":(stage/"review_motion.blend").stat().st_size,
                 "sha256":sha256((stage/"review_motion.blend").read_bytes()).hexdigest()}
             if kind=="observations":data["first_pose_relative_frames"][19]["max_edge_stretch_ratio"]+=.5
+            if kind=="palm_geometry":
+                corners=data["hand_plane_proofs"]["planes"]["left"]["target_points"]
+                # Preserve the plane's normal and all Action/skin data: only
+                # actual rest-corner verification can detect this forged ray.
+                corners["index"]=[corners["wrist"][i]+1.1*(corners["index"][i]-corners["wrist"][i]) for i in range(3)]
             (stage/"target_timeline.json").write_text(json.dumps(data))
             options={**data["bindings"],"review_sha256":data["visual_review_blend"]["sha256"],
                 "timeline_sha256":sha256((stage/"target_timeline.json").read_bytes()).hexdigest()}
             try:reopen_native(bpy,stage,options)
             except ValueError as error:
-                expected={"settings":"corrective binding, settings","world":"object transforms differ","observations":"first-pose observations differ"}[kind]
+                expected={"settings":"corrective binding, settings","world":"object transforms differ","rest_roll":"rig rest frames differ","observations":"first-pose observations differ","palm_geometry":"palm rest geometry differs"}[kind]
                 if expected not in str(error):raise
             else:raise RuntimeError("Actual saved-skin "+kind+" tamper was accepted after rehashing")
         if sha256((job/"review_motion.blend").read_bytes()).hexdigest()!=good_review or sha256(master.read_bytes()).hexdigest()!=original:

@@ -19,6 +19,7 @@ from blender_bridge.native_timeline import evaluate_native_timeline
 from blender_bridge.native_skin import probe_targets
 from blender_bridge.native_anchor import POLICY as HIP_ANCHOR, midpoint, root_position, validate_target_chain
 from blender_bridge.native_corrective import POLICY as CORRECTIVE, CorrectiveSkin
+from blender_bridge.native_palms import PALM_AXES, measure_planes
 from blender_bridge.private_review_render import render_private_review
 
 
@@ -95,6 +96,7 @@ def retarget_native(bpy: Any, root: Path, options: dict) -> dict:
     sb,source_height=body_frame(*(tuple(landmark("source",k)) for k in ("left_hip","right_hip","head")))
     tb,target_height=body_frame(*(tuple(landmark("target",k)) for k in ("left_hip","right_hip","head")))
     axes=multiply(tb,transpose(sb));scale=target_height/source_height
+    palm_proofs=measure_planes(profile,source_points,target_points,parents,target_parents,source_height,target_height)
     if not .25<=scale<=4:
         raise ValueError("Source/target body proportions are incompatible")
     for side,basis,height in (("source",sb,source_height),("target",tb,target_height)):
@@ -125,6 +127,10 @@ def retarget_native(bpy: Any, root: Path, options: dict) -> dict:
             sign=1 if column==2 else -1
             source_secondary=tuple(sign*b[column] for b in sb)
             target_secondary=tuple(sign*b[column] for b in tb)
+            if row["secondary"] in PALM_AXES:
+                plane=palm_proofs["planes"][PALM_AXES[row["secondary"]]]
+                source_secondary=tuple(plane["source_normal"])
+                target_secondary=tuple(plane["target_normal"])
             if name in {landmarks[k]["source"] for k in ("left_foot","right_foot")}:
                 for segment,basis in ((source_tip-source_points[name],sb),(target_tip-target_points[target],tb)):
                     forward=Vector(tuple(-b[1] for b in basis))
@@ -236,7 +242,7 @@ def retarget_native(bpy: Any, root: Path, options: dict) -> dict:
             strain_reference=profile.get("mesh_strain_reference","FIRST_POSE_AND_NEUTRAL_V1"))
         review["root_motion_metrics"].update(max_rotation_step_degrees=root_rotation.maximum_step,
             max_rotation_step_frame=root_rotation.maximum_frame)
-        timeline={**review,"schema_version":1,"convention":CONVENTION,
+        timeline={**review,**({"hand_plane_proofs":palm_proofs} if palm_proofs is not None else {}),"schema_version":1,"convention":CONVENTION,
                   "bindings":{k:options[k] for k in ("source_sha256","snapshot_sha256","mapping_sha256","master_sha256")},
                   "source_frame_count":frames,"source_first_frame":source["first_frame"],"fps":source["fps"],
                   "mapped_pairs":pairs,"reference_proofs":proofs,"source_to_target_axes":axes,"root_motion_scale":scale,

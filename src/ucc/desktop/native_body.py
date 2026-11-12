@@ -68,6 +68,8 @@ def native_result_text(result):
               if getattr(result,"private_reopen_job_id","") else "")
     neutral=("Every frame meets the saved character's neutral-shape deformation limits; first-pose comparisons remain recorded.\n"
              if data.get("mesh_strain_reference")=="TRUE_NEUTRAL_BIND_V2" else "")
+    palm=("Hand orientation uses declared wrist/knuckle rest planes, verified against the original and reopened character rig.\n"
+          if data.get("hand_plane_proofs") and (getattr(result,"reopen_evidence",None) or {}).get("hand_reference_planes_verified")==len(data["hand_plane_proofs"]["planes"]) else "")
     return ("EXPERIMENTAL FBX MOTION MEASURED ON A PRIVATE CHARACTER COPY\n"
         f"Complete source timeline: {data['source_frame_count']} frames at {data['fps']:g} fps\n"
         f"Mapped joints: {len(data['mapped_pairs'])}, including {hand_count} hand/finger joints; unmapped source bones: {len(data['omitted_source_bones'])}\n"
@@ -77,6 +79,7 @@ def native_result_text(result):
         f"{skin}"
         f"{reopened}"
         f"{neutral}"
+        f"{palm}"
         "Two independent Blender workers agree on all measured target poses and skin frames.\n"
         "Original animation, saved character and project are unchanged.\n"
         "Use Open private animation to scrub/play in Blender, or Open sampled views for five-frame comparisons.\n"

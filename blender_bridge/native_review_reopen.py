@@ -14,6 +14,8 @@ from blender_bridge.bvh_review_timeline import evaluated_edges
 from blender_bridge.motion_quality import EdgeStrain
 from blender_bridge.fbx_source import pose_digest
 from blender_bridge.refit_revision import rig_fingerprint
+from blender_bridge.native_palms import reopen_planes
+from blender_bridge.native_rest_frames import capture_rest_frames, same_rest_frames
 
 
 def digest(path: Path) -> str:
@@ -84,10 +86,12 @@ def reopen_native(bpy: Any, root: Path, options: dict) -> dict:
         raise ValueError("Native reopen saved-copy binding differs from its timeline")
     bpy.ops.wm.open_mainfile(filepath=str(root/"candidate.blend"),load_ui=False)
     human,rig=scene_objects(bpy)
+    palm_count=reopen_planes(profile,source,rig,data)
     validate_pose_environment(rig,human,[b.name for b in rig.pose.bones])
     original,original_sha=_evaluated_vertices(bpy,human)
     original_stack=source_stack(human,rig)
     fingerprint=rig_fingerprint(bpy,human)
+    original_rest=capture_rest_frames(rig)
     original_world=[float(v) for line in rig.matrix_world for v in line]
     original_mesh_world=[float(v) for line in human.matrix_world for v in line]
     if original_sha!=proof.get("source_neutral_sha256") or original_stack!=proof.get("source_modifiers"):
@@ -97,6 +101,10 @@ def reopen_native(bpy: Any, root: Path, options: dict) -> dict:
     human,rig=scene_objects(bpy)
     if not same_world(human,original_mesh_world) or not same_world(rig,original_world):
         raise ValueError("Native reopened object transforms differ from the original master")
+    if not same_rest_frames(original_rest,capture_rest_frames(rig)):
+        raise ValueError("Native reopened rig rest frames differ from the original master")
+    if reopen_planes(profile,source,rig,data)!=palm_count:
+        raise ValueError("Native palm reference count changed in saved rig")
     mods=tuple(human.modifiers)
     if len(mods)!=len(original_stack)+1:raise ValueError("Native reopen added or removed source modifiers")
     mod=mods[-1]
@@ -184,6 +192,7 @@ def reopen_native(bpy: Any, root: Path, options: dict) -> dict:
         path=root/name
         if path.is_symlink() or not path.is_file() or digest(path)!=options[key]:raise ValueError("Native reopen changed staged input bytes")
     reference_evidence={"mesh_strain_reference":reference,"first_pose_observation_frames_verified":count} if neutral_reference else {}
+    if palm_count:reference_evidence["hand_reference_planes_verified"]=palm_count
     return {**reference_evidence,"status":"REAL_NATIVE_BODY_REVIEW_REOPENED","bindings":dict(options),"frames_verified":count,
             "uncorrected_skin_frames_verified":count,"master_strain_frames_verified":count,
             "hip_frames_verified":count if "hip_anchor" in data else 0,"skin_deformation_policy":POLICY,

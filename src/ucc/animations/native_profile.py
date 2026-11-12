@@ -8,6 +8,7 @@ from typing import Any
 
 from ucc.core.errors import ValidationError
 from .source_rest_frames import is_sha256
+from .native_palms import PALM_AXES, validate_palm_profile
 
 CONVENTION = "NATIVE_ANATOMICAL_REFERENCE_V1"
 ROOT_POLICIES = {"ARMATURE_ORIGIN_DISPLACEMENT_V1", "SOURCE_HIP_MIDPOINT_V1"}
@@ -18,7 +19,7 @@ MAX_PROFILE_BYTES = 64*1024
 
 
 def validate_native_profile(data: Any, source_sha: str, snapshot_sha: str, master_sha: str) -> dict:
-    if (type(data) is not dict or set(data)-{"root_motion_policy","skin_deformation_policy","mesh_strain_reference"} != {"schema_version","convention","source_sha256",
+    if (type(data) is not dict or set(data)-{"root_motion_policy","skin_deformation_policy","mesh_strain_reference","hand_reference_planes"} != {"schema_version","convention","source_sha256",
             "snapshot_sha256","master_sha256","landmarks","pairs"} or
             type(data["schema_version"]) is not int or data["schema_version"] != 1 or
             data["convention"] != CONVENTION):
@@ -48,7 +49,7 @@ def validate_native_profile(data: Any, source_sha: str, snapshot_sha: str, maste
         if index == 0:
             if row["source"] != "@ARMATURE" or row["secondary"] != "BODY" or row["source_tip"] is not None or row["target_tip"] is not None:
                 raise ValidationError("First native mapping must be the armature-object root")
-        elif row["source"].startswith("@") or type(row["secondary"]) is not str or row["secondary"] not in {"FORWARD","UP"}:
+        elif row["source"].startswith("@") or type(row["secondary"]) is not str or row["secondary"] not in {"FORWARD","UP",*PALM_AXES}:
             raise ValidationError("Native body map requires explicit anatomical secondary axes")
         sources.add(row["source"].casefold());targets.add(row["target"].casefold())
         exact[row["source"]] = row["target"]
@@ -62,6 +63,7 @@ def validate_native_profile(data: Any, source_sha: str, snapshot_sha: str, maste
             raise ValidationError("Native anatomical landmark differs from explicit pairs")
     if len({r["source"] for r in landmarks.values()}) != len(LANDMARKS):
         raise ValidationError("Native anatomical landmarks must be distinct")
+    validate_palm_profile(data)
     return data
 
 
