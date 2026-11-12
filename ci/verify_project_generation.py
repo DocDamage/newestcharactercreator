@@ -320,6 +320,42 @@ def verify(blender: Path, root: Path) -> dict:
             or _hash(multibone_source) != chain.clip_sha256):
         raise RuntimeError("Multi-bone BVH preview modified source/master/project")
 
+    # First actual UCC-P1-ANIM-004 vertical slice: a second independent
+    # anatomical source rest direction comes from the BVH terminal End Site.
+    # Genuine MPFB rest-bone matrices convert source XYZ rotations into
+    # target quaternion axes. Never treat this as full-body retarget quality.
+    calibrated = check_selected_bvh(
+        store, blender_exe=blender,
+        worker_script=ROOT / "blender_bridge" / "entrypoint.py",
+        source_bvh=multibone_source, permission=local_authorization,
+        expected_project_id=new_project.project_id,
+        expected_revision=new_project.revision,
+        expected_master_blend=new_project.master_blend,
+        multi_axis_profile="Y_UP_TO_Z_UP",
+        calibrate_rest_axes=True, timeout_s=300,
+    )
+    calibration = calibrated.evidence
+    rest_poses = calibration["per_bone_deformation"]
+    if (calibration["status"] != "REAL_BVH_REST_AXES_CALIBRATED_MESH_MOTION"
+            or calibration["mapped_bone_count"] != 2
+            or [entry["target"] for entry in calibration["mapped_bones"]]
+               != ["neck03", "head"]
+            or calibration["rest_landmark_count"] < 2
+            or calibration["max_rest_residual_degrees"] > 5
+            or calibration["rest_axes_calibrated"] is not True
+            or calibration["real_quaternion_action_inserted"] is not True
+            or calibration["bone_roll_independently_verified"] is not False
+            or any(bone["moved_vertices"] < 16 for bone in rest_poses)
+            or calibration["distinct_geometry_states"] < 3
+            or calibration["retargeting_verified"] is not False
+            or calibration["engine_import_verified"] is not False
+            or len(calibrated.worker_job_ids) != 2):
+        raise RuntimeError("Rest-space quaternion calibration failed genuine MPFB proof")
+    if (ProjectStore(store.root).load() != new_project
+            or _hash(revised_master) != refitted.revision.sha256
+            or _hash(multibone_source) != calibrated.clip_sha256):
+        raise RuntimeError("Calibrated BVH test modified the source/master/project")
+
     return {
         "status": "REAL_LINUX_PROJECT_GENERATE_REOPEN_STAGED",
         "blender_version": transaction.observed["blender_version"],
@@ -406,6 +442,23 @@ def verify(blender: Path, root: Path) -> dict:
         "multibone_bvh_distinct_geometry": chain_evidence["distinct_geometry_states"],
         "multibone_bvh_two_workers_agreed": True,
         "multibone_bvh_retargeting_verified": False,
+        "calibration_status": calibration["status"],
+        "calibration_source_sha256": calibrated.clip_sha256,
+        "calibration_axis_profile": calibration["axis_profile"],
+        "calibration_bones": [entry["target"] for entry in calibration["mapped_bones"]],
+        "calibration_landmarks": calibration["rest_landmark_count"],
+        "calibration_max_rest_error_deg": calibration["max_rest_residual_degrees"],
+        "calibration_source_to_target_sha256": calibration["source_to_target_axes_sha256"],
+        "calibration_per_bone_movement": rest_poses,
+        "calibration_sampled_frames": [
+            {"frame": frame["frame"], "moved_vertices": frame["moved_vertices"],
+             "sha256": frame["evaluated_sha256"]}
+            for frame in calibration["sampled_frames"]
+        ],
+        "calibration_two_processes_agree": True,
+        "calibration_source_master_unchanged": True,
+        "calibration_retargeting_verified": False,
+        "calibration_bone_roll_independently_verified": False,
         "windows_verified": False,
         "deformation_verified": False,
         "engine_imports_verified": [],
