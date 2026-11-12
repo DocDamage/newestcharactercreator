@@ -213,6 +213,7 @@ class AnimationPane(QWidget):
     index_requested = Signal(str, str, str, str, str)
     local_bvh_requested = Signal(str, str, str, str, bool)
     multi_bvh_requested = Signal(str, str, str, str, bool, str)
+    calibrated_bvh_requested = Signal(str, str, str, str, bool, str)
     refresh_requested = Signal()
 
     def __init__(self) -> None:
@@ -301,6 +302,22 @@ class AnimationPane(QWidget):
             self.source_axes.currentData(),
         ))
         layout.addWidget(self.test_multi_bvh)
+        self.test_calibrated_bvh = QPushButton(
+            "Calibrate BVH rest axes and test 2–4 bone motion..."
+        )
+        self.test_calibrated_bvh.setToolTip(
+            "Requires an additional independent terminal End Site rest direction; "
+            "uses actual MPFB rest-bone matrices and quaternion conversion. "
+            "Fails closed when bone axes remain ambiguous. Not full retargeting."
+        )
+        self.test_calibrated_bvh.clicked.connect(
+            lambda: self.calibrated_bvh_requested.emit(
+                self.selected.text(), self.provider.text(), self.license.text(),
+                self.uri.text(), self.local_preview_review.isChecked(),
+                self.source_axes.currentData(),
+            )
+        )
+        layout.addWidget(self.test_calibrated_bvh)
         self.catalog = QTableWidget(0, 4)
         self.catalog.setHorizontalHeaderLabels(["Asset ID", "Format", "Declared clips", "Status"])
         self.catalog.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
