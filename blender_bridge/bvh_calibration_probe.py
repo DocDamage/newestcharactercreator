@@ -100,9 +100,14 @@ def calibrate_bvh_source(bpy: Any, master: Path, source_bvh: Path,
         raise BvhCalibrationProbeError("Refuse to overwrite existing Actions or NLA tracks")
     selected, chain = select_explicit_chain(motion, human, rig, axis_profile)
     source_vectors, target_vectors = _landmarks(motion, selected, rig)
-    calibration = calibrate_rest_frames(
-        source_vectors, target_vectors, axis_profile,
-    )
+    try:
+        calibration = calibrate_rest_frames(
+            source_vectors, target_vectors, axis_profile,
+        )
+    except RestCalibrationError as exc:
+        raise BvhCalibrationProbeError(
+            "Rest landmark pair calibration refused: " + str(exc)
+        ) from exc
     # Validate the entire measured rest transform, not just a single direction.
     from mathutils import Matrix
     scene = bpy.context.scene
@@ -132,7 +137,14 @@ def calibrate_bvh_source(bpy: Any, master: Path, source_bvh: Path,
         for item in selected:
             name = item["target"]
             rest = _matrix_tuple(item["pose"].bone.matrix_local.to_3x3())
-            validate_rotation(rest)
+            try:
+                validate_rotation(rest)
+            except RestCalibrationError as exc:
+                from blender_bridge.rest_calibration import determinant
+                raise BvhCalibrationProbeError(
+                    f"Real Blender rest matrix rejected for bone {name}: "
+                    f"det={determinant(rest):.9f}; {exc}"
+                ) from exc
             rest_frames[name] = rest
             initial_motion[name] = bvh_ordered_rotation(
                 motion.channel_orders[item["source"].casefold()],
@@ -144,10 +156,15 @@ def calibrate_bvh_source(bpy: Any, master: Path, source_bvh: Path,
         for item in selected:
             name, bone = item["target"], item["pose"]
             base = bone.matrix_basis.copy()
-            calibrated_test = calibrated_local_delta(
-                Z_UP_IDENTITY, axis_rotation("Xrotation", 12.0),
-                calibration.source_axes_to_target, rest_frames[name],
-            )
+            try:
+                calibrated_test = calibrated_local_delta(
+                    Z_UP_IDENTITY, axis_rotation("Xrotation", 12.0),
+                    calibration.source_axes_to_target, rest_frames[name],
+                )
+            except RestCalibrationError as exc:
+                raise BvhCalibrationProbeError(
+                    f"Calibrated pose matrix for bone {name} rejected: {exc}"
+                ) from exc
             try:
                 bone.rotation_quaternion = Matrix(calibrated_test).to_quaternion()
                 posed, pose_hash = _evaluated_vertices(bpy, human)
@@ -181,10 +198,15 @@ def calibrate_bvh_source(bpy: Any, master: Path, source_bvh: Path,
                     motion.channel_orders[item["source"].casefold()],
                     item["angles"][frame],
                 )
-                converted = calibrated_local_delta(
-                    initial_motion[name], current,
-                    calibration.source_axes_to_target, rest_frames[name],
-                )
+                try:
+                    converted = calibrated_local_delta(
+                        initial_motion[name], current,
+                        calibration.source_axes_to_target, rest_frames[name],
+                    )
+                except RestCalibrationError as exc:
+                    raise BvhCalibrationProbeError(
+                        f"Source frame {frame + 1}, bone {name} rotation refused: {exc}"
+                    ) from exc
                 bone.rotation_quaternion = Matrix(converted).to_quaternion()
                 if bone.keyframe_insert(
                     data_path="rotation_quaternion", frame=frame + 1,
