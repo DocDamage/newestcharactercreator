@@ -29,9 +29,10 @@ from blender_bridge.pose_deformation import probe_pose_deformation
 from blender_bridge.timeline_animation import verify_keyframed_timeline as verify_real_timeline
 from blender_bridge.bvh_clip_probe import source_motion_probe
 from blender_bridge.bvh_multichain import verify_multibone_source
+from blender_bridge.bvh_calibration_probe import calibrate_bvh_source
 
 PROTOCOL_VERSION = 1
-OPERATIONS = {"inspect_environment", "inspect_character", "create_human", "export_preview_glb", "refit_human", "verify_skin_deformation", "verify_keyframed_timeline", "verify_local_bvh_motion", "verify_multi_bvh_chain"}
+OPERATIONS = {"inspect_environment", "inspect_character", "create_human", "export_preview_glb", "refit_human", "verify_skin_deformation", "verify_keyframed_timeline", "verify_local_bvh_motion", "verify_multi_bvh_chain", "verify_calibrated_bvh_chain"}
 
 
 def arguments() -> argparse.Namespace:
@@ -102,6 +103,19 @@ def export_preview_glb(job: dict, root: Path) -> dict:
     source = member(root, job["input_project"])
     output = member(root, "preview.glb")
     return export_static_glb(bpy, source, output)
+
+
+def verify_calibrated_bvh_chain(job: dict, root: Path) -> dict:
+    """Solve real rest landmarks and apply source motion via target bone matrices."""
+    options = job["options"]
+    if set(options) != {"axis_profile"} or options["axis_profile"] not in (
+        "Y_UP_TO_Z_UP", "Z_UP_IDENTITY",
+    ):
+        raise ValueError("Explicit supported BVH up-axis required for calibration")
+    return calibrate_bvh_source(
+        bpy, member(root, job["input_project"]), member(root, "motion.bvh"),
+        options["axis_profile"],
+    )
 
 
 def verify_multi_bvh_chain(job: dict, root: Path) -> dict:
@@ -212,7 +226,8 @@ def main() -> int:
                   "verify_skin_deformation": verify_skin_deformation,
                   "verify_keyframed_timeline": verify_keyframed_timeline,
                   "verify_local_bvh_motion": verify_local_bvh_motion,
-                  "verify_multi_bvh_chain": verify_multi_bvh_chain}[operation]
+                  "verify_multi_bvh_chain": verify_multi_bvh_chain,
+                  "verify_calibrated_bvh_chain": verify_calibrated_bvh_chain}[operation]
         reply["details"] = action(data, root)
         reply["status"] = "ok"
         reply["error"] = None
