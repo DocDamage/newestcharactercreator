@@ -18,6 +18,7 @@ from .review_mapping import validate_review_mapping
 MAX_PROFILE_BYTES = 128 * 1024
 FRAME_SEMANTICS = "BONE_REST_AXES_ONLY"
 MATRIX_LAYOUT = "ROW_MAJOR_LOCAL_TO_BVH_REST"
+CONVERSION_CONVENTION = "BVH_XYZ_FIRST_FRAME_DELTA_TO_BONE_V1"
 
 
 class SourceRestProfileError(ValidationError):

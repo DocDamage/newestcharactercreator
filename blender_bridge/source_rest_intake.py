@@ -42,7 +42,8 @@ def _invalid_constant(value: str) -> Any:
 
 def inspect_source_rest_profile(path: Path, expected_sha: str, motion: Any,
                                 source_sha: str, axis: str,
-                                pairs: list[dict[str, str]]) -> dict[str, Any]:
+                                pairs: list[dict[str, str]], *,
+                                validated_rotations: dict | None = None) -> dict[str, Any]:
     if (path.is_symlink() or not path.is_file() or path.suffix.lower() != ".json" or
             not 0 < path.stat().st_size <= 128 * 1024):
         raise SourceRestIntakeError("Expected a bounded regular staged source rest JSON")
@@ -81,6 +82,7 @@ def inspect_source_rest_profile(path: Path, expected_sha: str, motion: Any,
         origin = heads[parent] if parent is not None else (0., 0., 0.)
         heads[key] = tuple(a+b for a, b in zip(origin, motion.offsets[key]))
     evidence = []
+    rotations = {}
     seen = set()
     actual_names = set(motion.source_bones)
     for index, (row, pair) in enumerate(zip(rows, pairs)):
@@ -121,6 +123,9 @@ def inspect_source_rest_profile(path: Path, expected_sha: str, motion: Any,
                          "terminal_tail_error_local": tail_error,
                          "tail_axis_error_degrees": axis_error})
         seen.add(name.casefold())
+        rotations[name] = rotation
+    if validated_rotations is not None:
+        validated_rotations.update(rotations)
     return {"schema_version": 1, "profile_sha256": expected_sha,
             "source_bvh_sha256": source_sha, "axis_profile": axis,
             "joint_count": len(rows), "joint_frames": evidence,

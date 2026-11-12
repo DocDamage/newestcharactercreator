@@ -94,7 +94,23 @@
                     }
                   }
                 }
+              },
+              "source_frame_conversion": {
+                "type": "string",
+                "const": "BVH_XYZ_FIRST_FRAME_DELTA_TO_BONE_V1"
+              },
+              "render_private_frames": {
+                "type": "boolean",
+                "const": true
               }
+            },
+            "dependentRequired": {
+              "source_frame_conversion": [
+                "source_rest_profile_sha256"
+              ],
+              "render_private_frames": [
+                "source_frame_conversion"
+              ]
             }
           }
         }

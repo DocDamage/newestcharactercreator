@@ -70,10 +70,9 @@ class JobRequest:
             ):
                 raise ValidationError("Multi-bone BVH requires one fixed, explicit up-axis profile")
         if self.operation == "verify_reviewed_bvh_chain":
-            if set(self.options) not in (
-                {"axis_profile", "reviewed_mapping"},
-                {"axis_profile", "reviewed_mapping", "source_rest_profile_sha256"},
-            ) or (
+            if (not {"axis_profile", "reviewed_mapping"}.issubset(self.options) or
+                set(self.options) - {"axis_profile", "reviewed_mapping", "source_rest_profile_sha256",
+                                     "source_frame_conversion", "render_private_frames"}) or (
                 self.options["axis_profile"] not in ("Y_UP_TO_Z_UP", "Z_UP_IDENTITY")
             ):
                 raise ValidationError("Reviewed mapping requires explicitly selected BVH axes")
@@ -83,6 +82,15 @@ class JobRequest:
                 from ucc.animations.source_rest_frames import is_sha256
                 if not is_sha256(self.options["source_rest_profile_sha256"]):
                     raise ValidationError("Source rest profile requires an exact lowercase SHA-256")
+            if "source_frame_conversion" in self.options:
+                from ucc.animations.source_rest_frames import CONVERSION_CONVENTION
+                if (self.options["source_frame_conversion"] != CONVERSION_CONVENTION or
+                        "source_rest_profile_sha256" not in self.options):
+                    raise ValidationError("Conversion audit requires bound frames and the fixed BVH convention")
+            if "render_private_frames" in self.options and (
+                self.options["render_private_frames"] is not True or "source_frame_conversion" not in self.options
+            ):
+                raise ValidationError("Private frame rendering requires the conversion audit")
         if self.operation == "refit_human":
             if set(self.options) != {"macro_parameters"}:
                 raise ValidationError("refit_human permits only saved MPFB macro parameters")

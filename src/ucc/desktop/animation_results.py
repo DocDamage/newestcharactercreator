@@ -101,8 +101,22 @@ def format_bvh_motion_evidence(result: LocalBvhClipCheck,
             lines.extend([
                 f"Source rest-frame metadata validated: {intake['joint_count']} joints",
                 f"Rest profile SHA-256: {intake['profile_sha256']}",
-                "Validation only: source bone frames were not applied to BVH channel axes.",
+                "Rest metadata is validated; BVH channel-axis interpretation is unchanged.",
                 "Supplied provenance and source roll are not independently certified.",
+            ])
+        conversion = data.get("source_frame_conversion")
+        if conversion is not None:
+            lines.extend([
+                f"Audited channel-to-bone convention: {conversion['convention']}",
+                f"Maximum basis roundtrip residual: {conversion['max_roundtrip_residual']:.3g}",
+                f"Maximum target-equivalence residual: {conversion['max_target_equivalence_residual']:.3g}",
+                "The coordinate change preserves existing first-frame-relative motion; it is not roll correction.",
+            ])
+        if data.get("private_review_renders") is not None:
+            lines.extend([
+                "15 private CPU clay images: five sampled frames, front/side/quarter views.",
+                f"Private rendered review: {result.private_render_review}",
+                "Open the local index and inspect each joint. Sampled renders do not grant visual approval.",
             ])
     lines.append("Measured real skinned vertices from Blender:")
     for row in data["sampled_frames"]:

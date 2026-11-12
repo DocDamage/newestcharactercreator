@@ -50,12 +50,15 @@ def verify_branching(store, blender, master, project, permission, directory,
         source_bvh=source, permission=permission, expected_project_id=project.project_id,
         expected_revision=project.revision, expected_master_blend=project.master_blend,
         multi_axis_profile="Y_UP_TO_Z_UP", calibrate_rest_axes=True,
-        reviewed_mapping=pairs, source_rest_profile=rest_path, timeout_s=300)
+        reviewed_mapping=pairs, source_rest_profile=rest_path, audit_source_frames=True,
+        render_private_frames=True, timeout_s=300)
     intake = profiled.evidence["source_rest_frame_intake"]
     if (intake["profile_sha256"] != rest_sha or intake["joint_count"] != len(pairs) or
             not intake["validation_only"] or intake["source_channel_interpretation_changed"] or
             profiled.evidence["full_timeline_frames"] != report["full_timeline_frames"]):
         raise RuntimeError("Optional source rest intake changed channel behavior or binding")
+    if not profiled.private_render_review or not Path(profiled.private_render_review).is_file():
+        raise RuntimeError("Audited conversion did not produce verified private rendered views")
     bad = json.loads(rest_path.read_text(encoding="utf-8"))
     bad["source_bvh_sha256"] = "0" * 64
     bad_path = source.with_suffix(".wrong-binding.json")
@@ -113,7 +116,9 @@ def verify_branching(store, blender, master, project, permission, directory,
             raise
     else:
         raise RuntimeError("Genuine Blender accepted a crossed target hierarchy")
-    review_path = Path(result.private_visual_review_blend)
+    legacy_review_path = Path(result.private_visual_review_blend)
+    legacy_review_hash = digest(legacy_review_path)
+    review_path = Path(profiled.private_visual_review_blend)
     review_hash = digest(review_path)
     run("reject-step", master, source.with_suffix(".json"))
     run("inspect", review_path, source.with_suffix(".json"))
@@ -133,7 +138,8 @@ def verify_branching(store, blender, master, project, permission, directory,
             if not same:
                 raise RuntimeError("Independent reopen measured joint swing/twist differs: " + key)
     if (original != (digest(master), digest(metadata)) or source_hash != digest(source)
-            or review_hash != digest(review_path) or rest_sha != digest(rest_path) or store.load() != project):
+            or review_hash != digest(review_path) or legacy_review_hash != digest(legacy_review_path)
+            or rest_sha != digest(rest_path) or store.load() != project):
         raise RuntimeError("Branching diagnostics modified original source/project/review bytes")
     return {
         "mapped_bones": report["mapped_bones"], "mapped_bone_count": len(pairs),
@@ -142,6 +148,7 @@ def verify_branching(store, blender, master, project, permission, directory,
         "max_adjacent_mesh_step_local": report["max_adjacent_mesh_step_local"],
         "all_frames_evaluated": len(reopened), "two_workers_agree": True,
         "third_process_all_frames_agree": True, "original_bytes_unchanged": True,
+        "third_process_reopened_audited_action": True,
         "crossed_target_hierarchy_rejected": True,
         "required_anatomical_endpoints": list(required_targets),
         "motion_quality_schema_version": report["motion_quality_schema_version"],
@@ -158,6 +165,10 @@ def verify_branching(store, blender, master, project, permission, directory,
         "source_rest_wrong_binding_rejected_before_worker": True,
         "source_rest_wrong_origin_rejected_by_blender": True,
         "source_rest_validation_did_not_change_motion": True,
+        "source_frame_conversion": profiled.evidence["source_frame_conversion"],
+        "private_rendered_images_verified": profiled.evidence["private_review_renders"]["image_count"],
+        "private_rendered_source_frames": [1, 7, 13, 19, 25],
+        "private_render_artifact_summary": profiled.evidence["private_review_renders"],
         "retargeting_verified": False, "animation_visual_quality_verified": False,
         "engine_import_verified": False,
     }

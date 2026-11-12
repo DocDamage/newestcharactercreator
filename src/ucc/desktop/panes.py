@@ -214,7 +214,7 @@ class AnimationPane(QWidget):
     local_bvh_requested = Signal(str, str, str, str, bool)
     multi_bvh_requested = Signal(str, str, str, str, bool, str)
     calibrated_bvh_requested = Signal(str, str, str, str, bool, str)
-    reviewed_bvh_requested = Signal(str, str, str, str, bool, str, str, str)
+    reviewed_bvh_requested = Signal(str, str, str, str, bool, str, str, str, bool)
     refresh_requested = Signal()
 
     def __init__(self) -> None:
@@ -337,7 +337,7 @@ class AnimationPane(QWidget):
         )
         layout.addWidget(self.manual_bone_pairs)
         self.source_rest_profile = QLineEdit()
-        self.source_rest_profile.setPlaceholderText("Optional source rest-frame JSON — validation only")
+        self.source_rest_profile.setPlaceholderText("Optional source rest-frame JSON (audit option below)")
         self.source_rest_profile.setToolTip(
             "Must match the selected BVH SHA-256, axes and exact source joints. "
             "Validates bone rest metadata; does not certify source roll or change BVH channel axes."
@@ -351,6 +351,13 @@ class AnimationPane(QWidget):
         profile_row.addWidget(self.source_rest_profile, 1)
         profile_row.addWidget(self.choose_rest_profile)
         layout.addLayout(profile_row)
+        self.audit_and_render = QCheckBox("Audit channel-to-bone conversion and render private views")
+        self.audit_and_render.setToolTip(
+            "Requires the SHA-bound descriptor. Audits the existing XYZ first-frame delta basis change "
+            "and creates 15 private CPU clay PNGs across five frames. Adds render time; no visual approval."
+        )
+        self.audit_and_render.toggled.connect(lambda _checked: self.local_preview_review.setChecked(False))
+        layout.addWidget(self.audit_and_render)
         self.test_reviewed_bvh = QPushButton(
             "Review explicit 3–64 bone BVH hierarchy across full timeline..."
         )
@@ -363,6 +370,7 @@ class AnimationPane(QWidget):
             self.uri.text(), self.local_preview_review.isChecked(),
             self.source_axes.currentData(), self.manual_bone_pairs.toPlainText(),
             self.source_rest_profile.text(),
+            self.audit_and_render.isChecked(),
         ))
         layout.addWidget(self.test_reviewed_bvh)
         self.catalog = QTableWidget(0, 4)

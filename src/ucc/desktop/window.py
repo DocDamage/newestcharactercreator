@@ -792,6 +792,8 @@ class MainWindow(QMainWindow):
         calibrate_rest_axes: bool = False,
         reviewed_mapping: list[dict[str, str]] | None = None,
         source_rest_profile: Path | None = None,
+        audit_source_frames: bool = False,
+        render_private_frames: bool = False,
     ) -> None:
         """Explicit local BVH rights confirmation; no library scan or asset upload."""
         if self.jobs.busy:
@@ -865,6 +867,8 @@ class MainWindow(QMainWindow):
                 calibrate_rest_axes=calibrate_rest_axes,
                 reviewed_mapping=reviewed_mapping,
                 source_rest_profile=source_rest_profile,
+                audit_source_frames=audit_source_frames,
+                render_private_frames=render_private_frames,
             ), cancel=cancel,
         )
 
@@ -898,9 +902,12 @@ class MainWindow(QMainWindow):
     def test_reviewed_bvh(
         self, filename: str, provider: str, license_name: str,
         source_uri: str, reviewed_local_rights: bool, axis_profile: str,
-        mapping_text: str, source_rest_profile_text: str = "",
+        mapping_text: str, source_rest_profile_text: str = "", audit_and_render: bool = False,
     ) -> None:
         """No inferred aliases or rights: only explicit, user-reviewed bones."""
+        if audit_and_render and not source_rest_profile_text.strip():
+            self._error("Choose SHA-bound source rest-frame JSON before audited conversion and private renders")
+            return
         if axis_profile not in {"Y_UP_TO_Z_UP", "Z_UP_IDENTITY"}:
             self._error("Choose the explicit BVH up-axis before mapped review")
             return
@@ -914,6 +921,7 @@ class MainWindow(QMainWindow):
             reviewed_local_rights, multi_axis_profile=axis_profile,
             calibrate_rest_axes=True, reviewed_mapping=pairs,
             source_rest_profile=Path(source_rest_profile_text) if source_rest_profile_text.strip() else None,
+            audit_source_frames=audit_and_render, render_private_frames=audit_and_render,
         )
 
     def inspect_animation(self, file: str) -> None:
