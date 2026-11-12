@@ -359,9 +359,13 @@ def calibrate_bvh_source(bpy: Any, master: Path, source_bvh: Path,
             **review_metrics,
         }
     finally:
-        if rig.animation_data and transient_action is not None:
+        # A bound can fail halfway through key insertion, before the completed
+        # Action is assigned to transient_action. No Action existed on entry.
+        partial_action = rig.animation_data.action if rig.animation_data else None
+        action_to_remove = transient_action or partial_action
+        if rig.animation_data and action_to_remove is not None:
             rig.animation_data_clear()
-            bpy.data.actions.remove(transient_action, do_unlink=True)
+            bpy.data.actions.remove(action_to_remove, do_unlink=True)
         for bone, basis, mode in preserved:
             bone.rotation_mode = mode
             bone.matrix_basis = basis

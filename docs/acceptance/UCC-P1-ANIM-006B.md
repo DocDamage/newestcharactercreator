@@ -15,7 +15,7 @@ twist, and target constraints/drivers can invalidate rest-local FK assumptions.
 | Evidence | Require motion-quality schema version 1, all-frame edge ratios, topology SHA/counts, all mapped joints' angle/frame records and explicit environment check. Reject missing, forged, extreme, reordered or inconsistent proofs. Two workers compare topology, joint maxima and every skin/strain frame |
 | Independent reopen | A third genuine Blender process reopens the private Action, reproduces all skin hashes and edge ratios, and agrees on joint angles within 0.001° (frames exact). Fault injection rejects 5× strain in a measured skin snapshot, an actual Blender 100° longitudinal quaternion, and nonuniform mesh scale; restores the evaluated skin hash |
 | Desktop/packaging | Existing result log shows local edge range, excluded degenerates and per-bone swing/twist maximum frames. New bridge modules are required by the frozen/source bundle self-test; no new inactive UI controls |
-| Integrity | Original BVH/master/project and private review `.blend` bytes remain unchanged on positive/negative paths. Source rights, SHA verification, revision conflicts, cancellation and rollback stay enforced |
+| Integrity | Original BVH/master/project and private review `.blend` bytes remain unchanged on positive/negative paths. A frame-2 compound rotation fault after frame-1 key insertion must remove its partial Action, restore neutral poses and create no review copy. Source rights, SHA verification, revision conflicts, cancellation and rollback stay enforced |
 | CI | All five existing workflows must pass on the final PR head: core/worker, Qt, preflight, real Blender 5.3/MPFB, Windows frozen executable |
 
 Pure worker mathematics live in `blender_bridge/motion_quality.py`; Blender target
@@ -39,6 +39,8 @@ single-bone/chain diagnostics retain their existing evidence contracts.
   independently reopened skin/quality frames, crossed-parent rejection, quality
   fault injection and restored geometry. Measured **560 edges**, none excluded,
   local length ratios **0.9999943894–1.0000051458**. Original bytes unchanged.
+  A genuine Blender step-failure test also verifies cleanup of an Action created
+  before the failure, neutral-pose restoration and absence of a review artifact.
 - This fixture is non-shipping and isolated under `tests/fixtures`. It proves
   numerical/worker behavior, not MPFB anatomy, Fab compatibility or natural motion.
 - Local MPFB remains unavailable from the prior verified environment audit.

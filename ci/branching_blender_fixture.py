@@ -188,13 +188,53 @@ def inspect(master: Path, mapping: Path) -> None:
     print("BRANCHING_ACTION_REOPENED_ALL_25_SKINNED_FRAMES")
 
 
+def reject_partial_action(master: Path, mapping: Path) -> None:
+    from hashlib import sha256
+    from blender_bridge.bvh_calibration_probe import calibrate_bvh_source
+    from blender_bridge.motion_quality import MotionQualityError
+    pairs = json.loads(mapping.read_text(encoding="utf-8"))
+    source = mapping.with_suffix(".bvh")
+    original = sha256(master.read_bytes()).hexdigest(), sha256(source.read_bytes()).hexdigest()
+    lines = source.read_text(encoding="utf-8").splitlines()
+    motion = lines.index("MOTION")
+    # All component changes remain <=45 degrees, but the compound quaternion
+    # jumps >80 degrees on frame 2, after frame-1 keys already created an Action.
+    row = lines[motion + 4].split()
+    row[:3] = ["45", "45", "45"]
+    lines[motion + 4] = " ".join(row)
+    jump = mapping.with_suffix(".jump.bvh")
+    if jump.exists():
+        raise RuntimeError("Refuse to overwrite fault source")
+    jump.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    output = mapping.parent / "step-fault" / "review_motion.blend"
+    output.parent.mkdir(exist_ok=False)
+    try:
+        calibrate_bvh_source(bpy, master, jump, "Y_UP_TO_Z_UP", pairs, output)
+    except MotionQualityError as error:
+        if "step=" not in str(error):
+            raise
+    else:
+        raise RuntimeError("Genuine Blender accepted the injected quaternion step")
+    rig = next(o for o in bpy.data.objects if o.type == "ARMATURE")
+    if (rig.animation_data and rig.animation_data.action) or output.exists():
+        raise RuntimeError("Rejected motion retained a partial Action or review file")
+    if any(abs(rig.pose.bones[p["target"]].matrix_basis[i][j] - float(i == j)) > 1e-4
+           for p in pairs for i in range(4) for j in range(4)):
+        raise RuntimeError("Rejected motion did not restore neutral target bone poses")
+    if original != (sha256(master.read_bytes()).hexdigest(), sha256(source.read_bytes()).hexdigest()):
+        raise RuntimeError("Rejected motion changed original files")
+    print("STEP_FAULT_REJECTED_PARTIAL_ACTION_REMOVED_ORIGINALS_UNCHANGED")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mode", choices=("create", "inspect"), required=True)
+    parser.add_argument("--mode", choices=("create", "inspect", "reject-step"), required=True)
     parser.add_argument("--blend", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(sys.argv[sys.argv.index("--") + 1:])
     if args.mode == "create":
         author(args.blend, args.output)
-    else:
+    elif args.mode == "inspect":
         inspect(args.blend, args.output)
+    else:
+        reject_partial_action(args.blend, args.output)

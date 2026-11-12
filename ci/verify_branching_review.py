@@ -66,6 +66,7 @@ def verify_branching(store, blender, master, project, permission, directory,
         raise RuntimeError("Genuine Blender accepted a crossed target hierarchy")
     review_path = Path(result.private_visual_review_blend)
     review_hash = digest(review_path)
+    run("reject-step", master, source.with_suffix(".json"))
     run("inspect", review_path, source.with_suffix(".json"))
     reopened = json.loads(review_path.with_suffix(".reopened.json").read_text(encoding="utf-8"))
     if reopened != [frame["evaluated_sha256"] for frame in report["full_timeline_frames"]]:
@@ -101,6 +102,7 @@ def verify_branching(store, blender, master, project, permission, directory,
         "max_edge_stretch_ratio": max(f["max_edge_stretch_ratio"] for f in report["full_timeline_frames"]),
         "third_process_quality_metrics_agree": True,
         "quality_fault_injections_rejected_and_skin_restored": True,
+        "partial_action_removed_after_step_failure": True,
         "retargeting_verified": False, "animation_visual_quality_verified": False,
         "engine_import_verified": False,
     }
