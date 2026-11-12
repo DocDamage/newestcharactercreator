@@ -18,6 +18,8 @@
 
 **Local Windows progress:** official MPFB 2.0.18 is installed in a project-local profile with registry SHA verification and explicit owner setup authorization. Actual Blender 5.3.0 generation/refit/reopen, deformation, timeline, branching audit, native body preview and private renders pass locally. A private owner project/launcher and Qt static/animation-diagnostic workflows were verified. Earlier table rows retain historical Linux evidence; broad Windows/asset acceptance, human visual acceptance and engine imports remain unverified.
 
+**In development, stacked on #44:** [UCC-P1-ANIM-006K](acceptance/UCC-P1-ANIM-006K.md) adds optional explicit hand/metacarpal/finger roles for the measured native family. The actual held-finger bandaging clip passes 59-role/300-frame local previews, saved reopening and UCC cached playback. It contains no measurable intrinsic finger animation. Original CI motion tests articulated fingers separately. Contact quality, arbitrary hand rest-roll compatibility and final CI remain unverified.
+
 ## Verified capabilities and remaining gates
 
 | Capability | Actual verification | Outstanding |

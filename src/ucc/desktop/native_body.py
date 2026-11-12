@@ -13,6 +13,7 @@ from ucc.library.provenance import LicensePolicy
 from ucc.jobs.native_body import preview_native_body
 from ucc.jobs.native_playback import prepare_native_playback
 from ucc.jobs.native_evidence import bound_file
+from ucc.animations.native_hands import HAND_TARGETS
 from .generation import bundled_worker_path
 
 
@@ -46,17 +47,19 @@ def start_native_body(window):
     except (UCCError,ValueError) as error:
         window._error(str(error));return
     profile=Path(pane.native_body_profile.text()) if pane.native_body_profile.text().strip() else None
+    include_hands=pane.native_include_hands.isChecked()
     store=window.controller.store
     cancel=Event()
     window._native_review=None
     pane.open_native_animation.setEnabled(False);pane.open_native_renders.setEnabled(False)
     window._submit("native_body",lambda:preview_native_body(store,source_fbx=source,mapping_profile=profile,
         blender_exe=executable,worker_script=worker,permission=policy,expected_project_id=snapshot.project_id,
-        expected_revision=snapshot.revision,expected_master_blend=snapshot.master_blend,cancel=cancel),cancel=cancel)
+        expected_revision=snapshot.revision,expected_master_blend=snapshot.master_blend,cancel=cancel,include_hands=include_hands),cancel=cancel)
 
 
 def native_result_text(result):
     data=result.evidence
+    hand_count=sum(row["target"] in HAND_TARGETS for row in data["mapped_pairs"])
     anchor=(f"Hip movement matches the measured source through every frame; maximum error {data['hip_anchor']['max_residual_world']*1000:.4f} mm.\n"
             if data.get("root_motion_policy")=="SOURCE_HIP_MIDPOINT_V1" else "")
     skin=("Bound joint smoothing applied to the private preview; original skin and weights unchanged.\n"
@@ -67,8 +70,8 @@ def native_result_text(result):
              if data.get("mesh_strain_reference")=="TRUE_NEUTRAL_BIND_V2" else "")
     return ("EXPERIMENTAL FBX MOTION MEASURED ON A PRIVATE CHARACTER COPY\n"
         f"Complete source timeline: {data['source_frame_count']} frames at {data['fps']:g} fps\n"
-        f"Mapped body joints: {len(data['mapped_pairs'])}; unmapped source bones: {len(data['omitted_source_bones'])}\n"
-        "Unmapped finger, face or other source motion was not applied.\n"
+        f"Mapped joints: {len(data['mapped_pairs'])}, including {hand_count} hand/finger joints; unmapped source bones: {len(data['omitted_source_bones'])}\n"
+        "Only the explicitly mapped joints were applied; omitted source motion remains unapplied.\n"
         f"Root travel from bind: {data['root_motion_metrics']['max_distance_from_bind_world']:.3f} m\n"
         f"{anchor}"
         f"{skin}"

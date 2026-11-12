@@ -152,6 +152,7 @@ class MainWindow(QMainWindow):
         self.animations.native_renders_open_requested.connect(lambda:open_native_result(self,rendered=True))
         self.animations.native_playback_requested.connect(lambda:start_native_playback(self))
         self.animations.local_preview_review.toggled.connect(lambda _checked:self._clear_native_review())
+        self.animations.native_include_hands.toggled.connect(lambda _checked:self._clear_native_review())
         for field in (self.animations.selected,self.animations.native_body_profile,self.animations.provider,self.animations.license,self.animations.uri):
             field.textChanged.connect(lambda _text:self._clear_native_review())
         self.animations.inspect_requested.connect(self.inspect_animation)

@@ -42,9 +42,11 @@ class NativeBodyPreview:
 def preview_native_body(store: ProjectStore, *, source_fbx: Path, mapping_profile: Path | None=None,
                         blender_exe: Path, worker_script: Path, permission: LicensePolicy,
                         expected_project_id: str, expected_revision: int, expected_master_blend: str,
-                        cancel: Event | None=None, timeout_s: float=300) -> NativeBodyPreview:
+                        cancel: Event | None=None, timeout_s: float=300, include_hands: bool=False) -> NativeBodyPreview:
     allowed,reason=permission.allow("local_preview")
     if not allowed: raise AssetPolicyError(reason)
+    if type(include_hands) is not bool or (include_hands and mapping_profile is not None):
+        raise ValidationError("Automatic hand mapping needs a boolean selection and no explicit map; explicit maps define their own joints")
     def check_cancel():
         if cancel is not None and cancel.is_set(): raise ProjectStorageError("Native body preview cancelled; originals unchanged")
     project=store.load()
@@ -64,7 +66,7 @@ def preview_native_body(store: ProjectStore, *, source_fbx: Path, mapping_profil
     source,_=read_snapshot(snapshot_path.parent,intake,intake["source_sha256"],cancel_check=check_cancel)
     snapshot_sha=intake["snapshot"]["sha256"]
     if mapping_profile is None:
-        generated=measured_body_profile(source,intake["source_sha256"],snapshot_sha,master_sha)
+        generated=measured_body_profile(source,intake["source_sha256"],snapshot_sha,master_sha,include_hands=include_hands)
         mapping_profile=snapshot_path.parent/"native_mapping.json"
         if mapping_profile.exists() or mapping_profile.is_symlink():raise ValidationError("Refuse to replace an automatic native body map")
         with mapping_profile.open("x",encoding="utf-8") as stream:

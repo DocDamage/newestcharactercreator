@@ -16,7 +16,7 @@ from ucc.jobs.native_playback import prepare_native_playback
 from ucc.animations import native_math as nm
 
 
-def verify_native_body(blender: Path,store: ProjectStore,folder: Path,*,hip_anchor=False,corrective=False,neutral_reference=False) -> dict:
+def verify_native_body(blender: Path,store: ProjectStore,folder: Path,*,hip_anchor=False,corrective=False,neutral_reference=False,include_hands=False) -> dict:
     if neutral_reference and not (corrective and hip_anchor):
         raise ValueError("The neutral-reference CI challenge requires corrected skin and anatomical hip anchoring")
     project=store.load();master=store.root/project.master_blend
@@ -27,7 +27,7 @@ def verify_native_body(blender: Path,store: ProjectStore,folder: Path,*,hip_anch
     def run(*args):
         subprocess.run([str(blender),"--background","--factory-startup","--disable-autoexec",
             "--python-exit-code","13","--python",str(script),"--",*map(str,args)],check=True,timeout=300)
-    run("--mode","author","--master",master,"--folder",folder,"--origin","ground" if hip_anchor else "target-root",*(("--corrective-challenge",) if corrective else ()),*(("--posed-origin-challenge",) if neutral_reference else ()))
+    run("--mode","author","--master",master,"--folder",folder,"--origin","ground" if hip_anchor else "target-root",*(("--corrective-challenge",) if corrective else ()),*(("--posed-origin-challenge",) if neutral_reference else ()),*(("--include-hands",) if include_hands else ()))
     source=folder/"original-native-body.fbx";source_sha=digest(source)
     policy=LicensePolicy("Original UCC native-body test fixture","CC0","ci-original://native-body-reference",
                          reviewed=True,local_preview_allowed=True,no_ai=True)
@@ -46,7 +46,7 @@ def verify_native_body(blender: Path,store: ProjectStore,folder: Path,*,hip_anch
         worker_script=ROOT/"blender_bridge/entrypoint.py",permission=policy,
         expected_project_id=project.project_id,expected_revision=project.revision,expected_master_blend=project.master_blend)
     data=result.evidence
-    if data["source_frame_count"]!=300 or len(data["mapped_pairs"])!=21 or (not hip_anchor and data["root_motion_metrics"]["max_distance_from_bind_world"]<3.99):
+    if data["source_frame_count"]!=300 or len(data["mapped_pairs"])!=(59 if include_hands else 21) or (not hip_anchor and data["root_motion_metrics"]["max_distance_from_bind_world"]<3.99):
         raise RuntimeError("Native preview cropped body motion or lost authored four-meter root travel")
     angle=0.;previous=None
     for frame in data["full_timeline_frames"]:
@@ -106,7 +106,16 @@ def verify_native_body(blender: Path,store: ProjectStore,folder: Path,*,hip_anch
     run("--mode","fault","--master",master,"--job",Path(result.private_timeline).parent,"--folder",folder)
     if (before!=(digest(master),digest(metadata)) or source_sha!=digest(source) or profile_sha!=digest(profile_path) or store.load()!=project):
         raise RuntimeError("Native body verification changed original source/master/project/map bytes")
-    return {**anchor_evidence,**skin_evidence,"provenance":"ORIGINAL_CI_ARMATURE_ON_REAL_MPFB_NOT_OWNER_OR_FAB_ASSET","frames":300,"mapped_body_bones":21,
+    if include_hands:
+        from ucc.animations.native_hands import HAND_TARGETS
+        from ci.native_hand_metrics import hand_local_motion
+        probes={row["target"] for row in data["deformation_probes"]}
+        if not HAND_TARGETS.issubset(probes):raise RuntimeError("Mapped hand joint lacks its independent visible-skin probe")
+        hand_motion=hand_local_motion(data)
+        if min(hand_motion.values())<1.:raise RuntimeError("Authored finger motion was replaced by inherited wrist motion")
+    return {**anchor_evidence,**skin_evidence,"provenance":"ORIGINAL_CI_ARMATURE_ON_REAL_MPFB_NOT_OWNER_OR_FAB_ASSET","frames":300,"mapped_body_bones":len(data["mapped_pairs"]),
+        "mapped_hand_joints":38 if include_hands else 0,
+        "intrinsic_hand_motion_degrees":hand_motion if include_hands else {},
         "independent_skin_probes":len(data["deformation_probes"]),"root_travel_world":data["root_motion_metrics"]["max_distance_from_bind_world"],
         "root_rotation_path_degrees":angle,"max_source_fk_pose_residual":data["max_global_pose_residual"],
         "max_measured_target_rotation_projection":data["max_target_rotation_projection"],"two_workers_agree":True,
@@ -124,7 +133,8 @@ if __name__=="__main__":
     parser.add_argument("--hip-anchor",action="store_true")
     parser.add_argument("--corrective",action="store_true")
     parser.add_argument("--neutral-reference",action="store_true")
+    parser.add_argument("--include-hands",action="store_true")
     args=parser.parse_args()
-    report=verify_native_body(args.blender,ProjectStore(args.project),args.output,hip_anchor=args.hip_anchor,corrective=args.corrective,neutral_reference=args.neutral_reference)
+    report=verify_native_body(args.blender,ProjectStore(args.project),args.output,hip_anchor=args.hip_anchor,corrective=args.corrective,neutral_reference=args.neutral_reference,include_hands=args.include_hands)
     (args.output/"native-body-summary.json").write_text(json.dumps(report,indent=2))
     print(json.dumps(report))

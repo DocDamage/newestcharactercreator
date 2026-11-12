@@ -459,7 +459,7 @@ def verify(blender: Path, root: Path) -> dict:
     native_body = verify_native_body(blender, store, root / "native-body-contract")
     native_anchor = verify_native_body(blender, store, root / "native-hip-anchor-contract", hip_anchor=True)
     native_corrective = verify_native_body(blender, store, root / "native-corrective-contract", hip_anchor=True, corrective=True)
-    native_neutral = verify_native_body(blender, store, root / "native-neutral-reference-contract", hip_anchor=True, corrective=True, neutral_reference=True)
+    native_neutral = verify_native_body(blender, store, root / "native-neutral-reference-contract", hip_anchor=True, corrective=True, neutral_reference=True, include_hands=True)
     return {
         "status": "REAL_LINUX_PROJECT_GENERATE_REOPEN_STAGED",
         "runtime_platform": sys.platform,

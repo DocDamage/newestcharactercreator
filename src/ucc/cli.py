@@ -55,6 +55,7 @@ def main(argv: list[str] | None = None) -> int:
     native.add_argument("--project",type=Path,required=True)
     native.add_argument("--blender",type=Path,required=True)
     native.add_argument("--mapping",type=Path,help="Optional explicit reviewed body map; otherwise only the measured humanoid family is supported")
+    native.add_argument("--include-hands",action="store_true",help="Include measured hand/finger chains in automatic mapping; incompatible with --mapping")
     native.add_argument("--policy-file",type=Path,required=True)
     index_anim = sp.add_parser("index-animation", help="Index one explicitly chosen animation with fail-closed provenance")
     index_anim.add_argument("file", type=Path)
@@ -122,7 +123,7 @@ def main(argv: list[str] | None = None) -> int:
             from ucc.jobs.native_body import preview_native_body
             store=ProjectStore(args.project);project=store.load()
             policy=LicensePolicy.from_dict(json.loads(args.policy_file.read_text(encoding="utf-8")))
-            result=preview_native_body(store,source_fbx=args.file,mapping_profile=args.mapping,blender_exe=args.blender,
+            result=preview_native_body(store,source_fbx=args.file,mapping_profile=args.mapping,include_hands=args.include_hands,blender_exe=args.blender,
                 worker_script=Path(__file__).resolve().parents[3]/"blender_bridge/entrypoint.py",permission=policy,
                 expected_project_id=project.project_id,expected_revision=project.revision,expected_master_blend=project.master_blend)
             data={"status":"EXPERIMENTAL_NATIVE_BODY_PREVIEW","frames":result.evidence["source_frame_count"],
