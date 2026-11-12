@@ -34,7 +34,7 @@ class ReviewMappingTests(unittest.TestCase):
 
     def test_namespace_prefix_is_permitted_but_paths_are_not(self):
         pairs = parse_review_mapping(
-            "mixamorig:Hips -> neck02\\nmixamorig:Spine -> neck03\\nmixamorig:Head -> head"
+            "mixamorig:Hips -> neck02\nmixamorig:Spine -> neck03\nmixamorig:Head -> head"
         )
         self.assertEqual(pairs[0]["source"], "mixamorig:Hips")
 

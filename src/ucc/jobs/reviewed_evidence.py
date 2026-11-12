@@ -58,7 +58,7 @@ def validate_reviewed_evidence(raw: Any, axis_profile: str,
             raise ReviewedEvidenceError("Mapped joint name or parent hierarchy was changed")
     try:
         validate_calibrated_evidence(_canonical(raw), axis_profile, max_bones=8)
-    except (ValueError, TypeError, KeyError) as exc:
+    except (ValidationError, ValueError, TypeError, KeyError) as exc:
         raise ReviewedEvidenceError("Measured calibrated rotation/skin evidence rejected") from exc
     frames = raw["source_frame_count"]
     full = raw.get("full_timeline_frames")
@@ -117,7 +117,7 @@ def compare_reviewed_evidence(first: Any, second: Any, axis_profile: str,
     b = validate_reviewed_evidence(second, axis_profile, mapping)
     try:
         compare_calibrated_evidence(_canonical(a), _canonical(b), axis_profile, max_bones=8)
-    except (ValueError, TypeError, KeyError) as exc:
+    except (ValidationError, ValueError, TypeError, KeyError) as exc:
         raise ReviewedEvidenceError("Independent calibrated Blender workers disagree") from exc
     for field in ("reviewed_mapping_sha256", "max_bone_quaternion_step_degrees",
                   "model_baseline_diagonal_local", "max_adjacent_mesh_step_local"):

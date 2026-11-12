@@ -483,7 +483,7 @@ class DesktopQtSmoke(unittest.TestCase):
         pane.license.setText("author retained rights")
         pane.uri.setText("local-original://mapped-unit")
         pane.manual_bone_pairs.setPlainText(
-            "SrcNeck02 -> neck02\\nSrcNeck03 -> neck03\\nSrcHead -> head"
+            "SrcNeck02 -> neck02\nSrcNeck03 -> neck03\nSrcHead -> head"
         )
         pane.local_preview_review.setChecked(True)
         with (patch.object(self.window, "_error") as error,
