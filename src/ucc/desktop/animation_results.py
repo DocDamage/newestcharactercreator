@@ -8,11 +8,14 @@ from ucc.jobs.bvh_clip_diagnostic import LocalBvhClipCheck
 
 
 def format_bvh_motion_evidence(result: LocalBvhClipCheck,
-                               *, multibone: bool = False) -> str:
+                               *, multibone: bool = False,
+                               calibrated: bool = False) -> str:
     data = result.evidence
     p = data
     lines = [
-        ("REAL 2–4 BONE BVH SOURCE CHAIN MEASURED IN BLENDER."
+        ("REAL REST-SPACE-CALIBRATED BVH ROTATIONS MEASURED IN BLENDER."
+         if calibrated else
+         "REAL 2–4 BONE BVH SOURCE CHAIN MEASURED IN BLENDER."
          if multibone else "REAL USER-SELECTED BVH SOURCE MOTION EVALUATED IN BLENDER."),
         f"Saved project revision: {result.revision}",
         f"Selected BVH clip: {result.clip_name}",
@@ -20,7 +23,29 @@ def format_bvh_motion_evidence(result: LocalBvhClipCheck,
         f"BVH source frames: {data['source_frame_count']}",
         f"Distinct skinned geometry states: {data['distinct_geometry_states']}",
     ]
-    if multibone:
+    if calibrated:
+        lines.extend([
+            f"Explicit source up-axis: {data['axis_profile']}",
+            f"Measured independent rest landmarks: {data['rest_landmark_count']}",
+            f"Maximum landmark angular error: {data['max_rest_residual_degrees']:.4f}°",
+            "Ordered source rotations were converted to target rest-bone axes",
+            "using measured MPFB rest matrices, not direct Euler copying.",
+            f"Mapped MPFB deform bones: {data['mapped_bone_count']}",
+        ])
+        for mapping, movement in zip(
+            data["mapped_bones"], data["per_bone_deformation"]
+        ):
+            lines.append(
+                f"{mapping['source']} → {mapping['target']} | "
+                f"individual moved vertices {movement['moved_vertices']:,}"
+            )
+        lines.extend([
+            "Two independent directional rest landmarks establish a shared basis.",
+            "Per-bone Blender rest matrices are used to convert local rotations.",
+            "Bone-roll quality on arbitrary external skeletons NOT independently certified.",
+            "No user animation is imported or attached to the saved master.",
+        ])
+    elif multibone:
         lines.extend([
             f"Explicit up-axis profile: {data['axis_profile']}",
             f"Mapped weighted bones: {data['mapped_bone_count']}",

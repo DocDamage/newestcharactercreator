@@ -64,6 +64,7 @@ class MultiBoneFixtureTests(unittest.TestCase):
         self.assertEqual(self.motion.source_bones, ("neck03", "head"))
         self.assertEqual(self.motion.parents, {"neck03": None, "head": "neck03"})
         self.assertEqual(self.motion.offsets["head"], (0.0, .033, .017))
+        self.assertEqual(self.motion.end_site_offsets["head"], (0.0, 0.1, 0.0))
         self.assertEqual(self.motion.channel_orders["head"], (
             "Xrotation", "Yrotation", "Zrotation",
         ))
@@ -109,6 +110,22 @@ class MultiBoneFixtureTests(unittest.TestCase):
             select_explicit_chain(
                 read_local_bvh(self.source), self.human, self.rig, "Y_UP_TO_Z_UP",
             )
+
+    def test_reject_duplicate_or_nonfinite_terminal_end_site_offset(self):
+        original = self.source.read_text(encoding="utf-8")
+        broken = original.replace(
+            "End Site\n{\nOFFSET 0 0.1 0",
+            "End Site\n{\nOFFSET 0 NaN 0",
+        )
+        self.source.write_text(broken, encoding="utf-8")
+        with self.assertRaisesRegex(LocalBvhError, "Non-finite"):
+            read_local_bvh(self.source)
+        self.source.write_text(original.replace(
+            "End Site\n{\nOFFSET 0 0.1 0",
+            "End Site\n{\nOFFSET 0 0.1 0\nOFFSET 0 0.1 0",
+        ), encoding="utf-8")
+        with self.assertRaisesRegex(LocalBvhError, "Duplicate terminal"):
+            read_local_bvh(self.source)
 
     def test_reject_inadequate_source_chains(self):
         one = self.source.with_name("one.bvh")

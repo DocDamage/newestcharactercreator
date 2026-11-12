@@ -227,6 +227,36 @@ class LocalBvhPreviewContractTests(unittest.TestCase):
             self.invoke(multi_axis_profile="AUTO_GUESS")
         self.assertEqual(self.calls, 0)
 
+    def test_calibration_requires_explicit_source_axis_before_work(self):
+        with self.assertRaisesRegex(ValidationError, "requires explicit"):
+            self.invoke(calibrate_rest_axes=True)
+        with self.assertRaisesRegex(ValidationError, "up-axis"):
+            self.invoke(multi_axis_profile="AUTO_GUESS", calibrate_rest_axes=True)
+        self.assertEqual(self.calls, 0)
+
+    def test_calibrated_chain_uses_licensed_immutable_double_worker(self):
+        from test_calibrated_evidence import valid
+        detail = valid()
+        detail["source_sha256"] = sha256(self.source.read_bytes()).hexdigest()
+        self.details = detail
+        original = (
+            self.store.file.read_bytes(),
+            self.master.read_bytes(),
+            self.source.read_bytes(),
+        )
+        result = self.invoke(
+            multi_axis_profile="Y_UP_TO_Z_UP", calibrate_rest_axes=True
+        )
+        self.assertEqual(self.calls, 2)
+        self.assertEqual(result.evidence["status"],
+                         "REAL_BVH_REST_AXES_CALIBRATED_MESH_MOTION")
+        self.assertEqual(result.evidence["mapped_bone_count"], 2)
+        self.assertFalse(result.retargeting_verified)
+        self.assertEqual((
+            self.store.file.read_bytes(), self.master.read_bytes(),
+            self.source.read_bytes(),
+        ), original)
+
     def test_cancellation_and_concurrent_source_change_discard_evidence(self):
         self.cancel.set()
         with self.assertRaisesRegex(ProjectStorageError, "cancelled"):

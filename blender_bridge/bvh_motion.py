@@ -30,6 +30,7 @@ class LocalBvhMotion:
     parents: dict[str, str | None] = field(default_factory=dict)
     offsets: dict[str, tuple[float, float, float]] = field(default_factory=dict)
     channel_orders: dict[str, tuple[str, ...]] = field(default_factory=dict)
+    end_site_offsets: dict[str, tuple[float, float, float]] = field(default_factory=dict)
 
     def eligible_rotation(self, preferred_names: list[str]) -> tuple[str, str, tuple[tuple[float, float, float], ...]]:
         """Return one explicit matching MPFB bone, not inferred Mixamo/UE aliases."""
@@ -84,6 +85,7 @@ def read_local_bvh(source: Path) -> LocalBvhMotion:
     parents: dict[str, str | None] = {}
     offsets: dict[str, tuple[float, float, float]] = {}
     channel_orders: dict[str, tuple[str, ...]] = {}
+    end_site_offsets: dict[str, tuple[float, float, float]] = {}
     channels: list[tuple[str, tuple[str, ...], int]] = []
     offset = 0
     for line in lines[1:motion_at]:
@@ -102,6 +104,8 @@ def read_local_bvh(source: Path) -> LocalBvhMotion:
                 raise LocalBvhError("Too many source BVH joints")
             pending = name
         elif line == "End Site":
+            if pending is not None or not stack or stack[-1] == "#end_site":
+                raise LocalBvhError("End Site requires an existing parent joint")
             pending = "#end_site"
         elif line == "{":
             if pending is None:
@@ -144,7 +148,14 @@ def read_local_bvh(source: Path) -> LocalBvhMotion:
                 raise LocalBvhError("Non-numeric BVH bone offset") from exc
             if any(not math.isfinite(v) or abs(v) > 1e6 for v in triplet):
                 raise LocalBvhError("Non-finite/extreme BVH rest offset")
-            if stack[-1] != "#end_site":
+            if stack[-1] == "#end_site":
+                if len(stack) < 2 or stack[-2] == "#end_site":
+                    raise LocalBvhError("End Site has no valid parent joint")
+                key = stack[-2].casefold()
+                if key in end_site_offsets:
+                    raise LocalBvhError("Duplicate terminal BVH End Site offset")
+                end_site_offsets[key] = triplet
+            else:
                 key = stack[-1].casefold()
                 if key in offsets:
                     raise LocalBvhError("Duplicate BVH rest offset")
@@ -199,5 +210,5 @@ def read_local_bvh(source: Path) -> LocalBvhMotion:
             collected[name.casefold()].append(angles)
     return LocalBvhMotion(
         dt, frames, {key: tuple(angles) for key, angles in collected.items()},
-        tuple(bones), parents, offsets, channel_orders,
+        tuple(bones), parents, offsets, channel_orders, end_site_offsets,
     )
