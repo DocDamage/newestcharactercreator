@@ -9,11 +9,14 @@ from ucc.jobs.bvh_clip_diagnostic import LocalBvhClipCheck
 
 def format_bvh_motion_evidence(result: LocalBvhClipCheck,
                                *, multibone: bool = False,
-                               calibrated: bool = False) -> str:
+                               calibrated: bool = False,
+                               reviewed: bool = False) -> str:
     data = result.evidence
     p = data
     lines = [
-        ("REAL REST-SPACE-CALIBRATED BVH ROTATIONS MEASURED IN BLENDER."
+        ("REAL EXPLICITLY MAPPED BVH FULL-TIMELINE REVIEW IN BLENDER."
+         if reviewed else
+         "REAL REST-SPACE-CALIBRATED BVH ROTATIONS MEASURED IN BLENDER."
          if calibrated else
          "REAL 2–4 BONE BVH SOURCE CHAIN MEASURED IN BLENDER."
          if multibone else "REAL USER-SELECTED BVH SOURCE MOTION EVALUATED IN BLENDER."),
@@ -71,6 +74,15 @@ def format_bvh_motion_evidence(result: LocalBvhClipCheck,
         lines.append(
             f"Mapped direct source bone: {data['source_bone']} → {data['target_bone']}"
         )
+    if reviewed:
+        lines.extend([
+            f"Every frame measured: {len(data['full_timeline_frames'])}",
+            f"Maximum adjacent skin step: {data['max_adjacent_mesh_step_local']:.6f}",
+            f"Maximum quaternion step by bone: {data['max_bone_quaternion_step_degrees']}",
+            f"Private Blender Action review copy: {result.private_visual_review_blend}",
+            "Open that private .blend in Blender and inspect its full Action timeline.",
+            "Joint twist and visual motion quality have NOT been manually approved.",
+        ])
     lines.append("Measured real skinned vertices from Blender:")
     for row in data["sampled_frames"]:
         lines.append(

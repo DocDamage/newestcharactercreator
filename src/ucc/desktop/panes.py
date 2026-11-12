@@ -214,6 +214,7 @@ class AnimationPane(QWidget):
     local_bvh_requested = Signal(str, str, str, str, bool)
     multi_bvh_requested = Signal(str, str, str, str, bool, str)
     calibrated_bvh_requested = Signal(str, str, str, str, bool, str)
+    reviewed_bvh_requested = Signal(str, str, str, str, bool, str, str)
     refresh_requested = Signal()
 
     def __init__(self) -> None:
@@ -318,6 +319,32 @@ class AnimationPane(QWidget):
             )
         )
         layout.addWidget(self.test_calibrated_bvh)
+        self.manual_bone_pairs = QTextEdit()
+        self.manual_bone_pairs.setPlaceholderText(
+            "One source -> MPFB target per line, parent to child. Example: SourceNeck -> neck02"
+        )
+        self.manual_bone_pairs.setFixedHeight(85)
+        self.manual_bone_pairs.setToolTip(
+            "3–8 reviewed pairs; exact names, deform weights, parent links and "
+            "real rest matrices are checked. No automatic alias suggestions."
+        )
+        self.manual_bone_pairs.textChanged.connect(
+            lambda: self.local_preview_review.setChecked(False)
+        )
+        layout.addWidget(self.manual_bone_pairs)
+        self.test_reviewed_bvh = QPushButton(
+            "Review explicit 3–8 bone BVH mapping across full timeline..."
+        )
+        self.test_reviewed_bvh.setToolTip(
+            "Measures every skinned frame and saves an animated private .blend "
+            "copy to open in Blender. No engine export or visual quality approval."
+        )
+        self.test_reviewed_bvh.clicked.connect(lambda: self.reviewed_bvh_requested.emit(
+            self.selected.text(), self.provider.text(), self.license.text(),
+            self.uri.text(), self.local_preview_review.isChecked(),
+            self.source_axes.currentData(), self.manual_bone_pairs.toPlainText(),
+        ))
+        layout.addWidget(self.test_reviewed_bvh)
         self.catalog = QTableWidget(0, 4)
         self.catalog.setHorizontalHeaderLabels(["Asset ID", "Format", "Declared clips", "Status"])
         self.catalog.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
