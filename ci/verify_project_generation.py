@@ -26,6 +26,7 @@ from ucc.jobs.master_preview import preview_saved_master
 from ucc.jobs.pose_diagnostic import check_saved_master_pose
 from ucc.jobs.timeline_diagnostic import check_saved_master_timeline
 from ucc.jobs.bvh_clip_diagnostic import check_selected_bvh
+from ucc.jobs.runner import WorkerFailure
 from ucc.library.provenance import LicensePolicy
 
 
@@ -358,6 +359,43 @@ def verify(blender: Path, root: Path) -> dict:
             or _hash(multibone_source) != calibrated.clip_sha256):
         raise RuntimeError("Calibrated BVH test modified the source/master/project")
 
+    # Independent, deliberately BAD original CI-only source: source terminal
+    # rest vector parallel to the root->head segment. Roll is mathematically
+    # undetermined; Blender MUST refuse before pretending to animate.
+    bad_rest_header = multibone_header.replace(
+        "End Site\n{\nOFFSET 0 0.1 0\n",
+        "End Site\n{\nOFFSET 0 0.032704 0.017147\n",
+    )
+    if bad_rest_header == multibone_header:
+        raise RuntimeError("Negative BVH rest-anatomy test fixture did not change")
+    bad_source = root / "ci-negative-collinear-rest.bvh"
+    bad_source.write_text(
+        bad_rest_header + "\n".join(both_rotations) + "\n", encoding="utf-8",
+    )
+    bad_sha = _hash(bad_source)
+    try:
+        check_selected_bvh(
+            store, blender_exe=blender,
+            worker_script=ROOT / "blender_bridge" / "entrypoint.py",
+            source_bvh=bad_source, permission=local_authorization,
+            expected_project_id=new_project.project_id,
+            expected_revision=new_project.revision,
+            expected_master_blend=new_project.master_blend,
+            multi_axis_profile="Y_UP_TO_Z_UP",
+            calibrate_rest_axes=True, timeout_s=300,
+        )
+    except WorkerFailure as exc:
+        if "non-collinear" not in str(exc):
+            raise RuntimeError(
+                "Negative source failed for another reason, not ambiguous bone roll"
+            ) from exc
+    else:
+        raise RuntimeError("Collinear source rest landmarks were wrongly calibrated")
+    if (ProjectStore(store.root).load() != new_project
+            or _hash(revised_master) != refitted.revision.sha256
+            or _hash(bad_source) != bad_sha):
+        raise RuntimeError("Rejected calibration modified project, master or BVH")
+
     return {
         "status": "REAL_LINUX_PROJECT_GENERATE_REOPEN_STAGED",
         "blender_version": transaction.observed["blender_version"],
@@ -459,6 +497,7 @@ def verify(blender: Path, root: Path) -> dict:
             for frame in calibration["sampled_frames"]
         ],
         "calibration_two_processes_agree": True,
+        "calibration_collinear_source_rejected": True,
         "calibration_source_master_unchanged": True,
         "calibration_retargeting_verified": False,
         "calibration_bone_roll_independently_verified": False,
