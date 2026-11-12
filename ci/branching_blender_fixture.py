@@ -115,14 +115,76 @@ def inspect(master: Path, mapping: Path) -> None:
         raise RuntimeError("Mapped quaternion joint missing")
     human = next(o for o in bpy.data.objects if o.type == "MESH" and len(o.data.vertices) > 100)
     from blender_bridge.pose_deformation import _evaluated_vertices
+    from blender_bridge.bvh_review_timeline import evaluated_edges
+    from blender_bridge.motion_quality import EdgeStrain, JointMotion, MotionQualityError
+    from blender_bridge.pose_environment import validate_pose_environment
     hashes = []
+    strain = None
+    edge_frames = []
+    joints = {p["target"]: JointMotion(p["target"]) for p in pairs}
     for frame in range(1, 26):
         bpy.context.scene.frame_set(frame)
-        hashes.append(_evaluated_vertices(bpy, human)[1])
+        points, digest = _evaluated_vertices(bpy, human)
+        edges = evaluated_edges(bpy, human)
+        if strain is None:
+            strain = EdgeStrain(points, edges)
+        edge_frames.append(strain.measure(points, edges, frame))
+        hashes.append(digest)
+        for name, tracker in joints.items():
+            tracker.add(tuple(rig.pose.bones[name].rotation_quaternion), frame)
     if len(set(hashes)) < 3:
         raise RuntimeError("Reopened branching Action has no changing evaluated skin")
     # Private JSON allows the coordinator to compare ALL reopened frame hashes.
     master.with_suffix(".reopened.json").write_text(json.dumps(hashes), encoding="utf-8")
+    master.with_suffix(".quality.json").write_text(json.dumps({
+        "mesh_edge_strain": strain.report(), "edge_frames": edge_frames,
+        "joint_motion_metrics": [tracker.report() for tracker in joints.values()],
+    }), encoding="utf-8")
+    # Fault injection stays in memory on an independently reopened PRIVATE copy.
+    # The source review Action and original MPFB master are never saved here.
+    bpy.context.scene.frame_set(1)
+    before, before_hash = _evaluated_vertices(bpy, human)
+    strain = EdgeStrain(before, evaluated_edges(bpy, human))
+    edge = min(strain.active, key=lambda i: strain.lengths[i])
+    a, b = strain.edges[edge]
+    distorted = list(before)
+    distorted[b] = tuple(before[a][i] + 5 * (before[b][i] - before[a][i]) for i in range(3))
+    try:
+        strain.measure(distorted, strain.edges, 2)
+    except MotionQualityError:
+        pass
+    else:
+        raise RuntimeError("Measured-skin snapshot accepted injected fivefold local edge stretch")
+    from mathutils import Quaternion
+    bone = rig.pose.bones[pairs[0]["target"]]
+    prior = bone.rotation_quaternion.copy()
+    try:
+        bone.rotation_quaternion = Quaternion((0, 1, 0), math.radians(100))
+        try:
+            JointMotion(bone.name).add(tuple(bone.rotation_quaternion), 1)
+        except MotionQualityError:
+            pass
+        else:
+            raise RuntimeError("Actual Blender quaternion accepted injected excessive twist")
+    finally:
+        bone.rotation_quaternion = prior
+    prior_scale = human.scale.copy()
+    try:
+        human.scale.x *= 2
+        bpy.context.view_layer.update()
+        try:
+            validate_pose_environment(rig, human, [p["target"] for p in pairs])
+        except MotionQualityError:
+            pass
+        else:
+            raise RuntimeError("Actual target accepted injected nonuniform mesh scale")
+    finally:
+        human.scale = prior_scale
+        bpy.context.view_layer.update()
+    bpy.context.scene.frame_set(1)
+    if _evaluated_vertices(bpy, human)[1] != before_hash:
+        raise RuntimeError("Fault tests did not restore real evaluated skin")
+    print("QUALITY_FAULTS_REJECTED_AND_PRIVATE_SKIN_RESTORED")
     print("BRANCHING_ACTION_REOPENED_ALL_25_SKINNED_FRAMES")
 
 

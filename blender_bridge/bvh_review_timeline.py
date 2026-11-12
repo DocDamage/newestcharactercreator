@@ -12,10 +12,24 @@ from pathlib import Path
 from typing import Any
 
 from blender_bridge.pose_deformation import _evaluated_vertices, _movement
+from blender_bridge.motion_quality import EdgeStrain
 
 
 class ReviewTimelineError(RuntimeError):
     """Full timeline is discontinuous, extreme, or cannot be inspected safely."""
+
+
+def evaluated_edges(bpy: Any, human: Any) -> tuple[tuple[int, int], ...]:
+    evaluated = human.evaluated_get(bpy.context.evaluated_depsgraph_get())
+    mesh = evaluated.to_mesh()
+    if mesh is None:
+        raise ReviewTimelineError("No evaluated edge topology")
+    try:
+        if not 16 <= len(mesh.edges) <= 750000:
+            raise ReviewTimelineError("Evaluated skin edge count outside safe bounds")
+        return tuple(tuple(int(v) for v in edge.vertices) for edge in mesh.edges)
+    finally:
+        evaluated.to_mesh_clear()
 
 
 def evaluate_review_timeline(bpy: Any, human: Any, rig: Any, frames: int,
@@ -26,13 +40,18 @@ def evaluate_review_timeline(bpy: Any, human: Any, rig: Any, frames: int,
     states: list[dict[str, Any]] = []
     before = previous = None
     diagonal = 0.0
+    strain = None
     try:
         scene.frame_start, scene.frame_end = 1, frames
         for frame in range(1, frames + 1):
             scene.frame_set(frame)
             points, digest = _evaluated_vertices(bpy, human)
+            edges = evaluated_edges(bpy, human)
             if before is None:
                 before = points
+                strain = EdgeStrain(points, edges)
+                if len(strain.active) < 16:
+                    raise ReviewTimelineError("Too few non-degenerate evaluated skin edges")
                 mins = [min(x[i] for x in points) for i in range(3)]
                 maxs = [max(x[i] for x in points) for i in range(3)]
                 diagonal = math.sqrt(sum((a-b)**2 for a, b in zip(maxs, mins)))
@@ -49,6 +68,7 @@ def evaluate_review_timeline(bpy: Any, human: Any, rig: Any, frames: int,
                 "moved_vertices": moving,
                 "max_displacement_local": maximum,
                 "adjacent_max_displacement_local": adjacent,
+                **strain.measure(points, edges, frame),
             })
             previous = points
         if (len({x["evaluated_sha256"] for x in states}) < 3 or
@@ -75,6 +95,8 @@ def evaluate_review_timeline(bpy: Any, human: Any, rig: Any, frames: int,
             for chunk in iter(lambda: stream.read(1024 * 1024), b""):
                 h.update(chunk)
         return {
+            "motion_quality_schema_version": 1,
+            "mesh_edge_strain": strain.report(),
             "full_timeline_frames": states,
             "model_baseline_diagonal_local": diagonal,
             "max_adjacent_mesh_step_local": max(x["adjacent_max_displacement_local"]

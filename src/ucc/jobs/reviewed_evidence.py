@@ -12,6 +12,7 @@ from typing import Any
 from ucc.animations.review_mapping import review_mapping_sha256, validate_review_mapping
 from ucc.core.errors import ValidationError
 from .calibrated_evidence import compare_calibrated_evidence, validate_calibrated_evidence
+from .motion_quality_evidence import validate_motion_quality
 
 
 class ReviewedEvidenceError(ValidationError):
@@ -106,6 +107,10 @@ def validate_reviewed_evidence(raw: Any, axis_profile: str,
     if (not isinstance(steps, dict) or set(steps) != {p["target"] for p in pairs} or
             any(not _number(v) or not 0 <= v <= 80.0 for v in steps.values())):
         raise ReviewedEvidenceError("Missing bounded, per-bone quaternion discontinuity checks")
+    try:
+        validate_motion_quality(raw, [p["target"] for p in pairs])
+    except ValidationError as exc:
+        raise ReviewedEvidenceError("Joint/mesh quality evidence rejected: " + str(exc)) from exc
     artifact = raw.get("visual_review_blend")
     if (raw.get("visual_review_artifact_created") is not True or
             raw.get("animation_visual_quality_verified") is not False or
@@ -127,7 +132,9 @@ def compare_reviewed_evidence(first: Any, second: Any, axis_profile: str,
     except (ValidationError, ValueError, TypeError, KeyError) as exc:
         raise ReviewedEvidenceError("Independent calibrated Blender workers disagree") from exc
     for field in ("reviewed_mapping_sha256", "max_bone_quaternion_step_degrees",
-                  "model_baseline_diagonal_local", "max_adjacent_mesh_step_local"):
+                  "model_baseline_diagonal_local", "max_adjacent_mesh_step_local",
+                  "joint_motion_metrics", "mesh_edge_strain", "motion_quality_schema_version",
+                  "target_pose_environment_checked"):
         if a[field] != b[field]:
             raise ReviewedEvidenceError("Two reviewed workers disagree on " + field)
     for x, y in zip(a["full_timeline_frames"], b["full_timeline_frames"]):

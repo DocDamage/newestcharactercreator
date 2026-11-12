@@ -19,6 +19,8 @@ from typing import Any
 
 from blender_bridge.bvh_clip_probe import _file_digest
 from blender_bridge.bvh_review_timeline import evaluate_review_timeline
+from blender_bridge.motion_quality import JointMotion
+from blender_bridge.pose_environment import validate_pose_environment
 import json
 from blender_bridge.bvh_motion import read_local_bvh
 from blender_bridge.bvh_multichain import (
@@ -111,6 +113,8 @@ def calibrate_bvh_source(bpy: Any, master: Path, source_bvh: Path,
     selected, chain = select_explicit_chain(
         motion, human, rig, axis_profile, reviewed_mapping,
     )
+    if reviewed_mapping is not None:
+        validate_pose_environment(rig, human, [item["target"] for item in selected])
     source_vectors, target_vectors = _landmarks(motion, selected, rig)
     try:
         calibration = calibrate_rest_frames(
@@ -210,6 +214,7 @@ def calibrate_bvh_source(bpy: Any, master: Path, source_bvh: Path,
 
         previous_quaternions = {}
         max_quaternion_steps = {item["target"]: 0.0 for item in selected}
+        joint_metrics = {item["target"]: JointMotion(item["target"]) for item in selected}
         for frame in range(motion.frames):
             for item in selected:
                 name, bone = item["target"], item["pose"]
@@ -227,9 +232,15 @@ def calibrate_bvh_source(bpy: Any, master: Path, source_bvh: Path,
                         f"Source frame {frame + 1}, bone {name} rotation refused: {exc}"
                     ) from exc
                 quaternion = Matrix(converted).to_quaternion()
+                if reviewed_mapping is not None:
+                    quaternion = type(quaternion)(joint_metrics[name].add(tuple(quaternion), frame + 1))
                 prior = previous_quaternions.get(name)
                 if prior is not None:
+                    if prior.dot(quaternion) < 0:
+                        quaternion.negate()
                     step = math.degrees(prior.rotation_difference(quaternion).angle)
+                    if reviewed_mapping is not None:
+                        step = joint_metrics[name].maxima["max_step_degrees"]
                     if step > 80.0:
                         raise BvhCalibrationProbeError(
                             f"Bone {name} has a {step:.2f}-degree single-frame rotation jump"
@@ -296,6 +307,8 @@ def calibrate_bvh_source(bpy: Any, master: Path, source_bvh: Path,
                 "reviewed_mapping_sha256": _hash(mapping_bytes).hexdigest(),
                 "explicit_mapping_reviewed_by_user": True,
                 "max_bone_quaternion_step_degrees": max_quaternion_steps,
+                "joint_motion_metrics": [joint_metrics[item["target"]].report() for item in selected],
+                "target_pose_environment_checked": True,
             })
         return {
             "status": ("REAL_REVIEWED_BVH_FULL_TIMELINE_MOTION"

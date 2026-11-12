@@ -66,6 +66,21 @@ def reviewed() -> dict:
     }
     v["visual_review_artifact_created"] = True
     v["joint_twist_visual_quality_verified"] = False
+    v["motion_quality_schema_version"] = 1
+    v["target_pose_environment_checked"] = True
+    v["mesh_edge_strain"] = {
+        "evaluated_edge_count": 400, "measured_edge_count": 399,
+        "degenerate_baseline_edges_excluded": 1, "evaluated_topology_sha256": "a" * 64,
+    }
+    for frame in v["full_timeline_frames"]:
+        frame.update(min_edge_length_ratio=1. if frame["frame"] == 1 else .9,
+                     max_edge_stretch_ratio=1. if frame["frame"] == 1 else 1.1)
+    v["joint_motion_metrics"] = [
+        {"bone": p["target"], "frames_measured": 25,
+         "max_swing_degrees": 10., "max_swing_frame": 13,
+         "max_twist_degrees": 8., "max_twist_frame": 13,
+         "max_step_degrees": 2., "max_step_frame": 2} for p in PAIRS
+    ]
     return v
 
 
