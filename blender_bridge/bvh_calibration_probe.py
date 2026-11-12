@@ -18,6 +18,8 @@ import struct
 from typing import Any
 
 from blender_bridge.bvh_clip_probe import _file_digest
+from blender_bridge.bvh_review_timeline import evaluate_review_timeline
+import json
 from blender_bridge.bvh_motion import read_local_bvh
 from blender_bridge.bvh_multichain import (
     MIN_WEIGHTED_VERTICES, MultiBvhError, select_explicit_chain,
@@ -79,7 +81,9 @@ def _landmarks(motion: Any, selected: list[dict], rig: Any) -> tuple[list, list]
 
 
 def calibrate_bvh_source(bpy: Any, master: Path, source_bvh: Path,
-                         axis_profile: str) -> dict[str, Any]:
+                         axis_profile: str,
+                         reviewed_mapping: list[dict[str, str]] | None = None,
+                         review_path: Path | None = None) -> dict[str, Any]:
     """Create only ephemeral, measured, axis-calibrated source BVH rotations."""
     motion = read_local_bvh(source_bvh)
     source_sha = _file_digest(source_bvh)
@@ -98,7 +102,11 @@ def calibrate_bvh_source(bpy: Any, master: Path, source_bvh: Path,
         rig.animation_data.action or len(rig.animation_data.nla_tracks)
     ):
         raise BvhCalibrationProbeError("Refuse to overwrite existing Actions or NLA tracks")
-    selected, chain = select_explicit_chain(motion, human, rig, axis_profile)
+    if (reviewed_mapping is None) != (review_path is None):
+        raise BvhCalibrationProbeError("Explicit mapping and private review output must accompany each other")
+    selected, chain = select_explicit_chain(
+        motion, human, rig, axis_profile, reviewed_mapping,
+    )
     source_vectors, target_vectors = _landmarks(motion, selected, rig)
     try:
         calibration = calibrate_rest_frames(
@@ -196,6 +204,8 @@ def calibrate_bvh_source(bpy: Any, master: Path, source_bvh: Path,
                 "bounded_rest_projection_delta": rest_projections[name][1],
             })
 
+        previous_quaternions = {}
+        max_quaternion_steps = {item["target"]: 0.0 for item in selected}
         for frame in range(motion.frames):
             for item in selected:
                 name, bone = item["target"], item["pose"]
@@ -212,7 +222,17 @@ def calibrate_bvh_source(bpy: Any, master: Path, source_bvh: Path,
                     raise BvhCalibrationProbeError(
                         f"Source frame {frame + 1}, bone {name} rotation refused: {exc}"
                     ) from exc
-                bone.rotation_quaternion = Matrix(converted).to_quaternion()
+                quaternion = Matrix(converted).to_quaternion()
+                prior = previous_quaternions.get(name)
+                if prior is not None:
+                    step = math.degrees(prior.rotation_difference(quaternion).angle)
+                    if step > 80.0:
+                        raise BvhCalibrationProbeError(
+                            f"Bone {name} has a {step:.2f}-degree single-frame rotation jump"
+                        )
+                    max_quaternion_steps[name] = max(max_quaternion_steps[name], step)
+                previous_quaternions[name] = quaternion.copy()
+                bone.rotation_quaternion = quaternion
                 if bone.keyframe_insert(
                     data_path="rotation_quaternion", frame=frame + 1,
                     group="UCC_TEMP_REST_AXES_PROBE",
@@ -255,8 +275,28 @@ def calibrate_bvh_source(bpy: Any, master: Path, source_bvh: Path,
             raise BvhCalibrationProbeError("Calibrated test changed original rig weights")
         if _file_digest(source_bvh) != source_sha:
             raise BvhCalibrationProbeError("BVH changed while evaluating motion")
+        review_metrics = {}
+        if reviewed_mapping is not None:
+            assert review_path is not None
+            review_metrics = evaluate_review_timeline(
+                bpy, human, rig, motion.frames, review_path,
+            )
+            if rig_fingerprint(bpy, human) != rig_before:
+                raise BvhCalibrationProbeError("Visual review Action changed skin/rig rest state")
+            from hashlib import sha256 as _hash
+            mapping_bytes = json.dumps(
+                reviewed_mapping, sort_keys=True, separators=(",", ":"),
+                ensure_ascii=True,
+            ).encode("ascii")
+            review_metrics.update({
+                "reviewed_mapping_sha256": _hash(mapping_bytes).hexdigest(),
+                "explicit_mapping_reviewed_by_user": True,
+                "max_bone_quaternion_step_degrees": max_quaternion_steps,
+            })
         return {
-            "status": "REAL_BVH_REST_AXES_CALIBRATED_MESH_MOTION",
+            "status": ("REAL_REVIEWED_BVH_FULL_TIMELINE_MOTION"
+                       if reviewed_mapping is not None else
+                       "REAL_BVH_REST_AXES_CALIBRATED_MESH_MOTION"),
             "source_sha256": source_sha,
             "source_frame_count": motion.frames,
             "source_frame_time": motion.frame_time,
@@ -277,7 +317,10 @@ def calibrate_bvh_source(bpy: Any, master: Path, source_bvh: Path,
             "mapped_bone_count": len(selected),
             "mapped_bones": [
                 {"source": x["source"], "target": x["target"],
-                 "parent": x["parent"]} for x in selected
+                 "parent": x["parent"],
+                 **({"target_parent": x["target_parent"]}
+                    if reviewed_mapping is not None else {})}
+                for x in selected
             ],
             "per_bone_deformation": per_bone,
             "local_axis_proofs": axis_checks,
@@ -296,6 +339,7 @@ def calibrate_bvh_source(bpy: Any, master: Path, source_bvh: Path,
             "engine_import_verified": False,
             "source_master_saved": False,
             "source_bvh_modified": False,
+            **review_metrics,
         }
     finally:
         if rig.animation_data and transient_action is not None:

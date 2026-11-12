@@ -72,7 +72,7 @@ def select_explicit_chain(
         targets = tuple(row.get("target") if isinstance(row, dict) else None
                         for row in reviewed_mapping)
         import re
-        valid = re.compile(r"[A-Za-z0-9_.:-]{1,128}\\Z", re.ASCII)
+        valid = re.compile(r"[A-Za-z0-9_.:-]{1,128}\Z", re.ASCII)
         if (any(type(n) is not str or not valid.fullmatch(n)
                 for n in (*names, *targets)) or
                 len({n.casefold() for n in names}) != len(names) or

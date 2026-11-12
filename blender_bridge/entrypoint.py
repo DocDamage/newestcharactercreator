@@ -32,7 +32,7 @@ from blender_bridge.bvh_multichain import verify_multibone_source
 from blender_bridge.bvh_calibration_probe import calibrate_bvh_source
 
 PROTOCOL_VERSION = 1
-OPERATIONS = {"inspect_environment", "inspect_character", "create_human", "export_preview_glb", "refit_human", "verify_skin_deformation", "verify_keyframed_timeline", "verify_local_bvh_motion", "verify_multi_bvh_chain", "verify_calibrated_bvh_chain"}
+OPERATIONS = {"inspect_environment", "inspect_character", "create_human", "export_preview_glb", "refit_human", "verify_skin_deformation", "verify_keyframed_timeline", "verify_local_bvh_motion", "verify_multi_bvh_chain", "verify_calibrated_bvh_chain", "verify_reviewed_bvh_chain"}
 
 
 def arguments() -> argparse.Namespace:
@@ -115,6 +115,23 @@ def verify_calibrated_bvh_chain(job: dict, root: Path) -> dict:
     return calibrate_bvh_source(
         bpy, member(root, job["input_project"]), member(root, "motion.bvh"),
         options["axis_profile"],
+    )
+
+
+def verify_reviewed_bvh_chain(job: dict, root: Path) -> dict:
+    """Animate only the explicitly paired 3–8 bone chain in a private .blend."""
+    options = job["options"]
+    if set(options) != {"axis_profile", "reviewed_mapping"} or options["axis_profile"] not in (
+        "Y_UP_TO_Z_UP", "Z_UP_IDENTITY",
+    ):
+        raise ValueError("Reviewed BVH needs exact bone pairs and explicit source axes")
+    pairs = options["reviewed_mapping"]
+    if type(pairs) is not list or not 3 <= len(pairs) <= 8:
+        raise ValueError("Reviewed BVH needs 3–8 source/target bone pairs")
+    return calibrate_bvh_source(
+        bpy, member(root, job["input_project"]), member(root, "motion.bvh"),
+        options["axis_profile"], reviewed_mapping=pairs,
+        review_path=member(root, "review_motion.blend"),
     )
 
 
@@ -227,7 +244,8 @@ def main() -> int:
                   "verify_keyframed_timeline": verify_keyframed_timeline,
                   "verify_local_bvh_motion": verify_local_bvh_motion,
                   "verify_multi_bvh_chain": verify_multi_bvh_chain,
-                  "verify_calibrated_bvh_chain": verify_calibrated_bvh_chain}[operation]
+                  "verify_calibrated_bvh_chain": verify_calibrated_bvh_chain,
+                   "verify_reviewed_bvh_chain": verify_reviewed_bvh_chain}[operation]
         reply["details"] = action(data, root)
         reply["status"] = "ok"
         reply["error"] = None
