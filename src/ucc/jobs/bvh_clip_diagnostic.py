@@ -21,6 +21,9 @@ from .master_preview import _digest, _master_file
 from .multibone_evidence import (
     compare_multibone_evidence, validate_multibone_evidence,
 )
+from .calibrated_evidence import (
+    compare_calibrated_evidence, validate_calibrated_evidence,
+)
 from .protocol import JobRequest
 from .runner import BlenderJobRunner
 
@@ -161,9 +164,14 @@ def check_selected_bvh(
     cancel: Event | None = None,
     timeout_s: float = 300,
     multi_axis_profile: str | None = None,
+    calibrate_rest_axes: bool = False,
 ) -> LocalBvhClipCheck:
-    """Run two Blender jobs; optionally test a strict multi-bone source chain."""
+    """Run two Blender jobs; optionally measure source-to-target rest rotation axes."""
 
+    if type(calibrate_rest_axes) is not bool or (
+        calibrate_rest_axes and multi_axis_profile is None
+    ):
+        raise ValidationError("Calibration requires explicit source up-axis profile")
     if (multi_axis_profile is not None and
             multi_axis_profile not in {"Y_UP_TO_Z_UP", "Z_UP_IDENTITY"}):
         raise ValidationError("Choose an explicit supported BVH source up-axis profile")
@@ -206,8 +214,11 @@ def check_selected_bvh(
         _check_cancel(cancel)
         options = ({"axis_profile": multi_axis_profile}
                    if multi_axis_profile is not None else {})
-        operation = ("verify_multi_bvh_chain" if multi_axis_profile is not None
-                     else "verify_local_bvh_motion")
+        operation = (
+            "verify_calibrated_bvh_chain" if calibrate_rest_axes else
+            "verify_multi_bvh_chain" if multi_axis_profile is not None else
+            "verify_local_bvh_motion"
+        )
         request = JobRequest.new(
             operation, input_project="candidate.blend", options=options,
         )
@@ -224,6 +235,9 @@ def check_selected_bvh(
                 _digest(clip, cancel) != source_hash):
             raise ProjectStorageError("Local clip or MPFB master changed during BVH preview")
         evidence = (
+            validate_calibrated_evidence(
+                result.details, axis_profile=multi_axis_profile,
+            ) if calibrate_rest_axes else
             validate_multibone_evidence(
                 result.details, axis_profile=multi_axis_profile,
             ) if multi_axis_profile is not None else
@@ -234,6 +248,8 @@ def check_selected_bvh(
         reports.append(evidence)
         ids.append(request.job_id)
     observed = (
+        compare_calibrated_evidence(reports[0], reports[1], multi_axis_profile)
+        if calibrate_rest_axes else
         compare_multibone_evidence(reports[0], reports[1], multi_axis_profile)
         if multi_axis_profile is not None else
         compare_local_bvh_reports(reports[0], reports[1])
