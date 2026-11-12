@@ -27,7 +27,7 @@ class SchemaTests(unittest.TestCase):
 
     def test_all_schema_files_load(self):
         files = list((ROOT / "docs" / "schemas").glob("*.schema.json"))
-        self.assertEqual(len(files), 9)
+        self.assertEqual(len(files), 10)
         for path in files:
             with self.subTest(path=path.name):
                 schema = self.read_schema(path.name)
@@ -64,6 +64,21 @@ class SchemaTests(unittest.TestCase):
         self.assertTrue(list(validator.iter_errors(request)))
         request["input_project"]=None
         request["options"]["arbitrary_path"]="../../source.fbx"
+        self.assertTrue(list(validator.iter_errors(request)))
+
+    @unittest.skipIf(Draft202012Validator is None, "Install jsonschema to validate v1 contracts")
+    def test_native_body_profile_and_bound_worker_schema(self):
+        from fixtures.native_body_contract import contract
+        _,_,_,profile,bindings=contract()
+        Draft202012Validator(self.read_schema("native-body-map.v1.schema.json")).validate(profile)
+        request=JobRequest.new("verify_native_fbx_body",input_project="candidate.blend",
+                               options={**bindings,"render_private_frames":True}).as_dict()
+        validator=Draft202012Validator(self.read_schema("worker-job.v1.schema.json"))
+        validator.validate(request)
+        request["options"]["render_private_frames"]=1
+        self.assertTrue(list(validator.iter_errors(request)))
+        request["options"]["render_private_frames"]=False
+        request["input_project"]="authoritative.blend"
         self.assertTrue(list(validator.iter_errors(request)))
 
     @unittest.skipIf(Draft202012Validator is None, "Install jsonschema to validate v1 contracts")

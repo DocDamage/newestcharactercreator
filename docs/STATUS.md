@@ -4,9 +4,11 @@
 
 **Merged:** PRs #24–#38. Authoritative `main` was verified at `9ae588af96fae06b76e1d2048d7b4fb7f11f8657` (PR #38). Existing numerical guards cover 36 MPFB joints and 26,756 evaluated edges over 25 frames, independent quality remeasurement and partial-Action cleanup.
 
-**In development:** [UCC-P1-ANIM-006E](acceptance/UCC-P1-ANIM-006E.md) adds private native FBX bind/pose intake, including multiple roots and complete 300-frame clips. Authorized inspection found actual FBX/Unreal assets in the project `animations` directory. Source rest data is measured directly; the owner need not author BVH sidecars. Thirty actual licensed clips passed source intake only. Explicit MPFB rest-pose/FK retargeting remains next.
+**In review:** [PR #39 / UCC-P1-ANIM-006E](acceptance/UCC-P1-ANIM-006E.md) adds private native FBX bind/pose intake, including multiple roots and complete 300-frame clips. All five exact-head workflows passed. Thirty actual licensed clips passed source intake only. The owner need not author BVH sidecars.
 
-**Local Windows progress:** official MPFB 2.0.18 is installed in a project-local profile with registry SHA verification. Actual Blender 5.3.0 generation/refit/reopen, deformation, timeline, branching audit and private renders pass locally. A private owner project/launcher and Qt static-preview smoke were verified. Earlier table rows retain historical Linux evidence; owner FBX retargeting, human visual acceptance and engine imports remain unverified.
+**In development, stacked on #39:** [UCC-P1-ANIM-006F](acceptance/UCC-P1-ANIM-006F.md) applies 21 native body roles to private MPFB copies using measured common-anatomy reference alignment and independent all-frame source-to-target pose checks. Actual local Windows Blender verified 300 frames, 20 independent skin probes, 4 m root travel, a 400-degree turn, two-worker agreement, independent saved-Action reopening and 15 private rendered views. The owner desktop also ran a real licensed breathing clip using automatic mapping. These are experimental body-motion measurements; fingers/face/toes, foot contact, visual acceptance, in-UCC animated playback and engine imports remain unverified.
+
+**Local Windows progress:** official MPFB 2.0.18 is installed in a project-local profile with registry SHA verification and explicit owner setup authorization. Actual Blender 5.3.0 generation/refit/reopen, deformation, timeline, branching audit, native body preview and private renders pass locally. A private owner project/launcher and Qt static/animation-diagnostic workflows were verified. Earlier table rows retain historical Linux evidence; broad Windows/asset acceptance, human visual acceptance and engine imports remain unverified.
 
 ## Verified capabilities and remaining gates
 

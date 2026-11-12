@@ -8,7 +8,7 @@ import unittest
 
 from fixtures.private_render_png import png
 from ucc.core.errors import ValidationError
-from ucc.jobs.private_render_evidence import png_measurements, verify_private_renders, VIEWS
+from ucc.jobs.private_render_evidence import png_measurements, verify_private_renders, verify_native_renders, VIEWS
 
 
 class PrivateRenderEvidenceTests(unittest.TestCase):
@@ -107,3 +107,32 @@ class PrivateRenderEvidenceTests(unittest.TestCase):
         self.save_manifest()
         with self.assertRaisesRegex(ValidationError, "changing"):
             self.verify()
+
+    def test_native_manifest_binds_all_inputs_and_camera_to_measured_root(self):
+        bindings = {key: value*64 for key, value in (("source_sha256", "a"), ("snapshot_sha256", "b"),
+                    ("mapping_sha256", "c"), ("master_sha256", "e"))}
+        self.raw.update(bindings=bindings, timeline={"sha256": "f"*64})
+        timeline = {"source_first_frame": 7, "full_timeline_frames": self.raw["full_timeline_frames"]}
+        for row in timeline["full_timeline_frames"]:
+            row["root_world_head"] = [row["frame"]*.1, 0., 1.]
+        for key in ("source_bvh_sha256", "source_rest_profile_sha256", "source_master_sha256"):
+            del self.manifest[key]
+        self.manifest.update(**bindings, timeline_sha256="f"*64, source_first_frame=7,
+                             conversion_convention="NATIVE_ANATOMICAL_REFERENCE_V1",
+                             camera_translation_policy="FOLLOW_ROOT_TRANSLATION")
+        for row in self.manifest["images"]:
+            row["camera_root_offset_world"] = [(row["frame"]-1)*.1, 0., 0.]
+        self.save_manifest()
+        self.assertEqual(verify_native_renders(self.folder, self.raw, timeline), str(self.root / "index.html"))
+        original = deepcopy(self.manifest)
+        for fault in ("map", "snapshot", "timeline", "first", "camera", "root"):
+            self.manifest = deepcopy(original)
+            if fault == "map": self.manifest["mapping_sha256"] = "f"*64
+            if fault == "snapshot": self.manifest["snapshot_sha256"] = "f"*64
+            if fault == "timeline": self.manifest["timeline_sha256"] = "a"*64
+            if fault == "first": self.manifest["source_first_frame"] = 1
+            if fault == "camera": self.manifest["camera_translation_policy"] = "STATIC"
+            if fault == "root": self.manifest["images"][-1]["camera_root_offset_world"] = [0., 0., 0.]
+            self.save_manifest()
+            with self.subTest(fault=fault), self.assertRaises(ValidationError):
+                verify_native_renders(self.folder, self.raw, timeline)

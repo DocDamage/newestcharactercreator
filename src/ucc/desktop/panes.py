@@ -7,7 +7,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QCheckBox, QComboBox, QFormLayout, QGroupBox, QHBoxLayout, QLabel,
     QLineEdit, QPushButton, QSlider, QSpinBox, QTableWidget, QTableWidgetItem,
-    QTextEdit, QVBoxLayout, QWidget, QFileDialog,
+    QTextEdit, QVBoxLayout, QWidget, QFileDialog, QScrollArea,
 )
 
 from ucc.core.anatomy import slot_catalog
@@ -215,11 +215,20 @@ class AnimationPane(QWidget):
     multi_bvh_requested = Signal(str, str, str, str, bool, str)
     calibrated_bvh_requested = Signal(str, str, str, str, bool, str)
     reviewed_bvh_requested = Signal(str, str, str, str, bool, str, str, str, bool)
+    native_body_requested = Signal()
+    native_animation_open_requested = Signal()
+    native_renders_open_requested = Signal()
     refresh_requested = Signal()
 
     def __init__(self) -> None:
         super().__init__()
-        layout = QVBoxLayout(self)
+        outer=QVBoxLayout(self)
+        scroll=QScrollArea()
+        scroll.setWidgetResizable(True)
+        content=QWidget()
+        scroll.setWidget(content)
+        outer.addWidget(scroll)
+        layout = QVBoxLayout(content)
         label = QLabel("Local animation catalog • indexing is not retargeting or a license grant")
         label.setWordWrap(True)
         layout.addWidget(label)
@@ -244,8 +253,8 @@ class AnimationPane(QWidget):
             form.addRow(title, field)
         layout.addLayout(form)
         self.local_preview_review = QCheckBox(
-            "I reviewed the actual license and confirm this animation and selected rest metadata may be used "
-            "locally in Blender (not UE-only); no AI/cloud or export."
+            "I reviewed the actual license: this animation and its metadata may be used locally in Blender.\n"
+            "Not UE-only. No AI/cloud or export."
         )
         layout.addWidget(self.local_preview_review)
         for field in (self.selected, self.provider, self.license, self.uri):
@@ -272,6 +281,33 @@ class AnimationPane(QWidget):
         for button in (self.inspect, self.index, self.refresh):
             row.addWidget(button)
         layout.addLayout(row)
+        native=QGroupBox("FBX body preview (experimental)")
+        native_layout=QVBoxLayout(native)
+        native_row=QHBoxLayout()
+        self.native_body_profile=QLineEdit()
+        self.native_body_profile.setPlaceholderText("Automatic for supported humanoids; optional reviewed body map")
+        self.native_body_profile.setToolTip("Automatic mapping recognizes one measured Hips-object skeleton family. Other families require a reviewed source/character-bound JSON map.")
+        self.native_body_profile.textChanged.connect(lambda _text:self.local_preview_review.setChecked(False))
+        choose_native=QPushButton("Advanced body map...")
+        def choose_map():
+            path,_=QFileDialog.getOpenFileName(self,"Choose a reviewed native body map","","Native body map (*.json)")
+            if path:self.native_body_profile.setText(path)
+        choose_native.clicked.connect(choose_map)
+        native_row.addWidget(self.native_body_profile,1);native_row.addWidget(choose_native)
+        native_layout.addLayout(native_row)
+        self.test_native_body=QPushButton("Test selected FBX on saved character...")
+        self.test_native_body.setToolTip("Measures every frame on private Blender copies, checks skin/root motion and renders sampled views. Originals are preserved; visual/engine quality is not approved.")
+        self.test_native_body.clicked.connect(self.native_body_requested.emit)
+        native_layout.addWidget(self.test_native_body)
+        native_open=QHBoxLayout()
+        self.open_native_animation=QPushButton("Open private animation in Blender")
+        self.open_native_renders=QPushButton("Open sampled views")
+        self.open_native_animation.setEnabled(False);self.open_native_renders.setEnabled(False)
+        self.open_native_animation.clicked.connect(self.native_animation_open_requested.emit)
+        self.open_native_renders.clicked.connect(self.native_renders_open_requested.emit)
+        native_open.addWidget(self.open_native_animation);native_open.addWidget(self.open_native_renders)
+        native_layout.addLayout(native_open)
+        layout.addWidget(native)
         layout.addWidget(self.test_local_bvh)
 
         self.source_axes = QComboBox()
