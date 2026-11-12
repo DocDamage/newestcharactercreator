@@ -53,7 +53,9 @@ def validate_reviewed_evidence(raw: Any, axis_profile: str,
     for i, (row, pair) in enumerate(zip(rows, pairs)):
         if (not isinstance(row, dict) or row.get("source") != pair["source"] or
                 row.get("target") != pair["target"] or
-                row.get("parent") != (pairs[i-1]["source"] if i else None) or
+                (row.get("parent") is not None if i == 0 else
+                 type(row.get("parent")) is not str or
+                 row["parent"].casefold() != pairs[i-1]["source"].casefold()) or
                 (i > 0 and row.get("target_parent") != pairs[i-1]["target"])):
             raise ReviewedEvidenceError("Mapped joint name or parent hierarchy was changed")
     try:
