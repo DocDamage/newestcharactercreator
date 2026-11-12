@@ -22,6 +22,8 @@ def valid() -> dict:
         "rest_residual_degrees": [0.01, 0.3],
         "max_rest_residual_degrees": 0.3,
         "rest_axes_calibrated": True,
+        "raw_rest_rotation_projected_with_bound": True,
+        "maximum_rest_projection_delta": 0.00002,
         "bone_roll_independently_verified": False,
         "mapped_bone_count": 2,
         "mapped_bones": [
@@ -38,7 +40,9 @@ def valid() -> dict:
             {"source": src, "target": src,
              "source_axes_to_target_sha256": "e" * 64,
              "target_rest_matrix_sha256": matrix * 64,
-             "calibrated_test_delta_sha256": delta * 64}
+             "calibrated_test_delta_sha256": delta * 64,
+             "measured_rest_raw_determinant": 1.000014475,
+             "bounded_rest_projection_delta": 0.00002}
             for src, matrix, delta in (
                 ("neck03", "b", "c"), ("head", "a", "d")
             )
@@ -81,6 +85,8 @@ class CalibratedEvidenceContracts(unittest.TestCase):
         for key, new in (
             ("axis_profile", "Z_UP_IDENTITY"),
             ("rest_axes_calibrated", False),
+            ("raw_rest_rotation_projected_with_bound", False),
+            ("maximum_rest_projection_delta", 0.01),
             ("bone_roll_independently_verified", True),
             ("retargeting_verified", True),
             ("animation_visual_quality_verified", True),
@@ -112,11 +118,15 @@ class CalibratedEvidenceContracts(unittest.TestCase):
                 {"source": "neck03", "target": "neck03",
                  "source_axes_to_target_sha256": "e" * 64,
                  "target_rest_matrix_sha256": "b" * 64,
-                 "calibrated_test_delta_sha256": "c" * 64},
+                 "calibrated_test_delta_sha256": "c" * 64,
+                 "measured_rest_raw_determinant": 1.0,
+                 "bounded_rest_projection_delta": 0.00002},
                 {"source": "head", "target": "head",
                  "source_axes_to_target_sha256": "0" * 64,
                  "target_rest_matrix_sha256": "a" * 64,
-                 "calibrated_test_delta_sha256": "d" * 64},
+                 "calibrated_test_delta_sha256": "d" * 64,
+                 "measured_rest_raw_determinant": 1.0,
+                 "bounded_rest_projection_delta": 0.00002},
             ]),
         ):
             with self.subTest(key=key), self.assertRaises(CalibratedEvidenceError):
