@@ -55,28 +55,32 @@ def _landmarks(motion: Any, selected: list[dict], rig: Any) -> tuple[list, list]
     source = []
     target = []
     real_bones = {bone.name: bone for bone in rig.data.bones}
+    by_source = {item["source"].casefold(): item for item in selected}
+    parents = {item["parent"] for item in selected[1:]}
     for item in selected[1:]:
-        parent = selected[selected.index(item) - 1]
+        parent = by_source.get(item["parent"])
         name = item["source"].casefold()
-        if motion.parents.get(name) != parent["source"].casefold():
-            raise BvhCalibrationProbeError("Source chain must have direct parents")
+        if parent is None or motion.parents.get(name) != parent["source"].casefold():
+            raise BvhCalibrationProbeError("Source hierarchy must have direct mapped parents")
         src = motion.offsets.get(name)
         actual, parent_actual = real_bones[item["target"]], real_bones[parent["target"]]
         if src is None:
-            raise BvhCalibrationProbeError("BVH chain missing joint rest offset")
+            raise BvhCalibrationProbeError("BVH hierarchy missing joint rest offset")
         source.append(src)
         target.append(tuple(float(x - y) for x, y in
                             zip(actual.head_local, parent_actual.head_local)))
-    last = selected[-1]
-    end = motion.end_site_offsets.get(last["source"].casefold())
-    if end is None:
-        raise BvhCalibrationProbeError(
-            "Terminal BVH End Site offset required as independent bone-roll landmark"
-        )
-    leaf = real_bones[last["target"]]
-    source.append(end)
-    target.append(tuple(float(x - y) for x, y in
-                        zip(leaf.tail_local, leaf.head_local)))
+    for item in selected:
+        if item["source"].casefold() in parents:
+            continue
+        end = motion.end_site_offsets.get(item["source"].casefold())
+        if end is None:
+            raise BvhCalibrationProbeError(
+                "Every mapped leaf requires a terminal BVH End Site rest landmark"
+            )
+        leaf = real_bones[item["target"]]
+        source.append(end)
+        target.append(tuple(float(x - y) for x, y in
+                            zip(leaf.tail_local, leaf.head_local)))
     return source, target
 
 

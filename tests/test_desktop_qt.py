@@ -502,6 +502,21 @@ class DesktopQtSmoke(unittest.TestCase):
         pane.manual_bone_pairs.setPlainText("SrcNeck02 -> neck02")
         self.assertFalse(pane.local_preview_review.isChecked())
 
+    def test_branching_map_editor_preserves_64_rows_and_clears_rights_on_edit(self):
+        from ucc.animations.review_mapping import parse_review_mapping
+        pane = self.window.animations
+        text = "\n".join(f"Source{i} -> Target{i}" for i in range(64))
+        pane.local_preview_review.setChecked(True)
+        pane.manual_bone_pairs.setPlainText(text)
+        self.assertFalse(pane.local_preview_review.isChecked())
+        self.assertIn("branching", pane.manual_bone_pairs.toolTip())
+        received = []
+        pane.reviewed_bvh_requested.connect(lambda *args: received.append(args))
+        with patch.object(self.window, "_error"):
+            pane.test_reviewed_bvh.click()
+        self.assertEqual(len(parse_review_mapping(received[0][-1])), 64)
+        self.assertFalse(received[0][4])
+
     def test_tools_are_real_and_cannot_claim_geometry(self):
         self.assertIn("PNG", self.window.tools.pack.text())
         self.assertFalse(self.window.character.open_master.isEnabled())

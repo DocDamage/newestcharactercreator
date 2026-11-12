@@ -26,8 +26,18 @@ def _number(value: Any) -> bool:
     return type(value) in (int, float) and math.isfinite(value)
 
 
+def _landmark_count(bones: list[dict], branching: bool) -> int:
+    if not branching:
+        return len(bones)
+    if any(not isinstance(b, dict) or type(b.get("source")) is not str for b in bones):
+        raise CalibratedEvidenceError("Invalid hierarchy landmark evidence")
+    parents = {b["parent"].casefold() for b in bones if type(b.get("parent")) is str}
+    leaves = sum(b["source"].casefold() not in parents for b in bones)
+    return len(bones) - 1 + leaves
+
+
 def validate_calibrated_evidence(raw: Any, axis_profile: str,
-                                 *, max_bones: int = 4) -> dict[str, Any]:
+                                 *, max_bones: int = 4, branching: bool = False) -> dict[str, Any]:
     if not isinstance(raw, dict) or raw.get("status") != (
         "REAL_BVH_REST_AXES_CALIBRATED_MESH_MOTION"
     ):
@@ -67,7 +77,7 @@ def validate_calibrated_evidence(raw: Any, axis_profile: str,
     residuals = raw.get("rest_residual_degrees")
     pair = raw.get("rest_reference_pair")
     max_residual = raw.get("max_rest_residual_degrees")
-    if (type(landmarks) is not int or landmarks != count or
+    if (type(landmarks) is not int or landmarks != _landmark_count(bones, branching) or
             not isinstance(residuals, list) or len(residuals) != landmarks or
             not isinstance(pair, list) or len(pair) != 2 or
             any(type(idx) is not int or not 0 <= idx < landmarks for idx in pair)
@@ -95,7 +105,8 @@ def validate_calibrated_evidence(raw: Any, axis_profile: str,
             if b.get("parent") is not None:
                 raise CalibratedEvidenceError("BVH calibration chain requires a source root")
         elif (type(b.get("parent")) is not str or
-              b["parent"].casefold() != bones[i - 1]["source"].casefold()):
+              b["parent"].casefold() not in
+              {row["source"].casefold() for row in (bones[:i] if branching else bones[i-1:i])}):
             raise CalibratedEvidenceError("BVH calibrated chain is not directly connected")
         if (movement.get("bone") != dst or
                 type(movement.get("moved_vertices")) is not int or
@@ -160,9 +171,9 @@ def validate_calibrated_evidence(raw: Any, axis_profile: str,
 
 def compare_calibrated_evidence(first: Any, second: Any,
                                 axis_profile: str,
-                                *, max_bones: int = 4) -> dict[str, Any]:
-    a = validate_calibrated_evidence(first, axis_profile, max_bones=max_bones)
-    b = validate_calibrated_evidence(second, axis_profile, max_bones=max_bones)
+                                *, max_bones: int = 4, branching: bool = False) -> dict[str, Any]:
+    a = validate_calibrated_evidence(first, axis_profile, max_bones=max_bones, branching=branching)
+    b = validate_calibrated_evidence(second, axis_profile, max_bones=max_bones, branching=branching)
     for key in (
         "source_sha256", "axis_profile", "source_to_target_axes_sha256",
         "raw_rest_rotation_projected_with_bound", "maximum_rest_projection_delta",

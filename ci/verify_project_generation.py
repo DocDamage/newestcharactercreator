@@ -448,8 +448,14 @@ def verify(blender: Path, root: Path) -> dict:
             or _hash(source_review) != reviewed.clip_sha256):
         raise RuntimeError("Reviewed BVH test modified source or authoritative master")
 
+    from verify_branching_review import verify_branching
+    branching = verify_branching(store, blender, revised_master, new_project,
+                                 local_authorization, root,
+                                 required_targets=("head", "wrist.L", "wrist.R", "foot.L", "foot.R"))
+
     return {
         "status": "REAL_LINUX_PROJECT_GENERATE_REOPEN_STAGED",
+        "anim006_branching_review": branching,
         "blender_version": transaction.observed["blender_version"],
         "created_vertices": transaction.observed["created_vertex_count"],
         "reopened_bones": transaction.observed["reopened_bone_count"],

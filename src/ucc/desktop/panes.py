@@ -321,11 +321,12 @@ class AnimationPane(QWidget):
         layout.addWidget(self.test_calibrated_bvh)
         self.manual_bone_pairs = QTextEdit()
         self.manual_bone_pairs.setPlaceholderText(
-            "One source -> MPFB target per line, parent to child. Example: SourceNeck -> neck02"
+            "One source -> MPFB target per line, each parent before its children. Example: SourceNeck -> neck02"
         )
         self.manual_bone_pairs.setFixedHeight(85)
         self.manual_bone_pairs.setToolTip(
-            "3–8 reviewed pairs; exact names, deform weights, parent links and "
+            "3–64 reviewed pairs; branching allowed, each parent before its children. "
+            "Exact names, deform weights, parent links and "
             "real rest matrices are checked. No automatic alias suggestions."
         )
         self.manual_bone_pairs.textChanged.connect(
@@ -333,7 +334,7 @@ class AnimationPane(QWidget):
         )
         layout.addWidget(self.manual_bone_pairs)
         self.test_reviewed_bvh = QPushButton(
-            "Review explicit 3–8 bone BVH mapping across full timeline..."
+            "Review explicit 3–64 bone BVH hierarchy across full timeline..."
         )
         self.test_reviewed_bvh.setToolTip(
             "Measures every skinned frame and saves an animated private .blend "
