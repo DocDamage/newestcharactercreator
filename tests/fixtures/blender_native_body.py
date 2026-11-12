@@ -35,7 +35,7 @@ def layout():
     return rows
 
 
-def author(master: Path,folder: Path,*,origin="target-root"):
+def author(master: Path,folder: Path,*,origin="target-root",corrective_challenge=False):
     folder.mkdir(parents=True,exist_ok=False)
     before=sha256(master.read_bytes()).hexdigest()
     bpy.ops.wm.open_mainfile(filepath=str(master),load_ui=False)
@@ -101,6 +101,9 @@ def author(master: Path,folder: Path,*,origin="target-root"):
             bone.rotation_mode="XYZ"
             bone.rotation_euler.x=math.radians(3)*math.sin(2*math.pi*t+i*.2)
             if bone.name==names["upperarm01.L"]:bone.rotation_euler.x+=math.radians(7)
+            if corrective_challenge and bone.name in {names["spine05"],names["upperleg01.L"]}:
+                # Original analytic opposing bend, not sampled owner motion.
+                bone.rotation_euler.x+=math.radians(20)*math.sin(math.pi*t)
             bone.keyframe_insert("rotation_euler",frame=frame)
     scene.frame_set(1)
     bpy.ops.export_scene.fbx(filepath=str(folder/"original-native-body.fbx"),use_selection=True,object_types={"ARMATURE"},
@@ -117,6 +120,18 @@ def reopen(review: Path,timeline_path: Path,output: Path):
     from blender_bridge.fbx_source import pose_digest
     data=json.loads(timeline_path.read_text(encoding="utf-8"))
     before=sha256(review.read_bytes()).hexdigest()
+    original=None;original_stack=None
+    if "skin_deformation" in data:
+        from blender_bridge.native_skin_stack import source_stack
+        master=timeline_path.parent/"candidate.blend"
+        if master.is_symlink() or sha256(master.read_bytes()).hexdigest()!=data["bindings"]["master_sha256"]:
+            raise RuntimeError("Independent corrective reopen master binding differs")
+        bpy.ops.wm.open_mainfile(filepath=str(master),load_ui=False)
+        human=next(o for o in bpy.data.objects if o.type=="MESH" and len(o.data.vertices)>100)
+        rig=next(o for o in bpy.data.objects if o.type=="ARMATURE")
+        original,original_sha=_evaluated_vertices(bpy,human)
+        if original_sha!=data["skin_deformation"]["source_neutral_sha256"]:raise RuntimeError("Corrective original neutral proof differs")
+        original_stack=source_stack(human,rig)
     bpy.ops.wm.open_mainfile(filepath=str(review),load_ui=False)
     rig=next(o for o in bpy.data.objects if o.type=="ARMATURE")
     human=next(o for o in bpy.data.objects if o.type=="MESH" and len(o.data.vertices)>100)
@@ -127,6 +142,15 @@ def reopen(review: Path,timeline_path: Path,output: Path):
     neutral,neutral_sha=_evaluated_vertices(bpy,human)
     if neutral_sha!=data["neutral_bind_skin_sha256"]:raise RuntimeError("Native private Action lost neutral bind geometry")
     bind=EdgeStrain(neutral,evaluated_edges(bpy,human))
+    if original is not None:
+        proof=data["skin_deformation"];mods=tuple(human.modifiers);corrective=mods[-1]
+        if len(mods)!=len(original_stack)+1 or source_stack(human,rig,modifiers=mods[:-1])!=original_stack:
+            raise RuntimeError("Corrective review source modifier/mask stack differs")
+        for key,value in proof["modifier"].items():
+            actual=corrective.is_bind if key=="is_bound" else getattr(corrective,key)
+            if type(actual) is not type(value) or actual!=value:raise RuntimeError("Corrective review settings or binding differ")
+        if max(math.dist(a,b) for a,b in zip(original,neutral))>1e-6:raise RuntimeError("Corrective neutral rest shape changed")
+        master_bind=EdgeStrain(original,evaluated_edges(bpy,human))
     rig.animation_data.action=action;rig.animation_data.action_slot=slot
     world=rig.matrix_world.copy()
     world_values=[float(v) for row in world for v in row]
@@ -138,12 +162,24 @@ def reopen(review: Path,timeline_path: Path,output: Path):
         if pose_digest(world_values,poses)!=expected["target_pose_sha256"]:raise RuntimeError("Independent reopened native bone poses differ")
         strain=bind.measure(points,evaluated_edges(bpy,human),expected["frame"])
         if any(abs(value-bind_expected[key])>1e-6 for key,value in strain.items()):raise RuntimeError("Independent native bind-relative edge strain differs")
+        if original is not None:
+            from blender_bridge.pose_deformation import _movement
+            master_strain=master_bind.measure(points,evaluated_edges(bpy,human),expected["frame"])
+            if any(abs(value-data["master_relative_frames"][expected["frame"]-1][key])>1e-6 for key,value in master_strain.items()):
+                raise RuntimeError("Independent corrective original-master strain differs")
+            corrective.show_viewport=False
+            try:raw,raw_sha=_evaluated_vertices(bpy,human)
+            finally:corrective.show_viewport=True
+            moved,maximum=_movement(raw,points);correction=expected["skin_correction"]
+            if raw_sha!=correction["uncorrected_sha256"] or moved!=correction["corrected_vertices"] or abs(maximum-correction["max_correction_local"])>1e-8:
+                raise RuntimeError("Independent uncorrected/corrected skin evidence differs")
         if "hip_anchor" in data:
             actual=[world@rig.pose.bones[name].matrix.translation for name in data["hip_anchor"]["target_bones"]]
             center=[sum(p[i] for p in actual)/2 for i in range(3)]
             if math.dist(center,expected["hip_midpoint_world"])>1e-6:raise RuntimeError("Reopened actual native hip trajectory differs")
     if sha256(review.read_bytes()).hexdigest()!=before:raise RuntimeError("Native Action reopen modified private copy bytes")
-    output.write_text(json.dumps({"all_frames_reopened":data["source_frame_count"],"all_skin_pose_hashes_agree":True,
+    extra={} if original is None else {"bound_skin_and_masks_reopened":True,"uncorrected_frames_reproduced":data["source_frame_count"],"original_master_strain_reproduced":True}
+    output.write_text(json.dumps({**extra,"all_frames_reopened":data["source_frame_count"],"all_skin_pose_hashes_agree":True,
         "bind_relative_strain_agrees":True,"review_bytes_unchanged":True},indent=2))
     print("NATIVE_ACTION_REOPENED_ALL_SKIN_POSE_FRAMES",data["source_frame_count"])
 
@@ -154,7 +190,12 @@ def fault(master: Path,job: Path,folder: Path):
     from blender_bridge.pose_deformation import _evaluated_vertices
     from blender_bridge.fbx_source import pose_digest
     original=sha256(master.read_bytes()).hexdigest()
-    for kind in ("translation","scale"):
+    from contextlib import nullcontext
+    from unittest.mock import patch
+    from blender_bridge.native_corrective import CorrectiveSkin
+    base_profile=json.loads((job/"native_mapping.json").read_text())
+    corrected=base_profile.get("skin_deformation_policy")=="BOUND_CORRECTIVE_SMOOTH_V1"
+    for kind in (("translation","scale","bind_failure","settings_change") if corrected else ("translation","scale")):
         stage=folder/("fault-"+kind);stage.mkdir(parents=True,exist_ok=False)
         shutil.copy2(master,stage/"candidate.blend")
         source=json.loads((job/"source_snapshot.json").read_text())
@@ -162,7 +203,7 @@ def fault(master: Path,job: Path,folder: Path):
         name=profile["pairs"][1]["source"];index=next(i for i,b in enumerate(source["bones"]) if b["name"]==name)
         row=source["frames"][19]
         if kind=="translation":row["poses"][index][3]+=1.
-        else:
+        elif kind=="scale":
             for i in range(3):
                 for j in range(3):row["poses"][index][i*4+j]*=1.1
         row["pose_sha256"]=pose_digest(row["armature_world"],row["poses"])
@@ -174,9 +215,20 @@ def fault(master: Path,job: Path,folder: Path):
         bpy.ops.wm.open_mainfile(filepath=str(master),load_ui=False)
         human=next(o for o in bpy.data.objects if o.type=="MESH" and len(o.data.vertices)>100)
         before_fp=rig_fingerprint(bpy,human);before_skin=_evaluated_vertices(bpy,human)[1]
-        try:retarget_native(bpy,stage,options)
+        before_stack=[(m.name,m.type,m.show_viewport,m.show_render) for m in human.modifiers]
+        original_measure=CorrectiveSkin.measure_raw
+        samples=[0]
+        def changed(state,*args):
+            samples[0]+=1
+            if samples[0]==20:state.modifier.factor=.6
+            return original_measure(state,*args)
+        inject=(patch("blender_bridge.native_corrective._bind",return_value={"CANCELLED"}) if kind=="bind_failure" else
+                patch.object(CorrectiveSkin,"measure_raw",changed) if kind=="settings_change" else nullcontext())
+        try:
+            with inject:retarget_native(bpy,stage,options)
         except ValueError as error:
-            if "unsupported animated joint translation/scale" not in str(error):raise
+            expected=("did not bind" if kind=="bind_failure" else "corrective binding" if kind=="settings_change" else "unsupported animated joint translation/scale")
+            if expected not in str(error):raise
         else:raise RuntimeError("Actual native worker accepted unsupported animated "+kind)
         human=next(o for o in bpy.data.objects if o.type=="MESH" and len(o.data.vertices)>100)
         rig=next(o for o in bpy.data.objects if o.type=="ARMATURE")
@@ -184,7 +236,34 @@ def fault(master: Path,job: Path,folder: Path):
             raise RuntimeError("Failed native source left a partial Action/review")
         if rig_fingerprint(bpy,human)!=before_fp or _evaluated_vertices(bpy,human)[1]!=before_skin:
             raise RuntimeError("Failed native source did not restore real target skin/rest state")
+        if [(m.name,m.type,m.show_viewport,m.show_render) for m in human.modifiers]!=before_stack:
+            raise RuntimeError("Failed native corrective preview left a modifier or changed source masks")
     if sha256(master.read_bytes()).hexdigest()!=original:raise RuntimeError("Native faults changed master bytes")
+    if corrected:
+        from blender_bridge.native_review_reopen import reopen_native
+        good_review=sha256((job/"review_motion.blend").read_bytes()).hexdigest()
+        for kind in ("settings","world"):
+            stage=folder/("fault-saved-"+kind);stage.mkdir(exist_ok=False)
+            for name in ("candidate.blend","review_motion.blend","target_timeline.json","source_snapshot.json","native_mapping.json"):
+                shutil.copy2(job/name,stage/name)
+            bpy.ops.wm.open_mainfile(filepath=str(stage/"review_motion.blend"),load_ui=False)
+            human=next(o for o in bpy.data.objects if o.type=="MESH" and len(o.data.vertices)>100)
+            if kind=="settings":human.modifiers[-1].factor=.6
+            else:human.location.x+=.1
+            bpy.ops.wm.save_as_mainfile(filepath=str(stage/"review_motion.blend"),compress=False,copy=True)
+            data=json.loads((stage/"target_timeline.json").read_text())
+            data["visual_review_blend"]={"name":"review_motion.blend","bytes":(stage/"review_motion.blend").stat().st_size,
+                "sha256":sha256((stage/"review_motion.blend").read_bytes()).hexdigest()}
+            (stage/"target_timeline.json").write_text(json.dumps(data))
+            options={**data["bindings"],"review_sha256":data["visual_review_blend"]["sha256"],
+                "timeline_sha256":sha256((stage/"target_timeline.json").read_bytes()).hexdigest()}
+            try:reopen_native(bpy,stage,options)
+            except ValueError as error:
+                expected="corrective binding, settings" if kind=="settings" else "object transforms differ"
+                if expected not in str(error):raise
+            else:raise RuntimeError("Actual saved-skin "+kind+" tamper was accepted after rehashing")
+        if sha256((job/"review_motion.blend").read_bytes()).hexdigest()!=good_review or sha256(master.read_bytes()).hexdigest()!=original:
+            raise RuntimeError("Saved-skin negative test changed original evidence/master bytes")
     print("NATIVE_PARTIAL_ACTION_FAULTS_REJECTED_RESTORED_ORIGINALS_UNCHANGED")
 
 
@@ -198,7 +277,8 @@ if __name__=="__main__":
     parser.add_argument("--output",type=Path)
     parser.add_argument("--job",type=Path)
     parser.add_argument("--origin",choices=("target-root","hip","ground"),default="target-root")
+    parser.add_argument("--corrective-challenge",action="store_true")
     args=parser.parse_args(sys.argv[sys.argv.index("--")+1:])
-    if args.mode=="author":author(args.master,args.folder,origin=args.origin)
+    if args.mode=="author":author(args.master,args.folder,origin=args.origin,corrective_challenge=args.corrective_challenge)
     elif args.mode=="reopen":reopen(args.review,args.timeline,args.output)
     else:fault(args.master,args.job,args.folder)

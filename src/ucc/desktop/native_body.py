@@ -58,12 +58,18 @@ def native_result_text(result):
     data=result.evidence
     anchor=(f"Hip movement matches the measured source through every frame; maximum error {data['hip_anchor']['max_residual_world']*1000:.4f} mm.\n"
             if data.get("root_motion_policy")=="SOURCE_HIP_MIDPOINT_V1" else "")
+    skin=("Bound joint smoothing applied to the private preview; original skin and weights unchanged.\n"
+          if data.get("skin_deformation_policy")=="BOUND_CORRECTIVE_SMOOTH_V1" else "")
+    reopened=("A third Blender process reopened the saved preview and reproduced every corrected and uncorrected skin frame.\n"
+              if getattr(result,"private_reopen_job_id","") else "")
     return ("EXPERIMENTAL FBX MOTION MEASURED ON A PRIVATE CHARACTER COPY\n"
         f"Complete source timeline: {data['source_frame_count']} frames at {data['fps']:g} fps\n"
         f"Mapped body joints: {len(data['mapped_pairs'])}; unmapped source bones: {len(data['omitted_source_bones'])}\n"
         "Unmapped finger, face or other source motion was not applied.\n"
         f"Root travel from bind: {data['root_motion_metrics']['max_distance_from_bind_world']:.3f} m\n"
         f"{anchor}"
+        f"{skin}"
+        f"{reopened}"
         "Two independent Blender workers agree on all measured target poses and skin frames.\n"
         "Original animation, saved character and project are unchanged.\n"
         "Use Open private animation to scrub/play in Blender, or Open sampled views for five-frame comparisons.\n"

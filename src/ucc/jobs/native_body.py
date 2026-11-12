@@ -14,6 +14,7 @@ from .fbx_intake import inspect_selected_fbx
 from .master_preview import _digest, _master_file
 from .native_evidence import read_native_timeline, bound_file
 from .private_render_evidence import verify_native_renders
+from .native_skin_evidence import POLICY as CORRECTIVE, validate_reopen_report
 from .protocol import JobRequest
 from .runner import BlenderJobRunner
 
@@ -31,6 +32,8 @@ class NativeBodyPreview:
     worker_job_ids: tuple[str,str]
     mapping_profile_used: str = ""
     worker_report: dict | None = None
+    private_reopen_job_id: str = ""
+    reopen_evidence: dict | None = None
 
     @property
     def retargeting_verified(self): return False
@@ -107,6 +110,27 @@ def preview_native_body(store: ProjectStore, *, source_fbx: Path, mapping_profil
     bound_file(first_folder,first_report["timeline"],"target_timeline.json",64*1024*1024,cancel_check=check_cancel)
     action=bound_file(first_folder,first_report["visual_review_blend"],"review_motion.blend",512*1024*1024,cancel_check=check_cancel)
     review=verify_native_renders(first_folder,first_report,first_data)
+    reopen_id="";reopened=None
+    if profile.get("skin_deformation_policy")==CORRECTIVE:
+        unchanged()
+        reopen_bindings={**bindings,"review_sha256":first_report["visual_review_blend"]["sha256"],"timeline_sha256":first_report["timeline"]["sha256"]}
+        request=JobRequest.new("reopen_native_fbx_body",input_project="candidate.blend",options=reopen_bindings)
+        staged={"candidate.blend":master,"review_motion.blend":action,"target_timeline.json":first_path,
+                "source_snapshot.json":snapshot_path,"native_mapping.json":mapping_profile}
+        result,reopen_folder=runner.run(request,timeout_s=timeout_s,cancel=cancel,staged_inputs=staged)
+        unchanged()
+        if reopen_folder.is_symlink() or reopen_folder.resolve().parent!=(store.root/".ucc-jobs").resolve():
+            raise ProjectStorageError("Native reopen folder is redirected")
+        hashes={"candidate.blend":master_sha,"review_motion.blend":reopen_bindings["review_sha256"],
+                "target_timeline.json":reopen_bindings["timeline_sha256"],"source_snapshot.json":snapshot_sha,"native_mapping.json":mapping_sha}
+        for name,digest in hashes.items():
+            if (reopen_folder/name).is_symlink() or not (reopen_folder/name).is_file() or _digest(reopen_folder/name,cancel)!=digest:
+                raise ProjectStorageError("Native reopen changed staged evidence")
+        validate_reopen_report(result.details,reopen_bindings,first_data)
+        reopen_id=request.job_id;reopened=result.details
+        bound_file(first_folder,first_report["timeline"],"target_timeline.json",64*1024*1024,cancel_check=check_cancel)
+        bound_file(first_folder,first_report["visual_review_blend"],"review_motion.blend",512*1024*1024,cancel_check=check_cancel)
+        review=verify_native_renders(first_folder,first_report,first_data)
     unchanged()
     return NativeBodyPreview(project.project_id,project.revision,master_sha,intake["source_sha256"],first_data,
-                             str(action),review,str(first_path),tuple(ids),str(mapping_profile),first_report)
+                             str(action),review,str(first_path),tuple(ids),str(mapping_profile),first_report,reopen_id,reopened)

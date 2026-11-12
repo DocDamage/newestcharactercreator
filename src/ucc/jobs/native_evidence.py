@@ -11,6 +11,7 @@ from ucc.animations.native_profile import CONVENTION, LANDMARKS
 from ucc.animations import native_math as nm
 from .motion_quality_evidence import validate_motion_quality
 from .native_anchor_evidence import anchor_context, check_anchor_frame, finish_anchor
+from .native_skin_evidence import validate_skin
 
 
 def number(v,low,high): return type(v) in (int,float) and math.isfinite(v) and low<=v<=high
@@ -231,6 +232,7 @@ def validate_native_timeline(data,report,source,profile,bindings,*,cancel_check=
         raise ValidationError("Native bind edge coverage is incomplete")
     validate_motion_quality(data,[p["target"] for p in pairs[1:]])
     finish_anchor(anchor,data)
+    validate_skin(data,report,profile)
     return data
 
 

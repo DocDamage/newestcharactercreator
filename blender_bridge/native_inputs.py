@@ -93,12 +93,14 @@ def validate_source(data, source_sha):
 
 
 def validate_profile(data, source_sha, snapshot_sha, master_sha):
-    if (type(data) is not dict or set(data)-{"root_motion_policy"}!={"schema_version","convention","source_sha256","snapshot_sha256","master_sha256","landmarks","pairs"} or
+    if (type(data) is not dict or set(data)-{"root_motion_policy","skin_deformation_policy"}!={"schema_version","convention","source_sha256","snapshot_sha256","master_sha256","landmarks","pairs"} or
             type(data["schema_version"]) is not int or data["schema_version"]!=1 or data["convention"]!=CONVENTION or
             any(data[k]!=v for k,v in (("source_sha256",source_sha),("snapshot_sha256",snapshot_sha),("master_sha256",master_sha)))):
         raise ValueError("Native map convention/binding differs")
     if "root_motion_policy" in data and (type(data["root_motion_policy"]) is not str or data["root_motion_policy"] not in {"ARMATURE_ORIGIN_DISPLACEMENT_V1", "SOURCE_HIP_MIDPOINT_V1"}):
         raise ValueError("Invalid explicit native root-motion policy")
+    if "skin_deformation_policy" in data and (type(data["skin_deformation_policy"]) is not str or data["skin_deformation_policy"] not in {"MASTER_MODIFIERS_V1","BOUND_CORRECTIVE_SMOOTH_V1"}):
+        raise ValueError("Invalid explicit native skin-deformation policy")
     pairs=data["pairs"]
     if type(pairs) is not list or not 15<=len(pairs)<=64: raise ValueError("Native map needs 15–64 explicit pairs")
     sources,targets,exact=set(),set(),{}

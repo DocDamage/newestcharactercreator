@@ -46,7 +46,7 @@ def bundled_worker_path() -> Path:
     channel_conversion = worker.parent / "channel_bone_conversion.py"
     private_renders = worker.parent / "private_review_render.py"
     fbx_source = worker.parent / "fbx_source.py"
-    native_files=[worker.parent/name for name in ("native_reference.py","native_inputs.py","native_retarget.py","native_timeline.py","native_skin.py","native_anchor.py")]
+    native_files=[worker.parent/name for name in ("native_reference.py","native_inputs.py","native_retarget.py","native_timeline.py","native_skin.py","native_anchor.py","native_corrective.py","native_skin_stack.py","native_review_reopen.py")]
     if (not worker.is_file() or worker.is_symlink()
             or not service.is_file() or service.is_symlink()
             or not preview.is_file() or preview.is_symlink()

@@ -33,7 +33,8 @@
         "verify_calibrated_bvh_chain",
         "verify_reviewed_bvh_chain",
         "inspect_fbx_animation",
-        "verify_native_fbx_body"
+        "verify_native_fbx_body",
+        "reopen_native_fbx_body"
       ]
     },
     "status": {
