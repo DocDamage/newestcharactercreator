@@ -119,15 +119,15 @@ def verify_calibrated_bvh_chain(job: dict, root: Path) -> dict:
 
 
 def verify_reviewed_bvh_chain(job: dict, root: Path) -> dict:
-    """Animate only the explicitly paired 3–8 bone chain in a private .blend."""
+    """Animate only the explicitly paired 3–64 bone hierarchy in a private copy."""
     options = job["options"]
     if set(options) != {"axis_profile", "reviewed_mapping"} or options["axis_profile"] not in (
         "Y_UP_TO_Z_UP", "Z_UP_IDENTITY",
     ):
         raise ValueError("Reviewed BVH needs exact bone pairs and explicit source axes")
     pairs = options["reviewed_mapping"]
-    if type(pairs) is not list or not 3 <= len(pairs) <= 8:
-        raise ValueError("Reviewed BVH needs 3–8 source/target bone pairs")
+    if type(pairs) is not list or not 3 <= len(pairs) <= 64:
+        raise ValueError("Reviewed BVH needs 3–64 source/target bone pairs")
     return calibrate_bvh_source(
         bpy, member(root, job["input_project"]), member(root, "motion.bvh"),
         options["axis_profile"], reviewed_mapping=pairs,

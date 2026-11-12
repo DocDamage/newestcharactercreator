@@ -1,7 +1,7 @@
-"""Reviewed, explicit BVH source-to-target chain mappings (no fuzzy aliases).
+"""Reviewed, explicit BVH source-to-target hierarchy mappings (no fuzzy aliases).
 
 This is input validation, not automatic retargeting. Ordered rows must follow
-one directly connected source chain and one target deform chain in Blender.
+one connected source tree and one matching target deform tree in Blender.
 """
 from __future__ import annotations
 
@@ -13,12 +13,12 @@ from ucc.core.errors import ValidationError
 
 _BONE = re.compile(r"[A-Za-z0-9_.:-]{1,128}\Z", re.ASCII)
 MIN_BONES = 3
-MAX_BONES = 8
+MAX_BONES = 64
 
 
 def validate_review_mapping(value: object) -> list[dict[str, str]]:
     if not isinstance(value, list) or not MIN_BONES <= len(value) <= MAX_BONES:
-        raise ValidationError("Reviewed mapping requires 3–8 explicitly ordered source → target pairs")
+        raise ValidationError("Reviewed mapping requires 3–64 parent-before-child source → target pairs")
     output: list[dict[str, str]] = []
     sources: set[str] = set()
     targets: set[str] = set()
@@ -39,7 +39,7 @@ def validate_review_mapping(value: object) -> list[dict[str, str]]:
 
 def parse_review_mapping(text: str) -> list[dict[str, str]]:
     """Accept one 'BVH_Bone -> MPFB_Bone' line per bone, top to leaf."""
-    if type(text) is not str or len(text) > 2048:
+    if type(text) is not str or len(text) > 17000:
         raise ValidationError("Explicit mapping text exceeds the permitted length")
     mapping = []
     for line in text.splitlines():

@@ -65,8 +65,11 @@ def select_explicit_chain(
         destination = {name.casefold(): name for name in names}
     else:
         if (type(reviewed_mapping) is not list or
-                not 3 <= len(reviewed_mapping) <= 8):
-            raise MultiBvhError("Reviewed mapping requires 3–8 ordered bone pairs")
+                not 3 <= len(reviewed_mapping) <= 64):
+            raise MultiBvhError("Reviewed mapping requires 3–64 parent-before-child bone pairs")
+        if any(type(row) is not dict or set(row) != {"source", "target"}
+               for row in reviewed_mapping):
+            raise MultiBvhError("Reviewed map permits only explicit source and target names")
         names = tuple(row.get("source") if isinstance(row, dict) else None
                       for row in reviewed_mapping)
         targets = tuple(row.get("target") if isinstance(row, dict) else None
@@ -118,13 +121,17 @@ def select_explicit_chain(
         base = angles[0]
         maximum = max(abs(value[i] - base[i])
                       for value in angles for i in range(3))
-        if not 1.0 <= maximum <= MAX_ANGLE_DELTA:
-            raise MultiBvhError("Each BVH joint must have safe 1–45 degree source motion")
+        minimum = 0.0 if reviewed_mapping is not None else 1.0
+        if not minimum <= maximum <= MAX_ANGLE_DELTA:
+            raise MultiBvhError("BVH joint rotation change is outside the supported range")
         parent_name = motion.parents.get(key)
         if selected:
-            if parent_name != selected[-1]["source"].casefold():
+            prior_sources = {entry["source"].casefold() for entry in selected}
+            if (parent_name not in prior_sources or
+                    (reviewed_mapping is None and
+                     parent_name != selected[-1]["source"].casefold())):
                 raise MultiBvhError(
-                    "BVH source must form a directly connected, non-branching joint chain"
+                    "BVH source requires connected direct parents before children"
                 )
         elif parent_name is not None:
             raise MultiBvhError("First selected BVH joint must be the source root")

@@ -166,8 +166,9 @@ def calibrate_rest_frames(
     """Solve proper orientation from corresponding two-or-more rest landmarks."""
     if axis_profile not in PROFILES:
         raise RestCalibrationError("BVH source up-axis must be explicitly selected")
-    if not 2 <= len(source_directions) <= 5 or len(source_directions) != len(target_directions):
-        raise RestCalibrationError("At least two corresponding rest direction landmarks required")
+    # A 64-bone tree has at most 63 links plus 63 terminal leaf vectors.
+    if not 2 <= len(source_directions) <= 126 or len(source_directions) != len(target_directions):
+        raise RestCalibrationError("At least two and at most 126 corresponding rest direction landmarks required")
     axis = PROFILES[axis_profile]
     source = [unit(transform(axis, _vector(item))) for item in source_directions]
     target = [unit(item) for item in target_directions]

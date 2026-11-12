@@ -2,7 +2,9 @@
 
 **Target:** Windows 11 + Blender 5.3 + installed MPFB, PySide6 desktop, optional local ComfyUI/WebUI and future Godot/Unity/Unreal workflows.
 
-**Merged:** PRs [#24–#33](https://github.com/DocDamage/newestcharactercreator/pulls?q=is%3Apr+is%3Amerged). The authoritative `main` is commit `72288980864e27e87b832828041a02b4c7fedf06` after PR #33, with all five workflows passing its tested head. **Current review:** [draft PR #34 — reviewed explicit 3–8-bone BVH mapping and full-frame Blender inspection](https://github.com/DocDamage/newestcharactercreator/pull/34). The PR #34 changes are **not on main** until intentionally merged.
+**Merged:** PRs #24–#34. Verified authoritative `main` is `84d5ff89a4174b53b7059a0d63e558e762f8258d` after PR #34. PR #34's final head `0306d7e1030e959c0cd7dfe042d117f3b7e2e867` passed all five workflows. Earlier wording below describes historical gates, not the current merge state.
+
+**In development:** UCC-P1-ANIM-006, first branching hierarchy slice. Explicit 3–64-bone connected maps preserve direct source/target parents, use every link and every terminal leaf as rest evidence, and retain per-bone skin probes, two-worker full timelines, private Action review, licensing and SHA/revision safeguards. This does not complete production full-body retargeting. See [acceptance and local execution](acceptance/UCC-P1-ANIM-006.md).
 
 ## Verified capabilities and remaining gates
 
@@ -37,8 +39,8 @@ The [merged main Linux smoke #43099005719](https://github.com/DocDamage/newestch
 - Only JSON diagnostic summaries are uploaded. Generated Blender files, GLB models, third-party artwork and purchased Fab assets remain private.
 - The Windows EXE is an unsigned **internal testing** artifact, not a public release. Distribution licensing for bundled libraries and any paid assets requires review.
 
-## Current UCC-P1-ANIM-005 gate
+## Completed UCC-P1-ANIM-005 automated gate (PR #34 merged)
 
-Draft [PR #34](https://github.com/DocDamage/newestcharactercreator/pull/34) introduces explicit source/target naming for a directly connected 3–8-joint chain and a real Blender **full-frame evaluated skin motion** gate. The worker records quaternion/mesh discontinuity bounds and preserves a **private** SHA-checked Blender Action review copy. The user must visually inspect that copy in Blender; creating it does **not** approve animation quality. The first CI fixture is an original, non-shipping three-bone motion derived from measured MPFB rig geometry, not a Fab clip. [Implementation and operator guide](integration/explicit-mapped-bvh-review.md) and [acceptance contract](acceptance/UCC-P1-ANIM-005.md).
+Merged [PR #34](https://github.com/DocDamage/newestcharactercreator/pull/34) introduces explicit source/target naming for a directly connected 3–8-joint chain and a real Blender **full-frame evaluated skin motion** gate. The worker records quaternion/mesh discontinuity bounds and preserves a **private** SHA-checked Blender Action review copy. The user must visually inspect that copy in Blender; creating it does **not** approve animation quality. The first CI fixture is an original, non-shipping three-bone motion derived from measured MPFB rig geometry, not a Fab clip. [Implementation and operator guide](integration/explicit-mapped-bvh-review.md) and [acceptance contract](acceptance/UCC-P1-ANIM-005.md).
 
-**Do not mark PR #34 accepted until all five workflows pass on its final head.** Actual authorized external full-body BVH, manual visual quality approval, independent arbitrary-rig bone-roll compatibility, Windows runtime and game-engine imports remain explicitly **unverified**.
+**All five workflows passed on PR #34’s final head; PR #34 is merged. This does not grant visual or external-asset acceptance.** Actual authorized external full-body BVH, manual visual quality approval, independent arbitrary-rig bone-roll compatibility, Windows runtime and game-engine imports remain explicitly **unverified**.

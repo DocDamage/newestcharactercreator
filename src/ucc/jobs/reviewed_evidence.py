@@ -1,6 +1,6 @@
 """Fail-closed evidence for manually mapped, whole-timeline BVH review.
 
-The first 3–8 bone slice remains unapproved for visual quality, bone-roll
+The explicit 3–64 bone hierarchy remains unapproved for visual quality, bone-roll
 compatibility across external rigs, game-engine export, and production reuse.
 """
 from __future__ import annotations
@@ -30,9 +30,11 @@ def _canonical(raw: dict[str, Any]) -> dict[str, Any]:
     """Feed legacy calibration invariants with normalized target-only aliases."""
     clone = deepcopy(raw)
     clone["status"] = "REAL_BVH_REST_AXES_CALIBRATED_MESH_MOTION"
-    for i, row in enumerate(clone["mapped_bones"]):
+    target_by_source = {r["source"].casefold(): r["target"] for r in clone["mapped_bones"]}
+    for row in clone["mapped_bones"]:
+        parent = row["parent"]
         row["source"] = row["target"]
-        row["parent"] = clone["mapped_bones"][i-1]["target"] if i else None
+        row["parent"] = target_by_source[parent.casefold()] if parent is not None else None
     for proof in clone["local_axis_proofs"]:
         proof["source"] = proof["target"]
     return clone
@@ -50,16 +52,19 @@ def validate_reviewed_evidence(raw: Any, axis_profile: str,
     rows = raw.get("mapped_bones")
     if not isinstance(rows, list) or len(rows) != len(pairs):
         raise ReviewedEvidenceError("Mapped source/target count does not match user review")
+    prior: dict[str, str] = {}
     for i, (row, pair) in enumerate(zip(rows, pairs)):
-        if (not isinstance(row, dict) or row.get("source") != pair["source"] or
-                row.get("target") != pair["target"] or
-                (row.get("parent") is not None if i == 0 else
-                 type(row.get("parent")) is not str or
-                 row["parent"].casefold() != pairs[i-1]["source"].casefold()) or
-                (i > 0 and row.get("target_parent") != pairs[i-1]["target"])):
+        if not isinstance(row, dict):
+            raise ReviewedEvidenceError("Mapped joint evidence must be an object")
+        parent = row.get("parent")
+        if (row.get("source") != pair["source"] or row.get("target") != pair["target"] or
+                (parent is not None if i == 0 else
+                 type(parent) is not str or parent.casefold() not in prior) or
+                (i > 0 and row.get("target_parent") != prior[parent.casefold()])):
             raise ReviewedEvidenceError("Mapped joint name or parent hierarchy was changed")
+        prior[pair["source"].casefold()] = pair["target"]
     try:
-        validate_calibrated_evidence(_canonical(raw), axis_profile, max_bones=8)
+        validate_calibrated_evidence(_canonical(raw), axis_profile, max_bones=64, branching=True)
     except (ValidationError, ValueError, TypeError, KeyError) as exc:
         raise ReviewedEvidenceError("Measured calibrated rotation/skin evidence rejected") from exc
     frames = raw["source_frame_count"]
@@ -118,7 +123,7 @@ def compare_reviewed_evidence(first: Any, second: Any, axis_profile: str,
     a = validate_reviewed_evidence(first, axis_profile, mapping)
     b = validate_reviewed_evidence(second, axis_profile, mapping)
     try:
-        compare_calibrated_evidence(_canonical(a), _canonical(b), axis_profile, max_bones=8)
+        compare_calibrated_evidence(_canonical(a), _canonical(b), axis_profile, max_bones=64, branching=True)
     except (ValidationError, ValueError, TypeError, KeyError) as exc:
         raise ReviewedEvidenceError("Independent calibrated Blender workers disagree") from exc
     for field in ("reviewed_mapping_sha256", "max_bone_quaternion_step_degrees",
