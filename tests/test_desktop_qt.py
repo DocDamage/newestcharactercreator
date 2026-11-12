@@ -473,6 +473,35 @@ class DesktopQtSmoke(unittest.TestCase):
         self.assertIn("NOT live morph editing", self.window.log.toPlainText())
         self.assertIn("Master geometry has not passed", self.window.character.blockers.toPlainText())
 
+    def test_explicit_mapped_bvh_button_enforces_reviewed_pairs_and_axis(self):
+        self.test_existing_master_refit_button_disabled_until_generated()
+        pane = self.window.animations
+        clip = Path(self.tmp.name) / "reviewed-names.bvh"
+        clip.write_text("UI-only, not executed", encoding="utf-8")
+        pane.selected.setText(str(clip))
+        pane.provider.setText("original")
+        pane.license.setText("author retained rights")
+        pane.uri.setText("local-original://mapped-unit")
+        pane.manual_bone_pairs.setPlainText(
+            "SrcNeck02 -> neck02\\nSrcNeck03 -> neck03\\nSrcHead -> head"
+        )
+        pane.local_preview_review.setChecked(True)
+        with (patch.object(self.window, "_error") as error,
+              patch.object(self.window, "_submit") as submit):
+            pane.test_reviewed_bvh.click()
+        self.assertIn("up-axis", error.call_args.args[0])
+        submit.assert_not_called()
+        pane.source_axes.setCurrentIndex(1)
+        blender = Path(self.tmp.name) / "fake-blender-not-running"
+        blender.write_bytes(b"UNIT_ONLY")
+        with patch("ucc.desktop.window.QFileDialog.getOpenFileName",
+                   return_value=(str(blender), "")):
+            with patch.object(self.window, "_submit") as submit:
+                pane.test_reviewed_bvh.click()
+        self.assertEqual(submit.call_args.args[0], "reviewed_bvh_chain")
+        pane.manual_bone_pairs.setPlainText("SrcNeck02 -> neck02")
+        self.assertFalse(pane.local_preview_review.isChecked())
+
     def test_tools_are_real_and_cannot_claim_geometry(self):
         self.assertIn("PNG", self.window.tools.pack.text())
         self.assertFalse(self.window.character.open_master.isEnabled())

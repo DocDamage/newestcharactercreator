@@ -32,6 +32,12 @@ class ReviewMappingTests(unittest.TestCase):
             with self.subTest(text=text), self.assertRaises(ValidationError):
                 parse_review_mapping(text)
 
+    def test_namespace_prefix_is_permitted_but_paths_are_not(self):
+        pairs = parse_review_mapping(
+            "mixamorig:Hips -> neck02\\nmixamorig:Spine -> neck03\\nmixamorig:Head -> head"
+        )
+        self.assertEqual(pairs[0]["source"], "mixamorig:Hips")
+
     def test_same_source_or_target_casefold_is_not_distinct(self):
         with self.assertRaises(ValidationError):
             parse_review_mapping("Neck -> neck02\nneck -> neck03\nHead -> head")
