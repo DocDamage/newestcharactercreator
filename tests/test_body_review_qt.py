@@ -4,6 +4,7 @@ from hashlib import sha256
 import os
 from pathlib import Path
 from types import SimpleNamespace
+from threading import Event
 import unittest
 from unittest.mock import patch
 
@@ -81,6 +82,34 @@ class BodyReviewQtTests(unittest.TestCase):
             self.assertEqual(args[0],'body_contacts');self.assertEqual(args[1](),'unit-only')
             values=review.call_args.kwargs;self.assertIs(values['fitted'],self.f.fitted)
             self.assertIs(values['cancel'],kwargs['cancel']);self.assertTrue(values['permission'].allow('local_preview')[0])
+
+    def test_menu_cancels_real_background_fit_and_body_review_without_replacing_motion(self):
+        import time
+        from ucc.core.errors import ProjectStorageError
+        for kind in ('fitted_comparison','body_contacts'):
+            with self.subTest(kind=kind):
+                cancel=Event();errors=[];before=self.w.motion_viewer.cache
+                def work(cancel=cancel):
+                    if not cancel.wait(3):raise RuntimeError('Menu did not deliver cancellation')
+                    raise ProjectStorageError('Unit local review cancelled; original motion retained')
+                contact_error=patch('ucc.desktop.contact_fit.show_contact_error',side_effect=lambda _w,e:errors.append(e))
+                body_error=patch('ucc.desktop.body_contact_review.show_body_contact_error',side_effect=lambda _w,e:errors.append(e))
+                contact_error.start();body_error.start()
+                try:
+                    self.w._submit(kind,work,cancel=cancel)
+                    enabled=self.w.cancel_generation_action.isEnabled()
+                    message=self.w.statusBar().currentMessage()
+                    self.w.cancel_generation_action.trigger()
+                    delivered=cancel.is_set()
+                finally:
+                    cancel.set();deadline=time.monotonic()+3
+                    while self.w.jobs.busy and time.monotonic()<deadline:QTest.qWait(10)
+                    contact_error.stop();body_error.stop()
+                self.assertFalse(self.w.jobs.busy);self.assertFalse(self.w.cancel_generation_action.isEnabled())
+                self.assertTrue(enabled);self.assertTrue(delivered)
+                self.assertIn('Fitting' if kind=='fitted_comparison' else 'Reviewing',message)
+                self.assertEqual(len(errors),1);self.assertIn('cancelled',errors[0])
+                self.assertIs(self.w.motion_viewer.cache,before);self.assertIs(self.w._native_playback,self.f.original)
 
     def test_unavailable_body_comparison_never_displays_zero_as_a_verdict(self):
         unavailable=SurfaceReview('UNAVAILABLE','SURFACE_WORKLOAD_EXCEEDED',((),)*3,((0,0),)*3,('a'*64,)*3,POLICY)

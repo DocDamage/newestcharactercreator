@@ -89,7 +89,7 @@ per-hand pair guard and no newly enclosed or newly uncertain hand polygons.
 Publication rechecks evidence files and watches the enclosure report and fresh
 verification receipt, clearing both variants on replacement or edits.
 
-The complete local suite runs 711 tests: 698 pass and 13 Windows symlink cases
+The complete local suite runs 712 tests: 699 pass and 13 Windows symlink cases
 skip. All fifteen earlier preflight/license checks, compileall and diff checks
 pass. The actual production sampler detects every one of 3,166 deliberately
 buried MPFB hand probes, independently checked with solid angles; a forced ray
@@ -100,6 +100,26 @@ reproduces both complete reports exactly; the paired run takes 1,053.906
 seconds and preserves every protected original. The complete desktop
 transaction, original-source negatives and exact-head CI remain in progress.
 This is not final milestone acceptance.
+
+## Cancellation and interruption verification
+
+The first complete desktop attempt reached the final independent worker but
+its 40-minute test watchdog expired. No fitted result was published. The child
+continued on private copies and later completed a valid complete receipt;
+source/master/project hashes remain unchanged. This is not a passed desktop
+transaction. The rerun uses a 60-minute test allowance, with the same physical,
+coverage, render, GPU and watcher assertions and worker limits.
+
+The interruption audit exposed a real menu-routing omission: fitting and body
+review supplied cancellation Events, but their job kinds were absent from the
+Cancel menu allowlist. Both are now enabled and have accurate busy messages.
+The Qt regression reproduces both disabled cases against the old handler and
+passes with the fix. Actual menu actions stop two live Blender processes after
+scene opening in 0.468 / 0.421 seconds, retaining original playback and all
+protected files. The original-source production API also passes its complete
+300-frame two-process review, rehashed-report rejection and real geometry faults.
+The exact earlier-head Windows QA archive is SHA-checked and its executable
+passes a local Qt/project/bundled-bridge self-test; updated-head CI remains due.
 
 ## Remaining acceptance work
 
