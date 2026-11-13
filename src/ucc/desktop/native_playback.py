@@ -41,9 +41,39 @@ def publish_playback(window,result):
     if failed:
         window._clear_native_review();raise ValidationError("Could not monitor animation originals; playback was not published")
     window.motion_viewer.show_cache(result.cache)
+    window._native_playback=result
     window.mesh_dock.hide();window.motion_dock.show();window.motion_dock.raise_()
     window.log.setPlainText("VERIFIED CACHED SKIN PLAYBACK READY IN UCC\n"
         f"{result.cache.frame_count} complete frames at {result.cache.fps:g} fps; full visible mesh.\n"
         "Play/Pause, frame scrub, loop, orbit, pan and zoom are available in the animation view.\n"
         "Blender evaluated this precomputed motion from the independently reopened saved Action.\n"
         "Original files unchanged. Joint correction is private; visual/contact/engine quality remains unapproved.")
+
+
+def publish_comparison(window,original,fitted):
+    """Attach only the currently selected, verified original/fitted pair."""
+    if (window._native_review is not fitted.original_preview or
+        any(getattr(original,k)!=getattr(fitted,k) for k in ('project_id','revision','master_sha256','source_sha256')) or
+        not window.animations.local_preview_review.isChecked()):
+        raise ValidationError('Original/fitted selection or local-preview permission changed')
+    preview=fitted.fitted_preview;bindings=preview.verification['bindings']
+    paths={Path(preview.fit_policy_used):fitted.fit_policy_sha256,
+           Path(preview.private_fitted_scene):fitted.fitted_scene_sha256,
+           Path(preview.private_timeline):bindings['fit_report_sha256']}
+    if (bindings['review_sha256']!=_digest(Path(window._native_review.private_visual_review_blend)) or
+        bindings['timeline_sha256']!=_digest(Path(window._native_review.private_timeline)) or
+        any(p.is_symlink() or not p.is_file() or _digest(p)!=digest for p,digest in paths.items())):
+        raise ValidationError('Fitted comparison policy, source review or saved fitted evidence changed')
+    publish_playback(window,original)
+    watch_paths=sorted({str(p) for p in paths}|{str(p.parent) for p in paths})
+    missing=[p for p in watch_paths if p not in window._motion_watcher.files()+window._motion_watcher.directories()]
+    if missing and window._motion_watcher.addPaths(missing):
+        window._clear_native_review();raise ValidationError('Could not monitor fitted originals; comparison not published')
+    try:window.motion_viewer.show_comparison(original.cache,fitted.cache)
+    except Exception:
+        window._clear_native_review();raise
+    window.log.setPlainText('VERIFIED ORIGINAL / FITTED MOTION COMPARISON\n'
+        f'{fitted.cache.frame_count} full frames at {fitted.cache.fps:g} fps. Switch Original motion / Fitted motion in the viewer.\n'
+        'The source frame, camera and playback clock are shared. Focus resets when switching.\n'
+        'Fitting changes target motion; it does not change the source animation or character master.\n'
+        'Only hand/opposite-arm surface crossings were checked. Grasp, visual and engine quality remain unapproved.')

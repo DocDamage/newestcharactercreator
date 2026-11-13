@@ -28,6 +28,8 @@
 
 ## Verified capabilities and remaining gates
 
+**In development, based on #48:** [UCC-P1-ANIM-006O](acceptance/UCC-P1-ANIM-006O.md) adds a separately bound fitted full-surface cache, fresh saved-scene reproduction and original/fitted GPU comparison. The actual owned clip passes all 300 vertex/topology checks; all 300 fitted frames rendered locally in 10.0 seconds, with matching frame/camera switching and actual watched-policy invalidation. The current suite runs 563 tests (550 pass, 13 Windows symlink skips). The owner has a project-local comparison launcher. Remote exact-head gates remain pending. Automatic candidate fitting, grasp/visual approval and engine portability remain unverified.
+
 | Capability | Actual verification | Outstanding |
 | --- | --- | --- |
 | Real MPFB humanoid generation | [Linux Blender 5.3 + official MPFB integration](https://github.com/DocDamage/newestcharactercreator/actions/runs/43093757960) generated and reopened a 19,158-vertex human, default 163-bone rig | User Windows Blender/MPFB and asset/rig visual inspection |

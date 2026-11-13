@@ -6,7 +6,8 @@ POLICY='BOUNDED_NATIVE_ARM_IK_V1'
 BASE_HASHES={'source_sha256','snapshot_sha256','mapping_sha256','master_sha256','review_sha256','timeline_sha256'}
 OPERATIONS={'fit_native_fbx_body':{'fit_sha256'},
             'measure_native_fit':{'fit_sha256','fitted_sha256'},
-            'verify_native_fit':{'fit_sha256','fitted_sha256','fit_report_sha256'}}
+            'verify_native_fit':{'fit_sha256','fitted_sha256','fit_report_sha256'},
+            'cache_native_fit':{'fit_sha256','fitted_sha256','fit_report_sha256'}}
 
 
 def job_hashes(operation):

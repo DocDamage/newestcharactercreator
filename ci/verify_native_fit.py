@@ -10,6 +10,7 @@ from ucc.core.models import CharacterProject
 from ucc.core.storage import ProjectStore
 from ucc.jobs.humanoid_generation import generate_humanoid
 from ucc.jobs.native_fit import fit_native_preview
+from ucc.jobs.fitted_playback import prepare_fitted_playback
 from ucc.jobs.protocol import JobRequest
 from ucc.jobs.runner import BlenderJobRunner,WorkerFailure
 
@@ -68,6 +69,9 @@ def verify_fit_on_preview(blender,store,preview,source,permission,folder):
     displacement=max(math.dist([a['target_global_poses'][hand][i*4+3] for i in range(3)],
                                [b['target_global_poses'][hand][i*4+3] for i in range(3)]) for a,b in zip(original,fitted))
     if displacement<1e-5:raise RuntimeError('Original real MPFB fitting did not move the actual hand endpoint')
+    playback=prepare_fitted_playback(store,result,source_fbx=source,permission=permission,
+        blender_exe=blender,worker_script=ROOT/'blender_bridge/entrypoint.py',timeout_s=600)
+    if playback.cache.frame_count!=300:raise RuntimeError('Fitted playback cropped original full sequence')
     prior=store.root/'.ucc-jobs'/result.worker_job_ids[-1]
     subprocess.run([str(blender),'-b','--factory-startup','--disable-autoexec','--python-exit-code','13','--python',
         str(ROOT/'tests/fixtures/blender_native_fit_faults.py'),'--','--scene',result.private_fitted_scene,
@@ -97,6 +101,8 @@ def verify_fit_on_preview(blender,store,preview,source,permission,folder):
     return {'scope':'ORIGINAL_CI_SOURCE_ON_REAL_MPFB_NOT_OWNER_OR_PACK_COMPATIBILITY','frames':300,'mapped_joints':len(preview.evidence['mapped_pairs']),
         'actual_endpoint_displacement_world':displacement,'declared_max_endpoint_offset_world':maximum,
         'source_fk_separate':True,'all_corrected_raw_skin_and_topology_reproduced':True,'private_images_decoded':15,
+        'fitted_playback':{'frames':playback.cache.frame_count,'packed_bytes':len(playback.cache.packed),
+            'all_vertex_and_triangle_hashes_checked':True,'fresh_saved_scene_verified':True,'gpu_playback_tested':False},
         'application_angular_audit':result.angular_audit,'real_rehashed_scene_report_faults_rejected':rejected,
         'originals_unchanged':True,'contact_quality_approved':False,'engine_import_verified':False}
 

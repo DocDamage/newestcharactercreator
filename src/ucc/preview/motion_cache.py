@@ -19,7 +19,7 @@ MAX_BYTES=256*1024*1024
 HASHES={"source_sha256","snapshot_sha256","mapping_sha256","master_sha256","review_sha256","timeline_sha256"}
 
 
-def _number(v,low,high):return type(v) in (int,float) and math.isfinite(v) and low<=v<=high
+def _number(v,low,high):return type(v) in (int,float) and low<=v<=high and math.isfinite(v)
 
 
 def _pairs(rows):
@@ -102,6 +102,26 @@ def read_motion_cache(folder: Path, report: dict, bindings: dict, timeline: dict
         if data["surface_review"]!=report.get("surface_review"):raise ValidationError("Surface manifest binding differs")
         surface=read_surface_review(folder,data["surface_review"],bindings,timeline,profile,t,n,surface_verification,data['world_matrix'],cancel_check=cancel_check)
     elif "surface_review" in report:raise ValidationError("Legacy cache contains undeclared surface evidence")
+    rows=timeline.get("full_timeline_frames")
+    if type(rows) is not list or len(rows)!=count or any(type(r) is not dict for r in rows):
+        raise ValidationError("Playback has no complete measured skin reference")
+    return decode_skin_buffers(folder,data,skin_hashes=[r.get("evaluated_sha256") for r in rows],
+        hip_positions=[r.get("hip_midpoint_world",r.get("root_world_head")) for r in rows],
+        triangle_hashes=surface.triangle_hashes if surface is not None else None,
+        surface=surface,cancel_check=cancel_check)
+
+
+def decode_skin_buffers(folder: Path,data: dict,*,skin_hashes,hip_positions,triangle_hashes=None,
+                        surface=None,geometry_name="motion_skin.bin",cancel_check=lambda:None) -> MotionCache:
+    """Decode geometry only after a caller validates its distinct evidence contract."""
+    n,t,count=data["vertex_count"],data["triangle_count"],data["frame_count"]
+    if (type(n) is not int or not 100<n<=100000 or type(t) is not int or not 100<t<=200000 or
+        type(count) is not int or not 2<=count<=2000 or 12*(n+t)*count>MAX_BYTES or
+        type(data["frames"]) is not list or len(data["frames"])!=count or
+        len(skin_hashes)!=count or len(hip_positions)!=count or
+        (triangle_hashes is not None and len(triangle_hashes)!=count) or
+        not _number(data["fps"],1,240) or type(data["source_first_frame"]) is not int):
+        raise ValidationError("Playback geometry coverage/workload differs")
     world=data["world_matrix"]
     if (type(world) is not list or len(world)!=16 or any(not _number(v,-10000,10000) for v in world) or
             world[12:]!=[0,0,0,1]):raise ValidationError("Invalid playback world transform")
@@ -111,24 +131,22 @@ def read_motion_cache(folder: Path, report: dict, bindings: dict, timeline: dict
     det=(world[0]*(world[5]*world[10]-world[6]*world[9])-world[1]*(world[4]*world[10]-world[6]*world[8])+world[2]*(world[4]*world[9]-world[5]*world[8]))
     if min(lengths)<1e-5 or det<=0 or any(abs(sum(a*b for a,b in zip(columns[i],columns[j])))>1e-5*lengths[i]*lengths[j] for i in range(3) for j in range(i)):
         raise ValidationError("Playback world scale, axes or reflection is incompatible")
-    geometry=bound_file(folder,data["geometry"],"motion_skin.bin",MAX_BYTES,cancel_check=cancel_check)
+    geometry=bound_file(folder,data["geometry"],geometry_name,MAX_BYTES,cancel_check=cancel_check)
     with geometry.open("rb") as stream:packed=stream.read(MAX_BYTES+1)
     if len(packed)!=data["geometry"]["bytes"] or sha256(packed).hexdigest()!=data["geometry"]["sha256"] or packed[:8]!=MAGIC:
         raise ValidationError("Playback changed while reading or has wrong binary header")
-    rows=timeline.get("full_timeline_frames")
-    if type(rows) is not list or len(rows)!=count:raise ValidationError("Playback has no complete measured skin reference")
     offset=8;chunks=[];hips=[];radius=0.
-    for frame,(record,row) in enumerate(zip(data["frames"],rows),1):
+    for frame,record in enumerate(data["frames"],1):
         cancel_check()
         if (type(record) is not dict or set(record)!={"frame","offset","compressed_bytes","raw_sha256","skin_sha256","hip_world"} or
                 type(record["frame"]) is not int or record["frame"]!=frame or
                 type(record["offset"]) is not int or record["offset"]!=offset or
                 type(record["compressed_bytes"]) is not int or not 0<record["compressed_bytes"]<=MAX_BYTES-offset or
-                record["skin_sha256"]!=row.get("evaluated_sha256") or not is_sha256(record["raw_sha256"])):
+                record["skin_sha256"]!=skin_hashes[frame-1] or not is_sha256(record["raw_sha256"])):
             raise ValidationError("Playback frame ordering, offsets or skin binding differs")
         hip=record["hip_world"]
         if (type(hip) is not list or len(hip)!=3 or any(not _number(v,-10000,10000) for v in hip) or
-                hip!=row.get("hip_midpoint_world",row.get("root_world_head"))):raise ValidationError("Playback hip trajectory differs")
+                hip!=hip_positions[frame-1]):raise ValidationError("Playback hip trajectory differs")
         size=record["compressed_bytes"]
         raw=unpack_frame(packed[offset:offset+size],12*(n+t))
         if sha256(raw).hexdigest()!=record["raw_sha256"]:raise ValidationError("Playback frame SHA differs")
@@ -140,7 +158,7 @@ def read_motion_cache(folder: Path, report: dict, bindings: dict, timeline: dict
         if h.hexdigest()!=record["skin_sha256"]:raise ValidationError("Playback vertices do not reproduce measured skin")
         for triangle in struct.iter_unpack("<III",raw[12*n:]):
             if any(v>=n for v in triangle) or len(set(triangle))!=3:raise ValidationError("Invalid playback triangle indices")
-        if surface is not None and sha256(raw[12*n:]).hexdigest()!=surface.triangle_hashes[frame-1]:
+        if triangle_hashes is not None and sha256(raw[12*n:]).hexdigest()!=triangle_hashes[frame-1]:
             raise ValidationError("Playback topology differs from independently reopened surface geometry")
         if frame==1:
             diagonal=sum((max(p[i] for p in bounds)-min(p[i] for p in bounds))**2 for i in range(3))**.5

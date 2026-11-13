@@ -37,18 +37,19 @@ from blender_bridge.native_retarget import retarget_native
 from blender_bridge.native_review_reopen import reopen_native
 from blender_bridge.native_playback_cache import export_native_cache
 from blender_bridge.native_surface_verify import verify_surface_review
+from blender_bridge.native_fit_cache import export_fit_cache
 from blender_bridge.native_fit_policy import checked_job
 from blender_bridge.native_fit_action import stage_native_fit
 from blender_bridge.native_fit_measure import measure_fit,verify_fit
 
 PROTOCOL_VERSION = 1
 OPERATIONS = {"inspect_environment", "inspect_character", "create_human", "export_preview_glb", "refit_human", "verify_skin_deformation", "verify_keyframed_timeline", "verify_local_bvh_motion", "verify_multi_bvh_chain", "verify_calibrated_bvh_chain", "verify_reviewed_bvh_chain", "inspect_fbx_animation", "verify_native_fbx_body", "reopen_native_fbx_body", "cache_native_fbx_body", "verify_native_surface_review"}
-OPERATIONS |= {"fit_native_fbx_body", "measure_native_fit", "verify_native_fit"}
+OPERATIONS |= {"fit_native_fbx_body", "measure_native_fit", "verify_native_fit", "cache_native_fit"}
 
 
 def native_target_fit(job: dict, root: Path) -> dict:
     options=checked_job(job)
-    return {"fit_native_fbx_body":stage_native_fit,"measure_native_fit":measure_fit,"verify_native_fit":verify_fit}[job["operation"]](bpy,root,options)
+    return {"fit_native_fbx_body":stage_native_fit,"measure_native_fit":measure_fit,"verify_native_fit":verify_fit,"cache_native_fit":export_fit_cache}[job["operation"]](bpy,root,options)
 
 
 def verify_native_body(job: dict, root: Path) -> dict:
@@ -319,7 +320,8 @@ def main() -> int:
                    "verify_native_surface_review": reopen_native_body,
                    "fit_native_fbx_body": native_target_fit,
                    "measure_native_fit": native_target_fit,
-                   "verify_native_fit": native_target_fit}[operation]
+                   "verify_native_fit": native_target_fit,
+                   "cache_native_fit": native_target_fit}[operation]
         reply["details"] = action(data, root)
         reply["status"] = "ok"
         reply["error"] = None

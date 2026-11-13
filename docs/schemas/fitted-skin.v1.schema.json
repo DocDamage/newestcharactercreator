@@ -1,0 +1,204 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ucc.local/schemas/fitted-skin.v1.schema.json",
+  "title": "Private independently verified fitted skin cache",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "bindings",
+    "coordinate_space",
+    "world_matrix",
+    "fps",
+    "frame_count",
+    "source_first_frame",
+    "vertex_count",
+    "triangle_count",
+    "geometry",
+    "frames",
+    "contact_quality_verified",
+    "animation_visual_quality_verified",
+    "engine_import_verified"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "status": {
+      "const": "FITTED_VERIFIED_SKIN_CACHE_V1"
+    },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fit_report_sha256",
+        "fit_sha256",
+        "fitted_sha256",
+        "mapping_sha256",
+        "master_sha256",
+        "review_sha256",
+        "snapshot_sha256",
+        "source_sha256",
+        "timeline_sha256"
+      ],
+      "properties": {
+        "source_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "snapshot_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "mapping_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "master_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "review_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "timeline_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "fit_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "fitted_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "fit_report_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "coordinate_space": {
+      "const": "BLENDER_LOCAL_Z_UP"
+    },
+    "world_matrix": {
+      "type": "array",
+      "minItems": 16,
+      "maxItems": 16,
+      "items": {
+        "type": "number",
+        "minimum": -10000,
+        "maximum": 10000
+      }
+    },
+    "fps": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 240
+    },
+    "frame_count": {
+      "type": "integer",
+      "minimum": 2,
+      "maximum": 2000
+    },
+    "source_first_frame": {
+      "type": "integer"
+    },
+    "vertex_count": {
+      "type": "integer",
+      "minimum": 101,
+      "maximum": 100000
+    },
+    "triangle_count": {
+      "type": "integer",
+      "minimum": 101,
+      "maximum": 200000
+    },
+    "geometry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "bytes",
+        "sha256"
+      ],
+      "properties": {
+        "name": {
+          "const": "fitted_skin.bin"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 268435456
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "frames": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "frame",
+          "offset",
+          "compressed_bytes",
+          "raw_sha256",
+          "skin_sha256",
+          "hip_world"
+        ],
+        "properties": {
+          "frame": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 8,
+            "maximum": 268435456
+          },
+          "compressed_bytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 268435456
+          },
+          "raw_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "skin_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "hip_world": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 3,
+            "items": {
+              "type": "number",
+              "minimum": -10000,
+              "maximum": 10000
+            }
+          }
+        }
+      }
+    },
+    "contact_quality_verified": {
+      "const": false
+    },
+    "animation_visual_quality_verified": {
+      "const": false
+    },
+    "engine_import_verified": {
+      "const": false
+    }
+  }
+}
