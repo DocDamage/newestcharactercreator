@@ -56,10 +56,15 @@ class CompleteCollector(AnatomicalCollector):
         self.inspector.inspect(mesh,frame,skin,triangles)
 
 
-def measure_complete(bpy,root,options):
+def measure_complete(bpy,root,options,*,collector_factory=None):
+    if collector_factory is None:
+        collector_factory=CompleteCollector
+        if 'fitted_sha256' in options:
+            from blender_bridge.anatomical_reuse import ExactSourceFrames,collector_factory as exact_factory
+            collector_factory=exact_factory(ExactSourceFrames())
     collectors=[]
     def factory(profile):
-        collector=CompleteCollector(profile);collectors.append(collector);return collector
+        collector=collector_factory(profile);collectors.append(collector);return collector
     base={k:v for k,v in options.items() if k not in REPORT_HASHES}
     areas,enclosure=measure_anatomical_safety(bpy,root,base,collector_factory=factory)
     inspectors=[c.inspector for c in collectors if c.inspector is not None]
