@@ -110,7 +110,7 @@ class MotionViewer(QWidget):
         self.focus=QCheckBox("Focus");self.next_flagged=QPushButton("Next flagged frame")
         self.max_pairs=QPushButton("Max pairs")
         self.try_fit=QPushButton('Try bounded hand/arm fit')
-        self.try_fit.setToolTip('Try a local correction limited to 30 mm and existing joint/skin bounds. Original motion is retained on failure. Grasp and visual quality remain unapproved.')
+        self.try_fit.setToolTip('Search small arm and wrist corrections limited to 30 mm, 15 degrees and existing joint/skin bounds. Original motion is retained on failure. Grasp and visual quality remain unapproved.')
         self.try_fit.clicked.connect(self.fit_requested.emit)
         self.review_body=QPushButton('Review hand/body contacts')
         self.review_body.setToolTip('Independently inspect every saved frame against the head, neck and spine chain. Read-only; can take several minutes.')

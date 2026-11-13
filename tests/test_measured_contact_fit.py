@@ -40,13 +40,19 @@ class MeasuredContactFitTests(unittest.TestCase):
             for n,p in kw['staged_inputs'].items():(folder/n).write_bytes(p.read_bytes())
             _p,_opts,_base,_profile,rest,_data=fitted_contract(request.options,f.base)
             path=folder/'proposed_contact_fit.json';policy=dict(f.policy)
+            if self.fault=='angular':
+                from copy import deepcopy
+                policy=deepcopy(policy);policy['policy']='BOUNDED_NATIVE_ARM_HAND_IK_V2'
+                for row,v in zip(policy['frames'],(0.,.1,.5,.1,0.)):row['hand_rotation_local_degrees']=[v,0.,0.]
+                for matrix in f.base['full_timeline_frames'][2]['target_global_poses'][3:5]:
+                    for i,v in zip((0,1,4,5),(-1.,0.,0.,-1.)):matrix[i]=v
             if self.fault=='omit_crossing':
                 policy['frames']=[{'frame':i+1,'offset_world':([.00025,0,0] if i==1 else [0,0,0])} for i in range(5)]
             path.write_text(json.dumps(policy))
             source_receipt={'status':'REAL_NATIVE_SURFACE_REVIEW_VERIFIED','bindings':{k:v for k,v in request.options.items() if k!='source_body_areas_sha256'},'frames_verified':5,
                 'saved_review_verification':stage_report(request.options,rest)['original_review_verification'],
                 'world_matrix':list(self.playback.cache.world_matrix),'originals_unchanged':True,'contact_quality_verified':False}
-            raw={'status':'REAL_NATIVE_CONTACT_CANDIDATE_PROPOSED','algorithm':'BOUNDED_CONTACT_AREA_SEARCH_V2','bindings':dict(request.options),
+            raw={'status':'REAL_NATIVE_CONTACT_CANDIDATE_PROPOSED','algorithm':'BOUNDED_HAND_CONTACT_AREA_SEARCH_V3','bindings':dict(request.options),
                 'source_surface_verification':source_receipt,'target_rest_frames':rest,'policy':record(path),
                 'source_frames_verified':5,'contact_interval':[3,3],'candidate_interval':[2,4],
                 'candidate_frames_checked':3,'candidate_pose_tests':10,'candidate_trials':2,'candidate_intersection_pairs':0,
@@ -105,7 +111,7 @@ class MeasuredContactFitTests(unittest.TestCase):
             return fit_measured_contacts(f.store,f.preview,self.playback,**args)
 
     def test_candidate_then_saved_fit_then_cache_before_any_pair_is_returned(self):
-        result=self.run_fit();self.assertEqual(self.operations,['review_source_body_areas','propose_native_area_contact_fit','fit_native_preview','prepare_fitted_playback',
+        result=self.run_fit();self.assertEqual(self.operations,['review_source_body_areas','propose_native_hand_contact_fit','fit_native_preview','prepare_fitted_playback',
             'review_body_contact_areas','require_body_fit_guard'])
         self.assertIsNotNone(result.body_review);self.assertIsNotNone(result.body_fit_guard)
         self.assertIs(result.source_body_review,self.source_review)
@@ -115,6 +121,11 @@ class MeasuredContactFitTests(unittest.TestCase):
     def test_license_denial_precedes_context_or_worker(self):
         with self.assertRaises(AssetPolicyError):self.run_fit(permission=replace(self.f.permission,reviewed=False))
         self.assertFalse(self.operations)
+
+    def test_world_hand_angular_rejection_precedes_baking(self):
+        self.fault='angular'
+        with self.assertRaisesRegex(ValidationError,'angular'):self.run_fit()
+        self.assertNotIn('fit_native_preview',self.operations)
 
     def test_all_faults_keep_original_and_never_return_partial_comparison(self):
         for fault in ('source','staged','revision','cancel','scope','algorithm','trials','receipt','interval','crop','budget','bool','rest','omit_crossing','bake','cache','body','body_guard','body_cancel','source_review','source_cancel','new_area','body_crop','body_baseline','late_baseline'):

@@ -24,7 +24,9 @@ def checked_area_candidate_job(job):
     return options
 
 
-def propose_area_contact_fit(bpy,root,options):
+def propose_area_contact_fit(bpy,root,options,*,hand_search: bool=False):
+    from blender_bridge.hand_candidate_search import ALGORITHM as HAND_ALGORITHM,search_hand_candidate
+    algorithm=HAND_ALGORITHM if hand_search else ALGORITHM
     inputs={'candidate.blend':'master_sha256','review_motion.blend':'review_sha256','target_timeline.json':'timeline_sha256',
         'native_mapping.json':'mapping_sha256','source_snapshot.json':'snapshot_sha256','motion_contacts.json':'surface_review_sha256',
         'source_body_areas.json':'source_body_areas_sha256'}
@@ -53,7 +55,7 @@ def propose_area_contact_fit(bpy,root,options):
             unchanged()
             best=[{**{k:v for k,v in r.items() if k!='pairs'},'constraint_cost':r['pairs']}
                 for r in sorted(observations,key=area_trial_rank)[:8]]
-            data={'schema_version':1,'algorithm':ALGORITHM,'bindings':dict(options),'reason':reason,'pose_tests':probe.tested,
+            data={'schema_version':1,'algorithm':algorithm,'bindings':dict(options),'reason':reason,'pose_tests':probe.tested,
                 'trials':len(observations),'source_frames_verified':layout.count,
                 'polygon_topology_sha256':source.inspector.polygon_sha,
                 'body_area_pose_rejections':len(probe.area_guard.rejected),
@@ -61,8 +63,12 @@ def propose_area_contact_fit(bpy,root,options):
                 'best_observations':best,
                 'originals_unchanged':True,'contact_quality_verified':False,'engine_import_verified':False}
             with (root/'candidate_search.json').open('x') as stream:json.dump(data,stream,allow_nan=False)
-        try:chosen,observations=search_candidate(layout,probe,base,baseline,profile,parents,observations=observations,
-            rank_key=area_trial_rank,refinement_factors=(1.,.5,.25),learn_failed_frames=True)
+        try:
+            if hand_search:
+                chosen,observations=search_hand_candidate(layout,probe,base,baseline,profile,parents,source,observations=observations)
+            else:
+                chosen,observations=search_candidate(layout,probe,base,baseline,profile,parents,observations=observations,
+                    rank_key=area_trial_rank,refinement_factors=(1.,.5,.25),learn_failed_frames=True)
         except ValueError as error:
             diagnostic(str(error)[:512])
             if 'NO_BOUNDED_CONTACT_CANDIDATE_FOUND' in str(error):raise ValueError('NO_BOUNDED_AREA_CONTACT_CANDIDATE_FOUND; original motion retained') from error
@@ -74,7 +80,7 @@ def propose_area_contact_fit(bpy,root,options):
         if len(payload)>512*1024:raise ValueError('Area candidate exceeds existing fit-policy bound')
         unchanged()
         with output.open('xb') as stream:stream.write(payload)
-        return {'status':'REAL_NATIVE_CONTACT_CANDIDATE_PROPOSED','algorithm':ALGORITHM,'bindings':dict(options),
+        return {'status':'REAL_NATIVE_CONTACT_CANDIDATE_PROPOSED','algorithm':algorithm,'bindings':dict(options),
             'source_surface_verification':verification,'target_rest_frames':rest,
             'policy':{'name':output.name,'bytes':len(payload),'sha256':sha256(payload).hexdigest()},
             'source_frames_verified':layout.count,'contact_interval':[layout.first,layout.last],

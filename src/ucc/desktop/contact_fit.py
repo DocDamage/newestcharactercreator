@@ -10,6 +10,9 @@ from .generation import bundled_worker_path
 
 def fit_error_message(error: str) -> str:
     reasons={
+        'NO_BOUNDED_HAND_CONTACT_CANDIDATE_FOUND':'No arm and wrist correction cleared these crossings without creating new body-contact areas within the current limits. Original motion is retained.',
+        'SEED_COMPLETE_BODY_CONSTRAINTS_UNAVAILABLE':'The starting correction did not have complete body-contact measurements. Original motion is retained.',
+        'FRESH_SEED_BODY_REPRODUCTION_FAILED':'The final body-contact check did not reproduce. Original motion is retained.',
         'NO_BOUNDED_AREA_CONTACT_CANDIDATE_FOUND':'No candidate cleared the hand/arm crossings without creating new body-contact areas within the current limits. The original motion was retained.',
         'COMPLETE_STABLE_BODY_AREAS_REQUIRED':'A complete original head/body area review was unavailable. The original motion was retained.',
         'BODY_FIT_INTRODUCES_CONTACT_AREAS':'The candidate would move hand/body crossings onto new surface areas. The original motion was retained.',
@@ -56,7 +59,7 @@ def start_contact_fit(window):
         window._submit('fitted_comparison',lambda:fit_measured_contacts(store,preview,playback,source_fbx=source,
             permission=permission,blender_exe=executable,worker_script=worker,cancel=cancel),cancel=cancel)
         window.log.setPlainText('TRYING A BOUNDED LOCAL HAND/ARM FIT\n'
-            'The original animation stays available. Original head/body review, candidate search, saved-scene verification, targeted renders and final body comparison can take several minutes.\n'
+            'The original animation stays available. Original head/body review, bounded arm and wrist search, saved-scene verification, targeted renders and final body comparison can take several minutes.\n'
             'Cancel from the Character menu. Unsupported contacts or failed joint/skin checks keep the original motion.\n'
             'A generated candidate changes target motion; it does not approve grasp intent, visual quality or engine compatibility.')
     except (UCCError,OSError,ValueError) as error:window._error(str(error))

@@ -128,7 +128,7 @@ jobs:
     # R's complete native-fit suite passed in about 61 minutes. S adds two
     # original-source full-sequence proposal negatives, run in parallel.
     # Retain all prior assertions and bound the additional integration workload.
-    timeout-minutes: ${{ matrix.suite == 'native-fit' && 90 || 40 }}
+    timeout-minutes: ${{ matrix.suite == 'native-fit' && 100 || 40 }}
     env:
       PYTHONUNBUFFERED: '1'
     steps:

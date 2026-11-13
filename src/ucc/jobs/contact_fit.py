@@ -2,7 +2,7 @@
 from pathlib import Path
 from threading import Event
 
-from ucc.animations.contact_fit import read_contact_fit,MAX_FIT_BYTES
+from ucc.animations.contact_fit import read_contact_fit,MAX_FIT_BYTES,fit_frame,verify_fitted_sequence
 from ucc.core.errors import ValidationError,ProjectConflict,ProjectStorageError
 from ucc.core.storage import ProjectStore
 from ucc.library.provenance import LicensePolicy,AssetPolicyError
@@ -44,7 +44,7 @@ def fit_measured_contacts(store: ProjectStore,preview: NativeBodyPreview,playbac
     area_path,area_sha=source_area_inputs(store,ctx,source_review,cancel=cancel);originals.append((area_path,area_sha))
     staged={**ctx.staged,'source_body_areas.json':area_path};expected={**ctx.expected,'source_body_areas.json':area_sha}
     options={**ctx.bindings,'surface_review_sha256':ctx.expected['motion_contacts.json'],'source_body_areas_sha256':area_sha}
-    unchanged();request=JobRequest.new('propose_native_area_contact_fit',input_project='candidate.blend',options=options)
+    unchanged();request=JobRequest.new('propose_native_hand_contact_fit',input_project='candidate.blend',options=options)
     result,folder=BlenderJobRunner(blender_exe,store.root/'.ucc-jobs',worker_script).run(
         request,timeout_s=timeout_s,cancel=cancel,staged_inputs=staged)
     unchanged()
@@ -59,7 +59,7 @@ def fit_measured_contacts(store: ProjectStore,preview: NativeBodyPreview,playbac
             'contact_interval','candidate_interval','candidate_frames_checked','candidate_pose_tests','candidate_trials',
             'candidate_intersection_pairs','originals_unchanged','body_area_verification'}|FLAGS
     if (type(raw) is not dict or set(raw)!=fields or raw['status']!='REAL_NATIVE_CONTACT_CANDIDATE_PROPOSED' or
-        raw['algorithm']!='BOUNDED_CONTACT_AREA_SEARCH_V2' or raw['bindings']!=options or raw['originals_unchanged'] is not True or any(raw[k] is not False for k in FLAGS) or
+        raw['algorithm']!='BOUNDED_HAND_CONTACT_AREA_SEARCH_V3' or raw['bindings']!=options or raw['originals_unchanged'] is not True or any(raw[k] is not False for k in FLAGS) or
         type(raw['source_frames_verified']) is not int or raw['source_frames_verified']!=ctx.baseline['source_frame_count'] or
         type(raw['candidate_intersection_pairs']) is not int or raw['candidate_intersection_pairs']!=0):
         raise ValidationError('Contact candidate scope, coverage or approval differs')
@@ -82,6 +82,11 @@ def fit_measured_contacts(store: ProjectStore,preview: NativeBodyPreview,playbac
     originals.append((policy,raw['policy']['sha256']));unchanged()
     validate_candidate_areas(raw['body_area_verification'],source_review,ctx.baseline['source_frame_count'],
         interval[1]-interval[0]+1,raw['candidate_pose_tests'])
+    original=[r['target_global_poses'] for r in ctx.baseline['full_timeline_frames']]
+    expected=[]
+    for frame,poses in enumerate(original,1):
+        check_cancel();expected.append(fit_frame(plan,poses,frame))
+    verify_fitted_sequence(plan,original,expected);unchanged()
     fitted=fit_native_preview(store,preview,fit_policy=policy,**arguments);unchanged()
     prepared=prepare_fitted_playback(store,fitted,**arguments);unchanged()
     review=review_body_contact_areas(store,preview,ctx.playback,fitted=prepared,**arguments);unchanged()
