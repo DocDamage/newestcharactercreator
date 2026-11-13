@@ -18,6 +18,10 @@ on:
       - 'src/ucc/animations/hand_fit.py'
       - 'ci/verify_contact_candidate.py'
       - 'ci/verify_body_contacts.py'
+      - 'ci/verify_skin_inclusion.py'
+      - 'tests/fixtures/blender_skin_inclusion_faults.py'
+      - 'src/ucc/preview/skin_*.py'
+      - 'src/ucc/jobs/skin_inclusion.py'
       - 'ci/verify_body_fit_guard.py'
       - 'ci/verify_area_candidate.py'
       - 'src/ucc/jobs/source_area_context.py'
@@ -67,6 +71,10 @@ on:
       - 'src/ucc/animations/hand_fit.py'
       - 'ci/verify_contact_candidate.py'
       - 'ci/verify_body_contacts.py'
+      - 'ci/verify_skin_inclusion.py'
+      - 'tests/fixtures/blender_skin_inclusion_faults.py'
+      - 'src/ucc/preview/skin_*.py'
+      - 'src/ucc/jobs/skin_inclusion.py'
       - 'ci/verify_body_fit_guard.py'
       - 'ci/verify_area_candidate.py'
       - 'src/ucc/jobs/source_area_context.py'
@@ -128,7 +136,7 @@ jobs:
     # R's complete native-fit suite passed in about 61 minutes. S adds two
     # original-source full-sequence proposal negatives, run in parallel.
     # Retain all prior assertions and bound the additional integration workload.
-    timeout-minutes: ${{ matrix.suite == 'native-fit' && 100 || 40 }}
+    timeout-minutes: ${{ matrix.suite == 'native-fit' && 100 || matrix.suite == 'body-contacts' && 60 || 40 }}
     env:
       PYTHONUNBUFFERED: '1'
     steps:

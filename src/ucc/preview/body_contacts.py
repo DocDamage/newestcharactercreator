@@ -106,10 +106,10 @@ def parse_body_variant(data,cache: MotionCache,skin_hashes,triangle_hashes,basel
     return SurfaceReview(data['status'],data['reason'],tuple(triangles),tuple(pairs),tuple(hashes),POLICY)
 
 
-def validate_body_measurement(report,bindings,baseline,paired):
+def validate_body_measurement(report,bindings,baseline,paired,*,expected_status='REAL_NATIVE_BODY_CONTACTS_MEASURED'):
     fields={'status','bindings','frames','report','originals_unchanged'}|FLAGS
     if (type(bindings) is not dict or set(bindings)!=(FIT_HASHES if paired else HASHES) or any(not is_sha256(v) for v in bindings.values()) or
-        type(report) is not dict or set(report)!=fields or report['status']!='REAL_NATIVE_BODY_CONTACTS_MEASURED' or
+        type(report) is not dict or set(report)!=fields or report['status']!=expected_status or
         report['bindings']!=bindings or type(report['frames']) is not int or report['frames']!=baseline['source_frame_count'] or
         report['originals_unchanged'] is not True or any(report[k] is not False for k in FLAGS)):
         raise ValidationError('Body contact measurement lacks the requested unapproved complete result')
@@ -126,9 +126,9 @@ def read_body_contacts(folder,report,verification,bindings,baseline,profile,orig
         fitted_cache=fitted_cache,cancel_check=cancel_check)
 
 
-def validate_body_receipt(verification,bindings,baseline,paired,report_sha):
+def validate_body_receipt(verification,bindings,baseline,paired,report_sha,*,expected_status='REAL_NATIVE_BODY_CONTACTS_VERIFIED'):
     vf={'status','bindings','frames_verified','paired','originals_unchanged'}|FLAGS
-    if (type(verification) is not dict or set(verification)!=vf or verification['status']!='REAL_NATIVE_BODY_CONTACTS_VERIFIED' or
+    if (type(verification) is not dict or set(verification)!=vf or verification['status']!=expected_status or
         verification['bindings']!={**bindings,'body_review_sha256':report_sha} or verification['paired'] is not paired or
         type(verification['frames_verified']) is not int or verification['frames_verified']!=baseline['source_frame_count'] or
         verification['originals_unchanged'] is not True or any(verification[k] is not False for k in FLAGS)):

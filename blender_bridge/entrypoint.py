@@ -39,6 +39,7 @@ from blender_bridge.native_playback_cache import export_native_cache
 from blender_bridge.native_surface_verify import verify_surface_review
 from blender_bridge.body_contact_review import checked_body_job,inspect_body_contacts,verify_body_contacts
 from blender_bridge.body_contact_areas import OPERATIONS as BODY_AREA_OPERATIONS,checked_area_job,inspect_body_areas,verify_body_areas
+from blender_bridge.skin_inclusion_review import OPERATIONS as SKIN_OPERATIONS,checked_skin_job,inspect_skin,verify_skin
 from blender_bridge.native_contact_candidate import checked_candidate_job,propose_contact_fit
 from blender_bridge.native_area_candidate import OPERATION as AREA_CANDIDATE_OPERATION,checked_area_candidate_job,propose_area_contact_fit
 from blender_bridge.native_fit_cache import export_fit_cache
@@ -51,6 +52,7 @@ PROTOCOL_VERSION = 1
 OPERATIONS = {"inspect_environment", "inspect_character", "create_human", "export_preview_glb", "refit_human", "verify_skin_deformation", "verify_keyframed_timeline", "verify_local_bvh_motion", "verify_multi_bvh_chain", "verify_calibrated_bvh_chain", "verify_reviewed_bvh_chain", "inspect_fbx_animation", "verify_native_fbx_body", "reopen_native_fbx_body", "cache_native_fbx_body", "verify_native_surface_review"}
 OPERATIONS |= BODY_CONTACT_OPERATIONS
 OPERATIONS |= set(BODY_AREA_OPERATIONS)
+OPERATIONS |= set(SKIN_OPERATIONS)
 OPERATIONS |= {"propose_native_contact_fit", "fit_native_fbx_body", "measure_native_fit", "verify_native_fit", "cache_native_fit"}
 OPERATIONS.add(AREA_CANDIDATE_OPERATION)
 OPERATIONS.add('propose_native_hand_contact_fit')
@@ -64,6 +66,11 @@ def native_body_contacts(job: dict, root: Path) -> dict:
 def native_body_areas(job: dict,root: Path) -> dict:
     options=checked_area_job(job)
     return (verify_body_areas if job['operation'].startswith('verify_') else inspect_body_areas)(bpy,root,options)
+
+
+def native_skin_inclusion(job: dict,root: Path) -> dict:
+    options=checked_skin_job(job)
+    return (verify_skin if job['operation'].startswith('verify_') else inspect_skin)(bpy,root,options)
 
 
 def native_contact_candidate(job: dict, root: Path) -> dict:
@@ -363,7 +370,11 @@ def main() -> int:
                    "inspect_native_body_areas": native_body_areas,
                    "verify_native_body_areas": native_body_areas,
                    "inspect_fitted_body_areas": native_body_areas,
-                   "verify_fitted_body_areas": native_body_areas}[operation]
+                   "verify_fitted_body_areas": native_body_areas,
+                   "inspect_native_skin_inclusion": native_skin_inclusion,
+                   "verify_native_skin_inclusion": native_skin_inclusion,
+                   "inspect_fitted_skin_inclusion": native_skin_inclusion,
+                   "verify_fitted_skin_inclusion": native_skin_inclusion}[operation]
         reply["details"] = action(data, root)
         reply["status"] = "ok"
         reply["error"] = None

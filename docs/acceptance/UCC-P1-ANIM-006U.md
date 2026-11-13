@@ -87,9 +87,12 @@ frames draw in 10.079 seconds. The fitted scene SHA is
 The inherited T small-angle measurement correction is included in this branch.
 It changes V2 diagnostic velocity calculation, preserving pose/skin computation,
 all safety bounds and V1's canonical metric formula. Its real original-source
-gate passes in 586.907 seconds. Fresh owned saved-scene measurements, render/cache
-and paired body verification are running against that corrected calculation;
-they must reproduce every existing pose/skin/topology hash. Final exact-head
+gate passes in 586.907 seconds. Fresh owned saved-scene measurements, fifteen decoded renders, complete cache
+and paired two-process body verification pass in 824.469 seconds against that
+corrected calculation. Every original/fitted pose, raw/corrected skin and topology
+is identical to the prior complete action. The owner comparison launcher now
+loads this automatic correction and passes its actual GPU smoke with verified
+body annotations; original files remain unchanged. Final exact-head
 remote gates remain required for acceptance.
 
 The first real negative run caught an omitted worker operation registration;
