@@ -84,30 +84,30 @@ class BodyReviewQtTests(unittest.TestCase):
             self.assertIs(values['cancel'],kwargs['cancel']);self.assertTrue(values['permission'].allow('local_preview')[0])
 
     def test_menu_cancels_real_background_fit_and_body_review_without_replacing_motion(self):
-        import time
+        from PySide6.QtCore import QEventLoop,QTimer
         from ucc.core.errors import ProjectStorageError
         for kind in ('fitted_comparison','body_contacts'):
             with self.subTest(kind=kind):
-                cancel=Event();errors=[];before=self.w.motion_viewer.cache
-                def work(cancel=cancel):
-                    if not cancel.wait(3):raise RuntimeError('Menu did not deliver cancellation')
+                cancel=Event();started=Event();errors=[];state={};before=self.w.motion_viewer.cache
+                def work(cancel=cancel,started=started):
+                    started.set()
+                    if not cancel.wait(2):raise RuntimeError('Menu did not deliver cancellation')
                     raise ProjectStorageError('Unit local review cancelled; original motion retained')
-                contact_error=patch('ucc.desktop.contact_fit.show_contact_error',side_effect=lambda _w,e:errors.append(e))
-                body_error=patch('ucc.desktop.body_contact_review.show_body_contact_error',side_effect=lambda _w,e:errors.append(e))
-                contact_error.start();body_error.start()
-                try:
+                loop=QEventLoop();poll=QTimer();guard=QTimer();guard.setSingleShot(True)
+                def tick():
+                    if started.is_set() and not state:
+                        state.update(enabled=self.w.cancel_generation_action.isEnabled(),message=self.w.statusBar().currentMessage())
+                        self.w.cancel_generation_action.trigger();state['delivered']=cancel.is_set()
+                        cancel.set()  # Clean up a failing regression without stranding its worker.
+                    if not self.w.jobs.busy:loop.quit()
+                poll.timeout.connect(tick);guard.timeout.connect(loop.quit)
+                with (patch('ucc.desktop.contact_fit.show_contact_error',side_effect=lambda _w,e:errors.append(e)),
+                      patch('ucc.desktop.body_contact_review.show_body_contact_error',side_effect=lambda _w,e:errors.append(e))):
                     self.w._submit(kind,work,cancel=cancel)
-                    enabled=self.w.cancel_generation_action.isEnabled()
-                    message=self.w.statusBar().currentMessage()
-                    self.w.cancel_generation_action.trigger()
-                    delivered=cancel.is_set()
-                finally:
-                    cancel.set();deadline=time.monotonic()+3
-                    while self.w.jobs.busy and time.monotonic()<deadline:QTest.qWait(10)
-                    contact_error.stop();body_error.stop()
+                    poll.start(10);guard.start(4000);loop.exec();poll.stop();guard.stop();cancel.set()
                 self.assertFalse(self.w.jobs.busy);self.assertFalse(self.w.cancel_generation_action.isEnabled())
-                self.assertTrue(enabled);self.assertTrue(delivered)
-                self.assertIn('Fitting' if kind=='fitted_comparison' else 'Reviewing',message)
+                self.assertTrue(started.is_set());self.assertTrue(state['enabled']);self.assertTrue(state['delivered'])
+                self.assertIn('Fitting' if kind=='fitted_comparison' else 'Reviewing',state['message'])
                 self.assertEqual(len(errors),1);self.assertIn('cancelled',errors[0])
                 self.assertIs(self.w.motion_viewer.cache,before);self.assertIs(self.w._native_playback,self.f.original)
 

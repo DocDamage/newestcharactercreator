@@ -114,7 +114,10 @@ The interruption audit exposed a real menu-routing omission: fitting and body
 review supplied cancellation Events, but their job kinds were absent from the
 Cancel menu allowlist. Both are now enabled and have accurate busy messages.
 The Qt regression reproduces both disabled cases against the old handler and
-passes with the fix. Actual menu actions stop two live Blender processes after
+passes with the fix. The regression uses a real Qt event loop after the worker
+starts; it also passes in five separate processes. The final 712-test suite
+passes in 89.167 seconds (699 pass, thirteen Windows symlink skips).
+Actual menu actions stop two live Blender processes after
 scene opening in 0.468 / 0.421 seconds, retaining original playback and all
 protected files. The original-source production API also passes its complete
 300-frame two-process review, rehashed-report rejection and real geometry faults.
