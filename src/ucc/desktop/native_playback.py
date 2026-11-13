@@ -22,6 +22,8 @@ def publish_playback(window,result):
         raise ValidationError("Saved character or source changed before playback publication")
     if window.motion_viewer is None:
         window.motion_viewer=MotionViewer()
+        from .contact_fit import start_contact_fit
+        window.motion_viewer.fit_requested.connect(lambda:start_contact_fit(window))
         window.motion_dock=QDockWidget("Verified cached animation — private preview",window)
         window.motion_dock.setObjectName("MotionPreviewDock");window.motion_dock.setWidget(window.motion_viewer)
         window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea,window.motion_dock)

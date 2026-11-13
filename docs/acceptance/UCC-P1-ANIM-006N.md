@@ -114,7 +114,13 @@ outside the repository.
 - The existing Linux workflow now runs both the unchanged full regression and
   this independent native-fitting suite, including all seven negative cases.
   All five workflows on the new PR head remain required before review acceptance;
-  remote results are pending at this revision. Only JSON summaries are uploaded.
+  all five workflows pass on exact head `3b7015d87106dce338074f9020fc81ec45373422`.
+  Both Linux matrix jobs pass; both five-file JSON-only artifacts were independently
+  downloaded and SHA-256 checked. Native-fit artifact `14007975524` SHA-256
+  `0c2d47eee59d7228a48a268d87b7e7a205464230e553dfbd5ff7c12fe17df0a9`;
+  legacy regression artifact `14007612395` SHA-256
+  `925aa0dc86c4657f8bc60ecd74916542c301cc650d2a8041d95d4a588f168083`.
+  PR #48 is ready for review and remains unmerged. Only JSON summaries are uploaded.
 
 ## Remaining vertical slice
 

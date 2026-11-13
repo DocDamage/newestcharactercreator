@@ -80,5 +80,16 @@ class FittedComparisonQtTests(unittest.TestCase):
         with self.assertRaises(ValidationError):publish_comparison(self.w,self.original,self.fitted)
         self.assertIsNone(self.w.motion_viewer)
 
+    def test_original_checked_crossings_offer_one_defined_local_fit_action(self):
+        from ucc.preview.surface_review import SurfaceReview
+        from ucc.desktop.native_playback import publish_playback
+        surface=SurfaceReview('CHECKED','',((1,),(),()),((1,0),(0,0),(0,0)),('a'*64,)*3)
+        self.original.cache=replace(self.original.cache,surface_review=surface)
+        with patch('ucc.desktop.contact_fit.start_contact_fit') as start:
+            publish_playback(self.w,self.original)
+            self.assertTrue(self.w.motion_viewer.try_fit.isEnabled())
+            self.w.motion_viewer.try_fit.click();start.assert_called_once_with(self.w)
+            self.w.motion_viewer.set_fit_busy(True);self.assertFalse(self.w.motion_viewer.try_fit.isEnabled())
+
 
 if __name__=='__main__':unittest.main()

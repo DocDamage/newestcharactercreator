@@ -79,9 +79,10 @@ class MotionCanvas(QOpenGLWidget):
 
 
 class MotionViewer(QWidget):
+    fit_requested=Signal()
     def __init__(self,parent=None):
         super().__init__(parent)
-        self.cache=None;self.clock=None;self.canvas=None;self.comparison=None
+        self.cache=None;self.clock=None;self.canvas=None;self.comparison=None;self.fit_busy=False
         self.layout=QVBoxLayout(self)
         self.status=QLabel("Prepare a verified FBX body preview, then load its motion in UCC.")
         self.status.setWordWrap(True);self.layout.addWidget(self.status)
@@ -99,9 +100,13 @@ class MotionViewer(QWidget):
         self.highlight.setToolTip("Checks each hand against the opposite upper-limb branch, including the shoulder. Other body-part pairs and correct grasp/contact are not evaluated.")
         self.focus=QCheckBox("Focus");self.next_flagged=QPushButton("Next flagged frame")
         self.max_pairs=QPushButton("Max pairs")
+        self.try_fit=QPushButton('Try bounded hand/arm fit')
+        self.try_fit.setToolTip('Try a local correction limited to 30 mm and existing joint/skin bounds. Original motion is retained on failure. Grasp and visual quality remain unapproved.')
+        self.try_fit.clicked.connect(self.fit_requested.emit)
         self.max_pairs.setToolTip("Jump to the frame with the most intersecting triangle pairs. This ranks pair counts, not penetration depth or contact quality.")
         for w in (self.highlight,self.focus,self.next_flagged,self.max_pairs):surface_controls.addWidget(w)
         self.layout.addLayout(surface_controls)
+        self.layout.addWidget(self.try_fit)
         self.surface_status=QLabel("Surface inspection has not been run for this cache.")
         self.surface_status.setWordWrap(True);self.layout.addWidget(self.surface_status)
         self.scrub=QSlider(Qt.Orientation.Horizontal);self.scrub.setRange(0,0);self.layout.addWidget(self.scrub)
@@ -122,6 +127,11 @@ class MotionViewer(QWidget):
         checked=bool(enabled and surface and surface.status=="CHECKED")
         self.highlight.setEnabled(checked)
         for w in (self.focus,self.next_flagged,self.max_pairs):w.setEnabled(checked and bool(surface.flagged_frames))
+        self.try_fit.setEnabled(checked and bool(surface.flagged_frames) and self.comparison is None and not self.fit_busy)
+        self.variant.setEnabled(enabled)
+
+    def set_fit_busy(self,busy: bool):
+        self.fit_busy=busy;self._enable(self.clock is not None and not getattr(self.canvas,'error',''))
 
     def clear(self):
         self.timer.stop();self.clock=None;self.cache=None;self.comparison=None
@@ -147,7 +157,7 @@ class MotionViewer(QWidget):
             original.world_matrix!=fitted.world_matrix or original.vertex_count!=fitted.vertex_count or
             original.triangle_count!=fitted.triangle_count):
             raise ValidationError('Original/fitted playback timing, character or root trajectory differs')
-        self.show_cache(original);self.comparison=(original,fitted);self.variant.show()
+        self.show_cache(original);self.comparison=(original,fitted);self.variant.show();self._enable(True)
         self.note.setText('Original/fitted comparison at the same frame and camera • target motion is changed • contact/engine quality unapproved')
 
     def _switch_variant(self,index):
