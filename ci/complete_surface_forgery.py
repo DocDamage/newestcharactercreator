@@ -6,6 +6,17 @@ import struct
 
 from ucc.preview.central_surface import _parse_variant
 
+MAX_REPORT_BYTES=64*1024*1024
+
+
+def _write_bounded_forgery(path,data):
+    # Match the producer's compact encoding. Whitespace can otherwise push a
+    # valid paired report over the worker bound before physical comparison.
+    payload=json.dumps(data,allow_nan=False,separators=(',',':')).encode('utf-8')
+    if not 0<len(payload)<=MAX_REPORT_BYTES:
+        raise RuntimeError('Coherent complete-contact fixture exceeds the worker input bound')
+    with path.open('xb') as stream:stream.write(payload)
+
 
 def forged_complete_contact(review,cache,path,*,variant='original'):
     full=json.loads(Path(review.private_full_trunk_report).read_text(encoding='utf-8'))
@@ -21,5 +32,5 @@ def forged_complete_contact(review,cache,path,*,variant='original'):
         central_triangles=[body],hand_polygons=[polygon(hand)],body_polygons=[polygon(body)])
     # Metadata is internally coherent; a fresh physical comparison is required.
     _parse_variant(full[variant],cache,volume[variant],polygons)
-    with path.open('x',encoding='utf-8') as stream:json.dump(full,stream)
+    _write_bounded_forgery(path,full)
     return path

@@ -87,12 +87,30 @@ The retained owned correction passes the new complete paired API in 1,642.937
 seconds. All three guards cover all 300 frames with zero newly involved
 complete-trunk polygons or per-hand pair growth. Complete-trunk flagged frames
 are 193 original / 164 fitted; these remaining contacts are not approved.
-All source/master/project bytes remain unchanged. Actual nine-job publication,
-full GPU playback, report/receipt invalidation
-and final five-workflow/portable acceptance remain pending.
+All source/master/project bytes remain unchanged. The actual nine-job desktop
+transaction completes every Blender operation and publishes the guarded pair.
+Its first harness draws all 300 frames and verifies receipt invalidation, then
+omits restoring the deliberately cleared native selection. A corrected private
+harness reparses those same completed job files: all 300 highlighted fitted
+frames draw in 10.063 seconds, both receipt and full-report mutations clear both
+views, and all three guards cover 300 frames. No product change is required for
+that harness correction. The final-head Windows package also passes its local
+frozen project/Qt/bridge smoke; all 63 bundled bridge files match that commit.
+Final five-workflow and three-artifact Linux acceptance remains pending.
 The cloud gates retain the older geometry and report faults and add coherent
 native/fitted full-trunk negatives. Their bounded body/native job allowances
 are 75/120 minutes; no assertion is removed or weakened.
 
-Next: finish the owned transaction and actual desktop/CI acceptance. Remaining
-contacts are not quality-approved; the experimental X trajectory is rejected.
+Linux native-fit CI then detects that default whitespace in a deliberately
+forged paired report can exceed the worker's 64 MiB bound before the intended
+physical comparison. The CI helper now uses the producer's compact encoding,
+checks that same byte bound before creating a file, and refuses overwrites.
+Three regression tests cover the near-boundary, oversized and existing-file
+cases. All 752 local tests pass in 91.170 seconds (739 pass, thirteen Windows
+symlink skips). No production input bound or negative assertion is weakened.
+The failed run's four-record native artifact is not accepted; exact-head CI and
+the real compact paired-forgery geometry rejection must pass before acceptance.
+
+Next: finish final-head CI and actual compact paired-forgery acceptance.
+Remaining contacts are not quality-approved; the experimental X trajectory is
+rejected. Private two-arm experiments have not established full-clip quality.
