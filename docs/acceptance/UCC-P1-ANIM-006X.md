@@ -29,14 +29,24 @@ Original source/master/project hashes remain unchanged. This is a useful
 negative result, not acceptance of the candidate. Selected-frame refinement
 finds a smooth orientation change that passes all 300 actual saved-frame
 measurements without hand/arm crossing flags. Independent saved-scene
-reproduction and private renders remain in progress, as do complete paired
-anatomical checks. The complete local suite runs 719 tests in 93.700 seconds:
+reproduction and fifteen decoded private renders pass in 374.672 seconds;
+three critical views are manually inspected. The complete paired cache and
+two-process anatomical review completes in 1,245.688 seconds. Both publication
+guards correctly reject this trajectory: it introduces stable body-contact
+areas and new uncertain polygons despite reducing overall observations.
+It remains private and does not replace the working desktop correction.
+The complete local suite runs 719 tests in 93.700 seconds:
 706 pass and thirteen Windows symlink checks skip.
 
 The real original-source CI gate additionally exercises V3 through the same
 saved-Action/skin/render/cache and rehashed Action-fault checks as V2. Its small
 endpoint challenge is explicitly not evidence for large body-shape correction;
-this new gate still requires actual local and CI execution.
+the local gate passes in 614.766 seconds, including the full fitted cache and
+rehashed Action-corruption rejection. All original inputs remain unchanged.
+The exact-head Windows QA artifact is independently SHA-checked, seven bridge
+modules match source, and its frozen executable passes the local project/Qt/
+bridge smoke. Four CI workflows pass; final Linux integration and independent
+artifact acceptance remain pending.
 
 No complete contact clearance,
 anatomical quality, general automatic fitting or engine acceptance is claimed.
@@ -48,5 +58,5 @@ file immutability, appropriate negative paths, and all five exact-head CI
 workflows before PR acceptance. No assets, poses or renders are uploaded.
 No dependencies, installation or license permissions change.
 
-Next: measure the complete experimental path on actual skinned MPFB geometry
-and reject or refine it using the independent contact evidence.
+Next: finish exact-head CI acceptance and refine the complete-body route using
+the independent contact evidence; do not publish the rejected trajectory.
