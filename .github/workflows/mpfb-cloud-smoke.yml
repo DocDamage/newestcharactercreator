@@ -129,9 +129,14 @@ jobs:
           mkdir -p "$RUNNER_TEMP/ucc-blender" "$BLENDER_USER_CONFIG" "$BLENDER_USER_SCRIPTS"
           cd "$RUNNER_TEMP/ucc-blender"
           origin='https://download.blender.org/release/Blender5.3'
-          curl --fail --location --retry 3 --silent --show-error \
+          # The public origin intermittently returns HTTP 403 on individual
+          # runners. Default curl retries do not retry that status. Retain the
+          # official origin/checksum and bound retries and stalled transfers.
+          curl --fail --location --retry 3 --retry-all-errors --retry-delay 10 \
+            --connect-timeout 20 --max-time 180 --retry-max-time 360 --silent --show-error \
             "$origin/blender-5.3.0-linux-x64.tar.xz" -o blender-5.3.0-linux-x64.tar.xz
-          curl --fail --location --retry 3 --silent --show-error \
+          curl --fail --location --retry 3 --retry-all-errors --retry-delay 10 \
+            --connect-timeout 20 --max-time 60 --retry-max-time 180 --silent --show-error \
             "$origin/blender-5.3.0.sha256" -o blender-5.3.0.sha256
           grep -E '^[a-fA-F0-9]{64} [ *]blender-5\.3\.0-linux-x64\.tar\.xz$' blender-5.3.0.sha256 | sha256sum --check --strict
           tar -xf blender-5.3.0-linux-x64.tar.xz
