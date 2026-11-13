@@ -17,6 +17,8 @@ on:
       - 'ci/verify_contact_candidate.py'
       - 'ci/verify_body_contacts.py'
       - 'ci/verify_body_fit_guard.py'
+      - 'ci/verify_area_candidate.py'
+      - 'src/ucc/jobs/source_area_context.py'
       - 'src/ucc/jobs/body_fit_guard.py'
       - 'src/ucc/preview/contact_areas.py'
       - 'src/ucc/jobs/body_contact*.py'
@@ -62,6 +64,8 @@ on:
       - 'ci/verify_contact_candidate.py'
       - 'ci/verify_body_contacts.py'
       - 'ci/verify_body_fit_guard.py'
+      - 'ci/verify_area_candidate.py'
+      - 'src/ucc/jobs/source_area_context.py'
       - 'src/ucc/jobs/body_fit_guard.py'
       - 'src/ucc/preview/contact_areas.py'
       - 'src/ucc/jobs/body_contact*.py'
@@ -117,7 +121,10 @@ jobs:
     # Stable-face intake adds original-only + paired two-process checks and two
     # full-sequence rehashed-report negatives to the existing ~41-minute suite.
     # Keep all prior gates and bound this additional real integration workload.
-    timeout-minutes: ${{ matrix.suite == 'native-fit' && 65 || 40 }}
+    # R's complete native-fit suite passed in about 61 minutes. S adds two
+    # original-source full-sequence proposal negatives, run in parallel.
+    # Retain all prior assertions and bound the additional integration workload.
+    timeout-minutes: ${{ matrix.suite == 'native-fit' && 75 || 40 }}
     env:
       PYTHONUNBUFFERED: '1'
     steps:

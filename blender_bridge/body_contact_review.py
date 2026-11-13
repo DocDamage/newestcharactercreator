@@ -65,6 +65,17 @@ class BodyCollector:
         self.inspector.inspect(mesh,frame,skin,triangles)
 
 
+def body_report(baseline,base,source,fitted,reopened):
+    count=baseline['source_frame_count'];paired=fitted is not None
+    if source is None or len(source.rows)!=count or (paired and len(fitted.rows)!=count):
+        raise ValueError('Body contact inspection did not cover every saved frame')
+    return {'schema_version':1,'policy':POLICY,'measurement':'FRESH_SAVED_ACTION_BODY_SURFACES_V1','bindings':base,
+        'paired':paired,'source_frame_count':count,'source_first_frame':baseline['source_first_frame'],'fps':baseline['fps'],
+        'original':source.report(),'fitted':fitted.report() if paired else None,
+        'original_review_verification':reopened,'fitted_frames_verified':count if paired else 0,
+        'originals_unchanged':True,**FLAGS}
+
+
 def measure_body_contacts(bpy: Any,root: Path,options: dict,*,collector_factory=BodyCollector) -> dict:
     base={k:v for k,v in options.items() if k!='body_review_sha256'}
     unchanged(root,options)
@@ -82,11 +93,7 @@ def measure_body_contacts(bpy: Any,root: Path,options: dict,*,collector_factory=
         count=baseline['source_frame_count']
         if source.inspector is None or len(source.inspector.rows)!=count or (paired and (fitted.inspector is None or len(fitted.inspector.rows)!=count)):
             raise ValueError('Body contact inspection did not cover every saved frame')
-        return {'schema_version':1,'policy':POLICY,'measurement':'FRESH_SAVED_ACTION_BODY_SURFACES_V1','bindings':base,
-                'paired':paired,'source_frame_count':count,'source_first_frame':baseline['source_first_frame'],'fps':baseline['fps'],
-                'original':source.inspector.report(),'fitted':fitted.inspector.report() if paired else None,
-                'original_review_verification':reopened,'fitted_frames_verified':count if paired else 0,
-                'originals_unchanged':True,**FLAGS}
+        return body_report(baseline,base,source.inspector,fitted.inspector if paired else None,reopened)
     finally:unchanged(root,options)
 
 

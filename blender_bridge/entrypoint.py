@@ -40,6 +40,7 @@ from blender_bridge.native_surface_verify import verify_surface_review
 from blender_bridge.body_contact_review import checked_body_job,inspect_body_contacts,verify_body_contacts
 from blender_bridge.body_contact_areas import OPERATIONS as BODY_AREA_OPERATIONS,checked_area_job,inspect_body_areas,verify_body_areas
 from blender_bridge.native_contact_candidate import checked_candidate_job,propose_contact_fit
+from blender_bridge.native_area_candidate import OPERATION as AREA_CANDIDATE_OPERATION,checked_area_candidate_job,propose_area_contact_fit
 from blender_bridge.native_fit_cache import export_fit_cache
 from blender_bridge.native_fit_policy import checked_job
 from blender_bridge.native_fit_action import stage_native_fit
@@ -51,6 +52,7 @@ OPERATIONS = {"inspect_environment", "inspect_character", "create_human", "expor
 OPERATIONS |= BODY_CONTACT_OPERATIONS
 OPERATIONS |= set(BODY_AREA_OPERATIONS)
 OPERATIONS |= {"propose_native_contact_fit", "fit_native_fbx_body", "measure_native_fit", "verify_native_fit", "cache_native_fit"}
+OPERATIONS.add(AREA_CANDIDATE_OPERATION)
 
 
 def native_body_contacts(job: dict, root: Path) -> dict:
@@ -65,6 +67,10 @@ def native_body_areas(job: dict,root: Path) -> dict:
 
 def native_contact_candidate(job: dict, root: Path) -> dict:
     return propose_contact_fit(bpy,root,checked_candidate_job(job))
+
+
+def native_area_contact_candidate(job: dict,root: Path) -> dict:
+    return propose_area_contact_fit(bpy,root,checked_area_candidate_job(job))
 
 
 def native_target_fit(job: dict, root: Path) -> dict:
@@ -343,6 +349,7 @@ def main() -> int:
                    "verify_native_fit": native_target_fit,
                    "cache_native_fit": native_target_fit,
                    "propose_native_contact_fit": native_contact_candidate,
+                   "propose_native_area_contact_fit": native_area_contact_candidate,
                    "inspect_native_body_contacts": native_body_contacts,
                    "verify_native_body_contacts": native_body_contacts,
                    "inspect_fitted_body_contacts": native_body_contacts,

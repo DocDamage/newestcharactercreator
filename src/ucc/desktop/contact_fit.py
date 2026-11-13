@@ -10,6 +10,8 @@ from .generation import bundled_worker_path
 
 def fit_error_message(error: str) -> str:
     reasons={
+        'NO_BOUNDED_AREA_CONTACT_CANDIDATE_FOUND':'No candidate cleared the hand/arm crossings without creating new body-contact areas within the current limits. The original motion was retained.',
+        'COMPLETE_STABLE_BODY_AREAS_REQUIRED':'A complete original head/body area review was unavailable. The original motion was retained.',
         'BODY_FIT_INTRODUCES_CONTACT_AREAS':'The candidate would move hand/body crossings onto new surface areas. The original motion was retained.',
         'BODY_FIT_INCREASES_HAND_PAIRS':'The candidate would increase hand/body crossings on at least one frame. The original motion was retained.',
         'BODY_FIT_AREAS_UNAVAILABLE':'A complete head/body contact comparison was unavailable. The original motion was retained.',
@@ -18,6 +20,7 @@ def fit_error_message(error: str) -> str:
         'CONTACT_AT_FIXED_ENDPOINT':'This clip needs a correction at its first or last pose. This fitter keeps those endpoint poses unchanged.',
         'CONTACT_INTERVAL_EXCEEDS_CANDIDATE_BUDGET':'The affected interval is too long for this bounded search. Original motion is retained.',
         'CANDIDATE_POSE_BUDGET_EXCEEDED':'The bounded search reached its evaluation limit. Original motion is retained.',
+        'CANDIDATE_TRIAL_BUDGET_EXCEEDED':'The bounded search reached its trial limit. Original motion is retained.',
         'NO_BOUNDED_CONTACT_CANDIDATE_FOUND':'No candidate cleared these crossings within the current joint, skin and displacement limits. Original motion is retained.',
         'COMPLETE_SURFACE_REVIEW_REQUIRED':'Complete hand/arm measurements are unavailable. Load verified original motion before fitting.',
     }
@@ -53,7 +56,7 @@ def start_contact_fit(window):
         window._submit('fitted_comparison',lambda:fit_measured_contacts(store,preview,playback,source_fbx=source,
             permission=permission,blender_exe=executable,worker_script=worker,cancel=cancel),cancel=cancel)
         window.log.setPlainText('TRYING A BOUNDED LOCAL HAND/ARM FIT\n'
-            'The original animation stays available. Candidate search, saved-scene verification, targeted renders, full playback and head/body area comparison can take several minutes.\n'
+            'The original animation stays available. Original head/body review, candidate search, saved-scene verification, targeted renders and final body comparison can take several minutes.\n'
             'Cancel from the Character menu. Unsupported contacts or failed joint/skin checks keep the original motion.\n'
             'A generated candidate changes target motion; it does not approve grasp intent, visual quality or engine compatibility.')
     except (UCCError,OSError,ValueError) as error:window._error(str(error))

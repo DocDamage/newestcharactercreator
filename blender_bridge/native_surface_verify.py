@@ -7,7 +7,7 @@ from blender_bridge.native_inputs import read_json,validate_profile
 from blender_bridge.native_surface_review import SurfaceInspector
 
 
-def verify_surface_review(bpy,root,options: dict) -> dict:
+def verify_surface_review(bpy,root,options: dict,*,frame_observer=None) -> dict:
     base={k:v for k,v in options.items() if k!="surface_review_sha256"}
     reopened=reopen_native(bpy,root,base)
     expected=read_json(root/"motion_contacts.json",options["surface_review_sha256"],16*1024*1024)
@@ -27,7 +27,9 @@ def verify_surface_review(bpy,root,options: dict) -> dict:
             if skin.hexdigest()!=row["evaluated_sha256"]:raise ValueError("Surface verification skin differs from bound timeline")
             indices=array('I',[0])*(len(mesh.loop_triangles)*3);mesh.loop_triangles.foreach_get('vertices',indices)
             if sys.byteorder!='little':indices.byteswap()
-            inspector.inspect(mesh,frame,row["evaluated_sha256"],sha256(indices.tobytes()).hexdigest())
+            topology=sha256(indices.tobytes()).hexdigest()
+            inspector.inspect(mesh,frame,row["evaluated_sha256"],topology)
+            if frame_observer is not None:frame_observer(bpy,human,rig,mesh,frame,row['evaluated_sha256'],topology)
         finally:evaluated.to_mesh_clear()
     actual=inspector.report(base)
     if actual!=expected:raise ValueError("Fresh saved-scene surface review/topology differs")
