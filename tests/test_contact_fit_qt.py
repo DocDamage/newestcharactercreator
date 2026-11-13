@@ -13,7 +13,7 @@ except ImportError:
     start_contact_fit=None
 
 
-@unittest.skipIf(start_contact_fit is None and os.environ.get('UCC_REQUIRE_QT')!='1','Optional PySide6 not installed')
+@unittest.skipIf(desktop_fixture.QApplication is None and os.environ.get('UCC_REQUIRE_QT')!='1','Optional PySide6 not installed')
 class ContactFitQtTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):desktop_fixture.DesktopQtSmoke.setUpClass()
