@@ -3,7 +3,7 @@ from pathlib import Path
 from threading import Event
 
 from ucc.core.errors import UCCError,ValidationError
-from ucc.jobs.body_contact_review import review_body_contacts
+from ucc.jobs.body_contact_review import review_body_contact_areas
 from ucc.jobs.master_preview import _digest
 from ucc.library.provenance import LicensePolicy
 from .generation import bundled_worker_path
@@ -25,7 +25,7 @@ def start_body_contact_review(window):
                                  reviewed=True,local_preview_allowed=True,no_ai=True)
         store=controller.store;source=Path(pane.selected.text());fitted=window._fitted_playback;cancel=Event()
         worker=bundled_worker_path()
-        window._submit('body_contacts',lambda:review_body_contacts(store,preview,playback,source_fbx=source,
+        window._submit('body_contacts',lambda:review_body_contact_areas(store,preview,playback,source_fbx=source,
             permission=permission,blender_exe=executable,worker_script=worker,fitted=fitted,cancel=cancel),cancel=cancel)
         window.log.setPlainText('REVIEWING HAND / CENTRAL-BODY CONTACTS\n'
             'Every saved frame is inspected and independently reproduced against the head, neck and spine chain.\n'
@@ -68,6 +68,11 @@ def publish_body_contact_review(window,result):
         fit=result.contacts.fitted
         text+=(f' Fitted: {len(fit.flagged_frames)} flagged frames.' if fit.status=='CHECKED' else ' Fitted body inspection unavailable.')
         if result.contacts.more_pair_frames is not None:text+=f' Higher pair counts after fitting: {len(result.contacts.more_pair_frames)} frames.'
+        if result.areas is not None:
+            areas=result.areas
+            if areas.status=='CHECKED':
+                text+=f' Newly involved contact areas: {len(areas.new_area_frames)} frames. Increased pairs for either hand: {len(areas.more_hand_pair_frames)} frames.'
+            else:text+=' Stable contact-area comparison unavailable.'
     window.log.setPlainText('VERIFIED HAND / CENTRAL-BODY CONTACT REVIEW\n'+text+'\n'
         'Use the inspection selector to switch between opposite-arm and central-body annotations at the same source frame.\n'
         'Next flagged frame, Max pairs, Highlight and Focus use the selected inspection.\n'

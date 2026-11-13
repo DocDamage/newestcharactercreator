@@ -14,6 +14,7 @@ PROTOCOL_VERSION = 1
 SUPPORTED_OPERATIONS = {"inspect_environment", "inspect_character", "create_human", "export_preview_glb", "refit_human", "verify_skin_deformation", "verify_keyframed_timeline", "verify_local_bvh_motion", "verify_multi_bvh_chain", "verify_calibrated_bvh_chain", "verify_reviewed_bvh_chain", "inspect_fbx_animation", "verify_native_fbx_body", "reopen_native_fbx_body", "cache_native_fbx_body", "verify_native_surface_review"}
 SUPPORTED_OPERATIONS |= {"propose_native_contact_fit", "fit_native_fbx_body", "measure_native_fit", "verify_native_fit", "cache_native_fit"}
 BODY_CONTACT_OPERATIONS = {'verify_fitted_body_contacts', 'verify_native_body_contacts', 'inspect_fitted_body_contacts', 'inspect_native_body_contacts'}
+BODY_CONTACT_OPERATIONS |= {'inspect_native_body_areas','verify_native_body_areas','inspect_fitted_body_areas','verify_fitted_body_areas'}
 SUPPORTED_OPERATIONS |= BODY_CONTACT_OPERATIONS
 MAX_REQUEST_BYTES = 256 * 1024
 

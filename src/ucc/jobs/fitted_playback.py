@@ -1,7 +1,13 @@
 """Project/license-bound fitted playback through a fresh saved-scene worker."""
+from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 from threading import Event
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .body_contact_review import BodyContactReview
+    from .body_fit_guard import BodyFitGuard
 
 from ucc.animations.fbx_snapshot import validate_snapshot
 from ucc.animations.native_profile import read_native_profile
@@ -42,6 +48,8 @@ class FittedComparison:
     fitted: FittedPlayback
     candidate_job_id: str=''
     private_candidate_policy: str=''
+    body_review: BodyContactReview | None=None
+    body_fit_guard: BodyFitGuard | None=None
 
 
 def prepare_fitted_comparison(store: ProjectStore,preview: NativeFitPreview,*,source_fbx: Path,

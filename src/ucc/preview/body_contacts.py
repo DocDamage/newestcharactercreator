@@ -121,12 +121,25 @@ def read_body_contacts(folder,report,verification,bindings,baseline,profile,orig
     if paired!=(fitted_cache is not None):raise ValidationError('Body comparison needs both fitted geometry and its verified timeline')
     validate_body_measurement(report,bindings,baseline,paired)
     data,_=read_json_record(folder,report['report'],'body_contacts.json',32*1024*1024,cancel_check=cancel_check)
+    validate_body_receipt(verification,bindings,baseline,paired,report['report']['sha256'])
+    return parse_body_contacts(data,bindings,baseline,profile,original_cache,fitted_timeline=fitted_timeline,
+        fitted_cache=fitted_cache,cancel_check=cancel_check)
+
+
+def validate_body_receipt(verification,bindings,baseline,paired,report_sha):
     vf={'status','bindings','frames_verified','paired','originals_unchanged'}|FLAGS
     if (type(verification) is not dict or set(verification)!=vf or verification['status']!='REAL_NATIVE_BODY_CONTACTS_VERIFIED' or
-        verification['bindings']!={**bindings,'body_review_sha256':report['report']['sha256']} or verification['paired'] is not paired or
+        verification['bindings']!={**bindings,'body_review_sha256':report_sha} or verification['paired'] is not paired or
         type(verification['frames_verified']) is not int or verification['frames_verified']!=baseline['source_frame_count'] or
         verification['originals_unchanged'] is not True or any(verification[k] is not False for k in FLAGS)):
         raise ValidationError('Body contact observations were not independently reproduced')
+
+
+def parse_body_contacts(data,bindings,baseline,profile,original_cache,*,fitted_timeline=None,
+                        fitted_cache=None,cancel_check=lambda:None) -> BodyContacts:
+    """Parse complete contact semantics after a caller verifies its file/receipt."""
+    paired=fitted_timeline is not None
+    if paired!=(fitted_cache is not None):raise ValidationError('Body comparison needs both fitted geometry and its verified timeline')
     fields={'schema_version','policy','measurement','bindings','paired','source_frame_count','source_first_frame','fps',
             'original','fitted','original_review_verification','fitted_frames_verified','originals_unchanged'}|FLAGS
     if (type(data) is not dict or set(data)!=fields or type(data['schema_version']) is not int or data['schema_version']!=1 or

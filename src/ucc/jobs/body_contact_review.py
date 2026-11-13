@@ -7,6 +7,7 @@ from ucc.core.errors import ValidationError,ProjectConflict,ProjectStorageError
 from ucc.core.storage import ProjectStore
 from ucc.library.provenance import LicensePolicy,AssetPolicyError
 from ucc.preview.body_contacts import BodyContacts,read_body_contacts,validate_body_measurement
+from ucc.preview.contact_areas import BodyContactAreas,read_body_contact_areas
 from .contact_fit_context import contact_context
 from .body_contact_context import fitted_body_context
 from .native_body import NativeBodyPreview
@@ -32,11 +33,25 @@ class BodyContactReview:
     report_sha256: str
     bindings: tuple[tuple[str,str],...]
     metadata_sha256: str
+    areas: BodyContactAreas | None=None
 
 
 def review_body_contacts(store: ProjectStore,preview: NativeBodyPreview,playback: NativePlayback,*,source_fbx: Path,
                          permission: LicensePolicy,blender_exe: Path,worker_script: Path,fitted: FittedPlayback | None=None,
                          cancel: Event | None=None,timeout_s: float=900) -> BodyContactReview:
+    return _review_body(store,preview,playback,source_fbx=source_fbx,permission=permission,blender_exe=blender_exe,
+        worker_script=worker_script,fitted=fitted,cancel=cancel,timeout_s=timeout_s)
+
+
+def review_body_contact_areas(store: ProjectStore,preview: NativeBodyPreview,playback: NativePlayback,*,source_fbx: Path,
+                              permission: LicensePolicy,blender_exe: Path,worker_script: Path,fitted: FittedPlayback | None=None,
+                              cancel: Event | None=None,timeout_s: float=900) -> BodyContactReview:
+    return _review_body(store,preview,playback,source_fbx=source_fbx,permission=permission,blender_exe=blender_exe,
+        worker_script=worker_script,fitted=fitted,cancel=cancel,timeout_s=timeout_s,stable_areas=True)
+
+
+def _review_body(store,preview,playback,*,source_fbx,permission,blender_exe,worker_script,fitted=None,
+                 cancel=None,timeout_s=900,stable_areas=False):
     allowed,reason=permission.allow('local_preview')
     if not allowed:raise AssetPolicyError(reason)
     def check_cancel():
@@ -68,15 +83,18 @@ def review_body_contacts(store: ProjectStore,preview: NativeBodyPreview,playback
                 raise ProjectStorageError('Body contact worker changed a bound staged input')
         ids.append(request.job_id);return result.details,folder
     kind='fitted' if fitted is not None else 'native'
-    measured,folder=run('inspect_'+kind+'_body_contacts')
+    suffix='_body_areas' if stable_areas else '_body_contacts';limit=(40 if stable_areas else 32)*1024*1024
+    measured,folder=run('inspect_'+kind+suffix)
     validate_body_measurement(measured,options,ctx.baseline,fitted is not None)
-    report=bound_file(folder,measured['report'],'body_contacts.json',32*1024*1024,cancel_check=check_cancel)
+    report=bound_file(folder,measured['report'],'body_contacts.json',limit,cancel_check=check_cancel)
     staged['body_contacts.json']=report;expected['body_contacts.json']=measured['report']['sha256']
     originals.append((report,measured['report']['sha256']));options['body_review_sha256']=measured['report']['sha256']
-    verified,_verify_folder=run('verify_'+kind+'_body_contacts')
+    verified,_verify_folder=run('verify_'+kind+suffix)
     base={k:v for k,v in options.items() if k!='body_review_sha256'}
-    contacts=read_body_contacts(folder,measured,verified,base,ctx.baseline,ctx.profile,ctx.playback.cache,
+    parsed=(read_body_contact_areas if stable_areas else read_body_contacts)(folder,measured,verified,base,ctx.baseline,ctx.profile,ctx.playback.cache,
         fitted_timeline=fitted_data,fitted_cache=variant.cache if variant is not None else None,cancel_check=check_cancel)
-    unchanged();bound_file(folder,measured['report'],'body_contacts.json',32*1024*1024,cancel_check=check_cancel)
+    contacts=parsed.contacts if stable_areas else parsed
+    unchanged();bound_file(folder,measured['report'],'body_contacts.json',limit,cancel_check=check_cancel)
     return BodyContactReview(ctx.project.project_id,ctx.project.revision,preview.master_sha256,preview.source_sha256,
-        contacts,ctx.playback,variant,tuple(ids),str(report),measured['report']['sha256'],tuple(sorted(base.items())),metadata_sha)
+        contacts,ctx.playback,variant,tuple(ids),str(report),measured['report']['sha256'],tuple(sorted(base.items())),metadata_sha,
+        parsed if stable_areas else None)

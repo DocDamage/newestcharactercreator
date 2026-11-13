@@ -17,6 +17,8 @@ from .native_evidence import bound_file
 from .fitted_playback import FittedComparison,prepare_fitted_playback
 from .protocol import JobRequest
 from .runner import BlenderJobRunner
+from .body_contact_review import review_body_contact_areas
+from .body_fit_guard import require_body_fit_guard
 
 
 def fit_measured_contacts(store: ProjectStore,preview: NativeBodyPreview,playback: NativePlayback,*,source_fbx: Path,
@@ -76,4 +78,6 @@ def fit_measured_contacts(store: ProjectStore,preview: NativeBodyPreview,playbac
                    cancel=cancel,timeout_s=timeout_s)
     fitted=fit_native_preview(store,preview,fit_policy=policy,**arguments);unchanged()
     prepared=prepare_fitted_playback(store,fitted,**arguments);unchanged()
-    return FittedComparison(ctx.playback,prepared,request.job_id,str(policy))
+    review=review_body_contact_areas(store,preview,ctx.playback,fitted=prepared,**arguments);unchanged()
+    guard=require_body_fit_guard(review);unchanged()
+    return FittedComparison(ctx.playback,prepared,request.job_id,str(policy),review,guard)
