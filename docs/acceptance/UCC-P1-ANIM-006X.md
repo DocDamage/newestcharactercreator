@@ -45,8 +45,13 @@ the local gate passes in 614.766 seconds, including the full fitted cache and
 rehashed Action-corruption rejection. All original inputs remain unchanged.
 The exact-head Windows QA artifact is independently SHA-checked, seven bridge
 modules match source, and its frozen executable passes the local project/Qt/
-bridge smoke. Four CI workflows pass; final Linux integration and independent
-artifact acceptance remain pending.
+bridge smoke on the prior application head. Core, Qt, preflight, Windows,
+Linux regression and Linux native-fit pass there; the body-contact job reaches
+its 60-minute limit while Blender is still executing, without an assertion
+failure or final summary. Its four-file incomplete artifact is not accepted.
+CI-only head `43d0be8364d3451f81890684f71061aa6d8840e1` increases the bounded
+body-job allowance to 75 minutes and preserves every assertion. All five
+workflows are rerunning; exact-head artifact acceptance remains pending.
 
 No complete contact clearance,
 anatomical quality, general automatic fitting or engine acceptance is claimed.

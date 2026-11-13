@@ -47,12 +47,40 @@ Windows symlink skips), including missing/extra/forged operation identities,
 schema/dispatch agreement, refusal to overwrite reports and oversized-output
 rejection without partial files.
 
-The actual original-source/MPFB three-report protocol and coherent rehashed
-contact-fabrication test is running. The application review transaction is not
-yet connected. The intake helper explicitly requires a previously validated
-enclosure and fresh receipt; calling it alone does not establish physical
-evidence. The receipt/envelope coordinator, publication guard, desktop
-annotations and completed real protocol/fault evidence remain outstanding.
+The actual original-source/MPFB three-report protocol passes in 1,101.360
+seconds: three fresh workers, complete source coverage and actual cache intake,
+including rejection of a coherent invented contact with a correctly updated
+SHA. The complete three-report envelope reader additionally passes all actual
+300 source frames in 27.860 seconds. The reusable CI forgery helper produces
+the exact bytes already physically rejected by that worker.
 
-Next: connect the complete two-process report and independent intake to the
-existing review transaction, preserving all existing operations and guards.
+The application coordinator now binds all three reports and the fresh receipt
+while preserving revision, source, license, cancellation and rollback checks.
+Automatic fitting requires the existing area/enclosure guards and a separate
+complete-trunk guard. New hand/body polygons are compared per hand, so swapping
+regions or reducing aggregate pairs cannot hide a new contact. The last two
+desktop jobs use the complete operations; the action still has nine jobs and
+the existing bounded V2 candidate generator. The existing body-review action
+displays complete trunk annotations, preserving frame/camera/transport and
+watching the extra report. Legacy reports retain their original scope.
+
+The updated complete local suite runs 749 tests in 95.924 seconds (736 pass,
+thirteen Windows symlink skips). A real MPFB fault detects ten pairs crossing
+an actual weighted trunk region excluded by the older partition, with the
+correct global hand/body triangle highlights. A wholly buried actual hand
+still has zero complete surface pairs while all 3,166 enclosure probes are
+inside; the checks are complementary. Budget faults reject partial verdicts.
+No authoritative scene is saved or changed by these fault tests.
+
+Both actual menu cancellation paths pass: running fitting and complete-body
+Blender workers stop in 0.453 seconds, preserving original playback and all
+protected files. The actual complete-body operation is observed before cancel.
+The retained owned correction is undergoing the new complete paired API.
+Actual nine-job publication, full GPU playback, report/receipt invalidation
+and final five-workflow/portable acceptance remain pending.
+The cloud gates retain the older geometry and report faults and add coherent
+native/fitted full-trunk negatives. Their bounded body/native job allowances
+are 75/120 minutes; no assertion is removed or weakened.
+
+Next: finish the owned transaction and actual desktop/CI acceptance. Remaining
+contacts are not quality-approved; the experimental X trajectory is rejected.

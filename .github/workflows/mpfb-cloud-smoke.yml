@@ -150,7 +150,10 @@ jobs:
     # rejection and an independently reopened actual MPFB geometry fault.
     # PR #58's body job was still executing at the verified 60-minute limit.
     # Preserve every full-sequence assertion and allow bounded runner headroom.
-    timeout-minutes: ${{ matrix.suite == 'native-fit' && 100 || matrix.suite == 'body-contacts' && 75 || 40 }}
+    # Complete-trunk review retains the area/enclosure checks and adds coherent
+    # native/fitted false-contact reproductions. Keep every assertion and bound
+    # the additional actual full-sequence Blender work with explicit headroom.
+    timeout-minutes: ${{ matrix.suite == 'native-fit' && 120 || matrix.suite == 'body-contacts' && 75 || 40 }}
     env:
       PYTHONUNBUFFERED: '1'
     steps:

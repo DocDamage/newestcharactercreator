@@ -19,6 +19,14 @@ class CompleteSurfaceVariant:
     body_polygons: tuple[tuple[frozenset[int],frozenset[int]],...]
 
 
+@dataclass(frozen=True,slots=True)
+class CompleteTrunkSurfaces:
+    original: CompleteSurfaceVariant
+    fitted: CompleteSurfaceVariant | None
+    new_area_frames: tuple[int,...] | None
+    more_hand_pair_frames: tuple[int,...] | None
+
+
 def _parse_variant(data,cache,volume,polygons,*,cancel_check=lambda:None):
     """Parse after fresh receipt and the corresponding enclosure are validated.
 
