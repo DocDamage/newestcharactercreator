@@ -138,15 +138,18 @@ jobs:
           mkdir -p "$RUNNER_TEMP/ucc-blender" "$BLENDER_USER_CONFIG" "$BLENDER_USER_SCRIPTS"
           cd "$RUNNER_TEMP/ucc-blender"
           origin='https://download.blender.org/release/Blender5.3'
+          # Unique public requests test the repeated cached-403 failure while
+          # retaining the exact official archive path and strict checksum.
+          request_id="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${{ matrix.suite }}"
           # The public origin intermittently returns HTTP 403 on individual
           # runners. Default curl retries do not retry that status. Retain the
           # official origin/checksum and bound retries and stalled transfers.
           curl --fail --location --retry 3 --retry-all-errors --retry-delay 10 \
             --connect-timeout 20 --max-time 180 --retry-max-time 360 --silent --show-error \
-            "$origin/blender-5.3.0-linux-x64.tar.xz" -o blender-5.3.0-linux-x64.tar.xz
+            "$origin/blender-5.3.0-linux-x64.tar.xz?ucc_ci=$request_id" -o blender-5.3.0-linux-x64.tar.xz
           curl --fail --location --retry 3 --retry-all-errors --retry-delay 10 \
             --connect-timeout 20 --max-time 60 --retry-max-time 180 --silent --show-error \
-            "$origin/blender-5.3.0.sha256" -o blender-5.3.0.sha256
+            "$origin/blender-5.3.0.sha256?ucc_ci=$request_id" -o blender-5.3.0.sha256
           grep -E '^[a-fA-F0-9]{64} [ *]blender-5\.3\.0-linux-x64\.tar\.xz$' blender-5.3.0.sha256 | sha256sum --check --strict
           tar -xf blender-5.3.0-linux-x64.tar.xz
           executable="$(find "$PWD" -maxdepth 3 -type f -name blender | head -n 1)"
