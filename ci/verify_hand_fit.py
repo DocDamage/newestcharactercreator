@@ -14,9 +14,10 @@ from ucc.jobs.runner import BlenderJobRunner,WorkerFailure
 ROOT=Path(__file__).resolve().parents[1]
 
 
-def verify_hand_fit(blender,store,preview,source,permission,folder,arm_policy):
+def verify_hand_fit(blender,store,preview,source,permission,folder,arm_policy,*,body_shape=False):
     folder.mkdir(exist_ok=False)
-    policy=deepcopy(arm_policy);policy['policy']='BOUNDED_NATIVE_ARM_HAND_IK_V2'
+    policy=deepcopy(arm_policy)
+    policy['policy']='BOUNDED_NATIVE_BODY_SHAPE_IK_V3' if body_shape else 'BOUNDED_NATIVE_ARM_HAND_IK_V2'
     center=max(range(len(policy['frames'])),key=lambda i:math.hypot(*policy['frames'][i]['offset_world']))
     for i,row in enumerate(policy['frames']):
         bump=math.cos((i-center)*math.pi/40)**2 if abs(i-center)<20 else 0.
@@ -57,6 +58,8 @@ def verify_hand_fit(blender,store,preview,source,permission,folder,arm_policy):
         raise RuntimeError('Hand-policy test changed original inputs')
     return {'scope':'ORIGINAL_CI_SOURCE_ON_REAL_MPFB_NOT_OWNER_PACK_COMPATIBILITY',
         'policy':policy['policy'],'frames':300,'hand_orientation_changed':True,
+        'endpoint_challenge_world':max(math.hypot(*r['offset_world']) for r in policy['frames']),
+        'large_body_shape_displacement_verified':False,
         'all_saved_poses_raw_corrected_skin_topology_reproduced':True,'private_images_decoded':15,
         'full_fitted_cache_verified':True,'rehashed_hand_action_rejected':True,
         'application_angular_audit':result.angular_audit,'originals_unchanged':True,

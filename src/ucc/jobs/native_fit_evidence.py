@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 from ucc.core.errors import ValidationError
-from ucc.animations.contact_fit import POLICY,HASHES,read_contact_fit,verify_fitted_sequence
+from ucc.animations.contact_fit import POLICY,BODY_POLICY,HASHES,read_contact_fit,verify_fitted_sequence
 from ucc.animations.hand_fit import POLICY as HAND_POLICY
 from ucc.animations.source_rest_frames import is_sha256
 from ucc.animations import native_math as nm
@@ -80,7 +80,7 @@ def validate_fitted_data(data,options,baseline,profile,policy_path,stage_rest,*,
             'angular_correction_metrics','originals_unchanged'}|FLAGS
     count=baseline['source_frame_count']
     if (type(data) is not dict or set(data)!=fields or type(data['schema_version']) is not int or data['schema_version']!=1 or
-        type(data['policy']) is not str or data['policy'] not in (POLICY,HAND_POLICY) or data['bindings']!=options or data['measurement']!='FRESH_SAVED_ACTION_V1' or
+        type(data['policy']) is not str or data['policy'] not in (POLICY,HAND_POLICY,BODY_POLICY) or data['bindings']!=options or data['measurement']!='FRESH_SAVED_ACTION_V1' or
         type(data['frame_count']) is not int or data['frame_count']!=count or type(data['source_first_frame']) is not int or
         data['source_first_frame']!=baseline['source_first_frame'] or type(data['fps']) not in (float,int) or data['fps']!=baseline['fps'] or
         any(data[k] is not False for k in FLAGS) or data['originals_unchanged'] is not True or
@@ -136,7 +136,7 @@ def validate_fitted_data(data,options,baseline,profile,policy_path,stage_rest,*,
     if (type(metric) is not dict or set(metric)!={'max_speed_degrees_s','max_acceleration_degrees_s2'} or
         not number(metric['max_speed_degrees_s'],0,90.01) or not number(metric['max_acceleration_degrees_s2'],0,900.1)):
         raise ValidationError('Fitted angular correction evidence exceeds bounded worker numerical limits')
-    if plan.policy==HAND_POLICY and (
+    if plan.policy in (HAND_POLICY,BODY_POLICY) and (
         abs(metric['max_speed_degrees_s']-angular['max_correction_angular_speed_degrees_s'])>.1 or
         abs(metric['max_acceleration_degrees_s2']-angular['max_correction_angular_acceleration_degrees_s2'])>2.):
         raise ValidationError('Fitted hand angular evidence differs from the independent full-sequence audit '

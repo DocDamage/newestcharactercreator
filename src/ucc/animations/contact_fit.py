@@ -15,6 +15,9 @@ from . import native_math as nm
 from .hand_fit import POLICY as HAND_POLICY,read_rotations,orient_hand
 
 POLICY = "BOUNDED_NATIVE_ARM_IK_V1"
+BODY_POLICY = "BOUNDED_NATIVE_BODY_SHAPE_IK_V3"
+BODY_MAX_OFFSET_METERS = .08
+BODY_MAX_SPAN_RATIO = .05
 HASHES = {"source_sha256", "snapshot_sha256", "mapping_sha256", "master_sha256",
           "review_sha256", "timeline_sha256"}
 MAX_OFFSET_METERS = .03
@@ -109,7 +112,7 @@ def read_fit_plan(data: dict, bindings: dict, baseline: dict, profile: dict,
     """
     fields = {"schema_version", "policy", "bindings", "coordinate_space", "chain", "fps", "frames"}
     if (type(data) is not dict or set(data)-{"render_frames"} != fields or type(data["schema_version"]) is not int or
-            data["schema_version"] != 1 or type(data['policy']) is not str or data["policy"] not in (POLICY,HAND_POLICY) or
+            data["schema_version"] != 1 or type(data['policy']) is not str or data["policy"] not in (POLICY,HAND_POLICY,BODY_POLICY) or
             data["coordinate_space"] != "BLENDER_WORLD_METERS" or
             type(bindings) is not dict or set(bindings) != HASHES or
             any(not is_sha256(v) for v in bindings.values()) or data["bindings"] != bindings):
@@ -145,7 +148,7 @@ def read_fit_plan(data: dict, bindings: dict, baseline: dict, profile: dict,
     if (not _number(fps) or not 1 <= fps <= 240 or fps != baseline["fps"] or
             type(count) is not int or not 3 <= count <= 2000 or type(data["frames"]) is not list or len(data["frames"]) != count):
         raise ValidationError("Contact fitting requires the complete source timeline and original frame rate")
-    if data['policy']==HAND_POLICY and count<5:
+    if data['policy'] in (HAND_POLICY,BODY_POLICY) and count<5:
         raise ValidationError('Hand fitting requires at least five complete source frames')
     points = baseline["target_anatomical_landmarks"]
     # Hip-to-head height is the orientation reference, not standing body span.
@@ -153,8 +156,9 @@ def read_fit_plan(data: dict, bindings: dict, baseline: dict, profile: dict,
     feet = tuple((points["left_foot"][i]+points["right_foot"][i])/2 for i in range(3))
     span = math.dist(points["head"], feet)
     if not .1 < span < 10: raise ValidationError("Invalid contact-fitting anatomical body span")
-    maximum = min(MAX_OFFSET_METERS, span*MAX_BODY_SPAN_RATIO)
-    hand_policy=data['policy']==HAND_POLICY
+    maximum = (min(BODY_MAX_OFFSET_METERS,span*BODY_MAX_SPAN_RATIO) if data['policy']==BODY_POLICY else
+               min(MAX_OFFSET_METERS,span*MAX_BODY_SPAN_RATIO))
+    hand_policy=data['policy'] in (HAND_POLICY,BODY_POLICY)
     offsets = []
     for frame, row in enumerate(data["frames"], 1):
         if type(row) is not dict or set(row) != ({"frame", "offset_world"}|({'hand_rotation_local_degrees'} if hand_policy else set())) or type(row["frame"]) is not int or row["frame"] != frame:

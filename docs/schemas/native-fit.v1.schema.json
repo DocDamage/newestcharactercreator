@@ -20,7 +20,8 @@
     "policy": {
       "enum": [
         "BOUNDED_NATIVE_ARM_IK_V1",
-        "BOUNDED_NATIVE_ARM_HAND_IK_V2"
+        "BOUNDED_NATIVE_ARM_HAND_IK_V2",
+        "BOUNDED_NATIVE_BODY_SHAPE_IK_V3"
       ]
     },
     "coordinate_space": {
@@ -125,8 +126,8 @@
             "maxItems": 3,
             "items": {
               "type": "number",
-              "minimum": -0.03,
-              "maximum": 0.03
+              "minimum": -0.08,
+              "maximum": 0.08
             }
           },
           "hand_rotation_local_degrees": {
@@ -159,7 +160,10 @@
       "if": {
         "properties": {
           "policy": {
-            "const": "BOUNDED_NATIVE_ARM_HAND_IK_V2"
+            "enum": [
+              "BOUNDED_NATIVE_ARM_HAND_IK_V2",
+              "BOUNDED_NATIVE_BODY_SHAPE_IK_V3"
+            ]
           }
         }
       },
@@ -183,6 +187,31 @@
                 "required": [
                   "hand_rotation_local_degrees"
                 ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "policy": {
+            "const": "BOUNDED_NATIVE_BODY_SHAPE_IK_V3"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "frames": {
+            "items": {
+              "properties": {
+                "offset_world": {
+                  "items": {
+                    "minimum": -0.03,
+                    "maximum": 0.03
+                  }
+                }
               }
             }
           }
