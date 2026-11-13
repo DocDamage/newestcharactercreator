@@ -13,6 +13,8 @@ from .phenotype import validate_macro_parameters
 PROTOCOL_VERSION = 1
 SUPPORTED_OPERATIONS = {"inspect_environment", "inspect_character", "create_human", "export_preview_glb", "refit_human", "verify_skin_deformation", "verify_keyframed_timeline", "verify_local_bvh_motion", "verify_multi_bvh_chain", "verify_calibrated_bvh_chain", "verify_reviewed_bvh_chain", "inspect_fbx_animation", "verify_native_fbx_body", "reopen_native_fbx_body", "cache_native_fbx_body", "verify_native_surface_review"}
 SUPPORTED_OPERATIONS |= {"propose_native_contact_fit", "fit_native_fbx_body", "measure_native_fit", "verify_native_fit", "cache_native_fit"}
+BODY_CONTACT_OPERATIONS = {'verify_fitted_body_contacts', 'verify_native_body_contacts', 'inspect_fitted_body_contacts', 'inspect_native_body_contacts'}
+SUPPORTED_OPERATIONS |= BODY_CONTACT_OPERATIONS
 MAX_REQUEST_BYTES = 256 * 1024
 
 
@@ -55,6 +57,14 @@ class JobRequest:
             if self.operation in {"verify_native_fit","cache_native_fit"}:hashes.add("fit_report_sha256")
             if self.input_project!="candidate.blend" or set(self.options)!=hashes or any(not is_sha256(v) for v in self.options.values()):
                 raise ValidationError("Native fitting requires exact hashes and fixed staged filenames")
+        if self.operation in BODY_CONTACT_OPERATIONS:
+            from ucc.animations.source_rest_frames import is_sha256
+            from ucc.animations.contact_fit import HASHES
+            fields=set(HASHES)
+            if 'fitted' in self.operation:fields|={'fit_sha256','fitted_sha256','fit_report_sha256'}
+            if self.operation.startswith('verify_'):fields.add('body_review_sha256')
+            if self.input_project!='candidate.blend' or set(self.options)!=fields or any(not is_sha256(v) for v in self.options.values()):
+                raise ValidationError('Body contact review requires exact hashes and fixed staged filenames')
         if self.operation == "propose_native_contact_fit":
             from ucc.animations.source_rest_frames import is_sha256
             from ucc.animations.contact_fit import HASHES

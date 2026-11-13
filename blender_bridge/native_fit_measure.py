@@ -17,9 +17,10 @@ from blender_bridge.native_surface_review import SurfaceInspector
 from blender_bridge.private_review_render import render_private_review
 
 
-def measure_saved_fit(bpy,root,options):
+def measure_saved_fit(bpy,root,options,*,source_frame_observer=None,fitted_frame_observer=None):
     from mathutils import Matrix,Vector
-    baseline,profile,plan,state,reopened=original_context(bpy,root,options)
+    baseline,profile,plan,state,reopened=(original_context(bpy,root,options) if source_frame_observer is None else
+        original_context(bpy,root,options,source_frame_observer=source_frame_observer))
     human,rig=open_fitted(bpy,root,options,baseline,profile,state)
     edges=evaluated_edges(bpy,human)
     bind=EdgeStrain(state['neutral'],edges);master=EdgeStrain(state['original'],edges)
@@ -88,6 +89,7 @@ def measure_saved_fit(bpy,root,options):
                 if sys.byteorder!='little':indices.byteswap()
                 triangle_sha=sha256(indices.tobytes()).hexdigest();triangle_count=len(mesh.loop_triangles)
                 inspector.inspect(mesh,frame,skin,triangle_sha)
+                if fitted_frame_observer is not None:fitted_frame_observer(bpy,human,rig,mesh,frame,skin,triangle_sha)
             finally:evaluated.to_mesh_clear()
             rows.append({'frame':frame,'source_frame':baseline['source_first_frame']+frame-1,
                 'target_global_poses':poses,'skin_sha256':skin,'raw_skin_sha256':raw_sha,'triangle_sha256':triangle_sha,

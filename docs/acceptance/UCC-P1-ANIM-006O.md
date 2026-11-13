@@ -96,6 +96,9 @@ passes all seven scene/report negatives and all 300 fitted cache buffers. Its
 five-file JSON-only artifact `14007689529` was independently downloaded and
 verified at SHA-256 `02279781f730b4c5a74bb159832f3ca3877881af28b3dc6f9b657b4346cb4460`.
 The legacy matrix job initially failed at the official Blender download (HTTP
-403), before executing tests. Its isolated retry has downloaded successfully
-and is running the unchanged regression. PR #49 remains draft until that
-final gate and its JSON artifact are verified.
+403), before executing tests. Its isolated retry passes the unchanged complete
+regression. The five-file JSON-only artifact `14010147746` was independently
+downloaded and checked at SHA-256
+`a8abcfe69be3521d521c5ad8414502eee6628ae4ac10cdbae5b65939396a00d8`.
+All five final-head workflows and both Linux suites pass. PR #49 is ready for
+review and remains unmerged.

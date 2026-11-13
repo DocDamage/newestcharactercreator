@@ -16,11 +16,13 @@ from ucc.jobs.native_playback import prepare_native_playback
 from ucc.animations import native_math as nm
 
 
-def verify_native_body(blender: Path,store: ProjectStore,folder: Path,*,hip_anchor=False,corrective=False,neutral_reference=False,include_hands=False,fit_check=False) -> dict:
+def verify_native_body(blender: Path,store: ProjectStore,folder: Path,*,hip_anchor=False,corrective=False,neutral_reference=False,include_hands=False,fit_check=False,body_check=False) -> dict:
     if neutral_reference and not (corrective and hip_anchor):
         raise ValueError("The neutral-reference CI challenge requires corrected skin and anatomical hip anchoring")
     if fit_check and not (neutral_reference and include_hands):
         raise ValueError('The fitting gate needs the complete original neutral-reference hand challenge')
+    if body_check and not (neutral_reference and include_hands):
+        raise ValueError('The body-contact gate needs the complete original neutral-reference hand challenge')
     project=store.load();master=store.root/project.master_blend
     digest=lambda p:sha256(p.read_bytes()).hexdigest()
     metadata=store.root/"project.ucc.json"
@@ -99,6 +101,9 @@ def verify_native_body(blender: Path,store: ProjectStore,folder: Path,*,hip_anch
         if include_hands:
             from ci.verify_surface_review import verify_surface_review
             skin_evidence['surface_fault_contract']=verify_surface_review(blender,ROOT,playback,folder)
+        if body_check:
+            from ci.verify_body_contacts import verify_body_review
+            skin_evidence['central_body_contact_contract']=verify_body_review(blender,store,result,playback,source,policy,folder/'body-contact-review')
     if hip_anchor:
         hip_travel=math.dist(data["full_timeline_frames"][-1]["hip_midpoint_world"],data["hip_anchor"]["target_bind_midpoint_world"])
         if hip_travel<3.99:raise RuntimeError("Native hip anchor lost the authored four-meter anatomical trajectory")

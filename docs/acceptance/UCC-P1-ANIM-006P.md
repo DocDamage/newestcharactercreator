@@ -86,8 +86,14 @@ and actual MPFB human: no-crossing input rejects, and independently rehashed fal
 contact annotations reject before proposal. Original inputs remain unchanged.
 The Linux native-fitting suite includes these cases through
 `ci/verify_native_fit.py --contact-candidate-check`. They are explicitly negative
-tests and do not claim positive animation-pack compatibility. Exact-head remote
-workflows remain required before final PR review acceptance.
+tests and do not claim positive animation-pack compatibility. All five final-head
+workflows pass on `69baee4fcea50dfac60664847c85093be8d5fc67`, including both
+complete Linux suites. The initial core runner exposed an optional-Qt test guard
+error; the final head fixes that guard while preserving mandatory Qt execution.
+The independently downloaded five-JSON regression/native-fit artifacts have
+SHA-256 `eaac8a6d0d246cdca4a70564dd333b70c1a1151e27706d463eef218761c8c5eb`
+and `9199d83b5cc70bf75c4f5f7598fb04f74f7d145eca212a3132c97f83a26bd994`.
+PR #50 is ready for review and remains unmerged.
 
 ## Remaining limits and next task
 

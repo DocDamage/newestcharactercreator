@@ -83,6 +83,8 @@ class MainWindow(QMainWindow):
         self._blender_executable: Path | None = None  # Session-only; no disk scan.
         self._native_review = None
         self._native_playback = None
+        self._fitted_playback = None
+        self._body_contact_review = None
         self.motion_viewer = None
         self.motion_dock = None
         self._motion_watcher = None
@@ -199,8 +201,11 @@ class MainWindow(QMainWindow):
         self.mesh_dock.hide()
 
     def _clear_native_review(self) -> None:
+        self._motion_input_identities={}
         self._native_review=None
         self._native_playback=None
+        self._fitted_playback=None
+        self._body_contact_review=None
         if self._motion_watcher is not None:
             self._motion_watcher.blockSignals(True)
             paths=self._motion_watcher.files()+self._motion_watcher.directories()
@@ -601,11 +606,19 @@ class MainWindow(QMainWindow):
             try:publish_comparison(self,result.original,result.fitted)
             except (UCCError,OSError,ValueError) as error:
                 self._error(str(error));return
+        elif self._work_kind == 'body_contacts':
+            from .body_contact_review import publish_body_contact_review
+            try:publish_body_contact_review(self,result)
+            except (UCCError,OSError,ValueError) as error:
+                self._error(str(error));return
         else:
             self.log.setPlainText(json.dumps(result, ensure_ascii=False, indent=2, default=str)[:100000])
         self.statusBar().showMessage("Local operation completed; review results above")
 
     def _job_error(self, error: str) -> None:
+        if self._work_kind=='body_contacts':
+            from .body_contact_review import show_body_contact_error
+            show_body_contact_error(self,error);return
         if self._work_kind=='fitted_comparison':
             from .contact_fit import show_contact_error
             show_contact_error(self,error);return

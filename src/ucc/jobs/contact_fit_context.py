@@ -12,7 +12,7 @@ from ucc.preview.motion_cache import read_motion_cache
 from .master_preview import _master_file,_digest
 from .native_evidence import bound_file,read_native_timeline
 from .native_fit_evidence import read_json_record
-from .protocol import JobResult
+from .cached_job_evidence import cached_job_details
 from .native_body import NativeBodyPreview
 from .native_playback import NativePlayback
 
@@ -29,7 +29,7 @@ class ContactFitContext:
 
 
 def contact_context(store: ProjectStore,preview: NativeBodyPreview,playback: NativePlayback,*,source_fbx: Path,
-                    cancel: Event | None=None,cancel_check=lambda:None) -> ContactFitContext:
+                    cancel: Event | None=None,cancel_check=lambda:None,require_crossings: bool=True) -> ContactFitContext:
     cancel_check();project=store.load()
     if project.master_blend is None:raise ValidationError('Contact fitting requires a saved character master')
     master,master_sha=_master_file(store,project.master_blend)
@@ -64,14 +64,7 @@ def contact_context(store: ProjectStore,preview: NativeBodyPreview,playback: Nat
     baseline,_=read_native_timeline(folder,raw,source,profile,bindings,cancel_check=cancel_check)
     options={**bindings,'review_sha256':raw['visual_review_blend']['sha256'],'timeline_sha256':raw['timeline']['sha256']}
     def worker_result(path,operation):
-        job_folder(path);result_file=path/'result.json'
-        if result_file.is_symlink() or not result_file.is_file():raise ValidationError('Missing original cache verification receipt')
-        data,_=read_json_record(path,{'name':result_file.name,'bytes':result_file.stat().st_size,'sha256':_digest(result_file,cancel)},
-            result_file.name,4*1024*1024,cancel_check=cancel_check)
-        result=JobResult.from_dict(data)
-        if result.status!='ok' or result.operation!=operation or result.job_id!=path.name:
-            raise ValidationError('Original cache verification receipt identity differs')
-        return result.details
+        return cached_job_details(jobs,path,operation,cancel=cancel,cancel_check=cancel_check)
     cache_folder=Path(playback.private_manifest).parent
     if cache_folder.name!=playback.job_id or Path(playback.private_manifest)!=cache_folder/'motion_skin.json':
         raise ValidationError('Original cache job identity or manifest path differs')
@@ -79,7 +72,9 @@ def contact_context(store: ProjectStore,preview: NativeBodyPreview,playback: Nat
     if not playback.surface_verification_job_id:raise ValidationError('Contact fitting requires full independent hand/arm surface review')
     verified=worker_result(jobs/playback.surface_verification_job_id,'verify_native_surface_review')
     cache=read_motion_cache(cache_folder,report,options,baseline,profile=profile,surface_verification=verified,cancel_check=cancel_check)
-    if cache.surface_review is None or cache.surface_review.status!='CHECKED' or not cache.surface_review.flagged_frames:
+    if cache.surface_review is None or cache.surface_review.status!='CHECKED':
+        raise ValidationError('Contact inspection requires complete independently verified source geometry')
+    if require_crossings and not cache.surface_review.flagged_frames:
         raise ValidationError('No checked hand/arm crossings to fit; original motion retained')
     contacts=bound_file(cache_folder,report['surface_review'],'motion_contacts.json',16*1024*1024,cancel_check=cancel_check)
     staged={'candidate.blend':master,'review_motion.blend':review,'target_timeline.json':timeline,

@@ -37,15 +37,23 @@ from blender_bridge.native_retarget import retarget_native
 from blender_bridge.native_review_reopen import reopen_native
 from blender_bridge.native_playback_cache import export_native_cache
 from blender_bridge.native_surface_verify import verify_surface_review
+from blender_bridge.body_contact_review import checked_body_job,inspect_body_contacts,verify_body_contacts
 from blender_bridge.native_contact_candidate import checked_candidate_job,propose_contact_fit
 from blender_bridge.native_fit_cache import export_fit_cache
 from blender_bridge.native_fit_policy import checked_job
 from blender_bridge.native_fit_action import stage_native_fit
 from blender_bridge.native_fit_measure import measure_fit,verify_fit
 
+BODY_CONTACT_OPERATIONS = {'verify_fitted_body_contacts', 'verify_native_body_contacts', 'inspect_fitted_body_contacts', 'inspect_native_body_contacts'}
 PROTOCOL_VERSION = 1
 OPERATIONS = {"inspect_environment", "inspect_character", "create_human", "export_preview_glb", "refit_human", "verify_skin_deformation", "verify_keyframed_timeline", "verify_local_bvh_motion", "verify_multi_bvh_chain", "verify_calibrated_bvh_chain", "verify_reviewed_bvh_chain", "inspect_fbx_animation", "verify_native_fbx_body", "reopen_native_fbx_body", "cache_native_fbx_body", "verify_native_surface_review"}
+OPERATIONS |= BODY_CONTACT_OPERATIONS
 OPERATIONS |= {"propose_native_contact_fit", "fit_native_fbx_body", "measure_native_fit", "verify_native_fit", "cache_native_fit"}
+
+
+def native_body_contacts(job: dict, root: Path) -> dict:
+    options=checked_body_job(job)
+    return (verify_body_contacts if job['operation'].startswith('verify_') else inspect_body_contacts)(bpy,root,options)
 
 
 def native_contact_candidate(job: dict, root: Path) -> dict:
@@ -327,7 +335,11 @@ def main() -> int:
                    "measure_native_fit": native_target_fit,
                    "verify_native_fit": native_target_fit,
                    "cache_native_fit": native_target_fit,
-                   "propose_native_contact_fit": native_contact_candidate}[operation]
+                   "propose_native_contact_fit": native_contact_candidate,
+                   "inspect_native_body_contacts": native_body_contacts,
+                   "verify_native_body_contacts": native_body_contacts,
+                   "inspect_fitted_body_contacts": native_body_contacts,
+                   "verify_fitted_body_contacts": native_body_contacts}[operation]
         reply["details"] = action(data, root)
         reply["status"] = "ok"
         reply["error"] = None
