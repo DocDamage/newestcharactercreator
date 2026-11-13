@@ -5,6 +5,7 @@ from pathlib import Path
 
 from ucc.core.errors import ValidationError
 from ucc.animations.contact_fit import POLICY,HASHES,read_contact_fit,verify_fitted_sequence
+from ucc.animations.hand_fit import POLICY as HAND_POLICY
 from ucc.animations.source_rest_frames import is_sha256
 from ucc.animations import native_math as nm
 from ucc.preview.surface_review import validate_surface_data
@@ -79,7 +80,7 @@ def validate_fitted_data(data,options,baseline,profile,policy_path,stage_rest,*,
             'angular_correction_metrics','originals_unchanged'}|FLAGS
     count=baseline['source_frame_count']
     if (type(data) is not dict or set(data)!=fields or type(data['schema_version']) is not int or data['schema_version']!=1 or
-        data['policy']!=POLICY or data['bindings']!=options or data['measurement']!='FRESH_SAVED_ACTION_V1' or
+        type(data['policy']) is not str or data['policy'] not in (POLICY,HAND_POLICY) or data['bindings']!=options or data['measurement']!='FRESH_SAVED_ACTION_V1' or
         type(data['frame_count']) is not int or data['frame_count']!=count or type(data['source_first_frame']) is not int or
         data['source_first_frame']!=baseline['source_first_frame'] or type(data['fps']) not in (float,int) or data['fps']!=baseline['fps'] or
         any(data[k] is not False for k in FLAGS) or data['originals_unchanged'] is not True or
@@ -93,6 +94,7 @@ def validate_fitted_data(data,options,baseline,profile,policy_path,stage_rest,*,
     if data['bind_edge_strain']!=baseline['bind_edge_strain'] or data['master_edge_strain']!=baseline['master_bind_edge_strain']:
         raise ValidationError('Fitted original/bound neutral topology differs')
     plan=read_contact_fit(policy_path,options['fit_sha256'],{k:options[k] for k in HASHES},baseline,profile,parents,cancel_check=cancel_check)
+    if data['policy']!=plan.policy:raise ValidationError('Fitted measurement policy differs from its bound trajectory')
     frames=data['frames']
     if type(frames) is not list or len(frames)!=count:raise ValidationError('Incomplete fitted geometry sequence')
     diagonal=baseline['model_baseline_diagonal_local'];vertex_count=triangle_count=None
@@ -134,6 +136,10 @@ def validate_fitted_data(data,options,baseline,profile,policy_path,stage_rest,*,
     if (type(metric) is not dict or set(metric)!={'max_speed_degrees_s','max_acceleration_degrees_s2'} or
         not number(metric['max_speed_degrees_s'],0,90.01) or not number(metric['max_acceleration_degrees_s2'],0,900.1)):
         raise ValidationError('Fitted angular correction evidence exceeds bounded worker numerical limits')
+    if plan.policy==HAND_POLICY and (
+        abs(metric['max_speed_degrees_s']-angular['max_correction_angular_speed_degrees_s'])>.1 or
+        abs(metric['max_acceleration_degrees_s2']-angular['max_correction_angular_acceleration_degrees_s2'])>2.):
+        raise ValidationError('Fitted hand angular evidence differs from the independent full-sequence audit')
     quality={'motion_quality_schema_version':2,'target_pose_environment_checked':True,'mesh_edge_strain':data['bind_edge_strain'],
              'source_frame_count':count,'full_timeline_frames':[r['bind_strain'] for r in frames],
              'joint_motion_metrics':data['joint_motion_metrics'],'max_bone_quaternion_step_degrees':{}}

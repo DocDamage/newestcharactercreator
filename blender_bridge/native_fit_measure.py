@@ -7,7 +7,7 @@ import struct
 import sys
 
 from blender_bridge.native_fit_scene import original_context,open_fitted,unchanged,check_scene
-from blender_bridge.native_fit_policy import BASE_HASHES,POLICY,fitted_world_poses
+from blender_bridge.native_fit_policy import BASE_HASHES,fitted_world_poses
 from blender_bridge.native_inputs import read_json
 from blender_bridge.native_review_reopen import digest,same_world
 from blender_bridge.pose_deformation import _evaluated_vertices,_movement
@@ -15,6 +15,7 @@ from blender_bridge.bvh_review_timeline import evaluated_edges
 from blender_bridge.motion_quality import EdgeStrain,JointMotion
 from blender_bridge.native_surface_review import SurfaceInspector
 from blender_bridge.private_review_render import render_private_review
+from blender_bridge.native_hand_fit import angular_bones
 
 
 def measure_saved_fit(bpy,root,options,*,source_frame_observer=None,fitted_frame_observer=None):
@@ -30,7 +31,7 @@ def measure_saved_fit(bpy,root,options,*,source_frame_observer=None,fitted_frame
     metrics={p['target']:JointMotion(p['target']) for p in profile['pairs'][1:]}
     root_name=plan['targets'][0];helpers=set(baseline['neutral_target_helpers'])
     diagonal=baseline['model_baseline_diagonal_local'];inverse=human.matrix_world.inverted().to_3x3()
-    rows=[];before=previous=None;previous_correction={};previous_velocity={n:Vector() for n in plan['chain'][:2]}
+    rows=[];before=previous=None;previous_correction={};previous_velocity={n:Vector() for n in angular_bones(plan)}
     max_speed=max_acceleration=0.
     try:
         for frame,original in enumerate(baseline['full_timeline_frames'],1):
@@ -52,7 +53,7 @@ def measure_saved_fit(bpy,root,options,*,source_frame_observer=None,fitted_frame
                 pb=rig.pose.bones[name]
                 if any(pb.matrix_basis[i][j]!=float(i==j) for i in range(4) for j in range(4)):
                     raise ValueError('Saved fit contains an unkeyed helper pose')
-            for name in plan['chain'][:2]:
+            for name in angular_bones(plan):
                 i=plan['targets'].index(name);values=original['target_global_poses'][i]
                 old=Matrix([values[j:j+4] for j in range(0,16,4)]).to_quaternion()
                 correction=expected[name].to_quaternion()@old.inverted()
@@ -101,7 +102,7 @@ def measure_saved_fit(bpy,root,options,*,source_frame_observer=None,fitted_frame
         if end_acceleration>900.+.1:raise ValueError('Saved fit ends with discontinuous angular correction')
         check_scene(bpy,human,rig,baseline,profile,state)
         hashes={k:v for k,v in options.items() if k!='fit_report_sha256'}
-        return {'schema_version':1,'policy':POLICY,'bindings':hashes,'measurement':'FRESH_SAVED_ACTION_V1',
+        return {'schema_version':1,'policy':plan['policy'],'bindings':hashes,'measurement':'FRESH_SAVED_ACTION_V1',
                 'frame_count':baseline['source_frame_count'],'source_first_frame':baseline['source_first_frame'],'fps':baseline['fps'],
                 'target_rest_frames':state['rest'],'source_polygon_sha256':state['polygons'],
                 'mesh_world':state['mesh_world'],'rig_world':state['rig_world'],'original_review_verification':reopened,

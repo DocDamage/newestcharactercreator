@@ -1,6 +1,7 @@
 """Independent worker-side intake for a bounded, SHA-bound target fit."""
 import math
 from blender_bridge.native_inputs import read_json
+from blender_bridge.native_hand_fit import POLICY as HAND_POLICY,rotations,orient
 
 POLICY='BOUNDED_NATIVE_ARM_IK_V1'
 BASE_HASHES={'source_sha256','snapshot_sha256','mapping_sha256','master_sha256','review_sha256','timeline_sha256'}
@@ -26,7 +27,7 @@ def checked_job(job):
 def parse_fit(data,bindings,baseline,profile,parents):
     required={'schema_version','policy','bindings','coordinate_space','chain','fps','frames'}
     if (type(data) is not dict or set(data)-{'render_frames'}!=required or
-        type(data['schema_version']) is not int or data['schema_version']!=1 or data['policy']!=POLICY or
+        type(data['schema_version']) is not int or data['schema_version']!=1 or type(data['policy']) is not str or data['policy'] not in (POLICY,HAND_POLICY) or
         data['coordinate_space']!='BLENDER_WORLD_METERS' or data['bindings']!=bindings or
         profile.get('skin_deformation_policy')!='BOUND_CORRECTIVE_SMOOTH_V1' or
         profile.get('mesh_strain_reference')!='TRUE_NEUTRAL_BIND_V2'):
@@ -62,9 +63,9 @@ def parse_fit(data,bindings,baseline,profile,parents):
     feet=[(landmarks['left_foot'][i]+landmarks['right_foot'][i])/2 for i in range(3)]
     span=math.dist(landmarks['head'],feet)
     if not .1<span<10:raise ValueError('Invalid native fitting body span')
-    maximum=min(.03,.02*span);offsets=[]
+    maximum=min(.03,.02*span);offsets=[];hand_policy=data['policy']==HAND_POLICY
     for frame,row in enumerate(data['frames'],1):
-        if type(row) is not dict or set(row)!={'frame','offset_world'} or type(row['frame']) is not int or row['frame']!=frame:
+        if type(row) is not dict or set(row)!=({'frame','offset_world'}|({'hand_rotation_local_degrees'} if hand_policy else set())) or type(row['frame']) is not int or row['frame']!=frame:
             raise ValueError('Incomplete or reordered native fit trajectory')
         vector=row['offset_world']
         if type(vector) is not list or len(vector)!=3 or any(not number(v) for v in vector) or math.hypot(*vector)>maximum+1e-12:
@@ -83,7 +84,8 @@ def parse_fit(data,bindings,baseline,profile,parents):
     if samples and not any(math.hypot(*offsets[f-1])>1e-7 for f in samples):
         raise ValueError('Native fitting renders omit every actual target correction')
     return {'targets':targets,'chain':(upper,lower,hand),'descendants':[n for n in targets if hand in paths[n]],
-            'offsets':offsets,'maximum':maximum,'fps':fps,'render_frames':samples}
+            'offsets':offsets,'maximum':maximum,'fps':fps,'render_frames':samples,'policy':data['policy'],
+            'hand_rotations':rotations(data['frames'],fps) if hand_policy else ()}
 
 
 def load_fit(root,options,baseline,profile,parents):
@@ -91,7 +93,7 @@ def load_fit(root,options,baseline,profile,parents):
     return parse_fit(read_json(root/'contact_fit.json',options['fit_sha256'],512*1024),bindings,baseline,profile,parents)
 
 
-def fitted_world_poses(plan,poses,frame):
+def _arm_world_poses(plan,poses,frame):
     """Blender quaternion/vector solve, independent of the application matrix solver."""
     from mathutils import Matrix,Vector
     matrices={name:Matrix([m[i:i+4] for i in range(0,16,4)]) for name,m in zip(plan['targets'],poses)}
@@ -112,3 +114,8 @@ def fitted_world_poses(plan,poses,frame):
         matrices[name]=Matrix.LocRotScale(head,delta@matrices[name].to_quaternion(),Vector((1,1,1)))
     for name in plan['descendants']:matrices[name].translation+=offset
     return matrices
+
+
+def fitted_world_poses(plan,poses,frame):
+    matrices=_arm_world_poses(plan,poses,frame)
+    return orient(plan,matrices,frame) if plan.get('hand_rotations') else matrices

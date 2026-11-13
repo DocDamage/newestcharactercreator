@@ -68,7 +68,8 @@ class AreaCandidateProbe(CandidateProbe):
         super().__init__(bpy,human,rig,baseline,profile,mesh_guard=self.area_guard)
 
     def frame(self,plan,frame):
-        key=(tuple(plan['chain']),frame,tuple(plan['offsets'][frame-1]))
+        key=(tuple(plan['chain']),frame,tuple(plan['offsets'][frame-1]),
+             tuple(plan['hand_rotations'][frame-1]) if plan.get('hand_rotations') else ())
         if self._cache_enabled and key in self._queries:
             self.cache_hits+=1;cost,checked,error=self._queries[key]
             if error is not None:raise ValueError(error)

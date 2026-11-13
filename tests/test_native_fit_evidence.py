@@ -33,6 +33,28 @@ class NativeFitEvidenceTests(unittest.TestCase):
         self.assertEqual(data['frame_count'],5);self.assertEqual(surface.status,'UNAVAILABLE')
         self.assertEqual(audit['frames'],5);self.assertEqual(len(plan.offsets),5)
 
+    def test_rehashed_measurement_cannot_change_the_bound_fit_policy_version(self):
+        self.data['policy']='BOUNDED_NATIVE_ARM_HAND_IK_V2'
+        with self.assertRaisesRegex(ValidationError,'policy differs'):self.read()
+
+    def test_hand_measurement_requires_complete_independently_matching_angular_evidence(self):
+        from ucc.animations.contact_fit import read_fit_plan,fit_frame,verify_fitted_sequence
+        self.policy['policy']='BOUNDED_NATIVE_ARM_HAND_IK_V2'
+        for row,v in zip(self.policy['frames'],(0.,.1,.2,.1,0.)):row['hand_rotation_local_degrees']=[v,0.,0.]
+        self.policy_path.write_text(json.dumps(self.policy));self.options['fit_sha256']=sha256(self.policy_path.read_bytes()).hexdigest()
+        self.data['policy']=self.policy['policy'];self.data['bindings']=dict(self.options)
+        self.data['surface_review']['bindings']=dict(self.options);self.report['bindings']=dict(self.options)
+        plan=read_fit_plan(self.policy,self.policy['bindings'],self.base,self.profile,{n:r['parent'] for n,r in self.rest.items()})
+        original=[r['target_global_poses'] for r in self.base['full_timeline_frames']]
+        actual=[fit_frame(plan,p,i) for i,p in enumerate(original,1)]
+        for row,poses in zip(self.data['frames'],actual):row['target_global_poses']=poses
+        angular=verify_fitted_sequence(plan,original,actual)
+        self.data['angular_correction_metrics']={'max_speed_degrees_s':angular['max_correction_angular_speed_degrees_s'],
+            'max_acceleration_degrees_s2':angular['max_correction_angular_acceleration_degrees_s2']}
+        self.read()
+        self.data['angular_correction_metrics']['max_acceleration_degrees_s2']=0.
+        with self.assertRaisesRegex(ValidationError,'independent full-sequence'):self.read()
+
     def test_rehashed_wrong_pose_hand_orientation_or_unrelated_body_motion_rejects(self):
         for bone,component in ((1,0),(2,3),(3,3),(4,7),(5,11)):
             original=deepcopy(self.data);self.data['frames'][2]['target_global_poses'][bone][component]+=.001

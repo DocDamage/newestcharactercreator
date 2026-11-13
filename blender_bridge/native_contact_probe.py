@@ -10,6 +10,7 @@ from blender_bridge.native_surface_review import SurfaceInspector
 from blender_bridge.pose_deformation import _evaluated_vertices,_movement
 from blender_bridge.bvh_review_timeline import evaluated_edges
 from blender_bridge.contact_candidate_policy import MAX_POSE_TESTS
+from blender_bridge.native_hand_fit import changed
 
 
 class CandidateBudgetExceeded(ValueError):pass
@@ -35,7 +36,7 @@ class CandidateProbe:
         computed={}
         for pb in self.ordered:
             kw={'parent_matrix':computed[pb.parent.name],'parent_matrix_local':pb.parent.bone.matrix_local} if pb.parent else {}
-            if pb.name in plan['chain'] and any(plan['offsets'][frame-1]):
+            if pb.name in plan['chain'] and changed(plan,frame):
                 basis=pb.bone.convert_local_to_pose(self.inverse@expected[pb.name],pb.bone.matrix_local,invert=True,**kw)
                 if basis.translation.length>1e-5 or max(abs(v-1) for v in basis.to_scale())>1e-4:
                     raise ValueError('CANDIDATE_ACTUAL_HIERARCHY_TRANSLATION_OR_SCALE')
