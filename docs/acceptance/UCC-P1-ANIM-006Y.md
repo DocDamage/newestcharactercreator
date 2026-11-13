@@ -72,6 +72,14 @@ still has zero complete surface pairs while all 3,166 enclosure probes are
 inside; the checks are complementary. Budget faults reject partial verdicts.
 No authoritative scene is saved or changed by these fault tests.
 
+The first Qt CI run catches a stale wording assertion after the review message
+is corrected to reflect the measured tens-of-minutes runtime. Its expected
+message is updated without removing the assertion. The complete 749-test suite
+passes again in 92.266 seconds (736 pass, thirteen Windows symlink skips).
+The owner's cached comparison launcher is backed up, updated to all three
+verified reports and passes an actual Windows GPU startup smoke. The complete
+trunk annotations and both comparison buffers load with unchanged originals.
+
 Both actual menu cancellation paths pass: running fitting and complete-body
 Blender workers stop in 0.453 seconds, preserving original playback and all
 protected files. The actual complete-body operation is observed before cancel.
