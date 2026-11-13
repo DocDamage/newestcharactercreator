@@ -86,7 +86,18 @@ class FittedComparisonQtTests(unittest.TestCase):
         # Same bytes at a new identity still count as a replacement. Exercise
         # the parent handler directly as well as actual OS watcher delivery.
         replacement=self.policy.with_name('replacement.json')
-        replacement.write_bytes(self.policy.read_bytes());replacement.replace(self.policy)
+        replacement.write_bytes(self.policy.read_bytes())
+        # Windows can briefly deny replacement immediately after creating a
+        # file (also reproduced locally). Retry only that OS operation; a
+        # persistent lock still fails, and every invalidation assertion stays.
+        for attempt in range(10):
+            try:
+                replacement.replace(self.policy)
+                break
+            except PermissionError as error:
+                if os.name!='nt' or error.winerror not in (5,32,33) or attempt==9:
+                    raise
+                QTest.qWait(20)
         directory_changed(self.w,str(self.policy.parent))
         self.assertIsNone(self.w._native_review)
         self.assertIsNone(self.w.motion_viewer.cache)

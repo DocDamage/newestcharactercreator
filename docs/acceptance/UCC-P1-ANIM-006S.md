@@ -126,3 +126,10 @@ saved sequence independently.
 Next: use the measured feasibility results to extend contact-preserving target
 correction beyond a fixed wrist translation, with an explicit bounded orientation
 or additional anatomical-chain policy and the same independent verification.
+
+Windows CI exposed an intermittent WinError 5 during the test fixture's atomic
+replacement. A local 20-repetition run reproduced it once. The fixture now
+retries only Windows access/sharing errors for at most 180 ms; persistent errors
+still fail and all existing invalidation assertions remain. The corrected
+100-repetition local stress run passes (25.902 seconds). No production watcher
+logic or input invalidation rule changed. Exact-head remote gates remain required.
