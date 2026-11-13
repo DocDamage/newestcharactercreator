@@ -67,6 +67,18 @@ class AreaCandidateProbe(CandidateProbe):
         self._queries={};self._cache_enabled=True;self.cache_hits=0
         super().__init__(bpy,human,rig,baseline,profile,mesh_guard=self.area_guard)
 
+    def evaluate_arm_seed(self,plan,frames):
+        """Find an arm-clear starting point, never a body-clearance verdict.
+
+        Keep the same actual pose budget and all joint/skin guards. Isolate
+        queries so an arm-only zero cannot enter the body-constrained cache.
+        The caller must measure body constraints and freshly verify acceptance.
+        """
+        guard,enabled,queries=self.mesh_guard,self._cache_enabled,self._queries
+        self.mesh_guard=None;self._cache_enabled=False;self._queries={}
+        try:return CandidateProbe.evaluate(self,plan,frames)
+        finally:self.mesh_guard=guard;self._cache_enabled=enabled;self._queries=queries
+
     def frame(self,plan,frame):
         key=(tuple(plan['chain']),frame,tuple(plan['offsets'][frame-1]),
              tuple(plan['hand_rotations'][frame-1]) if plan.get('hand_rotations') else ())

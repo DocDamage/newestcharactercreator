@@ -47,11 +47,14 @@ def verify_body_fit_guard(blender,store,preview,original,fitted,source,permissio
         rejected=list(pool.map(negative,(('native_body',native),('fitted_polygon_order',paired))))
     from ci.verify_area_candidate import verify_area_candidate_negatives
     area_candidates=verify_area_candidate_negatives(blender,store,original,native,folder/'area-candidate-negatives')
+    hand_candidates=verify_area_candidate_negatives(blender,store,original,native,folder/'hand-candidate-negatives',
+        operation='propose_native_hand_contact_fit')
     if store.load()!=project or [digest(p) for p in originals]!=before:
         raise RuntimeError('Stable-face fitting guard changed source/master/project/policy/scene originals')
     return {'status':'REAL_ORIGINAL_BODY_FIT_GUARD_PASSED','source_frames':300,'fitted_frames':300,
         'scope':'ORIGINAL_CI_SOURCE_ON_REAL_MPFB_NOT_OWNER_OR_PACK_COMPATIBILITY','source_only_and_paired_reproduced':True,
         'all_cached_highlight_triangles_resolved_to_stable_polygons':True,'guard_policy':guard.policy,
         'new_contact_area_frames':len(paired.areas.new_area_frames),'more_per_hand_pair_frames':len(paired.areas.more_hand_pair_frames),
-        'rehashed_false_reports_rejected':rejected,'area_candidate_negatives':area_candidates,'original_inputs_unchanged':True,'assets_uploaded':False,
+        'rehashed_false_reports_rejected':rejected,'area_candidate_negatives':area_candidates,'hand_candidate_negatives':hand_candidates,
+        'original_inputs_unchanged':True,'assets_uploaded':False,
         'contact_quality_approved':False,'engine_import_verified':False}
