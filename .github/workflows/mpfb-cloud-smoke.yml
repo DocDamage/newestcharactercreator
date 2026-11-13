@@ -153,7 +153,10 @@ jobs:
     # Complete-trunk review retains the area/enclosure checks and adds coherent
     # native/fitted false-contact reproductions. Keep every assertion and bound
     # the additional actual full-sequence Blender work with explicit headroom.
-    timeout-minutes: ${{ matrix.suite == 'native-fit' && 120 || matrix.suite == 'body-contacts' && 75 || 40 }}
+    # PR #59 reached the verified 75-minute limit after its real geometry
+    # faults passed, while remaining native fault checks still ran. Keep every
+    # assertion and allow bounded headroom for the complete body suite.
+    timeout-minutes: ${{ matrix.suite == 'native-fit' && 120 || matrix.suite == 'body-contacts' && 90 || 40 }}
     env:
       PYTHONUNBUFFERED: '1'
     steps:
