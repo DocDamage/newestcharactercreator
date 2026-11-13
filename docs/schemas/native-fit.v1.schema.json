@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "UCC bounded native target arm fitting v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "policy",
+    "bindings",
+    "coordinate_space",
+    "chain",
+    "fps",
+    "frames"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "type": "integer"
+    },
+    "policy": {
+      "const": "BOUNDED_NATIVE_ARM_IK_V1"
+    },
+    "coordinate_space": {
+      "const": "BLENDER_WORLD_METERS"
+    },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mapping_sha256",
+        "master_sha256",
+        "review_sha256",
+        "snapshot_sha256",
+        "source_sha256",
+        "timeline_sha256"
+      ],
+      "properties": {
+        "mapping_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "master_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "review_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "snapshot_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "source_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "timeline_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "chain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "side",
+        "upper_arm",
+        "forearm",
+        "hand"
+      ],
+      "properties": {
+        "side": {
+          "enum": [
+            "left",
+            "right"
+          ]
+        },
+        "upper_arm": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "forearm": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "hand": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      }
+    },
+    "fps": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 240
+    },
+    "frames": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 2000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "frame",
+          "offset_world"
+        ],
+        "properties": {
+          "frame": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2000
+          },
+          "offset_world": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 3,
+            "items": {
+              "type": "number",
+              "minimum": -0.03,
+              "maximum": 0.03
+            }
+          }
+        }
+      }
+    },
+    "render_frames": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "uniqueItems": true,
+      "items": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 2000
+      }
+    }
+  }
+}

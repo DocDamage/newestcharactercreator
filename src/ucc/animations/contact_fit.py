@@ -65,6 +65,7 @@ class ContactFit:
     offsets: tuple[tuple[float, float, float], ...]
     fps: float
     maximum_offset: float
+    render_frames: tuple[int, ...] = ()
 
 
 def read_contact_fit(path: Path, expected_sha: str, bindings: dict, baseline: dict, profile: dict,
@@ -104,7 +105,7 @@ def read_fit_plan(data: dict, bindings: dict, baseline: dict, profile: dict,
     measured the supplied parent tree from the original and saved character.
     """
     fields = {"schema_version", "policy", "bindings", "coordinate_space", "chain", "fps", "frames"}
-    if (type(data) is not dict or set(data) != fields or type(data["schema_version"]) is not int or
+    if (type(data) is not dict or set(data)-{"render_frames"} != fields or type(data["schema_version"]) is not int or
             data["schema_version"] != 1 or data["policy"] != POLICY or
             data["coordinate_space"] != "BLENDER_WORLD_METERS" or
             type(bindings) is not dict or set(bindings) != HASHES or
@@ -164,8 +165,14 @@ def read_fit_plan(data: dict, bindings: dict, baseline: dict, profile: dict,
     if any(_length(_sub(b, a))*fps > MAX_ACCELERATION_METERS_S2+1e-9 for a, b in zip(velocities, velocities[1:])):
         raise ValidationError("Contact fitting exceeds its fixed correction-acceleration bound")
     descendants = tuple(n for n in targets if hand in paths[n])
+    samples = data.get("render_frames", [])
+    if "render_frames" in data and (type(samples) is not list or len(samples) != 5 or
+            any(type(f) is not int or not 1 <= f <= count for f in samples) or samples != sorted(set(samples))):
+        raise ValidationError("Contact fitting needs five explicit ordered render frames")
+    if samples and not any(_length(offsets[f-1])>1e-7 for f in samples):
+        raise ValidationError("Fitting render samples must include an actual target correction")
     return ContactFit(tuple(sorted(bindings.items())), targets, (upper, lower, hand), descendants,
-                      tuple(offsets), float(fps), maximum)
+                      tuple(offsets), float(fps), maximum, tuple(samples))
 
 
 def _between(a, b):

@@ -7,10 +7,11 @@ despite passing source FK, joint and skin-strain checks. A correction changes
 target motion and must be declared independently of the original source conversion.
 It cannot silently replace source FK or imply that grasp intent is known.
 
-The current foundation validates complete SHA-bound arm-fitting trajectories and
-independently computes each fitted global pose. It does not yet expose a repair
-command or desktop control. The existing source retargeter and player retain
-their previous behavior. The full fitting milestone is **not complete**.
+The staged application API validates complete SHA-bound arm-fitting trajectories,
+bakes a separate private Action, measures its saved geometry, and requires a third
+Blender process to reproduce that evidence and render targeted inspection views.
+The existing source retargeter and player retain their previous behavior. Desktop
+fitted playback and comparison are still outstanding; the full milestone is **not complete**.
 
 ## Implemented boundaries
 
@@ -41,7 +42,7 @@ their previous behavior. The full fitting milestone is **not complete**.
 
 ## Executed progress
 
-The local suite runs 528 tests: 515 pass and 13 Windows symlink-privilege cases
+The local suite runs 548 tests: 535 pass and 13 Windows symlink-privilege cases
 skip. All 15 preflight/guardrail tests, compilation and whitespace checks pass.
 
 Actual Blender 5.3/MPFB trials use the owner's existing private 300-frame clip.
@@ -74,16 +75,53 @@ decoded foreground bounds and posed-skin bindings are independently checked.
 Additional correction angular speed/acceleration measure 44.8738 degrees/s and
 657.394 degrees/s², below their fixed bounds. Contact/grasp visual approval is
 still false. The completed saved Action, private policy, reports and images stay
-outside the repository; the application does not yet publish this fitted clip.
+outside the repository.
+
+## Staged application implementation and real execution
+
+- `fit_native_preview` checks local-preview rights, project identity/revision,
+  original source-FK evidence and all bound inputs. Three closed worker operations
+  stage the new Action, measure the completed saved scene, and independently
+  reproduce every frame before returning a separate fitted result. Source,
+  master, metadata, policy and staged copies are rehashed throughout. Cancellation,
+  stale inputs, partial or unavailable surface checks never publish a fitted result.
+- All 163 measured rest matrices/parents, exact float32 weights, source polygon
+  winding, object matrices, bone deformation controls, neutral geometry and
+  modifier settings must remain unchanged. Unkeyed helpers must remain identity;
+  mapped scales remain exactly one and non-root translations exactly zero.
+- A real saved-scene regression exposed float32 drift from restoring decomposed
+  `matrix_basis` during neutral inspection. Inspection now restores the exact
+  active rotation/location/scale channels; geometric hash checks remain strict.
+- The actual application API accepted the owner's 300-frame clip using three
+  distinct jobs: `93ee8176-b2bf-4403-87d6-fe955aca1cd6`,
+  `24e05766-37da-4da2-94ed-95a195e64dac`, and
+  `ad88401d-0e21-4397-845e-1565feda7c8c`. All corrected/raw skin and topology
+  observations reproduce; 15 PNGs decode and bind to the canonical posed skin.
+  The fitted scene SHA-256 is
+  `b46fa59a03e2ce452d3f554b481401d9368dae3e0bab107c756f9e55a3151ecb`.
+  Source/master/project bytes remain unchanged. This is a manually declared
+  owner-specific correction, not automatic animation repair.
+- Actual independently rehashed corruptions reject: one-ULP helper scale,
+  one-ULP skin weight, changed bone deformation flag, rest roll, keyed wrist
+  quaternion, polygon winding, and fabricated canonical skin hashes. These tests
+  change private copies only. A valid strict-helper saved-scene regression passes.
+- A separate real MPFB integration generated an original non-shipping 300-frame
+  source with 59 roles, articulated fingers and root travel. The complete staged
+  API passes, including 15 decoded renders and a measured 37.93-micrometre fitted
+  hand displacement. Six real corruptions reject in that local run; the additional
+  deformation-flag rejection was executed separately on the owner copy. Neither
+  this small integration correction nor invented unit fixtures prove pack compatibility.
+- The existing Linux workflow now runs both the unchanged full regression and
+  this independent native-fitting suite, including all seven negative cases.
+  All five workflows on the new PR head remain required before review acceptance;
+  remote results are pending at this revision. Only JSON summaries are uploaded.
 
 ## Remaining vertical slice
 
-Integrate fitting as a separate staged Blender operation with project/revision,
-license, cancellation and input-immutability guards; require complete fresh saved
-Action/raw skin/rest/topology verification before publication. Add original real
-Blender integration/negative tests and a defined desktop comparison workflow.
-Do not replace source FK, weaken deformation limits, overwrite the master or
-publish a partial fit as successful. All contact/visual/engine approvals remain false.
+Export and independently verify fitted full-surface playback caches, then provide
+a desktop original/fitted comparison with existing licensing, cancellation and
+input-change invalidation. Keep source FK distinct, preserve hard deformation
+bounds and never overwrite the master. All contact/visual/engine approvals remain false.
 
 No new dependencies, downloaded assets or license rights. Paid source files,
 poses, meshes, saved scenes, caches and rendered images remain private.

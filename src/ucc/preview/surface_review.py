@@ -52,6 +52,12 @@ def read_surface_review(folder: Path,record: dict,bindings: dict,timeline: dict,
     if len(payload)!=record["bytes"] or sha256(payload).hexdigest()!=record["sha256"]:raise ValidationError("Surface review changed while reading")
     try:data=json.loads(payload,object_pairs_hook=pairs,parse_constant=lambda _v:(_ for _ in ()).throw(ValidationError("Nonfinite surface review")))
     except (ValueError,UnicodeError,RecursionError) as error:raise ValidationError("Invalid surface-review JSON") from error
+    return validate_surface_data(data,bindings,timeline,profile,triangle_count,vertex_count,cancel_check=cancel_check)
+
+
+def validate_surface_data(data: dict,bindings: dict,timeline: dict,profile: dict,triangle_count: int,
+                          vertex_count: int,*,cancel_check=lambda:None) -> SurfaceReview:
+    """Check semantics after the caller binds bytes and verifies a fresh scene."""
     fields={"schema_version","policy","bindings","status","reason","hands","region_bones","region_vertex_counts","frame_count","frames","contact_quality_verified","engine_import_verified"}
     count=timeline["source_frame_count"]
     if (type(data) is not dict or set(data)!=fields or type(data["schema_version"]) is not int or data["schema_version"]!=1 or

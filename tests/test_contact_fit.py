@@ -10,27 +10,7 @@ import unittest
 
 from ucc.animations.contact_fit import POLICY, HASHES, read_contact_fit, read_fit_plan, fit_frame, verify_fitted_frame,verify_fitted_sequence
 from ucc.core.errors import ValidationError
-
-
-def matrix(head):
-    return [1.,0.,0.,head[0],0.,1.,0.,head[1],0.,0.,1.,head[2],0.,0.,0.,1.]
-
-
-def fixture():
-    names=['root','upper','lower','hand','finger','other']
-    profile={'pairs':[{'target':n} for n in names],
-             'landmarks':{'right_hand':{'target':'hand'},'left_hand':{'target':'other'}},
-             'skin_deformation_policy':'BOUND_CORRECTIVE_SMOOTH_V1','mesh_strain_reference':'TRUE_NEUTRAL_BIND_V2'}
-    parents={'root':None,'upper':'root','helper':'upper','lower':'helper','hand':'lower','finger':'hand','other':'root'}
-    baseline={'neutral_target_helpers':['helper'],'source_frame_count':5,'fps':30.,
-              'target_anatomical_landmarks':{'left_hip':[.1,0.,0.],'right_hip':[-.1,0.,0.],'head':[0.,0.,1.],
-                 'left_foot':[.1,0.,-1.],'right_foot':[-.1,0.,-1.]}}
-    bindings={k:'a'*64 for k in HASHES}
-    data={'schema_version':1,'policy':POLICY,'bindings':bindings,'coordinate_space':'BLENDER_WORLD_METERS',
-          'chain':{'side':'right','upper_arm':'upper','forearm':'lower','hand':'hand'},'fps':30.,
-          'frames':[{'frame':i+1,'offset_world':[v,0.,0.]} for i,v in enumerate((0.,.001,.002,.001,0.))]}
-    poses=[matrix(h) for h in ((0.,0.,0.),(0.,0.,0.),(0.,1.,0.),(0.,1.,1.),(0.,1.,1.1),(2.,0.,0.))]
-    return data,bindings,baseline,profile,parents,poses
+from fixtures.contact_fit_contract import fixture,matrix
 
 
 class ContactFitTests(unittest.TestCase):
