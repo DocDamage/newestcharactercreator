@@ -16,6 +16,7 @@ from blender_bridge.native_inputs import read_json
 from blender_bridge.native_body_contacts import BodyContactInspector
 from blender_bridge.body_contact_regions import weighted_central_region
 from blender_bridge.central_regions import volume_regions
+from blender_bridge.central_enclosure import observe_central_enclosure
 from blender_bridge.central_geometry import central_geometry,outward_probe
 from blender_bridge.central_cap import in_cap_box,safe_ray_directions
 from blender_bridge.central_self import require_body_surface
@@ -79,6 +80,19 @@ def verify(job,output):
             directions=safe_ray_directions(point,geometry.cap_boxes,geometry.diagonal)
             values=[signed_ray(cast,point,d,geometry.diagonal,geometry.diagonal*1e-6) for d in directions]
             verdict='AMBIGUOUS' if len(values)!=3 else consistent_winding(values);counts[verdict]+=1
+        production=observe_central_enclosure(moved,triangles,[t.polygon_index for t in mesh.loop_triangles],
+            [tuple(p.vertices) for p in mesh.polygons],members,
+            {s:selected.vertices[s+'_hand'] for s in ('left','right')},(1.,0.,0.,0.,0.,1.,0.,0.,0.,0.,1.,0.,0.,0.,0.,1.))
+        if (len(production['right']['nonzero_triangles'])!=len(hand_faces) or production['right']['ambiguous_triangles'] or
+            not production['right']['inside_polygons']):raise RuntimeError('Production sampler missed fully enclosed actual hand')
+        from unittest.mock import patch
+        with patch('blender_bridge.central_enclosure.MAX_FRAME_RAY_HITS',1):
+            try:observe_central_enclosure(moved,triangles,[t.polygon_index for t in mesh.loop_triangles],
+                [tuple(p.vertices) for p in mesh.polygons],members,
+                {s:selected.vertices[s+'_hand'] for s in ('left','right')},(1.,0.,0.,0.,0.,1.,0.,0.,0.,0.,1.,0.,0.,0.,0.,1.))
+            except ValueError as error:
+                if str(error)!='CENTRAL_VOLUME_RAY_BUDGET':raise
+            else:raise RuntimeError('Production ray budget returned partial enclosure verdict')
         exact=solid_angle_values(geometry.body_points,geometry.body_faces+geometry.cap_faces,queries)
         if any(not math.isfinite(v) or abs(v-1)>1e-5 for v in exact):raise RuntimeError('Actual interior hand differs from independent enclosure oracle')
         if counts['ZERO'] or counts['NONZERO']<len(hand_faces)*.9:raise RuntimeError('Cap-free rays miss the actual enclosed hand')
@@ -105,7 +119,8 @@ def verify(job,output):
     summary={'status':'REAL_MPFB_CENTRAL_ENCLOSURE_FAULTS_PASSED','saved_source_frames_reopened':reopened['frames_verified'],
         'measured_body_triangles':len(geometry.body_faces),'virtual_boundaries':len(geometry.boundaries),
         'fully_enclosed_hand_triangle_pairs':0,'actual_hand_probes':len(hand_faces),'cap_free_classifications':counts,
-        'independent_oracle_all_hand_probes_inside':True,'nonadjacent_body_fault_rejected':True,
+        'independent_oracle_all_hand_probes_inside':True,'production_sampler_detected_every_enclosed_probe':True,
+        'production_ray_budget_rejected_without_partial_verdict':True,'nonadjacent_body_fault_rejected':True,
         'bounded_body_workload_rejected_without_partial_verdict':True,'cap_interiors_never_definite':True,
         'original_inputs_unchanged':True,'saved_scene_created':False,'anatomical_or_animation_quality_approved':False,
         'body_surface_audit':audit}

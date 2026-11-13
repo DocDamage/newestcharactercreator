@@ -106,6 +106,8 @@ def verify_native_body(blender: Path,store: ProjectStore,folder: Path,*,hip_anch
             skin_evidence['central_body_contact_contract']=verify_body_review(blender,store,result,playback,source,policy,folder/'body-contact-review')
             from ci.verify_skin_inclusion import verify_skin_review
             skin_evidence['closed_skin_inclusion_contract']=verify_skin_review(blender,store,result,playback,source,policy,folder/'skin-inclusion-review')
+            from ci.verify_anatomical_safety import verify_anatomical_review
+            skin_evidence['anatomical_safety_contract']=verify_anatomical_review(blender,store,result,playback,source,policy,folder/'anatomical-safety-review')
     if hip_anchor:
         hip_travel=math.dist(data["full_timeline_frames"][-1]["hip_midpoint_world"],data["hip_anchor"]["target_bind_midpoint_world"])
         if hip_travel<3.99:raise RuntimeError("Native hip anchor lost the authored four-meter anatomical trajectory")

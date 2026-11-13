@@ -70,13 +70,43 @@ confirm every probe. A real copied-body intersection is rejected, a forced work
 budget returns no partial verdict, and all closure interiors remain unknown.
 No mesh datablock, animation, source or master is overwritten or saved.
 
+## Application integration under verification
+
+The production sampler now measures both stable body-surface areas and full-trunk
+hand enclosure during the same saved-Action traversal. Four closed worker
+operations distinguish native/fitted measurement and verification. The second
+process requires both report SHA-256 values, reproduces both reports exactly,
+and preserves the existing six/nine input bindings. Artificial closure faces
+never enter ray queries; protected boundaries remain uncertain. Work budgets
+are fixed and incomplete geometry stops without publishing a partial verdict.
+
+Core intake independently reconstructs the whole-polygon body selection,
+boundary loops, protected boxes, origin, volume, scale and pose-specific triangle
+identities from immutable source/fitted playback. It validates every hand
+selection and stable polygon classification, including the complete trace.
+Automatic fitting retains nine jobs and now requires both the previous area /
+per-hand pair guard and no newly enclosed or newly uncertain hand polygons.
+Publication rechecks evidence files and watches the enclosure report and fresh
+verification receipt, clearing both variants on replacement or edits.
+
+The complete local suite runs 711 tests: 698 pass and 13 Windows symlink cases
+skip. All fifteen earlier preflight/license checks, compileall and diff checks
+pass. The actual production sampler detects every one of 3,166 deliberately
+buried MPFB hand probes, independently checked with solid angles; a forced ray
+budget rejects without a partial verdict. The first paired production worker
+measures all 600 owned source/fitted frames; independent core geometry intake
+passes for both complete caches. The independent second Blender process
+reproduces both complete reports exactly; the paired run takes 1,053.906
+seconds and preserves every protected original. The complete desktop
+transaction, original-source negatives and exact-head CI remain in progress.
+This is not final milestone acceptance.
+
 ## Remaining acceptance work
 
-The production sampler, SHA-bound worker operations, strict core intake and
-automatic-publication guard are not yet connected. Integrate area and enclosure
-collection in the existing final two-process review, retaining the current
-nine-job fitting action, immutable inputs, cancellation, revision checks,
-licensing and both source/fitted cache bindings. Preserve all earlier operations.
+Complete execution of the integrated final two-process review and the nine-job
+desktop action. Verify fresh receipts, unchanged original files, actual GPU
+playback, report-edit invalidation and both native/fitted cache bindings.
+All earlier operations remain available.
 
 Require no newly enclosed or newly uncertain stable hand polygons, alongside
 the existing body-area/per-hand growth guard, before publication. Unknown is
@@ -90,5 +120,5 @@ The independent nonshipping oracle uses NumPy already bundled with Blender.
 Paid geometry, poses, scenes, caches, renders and diagnostic IDs stay private.
 The remaining contact interval, grasp intent and engine imports are unverified.
 
-Next: connect the paired enclosure guard to the final review and publication
-path, then address the remaining late body-contact interval.
+Next: finish real application and CI acceptance of the integrated guard, then
+address the remaining late body-contact interval.

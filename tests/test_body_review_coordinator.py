@@ -11,7 +11,7 @@ import test_native_playback as source_fixture
 from fixtures.body_contact_contract import write_body_contract
 from fixtures.motion_skin_contract import file_record
 from ucc.core.errors import ValidationError,ProjectConflict,ProjectStorageError
-from ucc.jobs.body_contact_review import review_body_contacts,review_body_contact_areas
+from ucc.jobs.body_contact_review import review_body_contacts,review_body_contact_areas,review_anatomical_safety
 from ucc.jobs.contact_fit_context import ContactFitContext
 from ucc.jobs.native_playback import NativePlayback
 from ucc.library.provenance import AssetPolicyError
@@ -40,7 +40,7 @@ class BodyReviewCoordinatorTests(unittest.TestCase):
         self.fitted_data['bindings']={k:v for k,v in self.fit_options.items() if k!='fit_report_sha256'}
         self.fitted=SimpleNamespace(cache=cache,unit_only=True);self.operations=[];self.fault=None
 
-    def run_review(self,paired=False,stable_areas=False,**overrides):
+    def run_review(self,paired=False,stable_areas=False,anatomical=False,**overrides):
         f=self.f;captured={}
         def worker(request,**kw):
             self.operations.append(request.operation);out=f.store.root/'.ucc-jobs'/request.job_id;out.mkdir()
@@ -50,11 +50,15 @@ class BodyReviewCoordinatorTests(unittest.TestCase):
                 data['bindings']=dict(request.options);data['original_review_verification']['bindings']=dict(self.bindings)
                 if self.fault=='partial':data['original']['frames'].pop()
                 if self.fault=='topology':data['original']['frames'][0]['triangle_sha256']='e'*64
-                if stable_areas:
+                if stable_areas or anatomical:
                     from fixtures.body_area_contract import wrap_body_areas
                     data=wrap_body_areas(data,self.playback.cache)
                 p=out/'body_contacts.json';p.write_text(json.dumps(data));captured['path']=p
                 report.update(bindings=dict(request.options),report=file_record(p))
+                if anatomical:
+                    ep=out/'central_enclosure.json';ep.write_text('{"unit_only":true}',encoding='utf-8')
+                    captured['enclosure']=ep;captured['measurement']=report
+                    report.update(status='REAL_ANATOMICAL_SAFETY_MEASURED',enclosure_report=file_record(ep))
                 if self.fault=='approval':report['contact_quality_verified']=True
                 if self.fault=='binding':report['bindings']['source_sha256']='e'*64
                 if self.fault=='source':f.source.write_bytes(b'changed')
@@ -64,16 +68,28 @@ class BodyReviewCoordinatorTests(unittest.TestCase):
             else:
                 report={'status':'REAL_NATIVE_BODY_CONTACTS_VERIFIED','bindings':dict(request.options),'frames_verified':3,'paired':paired,
                     'originals_unchanged':True,'contact_quality_verified':False,'animation_visual_quality_verified':False,'engine_import_verified':False}
+                if anatomical:
+                    report['status']='REAL_ANATOMICAL_SAFETY_VERIFIED'
+                    if self.fault=='enclosure_staged':(out/'central_enclosure.json').write_bytes(b'changed')
+                    if self.fault=='late_enclosure':captured['enclosure'].write_bytes(b'changed')
+                    if self.fault=='enclosure_receipt':report['bindings']['enclosure_review_sha256']='0'*64
                 if self.fault=='receipt':report['frames_verified']=2
                 if self.fault=='verify_staged':(out/'source_snapshot.json').write_bytes(b'changed')
                 if self.fault=='late_report':captured['path'].write_bytes(b'changed')
+            (out/'result.json').write_text(json.dumps({'details':report}),encoding='utf-8')
             return SimpleNamespace(details=report),out
         args={'source_fbx':f.source,'permission':f.policy,'blender_exe':Path('unit.blender'),'worker_script':Path('unit.py'),'cancel':f.cancel}
         args.update(overrides)
-        with (patch('ucc.jobs.body_contact_review.contact_context',return_value=self.ctx) as context,
+        def enclosure_parser(folder,measured,verified,bindings,baseline,profile,cache,areas,**kwargs):
+            from ucc.preview.central_enclosure import CentralEnclosure,EnclosureVariant,validate_anatomical_receipt
+            validate_anatomical_receipt(verified,bindings,baseline,paired,measured)
+            variant=EnclosureVariant(((frozenset(),frozenset()),)*3,((frozenset(),frozenset()),)*3)
+            return CentralEnclosure(variant,variant if paired else None)
+        with (patch('ucc.preview.central_enclosure.read_central_enclosure',side_effect=enclosure_parser),
+              patch('ucc.jobs.body_contact_review.contact_context',return_value=self.ctx) as context,
               patch('ucc.jobs.body_contact_review.fitted_body_context',return_value=(self.fit_options,self.paths,self.fit_hashes,self.fitted_data,self.fitted)),
               patch('ucc.jobs.body_contact_review.BlenderJobRunner.run',side_effect=worker)):
-            result=(review_body_contact_areas if stable_areas else review_body_contacts)(f.store,f.preview,self.playback,fitted=self.fitted if paired else None,**args)
+            result=(review_anatomical_safety if anatomical else review_body_contact_areas if stable_areas else review_body_contacts)(f.store,f.preview,self.playback,fitted=self.fitted if paired else None,**args)
             self.assertFalse(context.call_args.kwargs['require_crossings'])
             return result
 
@@ -85,6 +101,24 @@ class BodyReviewCoordinatorTests(unittest.TestCase):
         self.operations=[];paired=self.run_review(True)
         self.assertEqual(self.operations,['inspect_fitted_body_contacts','verify_fitted_body_contacts'])
         self.assertEqual(paired.contacts.more_pair_frames,(2,));self.assertEqual(self.f.store.load(),self.f.project)
+
+    def test_combined_review_binds_both_reports_and_fresh_receipt_without_legacy_statuses(self):
+        result=self.run_review(anatomical=True)
+        self.assertEqual(self.operations,['inspect_native_anatomical_safety','verify_native_anatomical_safety'])
+        self.assertIsNotNone(result.enclosure);self.assertIsNone(result.enclosure.fitted)
+        self.assertTrue(Path(result.private_enclosure_report).is_file())
+        self.assertTrue(Path(result.private_anatomical_verification).is_file())
+        self.assertEqual(result.enclosure_report_sha256,self.f.digest(Path(result.private_enclosure_report)))
+        self.assertEqual(result.anatomical_verification_sha256,self.f.digest(Path(result.private_anatomical_verification)))
+
+    def test_combined_receipt_provenance_and_enclosure_edits_cannot_publish(self):
+        for fault in ('enclosure_staged','late_enclosure','enclosure_receipt','receipt','partial','approval','cancel','revision'):
+            case=BodyReviewCoordinatorTests();case.setUp()
+            try:
+                case.fault=fault
+                with self.subTest(fault=fault),self.assertRaises((ValidationError,ProjectConflict,ProjectStorageError)):
+                    case.run_review(anatomical=True)
+            finally:case.doCleanups()
 
     def test_denied_license_precedes_context_or_worker(self):
         with self.assertRaises(AssetPolicyError):self.run_review(permission=replace(self.f.policy,reviewed=False))

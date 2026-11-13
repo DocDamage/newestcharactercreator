@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .body_contact_review import BodyContactReview
     from .body_fit_guard import BodyFitGuard
+    from .enclosure_fit_guard import EnclosureFitGuard
 
 from ucc.animations.fbx_snapshot import validate_snapshot
 from ucc.animations.native_profile import read_native_profile
@@ -51,6 +52,7 @@ class FittedComparison:
     body_review: BodyContactReview | None=None
     body_fit_guard: BodyFitGuard | None=None
     source_body_review: BodyContactReview | None=None
+    enclosure_fit_guard: EnclosureFitGuard | None=None
 
 
 def prepare_fitted_comparison(store: ProjectStore,preview: NativeFitPreview,*,source_fbx: Path,
