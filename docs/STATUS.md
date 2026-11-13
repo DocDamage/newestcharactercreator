@@ -22,7 +22,9 @@
 
 **In review, stacked on #45:** [PR #46 / UCC-P1-ANIM-006L](acceptance/UCC-P1-ANIM-006L.md) introduces explicitly declared wrist/index/pinky rest planes and verifies their actual geometry again in both original and reopened rigs. The owned held-finger clip's maximum hand twist drops from 83.655 to 39.907 degrees without changing any of its 21 body poses. All five final-head workflows and complete local Windows regression passed, including roll-only, same-branch and rehashed false-ray rejection. Grasp/contact quality and general articulated pack compatibility remain unapproved.
 
-**In development, stacked on #46:** [UCC-P1-ANIM-006M](acceptance/UCC-P1-ANIM-006M.md) measures hand/opposite-upper-limb triangle crossings through the entire cached clip, independently reproduces the report and pose-specific topology, and adds GPU highlighting/focused flagged-frame navigation. The actual bandaging clip has crossings in 26 frames missed by the five sampled views. No contact repair or source-animation/engine approval is implied; final regression/CI gates remain pending.
+**In review, stacked on #46:** [PR #47 / UCC-P1-ANIM-006M](acceptance/UCC-P1-ANIM-006M.md) measures hand/opposite-upper-limb triangle crossings through the entire cached clip, independently reproduces the report and pose-specific topology, and adds GPU highlighting/focused flagged-frame navigation. All five final-head workflows and full local regression pass. The actual bandaging clip has crossings in 26 frames missed by the five sampled views. No contact repair or source-animation/engine approval is implied.
+
+**In development, based on #47:** [UCC-P1-ANIM-006N](acceptance/UCC-P1-ANIM-006N.md) adds SHA-bound complete target-arm fitting trajectories, independent analytic IK checks and explicitly selected private render frames. This is a foundation with a private actual-clip prototype; application worker/UI/cache integration is unfinished. A target fitting change remains distinct from the original audited source FK conversion.
 
 ## Verified capabilities and remaining gates
 

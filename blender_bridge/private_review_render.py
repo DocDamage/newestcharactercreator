@@ -18,23 +18,34 @@ class PrivateRenderError(RuntimeError):
     """Actual skin cannot be rendered and measured in the private workspace."""
 
 
+def review_samples(frames: int, explicit: tuple[int, ...] | list[int] | None = None) -> list[int]:
+    """Keep full source coverage separate from targeted private render samples."""
+    if type(frames) is not int or not 5 <= frames <= 2000:
+        raise PrivateRenderError("Private review needs a bounded complete source timeline")
+    samples = [1, 1+(frames-1)//4, 1+(frames-1)//2, 1+3*(frames-1)//4, frames] if explicit is None else explicit
+    if (type(samples) not in (tuple, list) or len(samples) != 5 or
+            any(type(f) is not int or not 1 <= f <= frames for f in samples) or
+            list(samples) != sorted(set(samples))):
+        raise PrivateRenderError("Private review requires five distinct ordered source frames")
+    return list(samples)
+
+
 def _record(path: Path) -> dict[str, Any]:
     data = path.read_bytes()
     return {"name": path.name, "bytes": len(data), "sha256": sha256(data).hexdigest()}
 
 
 def render_private_review(bpy: Any, human: Any, frames: int, review_path: Path,
-                          bindings: dict[str, Any], *, root_positions: dict | None = None) -> dict[str, Any]:
+                          bindings: dict[str, Any], *, root_positions: dict | None = None,
+                          sample_frames: tuple[int, ...] | list[int] | None = None) -> dict[str, Any]:
     from mathutils import Vector
     source_scene = bpy.context.scene
     prior_frame = source_scene.frame_current
+    samples = review_samples(frames, sample_frames)
     folder = review_path.parent / "review_frames"
     if folder.exists() or folder.is_symlink():
         raise PrivateRenderError("Refuse to overwrite or redirect private review renders")
     folder.mkdir()
-    samples = sorted({1, 1+(frames-1)//4, 1+(frames-1)//2, 1+3*(frames-1)//4, frames})
-    if len(samples) != 5:
-        raise PrivateRenderError("Private review requires five distinct source frames")
     def offset(frame):
         if root_positions is None:
             return Vector((0.,0.,0.))
