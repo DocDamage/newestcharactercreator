@@ -19,6 +19,7 @@ BODY_CONTACT_OPERATIONS = {'verify_fitted_body_contacts', 'verify_native_body_co
 BODY_CONTACT_OPERATIONS |= {'inspect_native_body_areas','verify_native_body_areas','inspect_fitted_body_areas','verify_fitted_body_areas'}
 BODY_CONTACT_OPERATIONS |= {'inspect_native_skin_inclusion','verify_native_skin_inclusion','inspect_fitted_skin_inclusion','verify_fitted_skin_inclusion'}
 BODY_CONTACT_OPERATIONS |= {kind+'_'+variant+'_anatomical_safety' for kind in ('inspect','verify') for variant in ('native','fitted')}
+BODY_CONTACT_OPERATIONS |= {kind+'_'+variant+'_complete_anatomical_safety' for kind in ('inspect','verify') for variant in ('native','fitted')}
 SUPPORTED_OPERATIONS |= BODY_CONTACT_OPERATIONS
 MAX_REQUEST_BYTES = 256 * 1024
 
@@ -70,6 +71,7 @@ class JobRequest:
             if self.operation.startswith('verify_'):
                 fields.add('body_review_sha256')
                 if self.operation.endswith('_anatomical_safety'):fields.add('enclosure_review_sha256')
+                if self.operation.endswith('_complete_anatomical_safety'):fields.add('full_trunk_review_sha256')
             if self.input_project!='candidate.blend' or set(self.options)!=fields or any(not is_sha256(v) for v in self.options.values()):
                 raise ValidationError('Body contact review requires exact hashes and fixed staged filenames')
         if self.operation in {"propose_native_contact_fit",'propose_native_area_contact_fit','propose_native_hand_contact_fit'}:

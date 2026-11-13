@@ -38,11 +38,21 @@ unchanged. The rejected experimental trajectory introduces new complete-trunk
 polygons in 147 frames and increases per-hand pairs in nine. No quality verdict
 or desktop publication follows from this evidence.
 
-The new report is not yet connected to versioned worker operations or the
-application review transaction. The intake helper explicitly requires a
-previously validated enclosure and fresh receipt; calling it alone does not
-establish physical evidence. Full production protocol, real fault tests,
-publication guard and desktop annotations remain to be implemented.
+Four closed worker operations now bind all three reports in one traversal and
+require every report SHA during independent reproduction. Legacy operations
+retain their original formats. All report sizes are checked before any output
+file is created; accumulated highlights also have a whole-sequence budget.
+The full local suite runs 733 tests in 95.569 seconds (720 pass, thirteen
+Windows symlink skips), including missing/extra/forged operation identities,
+schema/dispatch agreement, refusal to overwrite reports and oversized-output
+rejection without partial files.
+
+The actual original-source/MPFB three-report protocol and coherent rehashed
+contact-fabrication test is running. The application review transaction is not
+yet connected. The intake helper explicitly requires a previously validated
+enclosure and fresh receipt; calling it alone does not establish physical
+evidence. The receipt/envelope coordinator, publication guard, desktop
+annotations and completed real protocol/fault evidence remain outstanding.
 
 Next: connect the complete two-process report and independent intake to the
 existing review transaction, preserving all existing operations and guards.
