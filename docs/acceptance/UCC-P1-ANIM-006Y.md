@@ -75,8 +75,12 @@ No authoritative scene is saved or changed by these fault tests.
 Both actual menu cancellation paths pass: running fitting and complete-body
 Blender workers stop in 0.453 seconds, preserving original playback and all
 protected files. The actual complete-body operation is observed before cancel.
-The retained owned correction is undergoing the new complete paired API.
-Actual nine-job publication, full GPU playback, report/receipt invalidation
+The retained owned correction passes the new complete paired API in 1,642.937
+seconds. All three guards cover all 300 frames with zero newly involved
+complete-trunk polygons or per-hand pair growth. Complete-trunk flagged frames
+are 193 original / 164 fitted; these remaining contacts are not approved.
+All source/master/project bytes remain unchanged. Actual nine-job publication,
+full GPU playback, report/receipt invalidation
 and final five-workflow/portable acceptance remain pending.
 The cloud gates retain the older geometry and report faults and add coherent
 native/fitted full-trunk negatives. Their bounded body/native job allowances

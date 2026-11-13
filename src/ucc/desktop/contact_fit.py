@@ -69,7 +69,7 @@ def start_contact_fit(window):
         window._submit('fitted_comparison',lambda:fit_measured_contacts(store,preview,playback,source_fbx=source,
             permission=permission,blender_exe=executable,worker_script=worker,cancel=cancel),cancel=cancel)
         window.log.setPlainText('TRYING A BOUNDED LOCAL HAND/ARM FIT\n'
-            'The original animation stays available. Original head/body review, bounded arm and wrist search, saved-scene verification, targeted renders and final body comparison can take several minutes.\n'
+            'The original animation stays available. Original head/body review, bounded arm and wrist search, saved-scene verification, targeted renders and final body comparison can take tens of minutes.\n'
             'Cancel from the Character menu. Unsupported contacts or failed joint/skin checks keep the original motion.\n'
             'A generated candidate changes target motion; it does not approve grasp intent, visual quality or engine compatibility.')
     except (UCCError,OSError,ValueError) as error:window._error(str(error))

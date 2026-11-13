@@ -29,7 +29,7 @@ def start_body_contact_review(window):
             permission=permission,blender_exe=executable,worker_script=worker,fitted=fitted,cancel=cancel),cancel=cancel)
         window.log.setPlainText('REVIEWING HAND / CENTRAL-BODY CONTACTS\n'
             'Every saved frame is inspected and independently reproduced against the complete measured head and torso skin, including buried or uncertain hand areas.\n'
-            'This read-only local review can take several minutes. Cancel from the Character menu.\n'
+            'This read-only full-clip review can take tens of minutes. Cancel from the Character menu.\n'
             'Playable motion remains available. Surface crossings do not approve grasp intent, visual quality or engine compatibility.')
     except (UCCError,OSError,ValueError) as error:window._error(str(error))
 
