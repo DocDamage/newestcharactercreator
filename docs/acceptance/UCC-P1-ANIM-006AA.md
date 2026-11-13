@@ -37,7 +37,7 @@ The invented numeric fixture is only a unit contract. It proves neither skin def
 
 The first full regression exposed two stale schema expectations. They were updated for the additive contract; explicit partial-base and unknown-field rejection remains tested. A misplaced existing assertion in the new Qt test was restored to its original pre-publication test, and both tests passed again. Failed logs are retained privately.
 
-The first new original-source CI attempt stopped at its test precondition: the existing near-straight-arm source did not provide two continuously bent elbow poles. The separate symmetric fixture variant now authors a 12-degree bend on both forearms. The old fixtures and all production reachability, pole, angular and skin guards remain unchanged. This variant requires its own complete execution; the stopped attempt is not accepted.
+The first new original-source CI attempt stopped at its test precondition: the existing near-straight-arm source did not provide two continuously bent elbow poles. A constant 12-degree fixture variant then rejected at the unchanged palm rest-geometry agreement check (maximum observed source-normal difference about `1.43e-6`, above the existing `1e-6` bound). The separate symmetric fixture now adds a smooth 12-degree bend within the clip, retaining the old first/end poses. The old fixtures and all production rest, reachability, pole, angular and skin guards remain unchanged. This variant requires its own complete execution; neither stopped attempt is accepted.
 
 ## Pending acceptance
 

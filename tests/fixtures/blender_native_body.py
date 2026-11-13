@@ -122,7 +122,7 @@ def author(master: Path,folder: Path,*,origin="target-root",corrective_challenge
             if symmetric_challenge and bone.name in {names['lowerarm01.L'],names['lowerarm01.R']}:
                 # This separate nonshipping test needs two stable elbow poles.
                 # Retain all prior fixture variants and production IK guards.
-                bone.rotation_euler.x+=math.radians(12)
+                bone.rotation_euler.x+=math.radians(12)*math.sin(math.pi*t)**2
             if corrective_challenge and bone.name in {names["spine05"],names["upperleg01.L"]}:
                 # Original analytic opposing bend, not sampled owner motion.
                 # V2 starts in the already-tested opposing-bend pose and
