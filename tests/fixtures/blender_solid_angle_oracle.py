@@ -1,6 +1,19 @@
 """Independent nonshipping exact-winding oracle; uses Blender-bundled NumPy."""
 
 
+def solid_angle_values(points,triangles,queries):
+    """Independent double-precision reference on arbitrary measured query points."""
+    import numpy as np
+    faces=np.asarray(points,dtype=np.float64)[np.asarray(triangles)];values=[]
+    for point in queries:
+        q=faces-np.asarray(point,dtype=np.float64);a,b,c=q[:,0],q[:,1],q[:,2]
+        la,lb,lc=(np.linalg.norm(v,axis=1) for v in (a,b,c))
+        numerator=np.einsum('ij,ij->i',a,np.cross(b,c))
+        denominator=la*lb*lc+np.einsum('ij,ij->i',a,b)*lc+np.einsum('ij,ij->i',b,c)*la+np.einsum('ij,ij->i',c,a)*lb
+        values.append(float(np.arctan2(numerator,denominator).sum()/(2*np.pi)))
+    return values
+
+
 def compare_solid_angles(points,triangles,observation):
     import numpy as np
     from mathutils import Vector
