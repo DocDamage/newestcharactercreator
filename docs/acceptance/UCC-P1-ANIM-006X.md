@@ -1,4 +1,4 @@
-# UCC-P1-ANIM-006X — bounded body-shape fitting (in progress)
+# UCC-P1-ANIM-006X — bounded body-shape fitting (implementation verified)
 
 Dependency: PR #57's accepted two-process anatomical publication guard.
 The existing automatic fit leaves late hand/body contact. Actual measurements
@@ -65,3 +65,11 @@ No dependencies, installation or license permissions change.
 
 Next: finish exact-head CI acceptance and refine the complete-body route using
 the independent contact evidence; do not publish the rejected trajectory.
+
+Final implementation acceptance: all five workflows pass at head
+`43d0be8364d3451f81890684f71061aa6d8840e1`. All three Linux archives and their
+fifteen domain records are independently accepted. The exact-head Windows
+archive, all 61 bundled bridge files and actual local frozen executable smoke
+pass. PR #58 is ready, open and unmerged. Its original-source V3 challenge is
+small and does not prove large body-shape correction; the owned experimental
+trajectory remains correctly rejected before automatic publication.

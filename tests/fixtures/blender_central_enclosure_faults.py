@@ -139,6 +139,8 @@ def verify(job,output):
         for box in geometry.cap_boxes:
             midpoint=tuple((box[0][i]+box[1][i])/2 for i in range(3))
             if safe_ray_directions(midpoint,geometry.cap_boxes,geometry.diagonal):raise RuntimeError('Protected closure interior received definite rays')
+        from blender_anatomical_reuse_faults import verify_exact_reuse
+        reuse_faults=verify_exact_reuse(mesh,profile,rig,human)
     finally:obj.to_mesh_clear()
     unchanged(job,base)
     if before!={n:sha256((job/n).read_bytes()).hexdigest() for n in input_hashes(base)}:raise RuntimeError('Fault test changed a staged source')
@@ -149,7 +151,7 @@ def verify(job,output):
         'production_ray_budget_rejected_without_partial_verdict':True,'nonadjacent_body_fault_rejected':True,
         'bounded_body_workload_rejected_without_partial_verdict':True,'cap_interiors_never_definite':True,
         'original_inputs_unchanged':True,'saved_scene_created':False,'anatomical_or_animation_quality_approved':False,
-        'body_surface_audit':audit,'complete_surface_faults':{
+        'body_surface_audit':audit,'exact_geometry_reuse_faults':reuse_faults,'complete_surface_faults':{
             'actual_omitted_region_triangle':omitted,'actual_omitted_region_crossing_detected':True,
             'global_hand_triangle_highlighted':chosen in crossing['right']['hand_triangles'],
             'injected_pairs':crossing['right']['pair_count'],'fully_buried_complete_surface_pairs':buried['right']['pair_count'],
