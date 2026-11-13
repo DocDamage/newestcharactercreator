@@ -1,7 +1,10 @@
 """Closed request/policy contracts; synthetic metadata is not Blender evidence."""
 from copy import deepcopy
 import unittest
-from jsonschema import Draft202012Validator
+try:
+    from jsonschema import Draft202012Validator
+except ImportError:
+    Draft202012Validator=None
 import json
 from pathlib import Path
 
@@ -18,7 +21,28 @@ class NativeFitProtocolTests(unittest.TestCase):
     def test_policy_matches_both_independent_boundaries_and_published_schema(self):
         v=fixture();application=read_fit_plan(*v[:5]);worker=parse_fit(*v[:5])
         self.assertEqual(application.chain,worker['chain']);self.assertEqual(application.offsets,tuple(worker['offsets']))
-        Draft202012Validator(json.loads((ROOT/'docs/schemas/native-fit.v1.schema.json').read_text())).validate(v[0])
+
+
+    @unittest.skipIf(Draft202012Validator is None,'Optional JSON Schema validator unavailable')
+    def test_policy_schema_accepts_valid_and_rejects_unknown_fields(self):
+        schema=Draft202012Validator(json.loads((ROOT/'docs/schemas/native-fit.v1.schema.json').read_text()))
+        data=deepcopy(fixture()[0]);schema.validate(data);data['skip_validation']=True
+        self.assertTrue(list(schema.iter_errors(data)))
+
+    @unittest.skipIf(Draft202012Validator is None,'Optional JSON Schema validator unavailable')
+    def test_job_schema_closes_all_fitting_operations(self):
+        schema=Draft202012Validator(json.loads((ROOT/'docs/schemas/worker-job.v1.schema.json').read_text()))
+        for operation in ('fit_native_fbx_body','measure_native_fit','verify_native_fit'):
+            request=JobRequest.new(operation,input_project='candidate.blend',options={k:'a'*64 for k in job_hashes(operation)}).as_dict()
+            schema.validate(request)
+            for fault in ('missing','extra','bool_hash','wrong_path','weak_hash'):
+                bad=deepcopy(request)
+                if fault=='missing':bad['options'].pop('fit_sha256')
+                if fault=='extra':bad['options']['skip_reopen']=True
+                if fault=='bool_hash':bad['options']['fit_sha256']=True
+                if fault=='wrong_path':bad['input_project']='review_motion.blend'
+                if fault=='weak_hash':bad['options']['fit_sha256']='a'*63
+                self.assertTrue(list(schema.iter_errors(bad)))
 
     def test_explicit_render_frames_are_sha_bound_ordered_and_closed(self):
         for frames in ([1,2,3,4,5],None,[1,2,3,4],[1,2,3,4,6],[1,2,3,3,5],[True,2,3,4,5],[5,4,3,2,1]):
@@ -55,11 +79,11 @@ class NativeFitProtocolTests(unittest.TestCase):
         with self.assertRaises(ValueError):parse_fit(*v[:5])
 
     def test_all_three_jobs_have_exact_hashes_fixed_paths_and_no_override_flags(self):
-        schema=Draft202012Validator(json.loads((ROOT/'docs/schemas/worker-job.v1.schema.json').read_text()))
+
         for operation in ('fit_native_fbx_body','measure_native_fit','verify_native_fit'):
             options={k:'a'*64 for k in job_hashes(operation)}
             request=JobRequest.new(operation,input_project='candidate.blend',options=options)
-            self.assertEqual(checked_job(request.as_dict()),options);schema.validate(request.as_dict())
+            self.assertEqual(checked_job(request.as_dict()),options)
             for fault in ('missing','extra','bool_hash','wrong_path','weak_hash'):
                 bad=deepcopy(request.as_dict())
                 if fault=='missing':bad['options'].pop('fit_sha256')
@@ -69,7 +93,7 @@ class NativeFitProtocolTests(unittest.TestCase):
                 if fault=='weak_hash':bad['options']['fit_sha256']='a'*63
                 with self.subTest(operation=operation,fault=fault),self.assertRaises(ValidationError):JobRequest.from_dict(bad)
                 with self.assertRaises(ValueError):checked_job(bad)
-                self.assertTrue(list(schema.iter_errors(bad)))
+
 
 
 if __name__=='__main__':unittest.main()
