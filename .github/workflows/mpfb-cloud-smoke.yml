@@ -156,7 +156,11 @@ jobs:
     # PR #59 reached the verified 75-minute limit after its real geometry
     # faults passed, while remaining native fault checks still ran. Keep every
     # assertion and allow bounded headroom for the complete body suite.
-    timeout-minutes: ${{ matrix.suite == 'native-fit' && 120 || matrix.suite == 'body-contacts' && 90 || 40 }}
+    # PR #59 reached its actual 120-minute wall limit with no assertion
+    # failure after the first full hand-policy fault copy was authored. The
+    # second hand/body-shape contract and final source-contact negatives remain.
+    # Preserve all gates and individual worker limits; bound this suite at 3h.
+    timeout-minutes: ${{ matrix.suite == 'native-fit' && 180 || matrix.suite == 'body-contacts' && 90 || 40 }}
     env:
       PYTHONUNBUFFERED: '1'
     steps:
