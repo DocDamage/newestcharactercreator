@@ -107,3 +107,25 @@ stay private under the workspace's evidence/project folders.
 
 Next: derive the bounded orientation trajectory in automatic candidate search
 and retain the final saved-cache/body-area guard before desktop publication.
+
+## Small-rotation precision correction
+
+The final-head Linux hand integration found a disagreement between worker and
+independent core angular metrics. An actual Blender 5.3 diagnostic reproduces
+the cause: `Quaternion.to_axis_angle()` can return zero for a 0.03-degree delta
+because its float32 scalar part rounds to one. The V2 worker now derives angle
+from both quaternion parts using `2*atan2(length(xyz), w)`, preserving tiny
+rotations and equivalent quaternion hemispheres. No speed, acceleration,
+correction, joint or skin bound changes. V1's existing metric formula remains
+unchanged so its saved canonical evidence continues to reproduce.
+
+Three new unit cases cover float32 scalar rounding, equivalent signs/scaling
+and malformed inputs. The actual Blender diagnostic retains rotations from
+0.001 through 1 degree with less than 0.000007 degree error. A separate real
+original-source gate passes the candidate measurement code in an isolated real
+worker in 586.907 seconds, including all 300 saved poses/skins/topologies, fifteen
+decoded renders, full cache and rehashed saved hand-Action rejection. The actual
+tested measurement/helper file bytes match the production files exactly. All
+647 local tests pass (634 pass, 13 Windows symlink skips; 87.997 seconds). Final
+exact-head remote workflows remain required. Angular mismatch errors now include
+bounded scalar metrics for diagnosis.

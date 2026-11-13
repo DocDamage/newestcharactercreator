@@ -16,6 +16,7 @@ from blender_bridge.motion_quality import EdgeStrain,JointMotion
 from blender_bridge.native_surface_review import SurfaceInspector
 from blender_bridge.private_review_render import render_private_review
 from blender_bridge.native_hand_fit import angular_bones
+from blender_bridge.native_angular import angular_velocity
 
 
 def measure_saved_fit(bpy,root,options,*,source_frame_observer=None,fitted_frame_observer=None):
@@ -61,7 +62,10 @@ def measure_saved_fit(bpy,root,options,*,source_frame_observer=None,fitted_frame
                 else:
                     delta=correction@previous_correction[name].inverted()
                     if delta.w<0:delta.negate()
-                    axis,angle=delta.to_axis_angle();velocity=axis*math.degrees(angle)*plan['fps']
+                    if plan.get('hand_rotations'):
+                        velocity=Vector(angular_velocity(tuple(delta),plan['fps']))
+                    else:
+                        axis,angle=delta.to_axis_angle();velocity=axis*math.degrees(angle)*plan['fps']
                 speed=velocity.length;acceleration=(velocity-previous_velocity[name]).length*plan['fps']
                 if speed>90.+.01 or acceleration>900.+.1:raise ValueError('Saved fit correction has discontinuous angular motion')
                 max_speed=max(max_speed,speed);max_acceleration=max(max_acceleration,acceleration)

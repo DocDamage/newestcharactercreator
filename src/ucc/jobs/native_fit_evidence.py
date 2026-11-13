@@ -139,7 +139,9 @@ def validate_fitted_data(data,options,baseline,profile,policy_path,stage_rest,*,
     if plan.policy==HAND_POLICY and (
         abs(metric['max_speed_degrees_s']-angular['max_correction_angular_speed_degrees_s'])>.1 or
         abs(metric['max_acceleration_degrees_s2']-angular['max_correction_angular_acceleration_degrees_s2'])>2.):
-        raise ValidationError('Fitted hand angular evidence differs from the independent full-sequence audit')
+        raise ValidationError('Fitted hand angular evidence differs from the independent full-sequence audit '
+            f"(worker speed/acceleration {metric['max_speed_degrees_s']:.6g}/{metric['max_acceleration_degrees_s2']:.6g}; "
+            f"core {angular['max_correction_angular_speed_degrees_s']:.6g}/{angular['max_correction_angular_acceleration_degrees_s2']:.6g})")
     quality={'motion_quality_schema_version':2,'target_pose_environment_checked':True,'mesh_edge_strain':data['bind_edge_strain'],
              'source_frame_count':count,'full_timeline_frames':[r['bind_strain'] for r in frames],
              'joint_motion_metrics':data['joint_motion_metrics'],'max_bone_quaternion_step_degrees':{}}
