@@ -16,6 +16,9 @@ OPERATIONS={'inspect_native_body_areas':SOURCE_FIELDS,'verify_native_body_areas'
 
 def checked_area_job(job):
     fields=OPERATIONS[job['operation']];options=job['options']
+    if 'fitted_sha256' in fields:
+        from blender_bridge.native_symmetric_policy import layer_fields
+        fields=layer_fields(fields,options)
     if (job['input_project']!='candidate.blend' or type(options) is not dict or set(options)!=fields or
         any(type(v) is not str or len(v)!=64 or any(c not in '0123456789abcdef' for c in v) for v in options.values())):
         raise ValueError('Body contact areas require exact hashes and fixed staged inputs')

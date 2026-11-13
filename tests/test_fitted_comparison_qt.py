@@ -73,6 +73,21 @@ class FittedComparisonQtTests(unittest.TestCase):
         self.w.animations.local_preview_review.setChecked(False)
         with self.assertRaises(ValidationError):publish_comparison(self.w,self.original,self.fitted)
 
+    def test_changed_layer_base_policy_scene_or_report_clears_both_views(self):
+        paths = {}
+        bindings = self.fitted.fitted_preview.verification['bindings']
+        for name,key in (('base_contact_fit.json','base_fit_policy_sha256'),
+                         ('base_fitted_motion.blend','base_fitted_sha256'),
+                         ('base_fitted_timeline.json','base_fit_report_sha256')):
+            path=self.policy.parent/name;path.write_bytes(b'UNIT_ONLY_BASE_INPUT_'+name.encode())
+            bindings[key]=sha256(path.read_bytes()).hexdigest();paths[path]=path.read_bytes()
+        for path,payload in paths.items():
+            publish_comparison(self.w,self.original,self.fitted)
+            self.assertIn(str(path),self.w._motion_watcher.files())
+            path.write_bytes(b'CHANGED_BASE_INPUT');QTest.qWait(150)
+            self.assertIsNone(self.w.motion_viewer.cache);self.assertIsNone(self.w.motion_viewer.comparison)
+            path.write_bytes(payload);self.w._native_review=self.preview
+
     def test_new_private_job_does_not_invalidate_but_atomic_input_replacement_does(self):
         from ucc.desktop.motion_inputs import directory_changed
         publish_comparison(self.w,self.original,self.fitted)

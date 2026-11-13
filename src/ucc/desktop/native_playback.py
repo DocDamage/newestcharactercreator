@@ -64,6 +64,11 @@ def publish_comparison(window,original,fitted):
     paths={Path(preview.fit_policy_used):fitted.fit_policy_sha256,
            Path(preview.private_fitted_scene):fitted.fitted_scene_sha256,
            Path(preview.private_timeline):bindings['fit_report_sha256']}
+    if 'base_fit_policy_sha256' in bindings:
+        folder=Path(preview.fit_policy_used).parent
+        paths.update({folder/'base_contact_fit.json':bindings['base_fit_policy_sha256'],
+                      folder/'base_fitted_motion.blend':bindings['base_fitted_sha256'],
+                      folder/'base_fitted_timeline.json':bindings['base_fit_report_sha256']})
     if (bindings['review_sha256']!=_digest(Path(window._native_review.private_visual_review_blend)) or
         bindings['timeline_sha256']!=_digest(Path(window._native_review.private_timeline)) or
         any(p.is_symlink() or not p.is_file() or _digest(p)!=digest for p,digest in paths.items())):

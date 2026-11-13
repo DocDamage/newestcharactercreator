@@ -445,7 +445,33 @@
               "timeline_sha256": {
                 "type": "string",
                 "pattern": "^[0-9a-f]{64}$"
+              },
+              "base_fit_policy_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "base_fitted_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "base_fit_report_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
               }
+            },
+            "dependentRequired": {
+              "base_fit_policy_sha256": [
+                "base_fitted_sha256",
+                "base_fit_report_sha256"
+              ],
+              "base_fitted_sha256": [
+                "base_fit_policy_sha256",
+                "base_fit_report_sha256"
+              ],
+              "base_fit_report_sha256": [
+                "base_fit_policy_sha256",
+                "base_fitted_sha256"
+              ]
             }
           }
         }
@@ -509,7 +535,33 @@
               "timeline_sha256": {
                 "type": "string",
                 "pattern": "^[0-9a-f]{64}$"
+              },
+              "base_fit_policy_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "base_fitted_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "base_fit_report_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
               }
+            },
+            "dependentRequired": {
+              "base_fit_policy_sha256": [
+                "base_fitted_sha256",
+                "base_fit_report_sha256"
+              ],
+              "base_fitted_sha256": [
+                "base_fit_policy_sha256",
+                "base_fit_report_sha256"
+              ],
+              "base_fit_report_sha256": [
+                "base_fit_policy_sha256",
+                "base_fitted_sha256"
+              ]
             }
           }
         }
@@ -578,7 +630,33 @@
               "timeline_sha256": {
                 "type": "string",
                 "pattern": "^[0-9a-f]{64}$"
+              },
+              "base_fit_policy_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "base_fitted_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "base_fit_report_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
               }
+            },
+            "dependentRequired": {
+              "base_fit_policy_sha256": [
+                "base_fitted_sha256",
+                "base_fit_report_sha256"
+              ],
+              "base_fitted_sha256": [
+                "base_fit_policy_sha256",
+                "base_fit_report_sha256"
+              ],
+              "base_fit_report_sha256": [
+                "base_fit_policy_sha256",
+                "base_fitted_sha256"
+              ]
             }
           }
         }
@@ -647,7 +725,33 @@
               "timeline_sha256": {
                 "type": "string",
                 "pattern": "^[0-9a-f]{64}$"
+              },
+              "base_fit_policy_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "base_fitted_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "base_fit_report_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
               }
+            },
+            "dependentRequired": {
+              "base_fit_policy_sha256": [
+                "base_fitted_sha256",
+                "base_fit_report_sha256"
+              ],
+              "base_fitted_sha256": [
+                "base_fit_policy_sha256",
+                "base_fit_report_sha256"
+              ],
+              "base_fit_report_sha256": [
+                "base_fit_policy_sha256",
+                "base_fitted_sha256"
+              ]
             }
           }
         }
@@ -888,7 +992,33 @@
               "timeline_sha256": {
                 "type": "string",
                 "pattern": "^[0-9a-f]{64}$"
+              },
+              "base_fit_policy_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "base_fitted_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "base_fit_report_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
               }
+            },
+            "dependentRequired": {
+              "base_fit_policy_sha256": [
+                "base_fitted_sha256",
+                "base_fit_report_sha256"
+              ],
+              "base_fitted_sha256": [
+                "base_fit_policy_sha256",
+                "base_fit_report_sha256"
+              ],
+              "base_fit_report_sha256": [
+                "base_fit_policy_sha256",
+                "base_fitted_sha256"
+              ]
             }
           }
         }
@@ -962,7 +1092,33 @@
               "body_review_sha256": {
                 "type": "string",
                 "pattern": "^[a-f0-9]{64}$"
+              },
+              "base_fit_policy_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "base_fitted_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "base_fit_report_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
               }
+            },
+            "dependentRequired": {
+              "base_fit_policy_sha256": [
+                "base_fitted_sha256",
+                "base_fit_report_sha256"
+              ],
+              "base_fitted_sha256": [
+                "base_fit_policy_sha256",
+                "base_fit_report_sha256"
+              ],
+              "base_fit_report_sha256": [
+                "base_fit_policy_sha256",
+                "base_fitted_sha256"
+              ]
             }
           }
         }
@@ -1144,7 +1300,33 @@
               "timeline_sha256": {
                 "type": "string",
                 "pattern": "^[0-9a-f]{64}$"
+              },
+              "base_fit_policy_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "base_fitted_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "base_fit_report_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
               }
+            },
+            "dependentRequired": {
+              "base_fit_policy_sha256": [
+                "base_fitted_sha256",
+                "base_fit_report_sha256"
+              ],
+              "base_fitted_sha256": [
+                "base_fit_policy_sha256",
+                "base_fit_report_sha256"
+              ],
+              "base_fit_report_sha256": [
+                "base_fit_policy_sha256",
+                "base_fitted_sha256"
+              ]
             }
           }
         }
@@ -1218,7 +1400,33 @@
               "body_review_sha256": {
                 "type": "string",
                 "pattern": "^[a-f0-9]{64}$"
+              },
+              "base_fit_policy_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "base_fitted_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "base_fit_report_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
               }
+            },
+            "dependentRequired": {
+              "base_fit_policy_sha256": [
+                "base_fitted_sha256",
+                "base_fit_report_sha256"
+              ],
+              "base_fitted_sha256": [
+                "base_fit_policy_sha256",
+                "base_fit_report_sha256"
+              ],
+              "base_fit_report_sha256": [
+                "base_fit_policy_sha256",
+                "base_fitted_sha256"
+              ]
             }
           }
         }
@@ -1528,7 +1736,33 @@
               "timeline_sha256": {
                 "type": "string",
                 "pattern": "^[0-9a-f]{64}$"
+              },
+              "base_fit_policy_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "base_fitted_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "base_fit_report_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
               }
+            },
+            "dependentRequired": {
+              "base_fit_policy_sha256": [
+                "base_fitted_sha256",
+                "base_fit_report_sha256"
+              ],
+              "base_fitted_sha256": [
+                "base_fit_policy_sha256",
+                "base_fit_report_sha256"
+              ],
+              "base_fit_report_sha256": [
+                "base_fit_policy_sha256",
+                "base_fitted_sha256"
+              ]
             }
           }
         }
@@ -1602,7 +1836,33 @@
               "body_review_sha256": {
                 "type": "string",
                 "pattern": "^[a-f0-9]{64}$"
+              },
+              "base_fit_policy_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "base_fitted_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "base_fit_report_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
               }
+            },
+            "dependentRequired": {
+              "base_fit_policy_sha256": [
+                "base_fitted_sha256",
+                "base_fit_report_sha256"
+              ],
+              "base_fitted_sha256": [
+                "base_fit_policy_sha256",
+                "base_fit_report_sha256"
+              ],
+              "base_fit_report_sha256": [
+                "base_fit_policy_sha256",
+                "base_fitted_sha256"
+              ]
             }
           }
         }
@@ -1789,7 +2049,33 @@
               "timeline_sha256": {
                 "type": "string",
                 "pattern": "^[0-9a-f]{64}$"
+              },
+              "base_fit_policy_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "base_fitted_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "base_fit_report_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
               }
+            },
+            "dependentRequired": {
+              "base_fit_policy_sha256": [
+                "base_fitted_sha256",
+                "base_fit_report_sha256"
+              ],
+              "base_fitted_sha256": [
+                "base_fit_policy_sha256",
+                "base_fit_report_sha256"
+              ],
+              "base_fit_report_sha256": [
+                "base_fit_policy_sha256",
+                "base_fitted_sha256"
+              ]
             }
           }
         }
@@ -1868,7 +2154,33 @@
               "enclosure_review_sha256": {
                 "type": "string",
                 "pattern": "^[0-9a-f]{64}$"
+              },
+              "base_fit_policy_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "base_fitted_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "base_fit_report_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
               }
+            },
+            "dependentRequired": {
+              "base_fit_policy_sha256": [
+                "base_fitted_sha256",
+                "base_fit_report_sha256"
+              ],
+              "base_fitted_sha256": [
+                "base_fit_policy_sha256",
+                "base_fit_report_sha256"
+              ],
+              "base_fit_report_sha256": [
+                "base_fit_policy_sha256",
+                "base_fitted_sha256"
+              ]
             }
           }
         }
@@ -2060,7 +2372,33 @@
               "timeline_sha256": {
                 "type": "string",
                 "pattern": "^[0-9a-f]{64}$"
+              },
+              "base_fit_policy_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "base_fitted_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "base_fit_report_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
               }
+            },
+            "dependentRequired": {
+              "base_fit_policy_sha256": [
+                "base_fitted_sha256",
+                "base_fit_report_sha256"
+              ],
+              "base_fitted_sha256": [
+                "base_fit_policy_sha256",
+                "base_fit_report_sha256"
+              ],
+              "base_fit_report_sha256": [
+                "base_fit_policy_sha256",
+                "base_fitted_sha256"
+              ]
             }
           }
         }
@@ -2144,7 +2482,33 @@
               "full_trunk_review_sha256": {
                 "type": "string",
                 "pattern": "^[a-f0-9]{64}$"
+              },
+              "base_fit_policy_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "base_fitted_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "base_fit_report_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
               }
+            },
+            "dependentRequired": {
+              "base_fit_policy_sha256": [
+                "base_fitted_sha256",
+                "base_fit_report_sha256"
+              ],
+              "base_fitted_sha256": [
+                "base_fit_policy_sha256",
+                "base_fit_report_sha256"
+              ],
+              "base_fit_report_sha256": [
+                "base_fit_policy_sha256",
+                "base_fitted_sha256"
+              ]
             }
           }
         }

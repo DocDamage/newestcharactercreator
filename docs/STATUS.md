@@ -2,6 +2,8 @@
 
 **Target:** Windows 11 + Blender 5.3 + installed MPFB, PySide6 desktop, optional local ComfyUI/WebUI and future Godot/Unity/Unreal workflows.
 
+**In development:** [UCC-P1-ANIM-006AA](acceptance/UCC-P1-ANIM-006AA.md) adds an explicit, SHA-bound bilateral shoulder layer over a verified legacy fit. The normal three-worker application fit passed one owned 300-frame clip with independent saved-Action measurements and fifteen private rendered views; all 122 inactive base frames retain exact matrices and skin/topology hashes. The full local suite passes 803 tests (789 pass, 14 Windows symlink skips), and actual rehashed clavicle/rest/weight faults reject. New cache/full anatomical/GPU acceptance and all five final-head workflows remain pending. The owner launcher retains its accepted V2 correction; main is unchanged. This is not automatic full-body fitting or visual/pack/engine approval.
+
 **Merged:** PRs #24–#38. Authoritative `main` was verified at `9ae588af96fae06b76e1d2048d7b4fb7f11f8657` (PR #38). Existing numerical guards cover 36 MPFB joints and 26,756 evaluated edges over 25 frames, independent quality remeasurement and partial-Action cleanup.
 
 **In review:** [PR #39 / UCC-P1-ANIM-006E](acceptance/UCC-P1-ANIM-006E.md) adds private native FBX bind/pose intake, including multiple roots and complete 300-frame clips. All five exact-head workflows passed. Thirty actual licensed clips passed source intake only. The owner need not author BVH sidecars.

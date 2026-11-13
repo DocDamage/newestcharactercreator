@@ -16,13 +16,15 @@ from ucc.jobs.native_playback import prepare_native_playback
 from ucc.animations import native_math as nm
 
 
-def verify_native_body(blender: Path,store: ProjectStore,folder: Path,*,hip_anchor=False,corrective=False,neutral_reference=False,include_hands=False,fit_check=False,body_check=False) -> dict:
+def verify_native_body(blender: Path,store: ProjectStore,folder: Path,*,hip_anchor=False,corrective=False,neutral_reference=False,include_hands=False,fit_check=False,body_check=False,symmetric_check=False) -> dict:
     if neutral_reference and not (corrective and hip_anchor):
         raise ValueError("The neutral-reference CI challenge requires corrected skin and anatomical hip anchoring")
     if fit_check and not (neutral_reference and include_hands):
         raise ValueError('The fitting gate needs the complete original neutral-reference hand challenge')
     if body_check and not (neutral_reference and include_hands):
         raise ValueError('The body-contact gate needs the complete original neutral-reference hand challenge')
+    if symmetric_check and not (neutral_reference and include_hands):
+        raise ValueError('The symmetric layer gate needs the complete original neutral-reference hand challenge')
     project=store.load();master=store.root/project.master_blend
     digest=lambda p:sha256(p.read_bytes()).hexdigest()
     metadata=store.root/"project.ucc.json"
@@ -31,7 +33,7 @@ def verify_native_body(blender: Path,store: ProjectStore,folder: Path,*,hip_anch
     def run(*args):
         subprocess.run([str(blender),"--background","--factory-startup","--disable-autoexec",
             "--python-exit-code","13","--python",str(script),"--",*map(str,args)],check=True,timeout=300)
-    run("--mode","author","--master",master,"--folder",folder,"--origin","ground" if hip_anchor else "target-root",*(("--corrective-challenge",) if corrective else ()),*(("--posed-origin-challenge",) if neutral_reference else ()),*(("--include-hands",) if include_hands else ()))
+    run("--mode","author","--master",master,"--folder",folder,"--origin","ground" if hip_anchor else "target-root",*(("--corrective-challenge",) if corrective else ()),*(("--posed-origin-challenge",) if neutral_reference else ()),*(("--include-hands",) if include_hands else ()),*(('--symmetric-challenge',) if symmetric_check else ()))
     source=folder/"original-native-body.fbx";source_sha=digest(source)
     policy=LicensePolicy("Original UCC native-body test fixture","CC0","ci-original://native-body-reference",
                          reviewed=True,local_preview_allowed=True,no_ai=True)
@@ -140,6 +142,9 @@ def verify_native_body(blender: Path,store: ProjectStore,folder: Path,*,hip_anch
     if fit_check:
         from ci.verify_native_fit import verify_fit_on_preview
         skin_evidence['bounded_target_fit_contract']=verify_fit_on_preview(blender,store,result,source,policy,folder/'bounded-fit',original_playback=playback)
+    if symmetric_check:
+        from ci.verify_symmetric_fit import verify_on_preview
+        skin_evidence['symmetric_layer_contract']=verify_on_preview(blender,store,result,source,policy,folder/'symmetric-layer',playback)
     return {**anchor_evidence,**skin_evidence,"provenance":"ORIGINAL_CI_ARMATURE_ON_REAL_MPFB_NOT_OWNER_OR_FAB_ASSET","frames":300,"mapped_body_bones":len(data["mapped_pairs"]),
         "mapped_hand_joints":38 if include_hands else 0,
         "hand_reference_planes_verified":2 if include_hands else 0,

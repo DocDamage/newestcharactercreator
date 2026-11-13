@@ -61,6 +61,8 @@ class JobRequest:
             hashes=HASHES|{"fit_sha256"}
             if self.operation!="fit_native_fbx_body":hashes.add("fitted_sha256")
             if self.operation in {"verify_native_fit","cache_native_fit"}:hashes.add("fit_report_sha256")
+            from ucc.animations.symmetric_fit import BASE_HASHES as SYMMETRIC_BASE_HASHES
+            if SYMMETRIC_BASE_HASHES & set(self.options):hashes |= SYMMETRIC_BASE_HASHES
             if self.input_project!="candidate.blend" or set(self.options)!=hashes or any(not is_sha256(v) for v in self.options.values()):
                 raise ValidationError("Native fitting requires exact hashes and fixed staged filenames")
         if self.operation in BODY_CONTACT_OPERATIONS:
@@ -68,6 +70,9 @@ class JobRequest:
             from ucc.animations.contact_fit import HASHES
             fields=set(HASHES)
             if 'fitted' in self.operation:fields|={'fit_sha256','fitted_sha256','fit_report_sha256'}
+            if 'fitted' in self.operation:
+                from ucc.animations.symmetric_fit import BASE_HASHES as SYMMETRIC_BASE_HASHES
+                if SYMMETRIC_BASE_HASHES & set(self.options):fields |= SYMMETRIC_BASE_HASHES
             if self.operation.startswith('verify_'):
                 fields.add('body_review_sha256')
                 if self.operation.endswith('_anatomical_safety'):fields.add('enclosure_review_sha256')

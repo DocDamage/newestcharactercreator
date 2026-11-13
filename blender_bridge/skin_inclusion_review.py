@@ -18,8 +18,11 @@ REASONS={'CENTRAL_BRANCH_UNAVAILABLE','WEIGHTED_REGIONS_UNAVAILABLE','SKIN_GEOME
 
 
 def checked_skin_job(job):
-    options=job['options']
-    if (job['input_project']!='candidate.blend' or type(options) is not dict or set(options)!=OPERATIONS[job['operation']] or
+    options=job['options'];fields=OPERATIONS[job['operation']]
+    if 'fitted_sha256' in fields:
+        from blender_bridge.native_symmetric_policy import layer_fields
+        fields=layer_fields(fields,options)
+    if (job['input_project']!='candidate.blend' or type(options) is not dict or set(options)!=fields or
         any(type(v) is not str or len(v)!=64 or any(c not in '0123456789abcdef' for c in v) for v in options.values())):
         raise ValueError('Skin inclusion requires exact hashes and fixed staged inputs')
     return options
