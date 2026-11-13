@@ -20,6 +20,7 @@ on:
       - 'ci/verify_body_contacts.py'
       - 'ci/verify_skin_inclusion.py'
       - 'tests/fixtures/blender_skin_inclusion_faults.py'
+      - 'tests/fixtures/blender_solid_angle_oracle.py'
       - 'src/ucc/preview/skin_*.py'
       - 'src/ucc/jobs/skin_inclusion.py'
       - 'ci/verify_body_fit_guard.py'
@@ -73,6 +74,7 @@ on:
       - 'ci/verify_body_contacts.py'
       - 'ci/verify_skin_inclusion.py'
       - 'tests/fixtures/blender_skin_inclusion_faults.py'
+      - 'tests/fixtures/blender_solid_angle_oracle.py'
       - 'src/ucc/preview/skin_*.py'
       - 'src/ucc/jobs/skin_inclusion.py'
       - 'ci/verify_body_fit_guard.py'
@@ -136,6 +138,8 @@ jobs:
     # R's complete native-fit suite passed in about 61 minutes. S adds two
     # original-source full-sequence proposal negatives, run in parallel.
     # Retain all prior assertions and bound the additional integration workload.
+    # Closed-skin adds two complete source workers, a full rehashed-report
+    # rejection and an independently reopened actual MPFB geometry fault.
     timeout-minutes: ${{ matrix.suite == 'native-fit' && 100 || matrix.suite == 'body-contacts' && 60 || 40 }}
     env:
       PYTHONUNBUFFERED: '1'

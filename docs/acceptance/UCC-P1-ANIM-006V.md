@@ -70,16 +70,50 @@ The complete local regression runs 672 tests: 659 pass, 13 Windows symlink skips
 (final run: 102.390 seconds). All fifteen earlier preflight/guardrail tests, compilation and
 whitespace checks pass. The initial regression caught the expected schema-file
 inventory increase from fifteen to sixteen; the inventory is updated and the
-complete suite rerun. The new project-bound paired API and original-source CI
-gate are being executed. Required actual negative tests rehash a plausible
+complete suite rerun. The project-bound paired API passes in 1,296.250 seconds:
+both complete original/fitted saved Actions reproduce across two fresh workers,
+followed by host geometry/topology intake for all 600 frames. Original source,
+master and project bytes remain unchanged. Early right-hand nonzero observations
+fall from 1,028 to 254 at frame 20; later observations remain unchanged (2,933 at
+frame 211). Seven fitted frames have 1–4 additional nonzero face observations,
+with unknowns separate. These results do not introduce an acceptance rule.
+
+Fifteen new actual CPU clay renders cover frames 1/57/193/211/300. Every PNG
+decodes, has its recorded byte hash and matches canonical original/fitted skin
+hashes at those unchanged frames. Front/side/quarter views at frame 211 were
+inspected; the hand enters the torso. No scene is saved or visual approval
+granted. Required actual negative tests rehash a plausible
 observation and require fresh reproduction to reject it. A read-only actual
 MPFB geometry fault shrinks/translates the real hand fully into a ray-checked
-torso interior: central-body triangle crossings must be zero while most hand
-faces retain nonzero signed winding. Open/inverted actual skin must reject.
+torso interior: central-body triangle crossings must be zero while skin winding
+is checked against an independent solid-angle oracle at every selected hand
+probe. Open/inverted actual skin must reject.
 The actual owned-source fault passes: zero central-body surface pairs, with
 3,138 / 3,166 hand faces showing nonzero winding. Open and inverted actual skin
 reject at their declared topology/positive-volume checks. Original inputs remain
 unchanged. No original or diagnostic scene is saved during geometry faults.
+
+The first combined original-source run completes both fresh 300-frame workers,
+host cache intake and rehashed-observation rejection, then fails an incorrect
+fault-test assumption that 90% of all anatomically enclosed hand faces must have
+nonzero winding. An independent double-precision solid-angle sum proves that
+self-intersecting connected skin can cancel winding: the exact reference has
+2,089 nonzero probes, not 3,166. Ray observations report 2,063, with 41 unknowns;
+there are zero definite false-zero/false-nonzero classifications. The corrected
+test requires exact independent agreement at every definite probe and at least
+90% coverage of the mathematically nonzero reference. It retains the zero
+surface-crossing, topology, immutability and no-quality-approval assertions.
+The updated actual original-source fault passes, including whole-variant
+invalidation after an earlier checked frame and a later otherwise valid frame.
+Failed logs remain private. Successful unchanged measurement/verification and
+tamper stages are rebound and current core intake rerun after the test fix;
+the unified final remote gate remains required. NumPy 2.3.4 is already bundled
+with the actual Blender runtime and is used only by the nonshipping independent
+verification oracle; it is not added to the application or installed.
+
+This distinction is a material limitation: zero skin winding is not anatomical
+body clearance. A separately validated anatomical enclosure is required before
+using any inclusion observation to approve further automatic corrections.
 
 The existing body-contact CI suite runs these additional full source workers;
 its timeout increases to 60 minutes, preserving every existing assertion and
@@ -88,5 +122,5 @@ acceptance requires all five exact-head workflows and downloaded artifact
 verification. Real engine imports, grasps and production visual quality remain
 unverified. No dependency, install, model, license-right or asset-upload change.
 
-Next: display independently verified inclusion/unknown observations during
-original/fitted playback before attempting the remaining body-contact interval.
+Next: independently validated anatomical body-volume observations that do not
+confuse connected-skin fold cancellation with clearance, before further fitting.
