@@ -23,6 +23,7 @@ class MotionCanvas(QOpenGLWidget):
         self._context_timer=QTimer(self);self._context_timer.setSingleShot(True)
         self._context_timer.timeout.connect(self._check_context)
         self.yaw=-.45;self.pitch=.15;self.zoom=1.;self.pan=(0.,0.);self._pointer=None
+        self.highlight_intersections=False;self.focus_intersections=False
         self.setMinimumSize(300,300)
         self.setToolTip("Drag: orbit | Right-drag: pan | Wheel: zoom | Actual cached Blender skin")
 
@@ -45,7 +46,8 @@ class MotionCanvas(QOpenGLWidget):
         try:
             dpr=self.devicePixelRatioF()
             self.renderer.draw(self.cache,self.frame,round(self.width()*dpr),round(self.height()*dpr),
-                yaw=self.yaw,pitch=self.pitch,zoom=self.zoom,pan=self.pan)
+                yaw=self.yaw,pitch=self.pitch,zoom=self.zoom,pan=self.pan,
+                highlight_intersections=self.highlight_intersections,focus_intersections=self.focus_intersections)
         except Exception as error:self._fail(str(error))
 
     def reset_view(self):
@@ -87,6 +89,16 @@ class MotionViewer(QWidget):
         self.reset=QPushButton("Reset view");self.position=QLabel("Frame —")
         for w in (self.play,self.loop,self.reset,self.position):self.transport.addWidget(w)
         self.layout.addLayout(self.transport)
+        surface_controls=QHBoxLayout()
+        self.highlight=QCheckBox("Highlight hand/arm intersections");self.highlight.setChecked(True)
+        self.highlight.setToolTip("Checks each hand against the opposite upper-limb branch, including the shoulder. Other body-part pairs and correct grasp/contact are not evaluated.")
+        self.focus=QCheckBox("Focus");self.next_flagged=QPushButton("Next flagged frame")
+        self.max_pairs=QPushButton("Max pairs")
+        self.max_pairs.setToolTip("Jump to the frame with the most intersecting triangle pairs. This ranks pair counts, not penetration depth or contact quality.")
+        for w in (self.highlight,self.focus,self.next_flagged,self.max_pairs):surface_controls.addWidget(w)
+        self.layout.addLayout(surface_controls)
+        self.surface_status=QLabel("Surface inspection has not been run for this cache.")
+        self.surface_status.setWordWrap(True);self.layout.addWidget(self.surface_status)
         self.scrub=QSlider(Qt.Orientation.Horizontal);self.scrub.setRange(0,0);self.layout.addWidget(self.scrub)
         self.note=QLabel("Precomputed skin playback • private joint correction • visual/contact/engine quality unapproved")
         self.note.setWordWrap(True);self.layout.addWidget(self.note)
@@ -94,10 +106,17 @@ class MotionViewer(QWidget):
         self.timer.timeout.connect(self.tick)
         self.play.clicked.connect(self.toggle);self.scrub.valueChanged.connect(self.seek)
         self.loop.toggled.connect(self._loop_changed);self.reset.clicked.connect(self._reset)
+        self.highlight.toggled.connect(lambda _checked:self._present())
+        self.focus.toggled.connect(lambda _checked:self._present());self.next_flagged.clicked.connect(self.next_surface_frame)
+        self.max_pairs.clicked.connect(self.max_surface_frame)
         self._enable(False)
 
     def _enable(self,enabled):
         for w in (self.play,self.loop,self.reset,self.scrub):w.setEnabled(enabled)
+        surface=self.cache.surface_review if self.cache else None
+        checked=bool(enabled and surface and surface.status=="CHECKED")
+        self.highlight.setEnabled(checked)
+        for w in (self.focus,self.next_flagged,self.max_pairs):w.setEnabled(checked and bool(surface.flagged_frames))
 
     def clear(self):
         self.timer.stop();self.clock=None;self.cache=None
@@ -105,6 +124,7 @@ class MotionViewer(QWidget):
             self.canvas.release();self.layout.removeWidget(self.canvas);self.canvas.hide();self.canvas.deleteLater();self.canvas=None
         self.play.setText("Play");self.scrub.setRange(0,0);self.position.setText("Frame —");self._enable(False)
         self.status.setText("Prepare a verified FBX body preview, then load its motion in UCC.")
+        self.focus.setChecked(False);self.surface_status.setText("Surface inspection has not been run for this cache.")
 
     def show_cache(self,cache: MotionCache):
         self.clear();self.cache=cache;self.clock=PlaybackClock(cache.frame_count,cache.fps,loop=self.loop.isChecked())
@@ -124,7 +144,25 @@ class MotionViewer(QWidget):
         if self.clock:self.clock.loop=checked
 
     def _reset(self):
+        self.focus.setChecked(False)
         if self.canvas:self.canvas.reset_view()
+
+    def next_surface_frame(self):
+        if self.cache is None or self.cache.surface_review is None:return
+        frames=self.cache.surface_review.flagged_frames
+        if not frames:return
+        frame=next((i for i in frames if i>self.clock.frame),frames[0])
+        self._focus_surface_frame(frame)
+
+    def max_surface_frame(self):
+        if self.cache is None or self.cache.surface_review is None or not self.cache.surface_review.flagged_frames:return
+        frame=max(self.cache.surface_review.flagged_frames,key=lambda i:sum(self.cache.surface_review.pairs[i]))
+        self._focus_surface_frame(frame)
+
+    def _focus_surface_frame(self,frame):
+        if self.clock.playing:self.toggle()
+        self.canvas.pan=(0.,0.);self.canvas.zoom=1.
+        self.focus.setChecked(True);self.seek(frame)
 
     def toggle(self):
         if self.clock is None:return
@@ -146,6 +184,13 @@ class MotionViewer(QWidget):
         self.scrub.blockSignals(True);self.scrub.setValue(frame);self.scrub.blockSignals(False)
         self.position.setText(f"Source frame {frame+self.cache.source_first_frame} • {frame+1} / {self.clock.count} • {frame/self.clock.fps:.2f} s")
         self.play.setText("Pause" if self.clock.playing else "Play")
+        surface=self.cache.surface_review
+        if surface is not None:
+            text=(f"Hand/opposite-arm review: {len(surface.flagged_frames)} flagged frames; current frame {sum(surface.pairs[frame])} triangle pairs. Contact quality remains unapproved."
+                  if surface.status=="CHECKED" else "Surface inspection unavailable for this rig or workload; no contact verdict.")
+            self.surface_status.setText(text)
+        self.canvas.highlight_intersections=self.highlight.isChecked() and self.highlight.isEnabled()
+        self.canvas.focus_intersections=self.focus.isChecked() and self.focus.isEnabled()
         self.canvas.frame=frame;self.canvas.update()
 
     def hideEvent(self,event):

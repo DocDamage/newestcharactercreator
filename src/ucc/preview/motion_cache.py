@@ -12,6 +12,7 @@ from ucc.core.errors import ValidationError
 from ucc.jobs.native_evidence import bound_file
 from ucc.jobs.native_skin_evidence import validate_reopen_report
 from ucc.animations.source_rest_frames import is_sha256
+from .surface_review import SurfaceReview,read_surface_review
 
 MAGIC=b"UCCSKN1\0"
 MAX_BYTES=256*1024*1024
@@ -52,6 +53,7 @@ class MotionCache:
     triangle_count: int
     radius: float
     source_first_frame: int=1
+    surface_review: SurfaceReview | None=None
 
     @property
     def frame_count(self):return len(self.chunks)
@@ -64,8 +66,9 @@ class MotionCache:
         return raw[:12*self.vertex_count],raw[12*self.vertex_count:]
 
 
-def read_motion_cache(folder: Path, report: dict, bindings: dict, timeline: dict, *, cancel_check=lambda:None) -> MotionCache:
-    if (type(report) is not dict or type(bindings) is not dict or type(timeline) is not dict or set(report)!={"status","bindings","saved_review_verification","manifest"} or
+def read_motion_cache(folder: Path, report: dict, bindings: dict, timeline: dict, *, cancel_check=lambda:None,
+                      profile: dict | None=None,surface_verification: dict | None=None) -> MotionCache:
+    if (type(report) is not dict or type(bindings) is not dict or type(timeline) is not dict or set(report) not in ({"status","bindings","saved_review_verification","manifest"},{"status","bindings","saved_review_verification","manifest","surface_review"}) or
             report["status"]!="REAL_NATIVE_SKIN_CACHE_EXPORTED" or report["bindings"]!=bindings or
             set(bindings)!=HASHES or any(not is_sha256(v) for v in bindings.values())):
         raise ValidationError("Playback result identity/contract differs")
@@ -80,8 +83,10 @@ def read_motion_cache(folder: Path, report: dict, bindings: dict, timeline: dict
     except (ValueError,UnicodeError,RecursionError) as error:raise ValidationError("Invalid playback manifest JSON") from error
     fields={"schema_version","status","bindings","coordinate_space","world_matrix","fps","frame_count","source_first_frame",
             "vertex_count","triangle_count","frames","geometry","animation_visual_quality_verified","engine_import_verified"}
-    if (type(data) is not dict or set(data)!=fields or type(data["schema_version"]) is not int or data["schema_version"]!=1 or
-            data["status"]!="NATIVE_VERIFIED_SKIN_CACHE_V1" or data["bindings"]!=bindings or
+    version=data.get("schema_version") if type(data) is dict else None
+    if version==2:fields.add("surface_review")
+    if (type(data) is not dict or set(data)!=fields or type(version) is not int or version not in {1,2} or
+            data["status"]!=f"NATIVE_VERIFIED_SKIN_CACHE_V{version}" or data["bindings"]!=bindings or
             data["coordinate_space"]!="BLENDER_LOCAL_Z_UP" or
             any(data[k] is not False for k in ("animation_visual_quality_verified","engine_import_verified"))):
         raise ValidationError("Playback schema, convention or approval flags differ")
@@ -92,6 +97,11 @@ def read_motion_cache(folder: Path, report: dict, bindings: dict, timeline: dict
             not _number(data["fps"],1,240) or data["fps"]!=timeline.get("fps") or
             type(data["source_first_frame"]) is not int or data["source_first_frame"]!=timeline.get("source_first_frame")):
         raise ValidationError("Playback count, workload, fps or complete coverage differs")
+    surface=None
+    if version==2:
+        if data["surface_review"]!=report.get("surface_review"):raise ValidationError("Surface manifest binding differs")
+        surface=read_surface_review(folder,data["surface_review"],bindings,timeline,profile,t,n,surface_verification,data['world_matrix'],cancel_check=cancel_check)
+    elif "surface_review" in report:raise ValidationError("Legacy cache contains undeclared surface evidence")
     world=data["world_matrix"]
     if (type(world) is not list or len(world)!=16 or any(not _number(v,-10000,10000) for v in world) or
             world[12:]!=[0,0,0,1]):raise ValidationError("Invalid playback world transform")
@@ -130,6 +140,8 @@ def read_motion_cache(folder: Path, report: dict, bindings: dict, timeline: dict
         if h.hexdigest()!=record["skin_sha256"]:raise ValidationError("Playback vertices do not reproduce measured skin")
         for triangle in struct.iter_unpack("<III",raw[12*n:]):
             if any(v>=n for v in triangle) or len(set(triangle))!=3:raise ValidationError("Invalid playback triangle indices")
+        if surface is not None and sha256(raw[12*n:]).hexdigest()!=surface.triangle_hashes[frame-1]:
+            raise ValidationError("Playback topology differs from independently reopened surface geometry")
         if frame==1:
             diagonal=sum((max(p[i] for p in bounds)-min(p[i] for p in bounds))**2 for i in range(3))**.5
             radius=diagonal*max(lengths)/2
@@ -137,4 +149,4 @@ def read_motion_cache(folder: Path, report: dict, bindings: dict, timeline: dict
         chunks.append((offset,size));hips.append(tuple(hip));offset+=size
     if offset!=len(packed):raise ValidationError("Playback has gaps, overlaps or trailing bytes")
     cancel_check()
-    return MotionCache(packed,tuple(chunks),tuple(hips),tuple(world),float(data["fps"]),n,t,radius,data["source_first_frame"])
+    return MotionCache(packed,tuple(chunks),tuple(hips),tuple(world),float(data["fps"]),n,t,radius,data["source_first_frame"],surface)

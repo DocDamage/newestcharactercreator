@@ -11,7 +11,8 @@ from typing import Any
 import zlib
 
 from blender_bridge.native_review_reopen import reopen_native, digest, scene_objects
-from blender_bridge.native_inputs import read_json
+from blender_bridge.native_inputs import read_json,validate_profile
+from blender_bridge.native_surface_review import SurfaceInspector
 
 MAGIC=b"UCCSKN1\0"
 MAX_BYTES=256*1024*1024
@@ -27,9 +28,13 @@ def export_native_cache(bpy: Any, root: Path, options: dict) -> dict:
     reopened=reopen_native(bpy,root,options)
     data=read_json(root/"target_timeline.json",options["timeline_sha256"],64*1024*1024)
     human,rig=scene_objects(bpy)
+    profile=validate_profile(read_json(root/"native_mapping.json",options["mapping_sha256"],64*1024),
+        options["source_sha256"],options["snapshot_sha256"],options["master_sha256"])
+    inspector=SurfaceInspector(profile,rig,human)
     binary=root/"motion_skin.bin";manifest=root/"motion_skin.json"
+    contacts=root/"motion_contacts.json"
     temporary=root/"motion_skin.partial"
-    if any(p.exists() or p.is_symlink() for p in (binary,manifest,temporary)):
+    if any(p.exists() or p.is_symlink() for p in (binary,manifest,temporary,contacts)):
         raise ValueError("Refuse to replace private playback outputs")
     frames=[];total_raw=0;counts=None
     world=[float(v) for line in human.matrix_world for v in line]
@@ -38,8 +43,8 @@ def export_native_cache(bpy: Any, root: Path, options: dict) -> dict:
             stream.write(MAGIC)
             for frame,row in enumerate(data["full_timeline_frames"],1):
                 bpy.context.scene.frame_set(frame);bpy.context.view_layer.update()
-                evaluated=human.evaluated_get(bpy.context.evaluated_depsgraph_get())
-                mesh=evaluated.to_mesh()
+                graph=bpy.context.evaluated_depsgraph_get();evaluated=human.evaluated_get(graph)
+                mesh=evaluated.to_mesh(preserve_all_data_layers=True,depsgraph=graph)
                 if mesh is None:raise ValueError("Cannot evaluate actual playback mesh")
                 try:
                     mesh.calc_loop_triangles()
@@ -61,6 +66,7 @@ def export_native_cache(bpy: Any, root: Path, options: dict) -> dict:
                     if h.hexdigest()!=row["evaluated_sha256"]:
                         raise ValueError("Playback skin differs from saved verified timeline")
                     if sys.byteorder!="little":vertices.byteswap();indices.byteswap()
+                    inspector.inspect(mesh,frame,row["evaluated_sha256"],sha256(indices.tobytes()).hexdigest())
                     raw=vertices.tobytes()+indices.tobytes()
                     packed=zlib.compress(raw,1)
                     offset=stream.tell()
@@ -71,7 +77,11 @@ def export_native_cache(bpy: Any, root: Path, options: dict) -> dict:
                         "hip_world":row.get("hip_midpoint_world",row["root_world_head"])})
                 finally:evaluated.to_mesh_clear()
         binary=temporary.rename(binary)
-        result={"schema_version":1,"status":"NATIVE_VERIFIED_SKIN_CACHE_V1","bindings":dict(options),
+        contact_payload=json.dumps(inspector.report(options),allow_nan=False,separators=(",",":")).encode()
+        if len(contact_payload)>16*1024*1024:raise ValueError("Complete surface review exceeds its bound; no truncation")
+        with contacts.open("xb") as stream:stream.write(contact_payload)
+        result={"schema_version":2,"status":"NATIVE_VERIFIED_SKIN_CACHE_V2","bindings":dict(options),
+            "surface_review":record(contacts),
             "coordinate_space":"BLENDER_LOCAL_Z_UP","world_matrix":world,"fps":data["fps"],
             "source_first_frame":data["source_first_frame"],
             "frame_count":len(frames),"vertex_count":counts[0],"triangle_count":counts[1],
@@ -86,10 +96,10 @@ def export_native_cache(bpy: Any, root: Path, options: dict) -> dict:
             if digest(root/name)!=options[key]:raise ValueError("Playback changed staged originals")
         with manifest.open("xb") as stream:stream.write(payload)
         return {"status":"REAL_NATIVE_SKIN_CACHE_EXPORTED","bindings":dict(options),
-                "saved_review_verification":reopened,"manifest":record(manifest)}
+                "saved_review_verification":reopened,"manifest":record(manifest),"surface_review":record(contacts)}
     except BaseException:
         # The runner kills a cancelled process; its isolated folder is never
         # promoted. Ordinary exceptions also remove incomplete owned outputs.
-        for path in (temporary,binary,manifest):
+        for path in (temporary,binary,manifest,contacts):
             if path.is_file() and not path.is_symlink():path.unlink()
         raise

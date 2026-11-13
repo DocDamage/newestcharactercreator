@@ -60,3 +60,26 @@ class MotionQtTests(unittest.TestCase):
         v=self.viewer;v.show_cache(self.cache);v.play.click();canvas=v.canvas
         v.show_cache(self.cache);self.assertTrue(canvas.released);self.assertFalse(v.clock.playing);self.assertFalse(v.timer.isActive())
         self.assertEqual(v.scrub.value(),0)
+
+    def test_surface_navigation_pauses_wraps_preserves_focus_and_clears(self):
+        from dataclasses import replace
+        from ucc.preview.surface_review import SurfaceReview
+        review=SurfaceReview('CHECKED','',((1,2),(),(3,4)),((1,0),(0,0),(0,2)),('a'*64,)*3)
+        v=self.viewer;v.show_cache(replace(self.cache,surface_review=review))
+        self.assertTrue(v.next_flagged.isEnabled());self.assertIn('2 flagged frames',v.surface_status.text())
+        v.play.click();v.next_flagged.click()
+        self.assertFalse(v.clock.playing);self.assertEqual(v.clock.frame,2);self.assertTrue(v.focus.isChecked())
+        v.highlight.setChecked(False)
+        self.assertFalse(v.canvas.highlight_intersections);self.assertTrue(v.canvas.focus_intersections)
+        v.scrub.setValue(1);v.max_pairs.click();self.assertEqual(v.clock.frame,2)
+        v.next_flagged.click();self.assertEqual(v.clock.frame,0)
+        v.reset.click();self.assertFalse(v.focus.isChecked())
+        v.clear();self.assertFalse(v.next_flagged.isEnabled());self.assertFalse(v.highlight.isEnabled())
+
+    def test_unavailable_surface_review_cannot_enable_success_or_navigation(self):
+        from dataclasses import replace
+        from ucc.preview.surface_review import SurfaceReview
+        review=SurfaceReview('UNAVAILABLE','WEIGHTED_REGIONS_UNAVAILABLE',((),)*3,((0,0),)*3,('a'*64,)*3)
+        v=self.viewer;v.show_cache(replace(self.cache,surface_review=review))
+        self.assertFalse(v.next_flagged.isEnabled());self.assertFalse(v.highlight.isEnabled());self.assertFalse(v.max_pairs.isEnabled())
+        self.assertIn('unavailable',v.surface_status.text())
