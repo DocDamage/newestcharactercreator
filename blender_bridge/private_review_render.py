@@ -24,7 +24,7 @@ def _record(path: Path) -> dict[str, Any]:
 
 
 def render_private_review(bpy: Any, human: Any, frames: int, review_path: Path,
-                          bindings: dict[str, str]) -> dict[str, Any]:
+                          bindings: dict[str, Any], *, root_positions: dict | None = None) -> dict[str, Any]:
     from mathutils import Vector
     source_scene = bpy.context.scene
     prior_frame = source_scene.frame_current
@@ -35,13 +35,23 @@ def render_private_review(bpy: Any, human: Any, frames: int, review_path: Path,
     samples = sorted({1, 1+(frames-1)//4, 1+(frames-1)//2, 1+3*(frames-1)//4, frames})
     if len(samples) != 5:
         raise PrivateRenderError("Private review requires five distinct source frames")
+    def offset(frame):
+        if root_positions is None:
+            return Vector((0.,0.,0.))
+        for key in (frame,samples[0]):
+            value=root_positions.get(key)
+            if (not isinstance(value,(list,tuple)) or len(value)!=3 or
+                    any(type(v) not in (int,float) or not math.isfinite(v) or abs(v)>1e6 for v in value)):
+                raise PrivateRenderError("Invalid root-follow camera coordinates")
+        return Vector(root_positions[frame])-Vector(root_positions[samples[0]])
     points_world = []
     signatures = {}
     for frame in samples:
         source_scene.frame_set(frame)
         points, signature = _evaluated_vertices(bpy, human)
         signatures[frame] = signature
-        points_world.extend(human.matrix_world @ Vector(point) for point in points)
+        frame_offset=offset(frame)
+        points_world.extend(human.matrix_world @ Vector(point)-frame_offset for point in points)
     minimum = Vector(tuple(min(p[i] for p in points_world) for i in range(3)))
     maximum = Vector(tuple(max(p[i] for p in points_world) for i in range(3)))
     center, diagonal = (minimum + maximum) / 2, (maximum - minimum).length
@@ -85,6 +95,7 @@ def render_private_review(bpy: Any, human: Any, frames: int, review_path: Path,
         scene.camera = camera
         created_objects.append(camera)
         created_data.append((bpy.data.cameras, camera_data))
+        light_positions=[]
         for i, direction in enumerate(((1., -2., 3.), (-2., 1., 2.))):
             lamp_data = bpy.data.lights.new(f"UCC_PRIVATE_LIGHT_{i}", "AREA")
             lamp_data.energy = 35 * diagonal * diagonal
@@ -96,6 +107,7 @@ def render_private_review(bpy: Any, human: Any, frames: int, review_path: Path,
             lamp.rotation_euler = (center - lamp.location).to_track_quat("-Z", "Y").to_euler()
             created_objects.append(lamp)
             created_data.append((bpy.data.lights, lamp_data))
+            light_positions.append((lamp,lamp.location.copy()))
         for frame in samples:
             source_scene.frame_set(frame)
             bpy.context.view_layer.update()
@@ -106,10 +118,13 @@ def render_private_review(bpy: Any, human: Any, frames: int, review_path: Path,
             snapshot = bpy.data.objects.new("UCC_PRIVATE_EVALUATED_SKIN", mesh)
             scene.collection.objects.link(snapshot)
             snapshot.matrix_world = human.matrix_world.copy()
+            root_offset=offset(frame)
+            view_center=center+root_offset
+            for lamp,base in light_positions: lamp.location=base+root_offset
             try:
                 for view, direction in VIEWS.items():
-                    camera.location = center + Vector(direction).normalized() * diagonal * 2
-                    orientation = (center - camera.location).to_track_quat("-Z", "Y")
+                    camera.location = view_center + Vector(direction).normalized() * diagonal * 2
+                    orientation = (view_center - camera.location).to_track_quat("-Z", "Y")
                     camera.rotation_euler = orientation.to_euler()
                     right, up = orientation @ Vector((1, 0, 0)), orientation @ Vector((0, 1, 0))
                     half_height = max(max(abs((p-center).dot(up)),
@@ -141,6 +156,8 @@ def render_private_review(bpy: Any, human: Any, frames: int, review_path: Path,
                                         "opaque_pixels": len(visible),
                                         "opaque_bounds": bounds,
                                         "evaluated_sha256": signatures[frame]})
+                        if root_positions is not None:
+                            records[-1]["camera_root_offset_world"]=list(root_offset)
                     finally:
                         bpy.data.images.remove(image)
             finally:

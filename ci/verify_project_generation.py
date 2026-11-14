@@ -455,10 +455,13 @@ def verify(blender: Path, root: Path) -> dict:
 
     from verify_fbx_source import verify_fbx_source
     native_fbx = verify_fbx_source(blender, root / "native-fbx-contract")
+    from verify_native_body import verify_native_body
+    native_body = verify_native_body(blender, store, root / "native-body-contract")
     return {
         "status": "REAL_LINUX_PROJECT_GENERATE_REOPEN_STAGED",
         "runtime_platform": sys.platform,
         "native_fbx_source_contract": native_fbx,
+        "native_body_retarget_contract": native_body,
         "anim006_branching_review": branching,
         "blender_version": transaction.observed["blender_version"],
         "created_vertices": transaction.observed["created_vertex_count"],

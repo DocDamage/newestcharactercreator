@@ -1,0 +1,300 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Explicit native FBX body mapping v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "convention",
+    "source_sha256",
+    "snapshot_sha256",
+    "master_sha256",
+    "landmarks",
+    "pairs"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "convention": {
+      "const": "NATIVE_ANATOMICAL_REFERENCE_V1"
+    },
+    "source_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "snapshot_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "master_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "landmarks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "left_hip",
+        "right_hip",
+        "head",
+        "left_hand",
+        "right_hand",
+        "left_foot",
+        "right_foot"
+      ],
+      "properties": {
+        "left_hip": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "source",
+            "target"
+          ],
+          "properties": {
+            "source": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^(?!@)[^\\x00-\\x1f\\x7f]{1,128}$"
+            },
+            "target": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^(?!@)[^\\x00-\\x1f\\x7f]{1,128}$"
+            }
+          }
+        },
+        "right_hip": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "source",
+            "target"
+          ],
+          "properties": {
+            "source": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^(?!@)[^\\x00-\\x1f\\x7f]{1,128}$"
+            },
+            "target": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^(?!@)[^\\x00-\\x1f\\x7f]{1,128}$"
+            }
+          }
+        },
+        "head": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "source",
+            "target"
+          ],
+          "properties": {
+            "source": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^(?!@)[^\\x00-\\x1f\\x7f]{1,128}$"
+            },
+            "target": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^(?!@)[^\\x00-\\x1f\\x7f]{1,128}$"
+            }
+          }
+        },
+        "left_hand": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "source",
+            "target"
+          ],
+          "properties": {
+            "source": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^(?!@)[^\\x00-\\x1f\\x7f]{1,128}$"
+            },
+            "target": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^(?!@)[^\\x00-\\x1f\\x7f]{1,128}$"
+            }
+          }
+        },
+        "right_hand": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "source",
+            "target"
+          ],
+          "properties": {
+            "source": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^(?!@)[^\\x00-\\x1f\\x7f]{1,128}$"
+            },
+            "target": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^(?!@)[^\\x00-\\x1f\\x7f]{1,128}$"
+            }
+          }
+        },
+        "left_foot": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "source",
+            "target"
+          ],
+          "properties": {
+            "source": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^(?!@)[^\\x00-\\x1f\\x7f]{1,128}$"
+            },
+            "target": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^(?!@)[^\\x00-\\x1f\\x7f]{1,128}$"
+            }
+          }
+        },
+        "right_foot": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "source",
+            "target"
+          ],
+          "properties": {
+            "source": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^(?!@)[^\\x00-\\x1f\\x7f]{1,128}$"
+            },
+            "target": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^(?!@)[^\\x00-\\x1f\\x7f]{1,128}$"
+            }
+          }
+        }
+      }
+    },
+    "pairs": {
+      "type": "array",
+      "minItems": 15,
+      "maxItems": 64,
+      "prefixItems": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "source",
+            "target",
+            "source_tip",
+            "target_tip",
+            "secondary"
+          ],
+          "properties": {
+            "source": {
+              "const": "@ARMATURE"
+            },
+            "target": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^(?!@)[^\\x00-\\x1f\\x7f]{1,128}$"
+            },
+            "source_tip": {
+              "type": "null"
+            },
+            "target_tip": {
+              "type": "null"
+            },
+            "secondary": {
+              "const": "BODY"
+            }
+          }
+        }
+      ],
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source",
+          "target",
+          "source_tip",
+          "target_tip",
+          "secondary"
+        ],
+        "properties": {
+          "source": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^(?!@)[^\\x00-\\x1f\\x7f]{1,128}$"
+          },
+          "target": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^(?!@)[^\\x00-\\x1f\\x7f]{1,128}$"
+          },
+          "source_tip": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^[^\\x00-\\x1f\\x7f]{1,128}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "target_tip": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^[^\\x00-\\x1f\\x7f]{1,128}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "secondary": {
+            "enum": [
+              "UP",
+              "FORWARD"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

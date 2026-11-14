@@ -81,6 +81,7 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.mesh_dock)
         self.mesh_dock.hide()
         self._blender_executable: Path | None = None  # Session-only; no disk scan.
+        self._native_review = None
         self._make_menu()
         self.jobs = BackgroundJobs(self._job_success, self._job_error, self._busy_changed)
         self._work_kind = ""
@@ -142,6 +143,12 @@ class MainWindow(QMainWindow):
         self.animations.multi_bvh_requested.connect(self.test_selected_multi_bvh)
         self.animations.calibrated_bvh_requested.connect(self.test_calibrated_bvh)
         self.animations.reviewed_bvh_requested.connect(self.test_reviewed_bvh)
+        from .native_body import start_native_body, open_native_result
+        self.animations.native_body_requested.connect(lambda:start_native_body(self))
+        self.animations.native_animation_open_requested.connect(lambda:open_native_result(self))
+        self.animations.native_renders_open_requested.connect(lambda:open_native_result(self,rendered=True))
+        for field in (self.animations.selected,self.animations.native_body_profile):
+            field.textChanged.connect(lambda _text:self._clear_native_review())
         self.animations.inspect_requested.connect(self.inspect_animation)
         self.animations.index_requested.connect(self.index_animation)
         self.animations.refresh_requested.connect(self.refresh_catalog)
@@ -177,8 +184,14 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Universal Character Creator — " + state.name + (" *" if state.dirty else ""))
 
     def _clear_preview(self) -> None:
+        self._clear_native_review()
         self.mesh_viewer.clear_model()
         self.mesh_dock.hide()
+
+    def _clear_native_review(self) -> None:
+        self._native_review=None
+        self.animations.open_native_animation.setEnabled(False)
+        self.animations.open_native_renders.setEnabled(False)
 
     def _confirm_discard(self) -> bool:
         if not self.controller.dirty:
@@ -289,7 +302,7 @@ class MainWindow(QMainWindow):
             self.undo_action.setEnabled(not busy and state.can_undo)
             self.redo_action.setEnabled(not busy and state.can_redo)
         self.cancel_generation_action.setEnabled(
-            busy and self._work_kind in {"generate_humanoid", "saved_master_preview", "body_refit", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain"}
+            busy and self._work_kind in {"generate_humanoid", "saved_master_preview", "body_refit", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain", "native_body", "fbx_intake"}
         )
         self.statusBar().showMessage(
             ("Generating real MPFB humanoid in Blender..."
@@ -308,8 +321,12 @@ class MainWindow(QMainWindow):
              if self._work_kind == "calibrated_bvh_chain" else
              "Reviewing explicitly mapped BVH deformation across every Blender frame..."
              if self._work_kind == "reviewed_bvh_chain" else
+             "Checking private native FBX body motion and rendering review views..."
+             if self._work_kind == "native_body" else
+             "Measuring native FBX source skeleton and complete timeline..."
+             if self._work_kind == "fbx_intake" else
              "Converting saved Blender master to a static GLB preview...")
-            if busy and self._work_kind in {"generate_humanoid", "saved_master_preview", "body_refit", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain"}
+            if busy and self._work_kind in {"generate_humanoid", "saved_master_preview", "body_refit", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain", "native_body", "fbx_intake"}
             else ("Working on local files..." if busy else "Local task finished")
         )
 
@@ -542,6 +559,16 @@ class MainWindow(QMainWindow):
                 f"Private source snapshot: {result['private_snapshot']}\n"
                 "No animation was applied to the character. Target retargeting, visual quality and engine import remain unverified."
             )
+        elif self._work_kind == "native_body":
+            from .native_body import native_result_text
+            current=self.controller.require_project()
+            if current.project_id!=result.project_id or current.revision!=result.revision:
+                self._error("Character selection changed; native results remain private in the original job folder")
+                return
+            self._native_review=result
+            self.animations.open_native_animation.setEnabled(True)
+            self.animations.open_native_renders.setEnabled(True)
+            self.log.setPlainText(native_result_text(result))
         else:
             self.log.setPlainText(json.dumps(result, ensure_ascii=False, indent=2, default=str)[:100000])
         self.statusBar().showMessage("Local operation completed; review results above")

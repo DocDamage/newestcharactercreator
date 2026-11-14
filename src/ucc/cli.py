@@ -50,6 +50,12 @@ def main(argv: list[str] | None = None) -> int:
     fbx.add_argument("--blender", type=Path, required=True)
     fbx.add_argument("--jobs", type=Path, required=True)
     fbx.add_argument("--policy-file", type=Path, required=True, help="Reviewed local-preview LicensePolicy JSON")
+    native=sp.add_parser("preview-fbx",help="Experimental complete native FBX motion on a private saved-character copy")
+    native.add_argument("file",type=Path)
+    native.add_argument("--project",type=Path,required=True)
+    native.add_argument("--blender",type=Path,required=True)
+    native.add_argument("--mapping",type=Path,help="Optional explicit reviewed body map; otherwise only the measured humanoid family is supported")
+    native.add_argument("--policy-file",type=Path,required=True)
     index_anim = sp.add_parser("index-animation", help="Index one explicitly chosen animation with fail-closed provenance")
     index_anim.add_argument("file", type=Path)
     index_anim.add_argument("--database", type=Path, required=True, help="Private local SQLite catalog")
@@ -112,6 +118,17 @@ def main(argv: list[str] | None = None) -> int:
             policy = LicensePolicy.from_dict(json.loads(args.policy_file.read_text(encoding="utf-8")))
             data = inspect_selected_fbx(args.file, blender_exe=args.blender, jobs_root=args.jobs,
                 worker_script=Path(__file__).resolve().parents[3]/"blender_bridge/entrypoint.py", permission=policy)
+        elif args.command == "preview-fbx":
+            from ucc.jobs.native_body import preview_native_body
+            store=ProjectStore(args.project);project=store.load()
+            policy=LicensePolicy.from_dict(json.loads(args.policy_file.read_text(encoding="utf-8")))
+            result=preview_native_body(store,source_fbx=args.file,mapping_profile=args.mapping,blender_exe=args.blender,
+                worker_script=Path(__file__).resolve().parents[3]/"blender_bridge/entrypoint.py",permission=policy,
+                expected_project_id=project.project_id,expected_revision=project.revision,expected_master_blend=project.master_blend)
+            data={"status":"EXPERIMENTAL_NATIVE_BODY_PREVIEW","frames":result.evidence["source_frame_count"],
+                  "mapped_bones":len(result.evidence["mapped_pairs"]),"private_animation":result.private_visual_review_blend,
+                  "private_rendered_review":result.private_render_review,"private_timeline":result.private_timeline,
+                  "mapping_profile":result.mapping_profile_used,"retargeting_verified":False,"animation_visual_quality_verified":False}
         elif args.command == "index-animation":
             if args.policy_file is not None:
                 policy_data = json.loads(args.policy_file.read_text(encoding="utf-8"))

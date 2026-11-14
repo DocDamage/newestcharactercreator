@@ -553,6 +553,62 @@ class DesktopQtSmoke(unittest.TestCase):
         self.assertIn("No animation was applied",self.window.log.toPlainText())
         self.assertIn("300",self.window.log.toPlainText())
 
+    def test_native_body_requires_license_and_dispatches_auto_mapping_with_cancel(self):
+        self.test_existing_master_refit_button_disabled_until_generated()
+        pane = self.window.animations
+        source = Path(self.tmp.name) / "ui-only.fbx"
+        source.write_bytes(b"UNIT_ONLY_NOT_IMPORTED")
+        executable = Path(self.tmp.name) / "unit-blender"
+        executable.write_bytes(b"UNIT_ONLY_NOT_EXECUTED")
+        self.window._blender_executable = executable
+        pane.selected.setText(str(source))
+        with patch.object(self.window, "_error") as error, patch.object(self.window, "_submit") as submit:
+            pane.test_native_body.click()
+        self.assertIn("rights", error.call_args.args[0])
+        submit.assert_not_called()
+        pane.provider.setText("original")
+        pane.license.setText("Original retained rights")
+        pane.uri.setText("local-original://unit")
+        pane.local_preview_review.setChecked(True)
+        with patch.object(self.window, "_submit") as submit, patch("ucc.desktop.native_body.preview_native_body") as service:
+            pane.test_native_body.click()
+            submit.call_args.args[1]()
+        self.assertEqual(submit.call_args.args[0], "native_body")
+        self.assertIsNone(service.call_args.kwargs["mapping_profile"])
+        self.assertIs(service.call_args.kwargs["cancel"], submit.call_args.kwargs["cancel"])
+        self.assertTrue(service.call_args.kwargs["permission"].no_ai)
+        for kind in ("native_body", "fbx_intake"):
+            self.window._work_kind = kind
+            self.window._busy_changed(True)
+            self.assertTrue(self.window.cancel_generation_action.isEnabled())
+            self.assertFalse(self.window.character.isEnabled())
+            self.window._busy_changed(False)
+            self.assertFalse(self.window.cancel_generation_action.isEnabled())
+
+    def test_native_results_clear_when_source_or_mapping_changes(self):
+        pane = self.window.animations
+        for field in (pane.selected, pane.native_body_profile):
+            self.window._native_review = object()
+            pane.open_native_animation.setEnabled(True)
+            pane.open_native_renders.setEnabled(True)
+            pane.local_preview_review.setChecked(True)
+            field.setText("changed-input")
+            self.assertIsNone(self.window._native_review)
+            self.assertFalse(pane.open_native_animation.isEnabled())
+            self.assertFalse(pane.open_native_renders.isEnabled())
+            self.assertFalse(pane.local_preview_review.isChecked())
+
+    def test_native_open_refuses_missing_or_changed_review_artifacts(self):
+        from types import SimpleNamespace
+        from ucc.desktop.native_body import open_native_result
+        self.window._native_review = SimpleNamespace(
+            private_visual_review_blend=str(Path(self.tmp.name) / "review_motion.blend"),
+            worker_report={"visual_review_blend": {"name": "review_motion.blend", "bytes": 12345, "sha256": "a"*64}})
+        with patch.object(self.window, "_error") as error, patch("ucc.desktop.native_body.subprocess.Popen") as launch:
+            open_native_result(self.window)
+        self.assertIn("Missing", error.call_args.args[0])
+        launch.assert_not_called()
+
     def test_tools_are_real_and_cannot_claim_geometry(self):
         self.assertIn("PNG", self.window.tools.pack.text())
         self.assertFalse(self.window.character.open_master.isEnabled())

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from hashlib import sha256
 import json
+import math
 from pathlib import Path
 import struct
 from typing import Any
@@ -88,6 +89,22 @@ def png_measurements(data: bytes) -> dict[str, Any]:
 
 def verify_private_renders(folder: Path, raw: dict[str, Any], *, source_sha: str,
                             profile_sha: str, master_sha: str) -> str:
+    if type(raw.get("visual_review_blend")) is not dict or type(raw["visual_review_blend"].get("sha256")) is not str:
+        raise ValidationError("Missing private Action binding")
+    return _verify_renders(folder,raw,{"source_bvh_sha256":source_sha,"source_rest_profile_sha256":profile_sha,
+        "source_master_sha256":master_sha,"review_action_sha256":raw["visual_review_blend"]["sha256"],
+        "conversion_convention":"BVH_XYZ_FIRST_FRAME_DELTA_TO_BONE_V1"})
+
+
+def verify_native_renders(folder: Path, raw: dict[str, Any], timeline: dict) -> str:
+    bindings={**raw["bindings"],"review_action_sha256":raw["visual_review_blend"]["sha256"],
+              "timeline_sha256":raw["timeline"]["sha256"],"source_first_frame":timeline["source_first_frame"],
+              "conversion_convention":"NATIVE_ANATOMICAL_REFERENCE_V1","camera_translation_policy":"FOLLOW_ROOT_TRANSLATION"}
+    return _verify_renders(folder,{**raw,"full_timeline_frames":timeline["full_timeline_frames"]},bindings,
+                           roots={r["frame"]:r["root_world_head"] for r in timeline["full_timeline_frames"]})
+
+
+def _verify_renders(folder: Path, raw: dict[str, Any], bindings: dict, *, roots: dict | None=None) -> str:
     summary = raw.get("private_review_renders")
     if (type(summary) is not dict or type(summary.get("image_count")) is not int or
             summary.get("image_count") != 15 or summary.get("animation_visual_quality_verified") is not False):
@@ -125,10 +142,8 @@ def verify_private_renders(folder: Path, raw: dict[str, Any], *, source_sha: str
     samples = [1, 1+(frames-1)//4, 1+(frames-1)//2, 1+3*(frames-1)//4, frames]
     if (type(manifest) is not dict or type(manifest.get("schema_version")) is not int or
             manifest["schema_version"] != 1 or manifest.get("method") != "CYCLES_CPU_EVALUATED_SKIN_CLAY_V1" or
-            manifest.get("source_bvh_sha256") != source_sha or manifest.get("source_rest_profile_sha256") != profile_sha or
-            manifest.get("source_master_sha256") != master_sha or
-            manifest.get("review_action_sha256") != raw["visual_review_blend"]["sha256"] or
-            manifest.get("conversion_convention") != "BVH_XYZ_FIRST_FRAME_DELTA_TO_BONE_V1" or
+            set(manifest)!={"schema_version","method","source_frame_count","rendered_frames","animation_visual_quality_verified","images"}|set(bindings) or
+            any(type(manifest.get(k)) is not type(v) or manifest[k]!=v for k,v in bindings.items()) or
             type(manifest.get("source_frame_count")) is not int or manifest.get("source_frame_count") != frames or
             type(manifest.get("rendered_frames")) is not list or
             any(type(f) is not int for f in manifest["rendered_frames"]) or manifest["rendered_frames"] != samples or
@@ -148,6 +163,12 @@ def verify_private_renders(folder: Path, raw: dict[str, Any], *, source_sha: str
         measured = png_measurements(data)
         if any(record.get(key) != value for key, value in measured.items()):
             raise ValidationError("Private PNG pixel evidence disagrees")
+        if roots is not None:
+            offset=record.get("camera_root_offset_world")
+            expected=[roots[frame][i]-roots[samples[0]][i] for i in range(3)]
+            if (type(offset) is not list or len(offset)!=3 or any(type(v) not in (int,float) for v in offset) or
+                    any(not math.isfinite(v) or abs(v-e)>1e-5 for v,e in zip(offset,expected))):
+                raise ValidationError("Native render camera does not follow measured root translation")
     if any(len({r["sha256"] for r in records if r["view"] == view}) < 2 for view in VIEWS):
         raise ValidationError("Rendered views do not show changing samples")
     return str(root / "index.html")
