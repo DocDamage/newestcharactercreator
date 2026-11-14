@@ -14,7 +14,8 @@ from .fbx_intake import inspect_selected_fbx
 from .master_preview import _digest, _master_file
 from .native_evidence import read_native_timeline, bound_file
 from .private_render_evidence import verify_native_renders
-from .native_skin_evidence import POLICY as CORRECTIVE, validate_reopen_report
+from .native_skin_evidence import validate_reopen_report
+from ucc.animations.native_skin_policy import BOUND_V1, CORRECTIVE_POLICIES
 from .protocol import JobRequest
 from .runner import BlenderJobRunner
 
@@ -42,13 +43,15 @@ class NativeBodyPreview:
 def preview_native_body(store: ProjectStore, *, source_fbx: Path, mapping_profile: Path | None=None,
                         blender_exe: Path, worker_script: Path, permission: LicensePolicy,
                         expected_project_id: str, expected_revision: int, expected_master_blend: str,
-                        cancel: Event | None=None, timeout_s: float=300, include_hands: bool=False) -> NativeBodyPreview:
+                        cancel: Event | None=None, timeout_s: float=300, include_hands: bool=False, skin_policy: str | None=None) -> NativeBodyPreview:
     allowed,reason=permission.allow("local_preview")
     if not allowed: raise AssetPolicyError(reason)
     if type(include_hands) is not bool or (include_hands and mapping_profile is not None):
         raise ValidationError("Automatic hand mapping needs a boolean selection and no explicit map; explicit maps define their own joints")
     def check_cancel():
         if cancel is not None and cancel.is_set(): raise ProjectStorageError("Native body preview cancelled; originals unchanged")
+    if (skin_policy is not None and (type(skin_policy) is not str or skin_policy not in CORRECTIVE_POLICIES or mapping_profile is not None)):
+        raise ValidationError("An explicit corrective skin policy requires automatic mapping and a supported policy")
     project=store.load()
     def current():
         check_cancel()
@@ -66,7 +69,7 @@ def preview_native_body(store: ProjectStore, *, source_fbx: Path, mapping_profil
     source,_=read_snapshot(snapshot_path.parent,intake,intake["source_sha256"],cancel_check=check_cancel)
     snapshot_sha=intake["snapshot"]["sha256"]
     if mapping_profile is None:
-        generated=measured_body_profile(source,intake["source_sha256"],snapshot_sha,master_sha,include_hands=include_hands)
+        generated=measured_body_profile(source,intake["source_sha256"],snapshot_sha,master_sha,include_hands=include_hands,skin_policy=skin_policy or BOUND_V1)
         mapping_profile=snapshot_path.parent/"native_mapping.json"
         if mapping_profile.exists() or mapping_profile.is_symlink():raise ValidationError("Refuse to replace an automatic native body map")
         with mapping_profile.open("x",encoding="utf-8") as stream:
@@ -113,7 +116,7 @@ def preview_native_body(store: ProjectStore, *, source_fbx: Path, mapping_profil
     action=bound_file(first_folder,first_report["visual_review_blend"],"review_motion.blend",512*1024*1024,cancel_check=check_cancel)
     review=verify_native_renders(first_folder,first_report,first_data)
     reopen_id="";reopened=None
-    if profile.get("skin_deformation_policy")==CORRECTIVE:
+    if profile.get("skin_deformation_policy") in CORRECTIVE_POLICIES:
         unchanged()
         reopen_bindings={**bindings,"review_sha256":first_report["visual_review_blend"]["sha256"],"timeline_sha256":first_report["timeline"]["sha256"]}
         request=JobRequest.new("reopen_native_fbx_body",input_project="candidate.blend",options=reopen_bindings)

@@ -28,7 +28,7 @@ def validate_palm_profile(profile: dict) -> None:
         if "hand_reference_planes" in profile:raise ValueError("Unused native palm declaration")
         return
     declaration=profile.get("hand_reference_planes")
-    if (profile.get("skin_deformation_policy")!="BOUND_CORRECTIVE_SMOOTH_V1" or
+    if (profile.get("skin_deformation_policy") not in {"BOUND_CORRECTIVE_SMOOTH_V1", "BOUND_REGIONAL_CORRECTIVE_SMOOTH_V2"} or
             type(declaration) is not dict or set(declaration)!={"schema_version","planes"} or
             type(declaration["schema_version"]) is not int or declaration["schema_version"] not in (1,2) or
             type(declaration["planes"]) is not dict or set(declaration["planes"])!=used):

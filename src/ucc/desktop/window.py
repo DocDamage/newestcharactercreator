@@ -656,7 +656,7 @@ class MainWindow(QMainWindow):
             self._native_review=result
             self.animations.open_native_animation.setEnabled(True)
             self.animations.open_native_renders.setEnabled(True)
-            self.animations.load_native_motion.setEnabled(result.evidence.get("skin_deformation_policy")=="BOUND_CORRECTIVE_SMOOTH_V1")
+            self.animations.load_native_motion.setEnabled(result.evidence.get("skin_deformation_policy") in {"BOUND_CORRECTIVE_SMOOTH_V1", "BOUND_REGIONAL_CORRECTIVE_SMOOTH_V2"})
             self.log.setPlainText(native_result_text(result))
         elif self._work_kind == "native_playback":
             from .native_playback import publish_playback

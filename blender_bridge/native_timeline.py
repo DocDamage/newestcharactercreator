@@ -113,7 +113,7 @@ def evaluate_native_timeline(bpy,human,rig,source,expected,pairs,world,root_bind
             "source_bind_midpoint_world":hip_anchor["source_bind_midpoint_world"],
             "target_bind_midpoint_world":hip_anchor["target_bind_midpoint_world"],
             "frames_measured":frames,"max_residual_world":max_hip_error}}
-        skin_evidence={} if not corrective else {"skin_deformation_policy":"BOUND_CORRECTIVE_SMOOTH_V1",
+        skin_evidence={} if not corrective else {"skin_deformation_policy":corrective.proof["policy"],
             "skin_deformation":corrective.proof,"master_relative_frames":master_rows,"master_bind_edge_strain":master_strain.report()}
         first_evidence={"first_pose_relative_frames":first_rows,"first_pose_edge_strain":first_strain.report()} if neutral_reference else {}
         return {**anchor_evidence,**skin_evidence,**first_evidence,"mesh_strain_reference":strain_reference,

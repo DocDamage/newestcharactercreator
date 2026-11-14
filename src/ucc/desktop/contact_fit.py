@@ -59,6 +59,8 @@ def start_contact_fit(window):
         window._error('Load verified original motion on the saved character before fitting');return
     pane=window.animations
     if not pane.local_preview_review.isChecked():window._error('Confirm local animation preview rights first');return
+    if getattr(preview,'evidence',{}).get('skin_deformation_policy')=='BOUND_REGIONAL_CORRECTIVE_SMOOTH_V2':
+        window._error('Hand/arm fitting is not yet supported for regional joint smoothing. The original motion remains available.');return
     try:
         executable=window._blender_executable
         if executable is None or executable.is_symlink() or not executable.is_file():

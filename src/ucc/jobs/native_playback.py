@@ -7,6 +7,7 @@ from threading import Event
 
 from ucc.animations.fbx_snapshot import validate_snapshot
 from ucc.animations.native_profile import read_native_profile
+from ucc.animations.native_skin_policy import CORRECTIVE_POLICIES
 from ucc.core.errors import ProjectConflict, ProjectStorageError, ValidationError
 from ucc.core.storage import ProjectStore
 from ucc.library.provenance import AssetPolicyError, LicensePolicy
@@ -55,7 +56,7 @@ def prepare_native_playback(store: ProjectStore, preview: NativeBodyPreview, *, 
     review=bound_file(folder,report["visual_review_blend"],"review_motion.blend",512*1024*1024,cancel_check=check_cancel)
     snapshot=folder/"source_snapshot.json";profile_path=Path(preview.mapping_profile_used)
     profile,map_sha=read_native_profile(profile_path,preview.source_sha256,bindings["snapshot_sha256"],master_sha)
-    if profile.get("skin_deformation_policy")!="BOUND_CORRECTIVE_SMOOTH_V1" or map_sha!=bindings["mapping_sha256"]:
+    if profile.get("skin_deformation_policy") not in CORRECTIVE_POLICIES or map_sha!=bindings["mapping_sha256"]:
         raise ValidationError("In-UCC playback currently requires the audited bound-skin preview policy")
     if snapshot.is_symlink() or not snapshot.is_file() or not 0<snapshot.stat().st_size<=64*1024*1024:
         raise ValidationError("Missing or oversized animation source snapshot")

@@ -7,6 +7,8 @@ from typing import Any
 
 from blender_bridge.native_inputs import read_json, validate_source, validate_profile
 from blender_bridge.native_corrective import SETTINGS, NAME, POLICY
+from blender_bridge.native_regional_corrective import POLICY as REGIONAL, verify_saved_layers
+from blender_bridge.native_region_mask import source_group_signature
 from blender_bridge.native_skin_stack import source_stack
 from blender_bridge.pose_environment import validate_pose_environment
 from blender_bridge.pose_deformation import _evaluated_vertices, _movement
@@ -59,6 +61,7 @@ def reopen_native(bpy: Any, root: Path, options: dict, *, frame_observer=None) -
     source=validate_source(read_json(root/"source_snapshot.json",options["snapshot_sha256"],64*1024*1024),options["source_sha256"])
     profile=validate_profile(read_json(root/"native_mapping.json",options["mapping_sha256"],64*1024),options["source_sha256"],options["snapshot_sha256"],options["master_sha256"])
     data=read_json(root/"target_timeline.json",options["timeline_sha256"],64*1024*1024)
+    policy=profile.get("skin_deformation_policy")
     reference=profile.get("mesh_strain_reference","FIRST_POSE_AND_NEUTRAL_V1")
     if data.get("mesh_strain_reference","FIRST_POSE_AND_NEUTRAL_V1")!=reference:
         raise ValueError("Native reopened strain reference differs from its bound map")
@@ -72,14 +75,14 @@ def reopen_native(bpy: Any, root: Path, options: dict, *, frame_observer=None) -
     if not neutral_reference and (observations is not None or "first_pose_edge_strain" in data or
             type(data.get("motion_quality_schema_version")) is not int or data["motion_quality_schema_version"]!=1):
         raise ValueError("Native reopened legacy strain contains cross-policy observations")
-    if (profile.get("skin_deformation_policy")!=POLICY or data.get("skin_deformation_policy")!=POLICY or
+    if (policy not in (POLICY, REGIONAL) or data.get("skin_deformation_policy")!=policy or
             data.get("mapped_pairs")!=profile["pairs"] or data.get("source_frame_count")!=count or
             data.get("bindings")!={k:options[k] for k in ("master_sha256","source_sha256","snapshot_sha256","mapping_sha256")} or
             any(type(v) is not list or len(v)!=count for v in (rows,bind_rows,master_rows)) or
             any(data.get(k) is not False for k in ("retargeting_verified","animation_visual_quality_verified","engine_import_verified"))):
         raise ValueError("Native reopen timeline policy, identity, approvals or coverage differs")
     proof=data.get("skin_deformation")
-    if type(proof) is not dict or proof.get("policy")!=POLICY:raise ValueError("Native reopen has no bound skin proof")
+    if type(proof) is not dict or proof.get("policy")!=policy:raise ValueError("Native reopen has no bound skin proof")
     record=data.get("visual_review_blend")
     if (type(record) is not dict or set(record)!={"name","bytes","sha256"} or record["name"]!="review_motion.blend" or
             type(record["bytes"]) is not int or record["bytes"]!=(root/"review_motion.blend").stat().st_size or record["sha256"]!=options["review_sha256"]):
@@ -90,6 +93,7 @@ def reopen_native(bpy: Any, root: Path, options: dict, *, frame_observer=None) -
     validate_pose_environment(rig,human,[b.name for b in rig.pose.bones])
     original,original_sha=_evaluated_vertices(bpy,human)
     original_stack=source_stack(human,rig)
+    original_groups_sha=source_group_signature(human) if policy==REGIONAL else None
     fingerprint=rig_fingerprint(bpy,human)
     original_rest=capture_rest_frames(rig)
     original_world=[float(v) for line in rig.matrix_world for v in line]
@@ -106,13 +110,19 @@ def reopen_native(bpy: Any, root: Path, options: dict, *, frame_observer=None) -
     if reopen_planes(profile,source,rig,data)!=palm_count:
         raise ValueError("Native palm reference count changed in saved rig")
     mods=tuple(human.modifiers)
-    if len(mods)!=len(original_stack)+1:raise ValueError("Native reopen added or removed source modifiers")
-    mod=mods[-1]
-    if (mod.name!=NAME or mod.type!="CORRECTIVE_SMOOTH" or not mod.is_bind or
-            any(type(getattr(mod,k)) is not type(v) or getattr(mod,k)!=v for k,v in SETTINGS.items()) or
-            source_stack(human,rig,modifiers=mods[:-1])!=original_stack or rig_fingerprint(bpy,human)!=fingerprint or
+    if policy==REGIONAL:
+        owned_mods=verify_saved_layers(human,rig,original_stack,proof,original_groups_sha)
+    else:
+        if len(mods)!=len(original_stack)+1:raise ValueError("Native reopen added or removed source modifiers")
+        mod=mods[-1]
+        if (mod.name!=NAME or mod.type!="CORRECTIVE_SMOOTH" or not mod.is_bind or
+                any(type(getattr(mod,k)) is not type(v) or getattr(mod,k)!=v for k,v in SETTINGS.items()) or
+                source_stack(human,rig,modifiers=mods[:-1])!=original_stack):
+            raise ValueError("Native reopened corrective binding, settings or source weights differ")
+        owned_mods=(mod,)
+    if (rig_fingerprint(bpy,human)!=fingerprint or
             [float(v) for line in rig.matrix_world for v in line]!=original_world):
-        raise ValueError("Native reopened corrective binding, settings, source weights or rig differ")
+        raise ValueError("Native reopened source weights or rig differ")
     action=rig.animation_data.action if rig.animation_data else None
     if action is None or list(action.frame_range)!=[1.,float(count)] or len(rig.animation_data.nla_tracks):
         raise ValueError("Native reopened Action range or NLA differs")
@@ -174,9 +184,10 @@ def reopen_native(bpy: Any, root: Path, options: dict, *, frame_observer=None) -
         quality={"frame":frame,**{k:row.get(k) for k in actual_bind}}
         if neutral_reference and not same_strain(actual_bind,quality,frame):
             raise ValueError("Native reopened main quality is not neutral-bound")
-        mod.show_viewport=False
+        for owned_mod in owned_mods:owned_mod.show_viewport=False
         try:raw,raw_sha=_evaluated_vertices(bpy,human)
-        finally:mod.show_viewport=True
+        finally:
+            for owned_mod in owned_mods:owned_mod.show_viewport=True
         correction=row.get("skin_correction",{})
         moved,maximum=_movement(raw,points)
         if (raw_sha!=correction.get("uncorrected_sha256") or moved!=correction.get("corrected_vertices") or
@@ -187,8 +198,10 @@ def reopen_native(bpy: Any, root: Path, options: dict, *, frame_observer=None) -
             if math.dist([sum(p[i] for p in actual)/2 for i in range(3)],row.get("hip_midpoint_world",[]))>1e-6:
                 raise ValueError("Native reopened hip trajectory differs")
         if frame_observer is not None:frame_observer(bpy,human,rig,frame,skin_sha)
-    if source_stack(human,rig,modifiers=mods[:-1])!=original_stack:
+    if source_stack(human,rig,modifiers=mods[:-len(owned_mods)])!=original_stack:
         raise ValueError("Native reopen changed original source masks or weights")
+    if policy==REGIONAL:
+        verify_saved_layers(human,rig,original_stack,proof,original_groups_sha)
     for name,key in paths.items():
         path=root/name
         if path.is_symlink() or not path.is_file() or digest(path)!=options[key]:raise ValueError("Native reopen changed staged input bytes")
@@ -196,6 +209,6 @@ def reopen_native(bpy: Any, root: Path, options: dict, *, frame_observer=None) -
     if palm_count:reference_evidence["hand_reference_planes_verified"]=palm_count
     return {**reference_evidence,"status":"REAL_NATIVE_BODY_REVIEW_REOPENED","bindings":dict(options),"frames_verified":count,
             "uncorrected_skin_frames_verified":count,"master_strain_frames_verified":count,
-            "hip_frames_verified":count if "hip_anchor" in data else 0,"skin_deformation_policy":POLICY,
+            "hip_frames_verified":count if "hip_anchor" in data else 0,"skin_deformation_policy":policy,
             "original_master_unchanged":True,"review_unchanged":True,
             "retargeting_verified":False,"animation_visual_quality_verified":False,"engine_import_verified":False}

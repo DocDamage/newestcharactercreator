@@ -682,11 +682,12 @@ class DesktopQtSmoke(unittest.TestCase):
         from types import SimpleNamespace
         from fixtures.native_body_contract import contract
         from ucc.desktop.native_body import native_result_text
-        data=contract()[0];data["skin_deformation_policy"]="BOUND_CORRECTIVE_SMOOTH_V1"
-        text=native_result_text(SimpleNamespace(evidence=data,private_reopen_job_id="unit-third-job"))
-        self.assertIn("Bound joint smoothing applied",text)
-        self.assertIn("third Blender process",text)
-        self.assertIn("foot-contact quality and engine import remain unverified",text)
+        for policy in ("BOUND_CORRECTIVE_SMOOTH_V1", "BOUND_REGIONAL_CORRECTIVE_SMOOTH_V2"):
+            data=contract()[0];data["skin_deformation_policy"]=policy
+            text=native_result_text(SimpleNamespace(evidence=data,private_reopen_job_id="unit-third-job"))
+            self.assertIn("Bound joint smoothing applied",text)
+            self.assertIn("third Blender process",text)
+            self.assertIn("foot-contact quality and engine import remain unverified",text)
 
     def test_native_neutral_reference_result_discloses_unchanged_shape_limits(self):
         from types import SimpleNamespace

@@ -19,6 +19,7 @@ from blender_bridge.native_timeline import evaluate_native_timeline
 from blender_bridge.native_skin import probe_targets
 from blender_bridge.native_anchor import POLICY as HIP_ANCHOR, midpoint, root_position, validate_target_chain
 from blender_bridge.native_corrective import POLICY as CORRECTIVE, CorrectiveSkin
+from blender_bridge.native_regional_corrective import POLICY as REGIONAL, RegionalCorrectiveSkin
 from blender_bridge.native_palms import PALM_AXES, measure_planes
 from blender_bridge.private_review_render import render_private_review
 
@@ -158,6 +159,9 @@ def retarget_native(bpy: Any, root: Path, options: dict) -> dict:
         original_sha=bind_sha
         if profile.get("skin_deformation_policy")==CORRECTIVE:
             corrective=CorrectiveSkin(bpy,human,rig,bind_points,bind_sha)
+            bind_points,bind_sha=corrective.neutral,corrective.neutral_sha
+        elif profile.get("skin_deformation_policy")==REGIONAL:
+            corrective=RegionalCorrectiveSkin(bpy,human,rig,bind_points,bind_sha)
             bind_points,bind_sha=corrective.neutral,corrective.neutral_sha
         probes=probe_targets(bpy,human,rig,pairs,bind_points,bind_sha)
         rig.animation_data_create()

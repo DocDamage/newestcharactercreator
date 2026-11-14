@@ -1,6 +1,6 @@
 # UCC-P1-ANIM-007A — versioned source-palm precision
 
-Status: local repair and validation pass on `feat/anim-007-basic-actions`, based on frozen FACIAL-001 head `7db913e373c1147ea78f06408cc44c00e5d2669b`. The modified source has not been pushed or accepted by remote CI or a new Windows package. PR #64's separate all-five-workflow / 24-record acceptance applies only to its frozen source. This task is one necessary step toward the complete seven-action creator; three real deformation failures and the registered-action workflow remain open.
+Status: local repair and validation pass on `feat/anim-007-basic-actions`, based on frozen FACIAL-001 head `7db913e373c1147ea78f06408cc44c00e5d2669b`. The modified source has not been pushed or accepted by remote CI or a new Windows package. PR #64's separate all-five-workflow / 24-record acceptance applies only to its frozen source. This task is one necessary step toward the complete seven-action creator. The subsequent [ANIM-007B](UCC-P1-ANIM-007B.md) locally verifies an opt-in regional skin policy for the three deformation failures; the registered-action workflow remains open.
 
 ## Problem and behavior
 
@@ -29,8 +29,8 @@ The first unversioned candidate remains unaccepted historical evidence. Its 917-
 
 ## Remaining work and rights
 
-Run, jump and death remain rejected by unchanged real deformation guards. The existing project animation-ID field and catalog should be reused, but nonempty IDs currently block several customization paths. Registered clip references must gain verified neutral-master/source bindings, preserved editing/history/save/reopen and stale-proof invalidation before the full seven-action workflow can be accepted. Existing file selection and private preview do not prove that workflow. Root/loop/foot-contact quality, human visual quality and actual Godot/Unity/Unreal imports remain unapproved.
+The default V1 skin path continues to reject run, jump and death at the unchanged real deformation guards. [ANIM-007B](UCC-P1-ANIM-007B.md) adds a separately verified, explicit V2 correction for those three local sources without changing V1 defaults. The existing project animation-ID field and catalog should be reused, but nonempty IDs currently block several customization paths. Registered clip references must gain verified neutral-master/source bindings, preserved editing/history/save/reopen and stale-proof invalidation before the full seven-action workflow can be accepted. Existing file selection and private preview do not prove that workflow. Root/loop/foot-contact quality, human visual quality and actual Godot/Unity/Unreal imports remain unapproved.
 
 No dependency, model, asset or software installation was added. Existing local-preview-only, NoAI, source-redistribution and engine-export restrictions remain in force. Further merges require owner approval.
 
-Next task: repair and independently verify the remaining three deformation failures through the normal pipeline, preserving the accepted expression/hand behavior and this V1/V2 compatibility contract.
+The deformation repair now has local normal-pipeline and GPU evidence in ANIM-007B. Next, finish original-only V2 integration and remote/package acceptance before integrating registered actions, preserving the accepted expression/hand behavior and this palm V1/V2 compatibility contract.

@@ -9,10 +9,11 @@ from typing import Any
 from ucc.core.errors import ValidationError
 from .source_rest_frames import is_sha256
 from .native_palms import PALM_AXES, validate_palm_profile
+from .native_skin_policy import CORRECTIVE_POLICIES
 
 CONVENTION = "NATIVE_ANATOMICAL_REFERENCE_V1"
 ROOT_POLICIES = {"ARMATURE_ORIGIN_DISPLACEMENT_V1", "SOURCE_HIP_MIDPOINT_V1"}
-SKIN_POLICIES = {"MASTER_MODIFIERS_V1", "BOUND_CORRECTIVE_SMOOTH_V1"}
+SKIN_POLICIES = {"MASTER_MODIFIERS_V1", *CORRECTIVE_POLICIES}
 STRAIN_REFERENCES = {"FIRST_POSE_AND_NEUTRAL_V1", "TRUE_NEUTRAL_BIND_V2"}
 LANDMARKS = {"left_hip","right_hip","head","left_hand","right_hand","left_foot","right_foot"}
 MAX_PROFILE_BYTES = 64*1024
@@ -30,6 +31,8 @@ def validate_native_profile(data: Any, source_sha: str, snapshot_sha: str, maste
         raise ValidationError("Invalid explicit native skin-deformation policy")
     if "mesh_strain_reference" in data and (type(data["mesh_strain_reference"]) is not str or data["mesh_strain_reference"] not in STRAIN_REFERENCES):
         raise ValidationError("Invalid explicit native mesh-strain reference")
+    if data.get("skin_deformation_policy")=="BOUND_REGIONAL_CORRECTIVE_SMOOTH_V2" and data.get("mesh_strain_reference")!="TRUE_NEUTRAL_BIND_V2":
+        raise ValidationError("Regional skin requires the actual neutral-bind strain reference")
     for key,value in (("source_sha256",source_sha),("snapshot_sha256",snapshot_sha),("master_sha256",master_sha)):
         if not is_sha256(value) or data[key] != value:
             raise ValidationError("Native body map source/snapshot/master SHA binding differs")

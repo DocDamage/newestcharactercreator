@@ -55,6 +55,20 @@ class FittedComparisonQtTests(unittest.TestCase):
             def release(self):pass
         self.mock=patch('ucc.desktop.motion_viewer.MotionCanvas',Canvas);self.mock.start();self.addCleanup(self.mock.stop)
 
+    def test_regional_skin_fit_stops_before_any_new_job(self):
+        from ucc.desktop.contact_fit import start_contact_fit
+        self.preview.evidence={'skin_deformation_policy':'BOUND_REGIONAL_CORRECTIVE_SMOOTH_V2'}
+        self.w._native_playback=self.original
+        before=self.w.controller.store.file.read_bytes()
+        errors=[]
+        with patch.object(self.w,'_error',side_effect=errors.append),patch.object(self.w,'_submit') as submit:
+            start_contact_fit(self.w)
+            submit.assert_not_called()
+        self.assertEqual(len(errors),1)
+        self.assertIn('not yet supported for regional joint smoothing',errors[0])
+        self.assertIs(self.w._native_playback,self.original)
+        self.assertEqual(self.w.controller.store.file.read_bytes(),before)
+
     def test_publish_pair_and_actual_watched_policy_change_clears_both(self):
         from ucc.jobs.fitted_playback import FittedComparison
         self.w._work_kind='fitted_comparison'

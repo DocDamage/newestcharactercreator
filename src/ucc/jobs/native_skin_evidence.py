@@ -3,6 +3,8 @@ from __future__ import annotations
 import math
 from ucc.core.errors import ValidationError
 from ucc.animations.source_rest_frames import is_sha256
+from ucc.animations.native_skin_policy import CORRECTIVE_POLICIES, REGIONAL_V2
+from .native_regional_skin_evidence import validate_regional_settings
 
 POLICY = "BOUND_CORRECTIVE_SMOOTH_V1"
 SETTINGS = {"name":"UCC_PRIVATE_BOUND_CORRECTIVE_UNAPPROVED","type":"CORRECTIVE_SMOOTH","is_bound":True,
@@ -17,25 +19,32 @@ def number(value,low,high):
 
 def validate_skin(data: dict, report: dict, profile: dict) -> None:
     keys={"skin_deformation_policy","skin_deformation","master_relative_frames","master_bind_edge_strain"}
-    if profile.get("skin_deformation_policy","MASTER_MODIFIERS_V1") != POLICY:
+    policy = profile.get("skin_deformation_policy", "MASTER_MODIFIERS_V1")
+    if type(policy) is not str or policy not in CORRECTIVE_POLICIES:
         if keys.intersection(data) or "skin_state_restored" in report:
             raise ValidationError("Unrequested native corrective skin claims")
         return
     proof=data.get("skin_deformation")
     required={"schema_version","policy","source_modifier_count","review_modifier_count","modifier","source_armature","source_modifiers",
               "source_neutral_sha256","bound_neutral_sha256","neutral_vertex_count","max_neutral_displacement_local"}
-    if (data.get("skin_deformation_policy")!=POLICY or report.get("skin_state_restored") is not True or
-            type(proof) is not dict or set(proof)!=required or type(proof["schema_version"]) is not int or proof["schema_version"]!=1 or
-            proof["policy"]!=POLICY or type(proof["source_modifier_count"]) is not int or not 1<=proof["source_modifier_count"]<=5 or
-            type(proof["review_modifier_count"]) is not int or proof["review_modifier_count"]!=proof["source_modifier_count"]+1 or
+    regional = policy == REGIONAL_V2
+    if regional:
+        required = (required - {"modifier"}) | {"modifiers", "source_vertex_groups_sha256", "region_mask"}
+    if (data.get("skin_deformation_policy")!=policy or report.get("skin_state_restored") is not True or
+            type(proof) is not dict or set(proof)!=required or type(proof["schema_version"]) is not int or proof["schema_version"]!=(2 if regional else 1) or
+            proof["policy"]!=policy or type(proof["source_modifier_count"]) is not int or not 1<=proof["source_modifier_count"]<=5 or
+            type(proof["review_modifier_count"]) is not int or proof["review_modifier_count"]!=proof["source_modifier_count"]+(2 if regional else 1) or
             not is_sha256(proof["source_neutral_sha256"]) or not is_sha256(proof["bound_neutral_sha256"]) or
             proof["bound_neutral_sha256"]!=data["neutral_bind_skin_sha256"] or
             type(proof["neutral_vertex_count"]) is not int or not 100<proof["neutral_vertex_count"]<=250000 or
             not number(proof["max_neutral_displacement_local"],0,1e-6)):
         raise ValidationError("Invalid bound corrective skin identity, restoration or neutral-shape proof")
-    mod=proof["modifier"]
-    if type(mod) is not dict or set(mod)!=set(SETTINGS) or any(type(mod[k]) is not type(v) or mod[k]!=v for k,v in SETTINGS.items()):
-        raise ValidationError("Bound corrective smoothing settings differ from the audited policy")
+    if regional:
+        validate_regional_settings(proof)
+    else:
+        mod=proof["modifier"]
+        if type(mod) is not dict or set(mod)!=set(SETTINGS) or any(type(mod[k]) is not type(v) or mod[k]!=v for k,v in SETTINGS.items()):
+            raise ValidationError("Bound corrective smoothing settings differ from the audited policy")
     arm=proof["source_armature"]
     fields={"name","type","rig_object","use_vertex_groups","use_bone_envelopes","use_deform_preserve_volume","use_multi_modifier","show_viewport","show_render"}
     if (type(arm) is not dict or set(arm)!=fields or arm["type"]!="ARMATURE" or
@@ -83,6 +92,7 @@ def validate_reopen_report(report: dict, bindings: dict, data: dict) -> None:
           "hip_frames_verified","skin_deformation_policy","original_master_unchanged","review_unchanged",
           "retargeting_verified","animation_visual_quality_verified","engine_import_verified"}
     count=data["source_frame_count"]
+    expected_policy=data.get("skin_deformation_policy",POLICY)
     if "hand_plane_proofs" in data:
         keys.add("hand_reference_planes_verified")
         if (type(report) is not dict or type(report.get("hand_reference_planes_verified")) is not int or
@@ -95,7 +105,8 @@ def validate_reopen_report(report: dict, bindings: dict, data: dict) -> None:
                 type(report.get("first_pose_observation_frames_verified")) is not int or report["first_pose_observation_frames_verified"]!=count):
             raise ValidationError("Neutral-reference observations were not independently reopened")
     if (type(report) is not dict or set(report)!=keys or report["status"]!="REAL_NATIVE_BODY_REVIEW_REOPENED" or
-            report["bindings"]!=bindings or report["skin_deformation_policy"]!=POLICY or
+            report["bindings"]!=bindings or type(expected_policy) is not str or expected_policy not in CORRECTIVE_POLICIES or
+            report["skin_deformation_policy"]!=expected_policy or
             any(type(report[k]) is not int or report[k]!=count for k in ("frames_verified","uncorrected_skin_frames_verified","master_strain_frames_verified")) or
             type(report["hip_frames_verified"]) is not int or report["hip_frames_verified"]!=(count if "hip_anchor" in data else 0) or
             report["original_master_unchanged"] is not True or report["review_unchanged"] is not True or
