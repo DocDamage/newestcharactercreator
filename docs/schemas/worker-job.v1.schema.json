@@ -32,7 +32,8 @@
         "verify_calibrated_bvh_chain",
         "verify_reviewed_bvh_chain",
         "inspect_fbx_animation",
-        "verify_native_fbx_body"
+        "verify_native_fbx_body",
+        "reopen_native_fbx_body"
       ]
     },
     "input_project": {
@@ -189,6 +190,60 @@
               },
               "render_private_frames": {
                 "type": "boolean"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "reopen_native_fbx_body"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "input_project": {
+            "const": "candidate.blend"
+          },
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "source_sha256",
+              "snapshot_sha256",
+              "mapping_sha256",
+              "master_sha256",
+              "review_sha256",
+              "timeline_sha256"
+            ],
+            "properties": {
+              "source_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "snapshot_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "mapping_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "master_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "review_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "timeline_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
               }
             }
           }

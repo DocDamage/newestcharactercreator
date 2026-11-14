@@ -18,6 +18,7 @@ from blender_bridge.motion_quality import JointMotion
 from blender_bridge.native_timeline import evaluate_native_timeline
 from blender_bridge.native_skin import probe_targets
 from blender_bridge.native_anchor import POLICY as HIP_ANCHOR, midpoint, root_position, validate_target_chain
+from blender_bridge.native_corrective import POLICY as CORRECTIVE, CorrectiveSkin
 from blender_bridge.private_review_render import render_private_review
 
 
@@ -142,10 +143,15 @@ def retarget_native(bpy: Any, root: Path, options: dict) -> dict:
     preserved=[(b,b.matrix_basis.copy(),b.rotation_mode) for b in rig.pose.bones]
     scene=bpy.context.scene
     old=(scene.frame_current,scene.render.fps,scene.render.fps_base,rig.data.pose_position)
-    action=None
+    action=corrective=result=None
+    original_sha=None
     try:
         rig.data.pose_position="POSE"
         bind_points,bind_sha=_evaluated_vertices(bpy,human)
+        original_sha=bind_sha
+        if profile.get("skin_deformation_policy")==CORRECTIVE:
+            corrective=CorrectiveSkin(bpy,human,rig,bind_points,bind_sha)
+            bind_points,bind_sha=corrective.neutral,corrective.neutral_sha
         probes=probe_targets(bpy,human,rig,pairs,bind_points,bind_sha)
         rig.animation_data_create()
         action=bpy.data.actions.new("UCC_PRIVATE_NATIVE_BODY_UNAPPROVED")
@@ -226,7 +232,7 @@ def retarget_native(bpy: Any, root: Path, options: dict) -> dict:
                 "sources":[landmarks[k]["source"] for k in ("left_hip","right_hip")],
                 "targets":[landmarks[k]["target"] for k in ("left_hip","right_hip")],"expected":expected_hips} if hip_anchor else None
         review=evaluate_native_timeline(bpy,human,rig,source,expected,pairs,tw,root_bind_head,bind_points,
-            lambda matrix:_rotation(matrix,target_projections)[0],root/"review_motion.blend",hip_anchor=anchor)
+            lambda matrix:_rotation(matrix,target_projections)[0],root/"review_motion.blend",hip_anchor=anchor,corrective=corrective)
         review["root_motion_metrics"].update(max_rotation_step_degrees=root_rotation.maximum_step,
             max_rotation_step_frame=root_rotation.maximum_frame)
         timeline={**review,"schema_version":1,"convention":CONVENTION,
@@ -263,13 +269,21 @@ def retarget_native(bpy: Any, root: Path, options: dict) -> dict:
             raise ValueError("Native diagnostics changed target rest/skin/master")
         if _digest(source_path)!=options["snapshot_sha256"] or _digest(profile_path)!=options["mapping_sha256"]:
             raise ValueError("Native source/profile changed during target evaluation")
+        if corrective:corrective.audit()
         return result
     finally:
-        partial=rig.animation_data.action if rig.animation_data else None
-        if rig.animation_data and (action or partial):
-            rig.animation_data_clear()
-            bpy.data.actions.remove(action or partial,do_unlink=True)
-        for bone,basis,mode in preserved:
-            bone.rotation_mode=mode;bone.matrix_basis=basis
-        scene.render.fps,scene.render.fps_base,rig.data.pose_position=old[1:]
-        scene.frame_set(old[0]);bpy.context.view_layer.update()
+        try:
+            partial=rig.animation_data.action if rig.animation_data else None
+            if rig.animation_data and (action or partial):
+                rig.animation_data_clear()
+                bpy.data.actions.remove(action or partial,do_unlink=True)
+            for bone,basis,mode in preserved:
+                bone.rotation_mode=mode;bone.matrix_basis=basis
+            scene.render.fps,scene.render.fps_base,rig.data.pose_position=old[1:]
+            scene.frame_set(old[0]);bpy.context.view_layer.update()
+        finally:
+            if corrective:
+                corrective.remove()
+                if _evaluated_vertices(bpy,human)[1]!=original_sha or rig_fingerprint(bpy,human)!=before:
+                    raise ValueError("Private corrective cleanup did not restore exact original skin/rest state")
+                if result is not None:result["skin_state_restored"]=True

@@ -10,7 +10,7 @@ from blender_bridge.fbx_source import pose_digest
 
 
 def evaluate_native_timeline(bpy,human,rig,source,expected,pairs,world,root_bind_head,
-                             bind_points,rotation_reader,review_path,*,hip_anchor=None):
+                             bind_points,rotation_reader,review_path,*,hip_anchor=None,corrective=None):
     from mathutils import Vector
     scene=bpy.context.scene
     prior=(scene.frame_start,scene.frame_end,rig.show_in_front,scene.frame_current)
@@ -18,6 +18,8 @@ def evaluate_native_timeline(bpy,human,rig,source,expected,pairs,world,root_bind
     before=previous=None
     rows,bind_rows=[],[]
     bind_strain=EdgeStrain(bind_points,evaluated_edges(bpy,human))
+    master_strain=EdgeStrain(corrective.original,evaluated_edges(bpy,human)) if corrective else None
+    master_rows=[]
     diagonal=sum((max(p[i] for p in bind_points)-min(p[i] for p in bind_points))**2 for i in range(3))**.5
     if not .01<diagonal<100000: raise ValueError("Invalid native target skin bounds")
     root_name=pairs[0]["target"]
@@ -72,6 +74,9 @@ def evaluate_native_timeline(bpy,human,rig,source,expected,pairs,world,root_bind
                 "root_world_head":list(root_head),"root_speed_world":speed,
                 "target_global_poses":matrices,"target_pose_sha256":pose_digest([float(v) for line in world for v in line],matrices),
                 "global_pose_residual":residual})
+            if corrective:
+                rows[-1]["skin_correction"]=corrective.measure_raw(points,diagonal)
+                master_rows.append({"frame":frame,**master_strain.measure(points,edges,frame)})
             if hip_anchor is not None:
                 points_hip=[world@rig.pose.bones[name].matrix.translation for name in hip_anchor["targets"]]
                 center=[sum(p[i] for p in points_hip)/2 for i in range(3)]
@@ -97,7 +102,9 @@ def evaluate_native_timeline(bpy,human,rig,source,expected,pairs,world,root_bind
             "source_bind_midpoint_world":hip_anchor["source_bind_midpoint_world"],
             "target_bind_midpoint_world":hip_anchor["target_bind_midpoint_world"],
             "frames_measured":frames,"max_residual_world":max_hip_error}}
-        return {**anchor_evidence,"motion_quality_schema_version":1,"mesh_edge_strain":first_strain.report(),
+        skin_evidence={} if not corrective else {"skin_deformation_policy":"BOUND_CORRECTIVE_SMOOTH_V1",
+            "skin_deformation":corrective.proof,"master_relative_frames":master_rows,"master_bind_edge_strain":master_strain.report()}
+        return {**anchor_evidence,**skin_evidence,"motion_quality_schema_version":1,"mesh_edge_strain":first_strain.report(),
                 "bind_edge_strain":bind_strain.report(),"bind_relative_frames":bind_rows,
                 "full_timeline_frames":rows,"root_motion_metrics":root_metrics,
                 "deformation_reference":"ROOT_TRANSLATION_REMOVED",

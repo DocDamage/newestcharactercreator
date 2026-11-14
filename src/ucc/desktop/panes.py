@@ -296,7 +296,7 @@ class AnimationPane(QWidget):
         native_row.addWidget(self.native_body_profile,1);native_row.addWidget(choose_native)
         native_layout.addLayout(native_row)
         self.test_native_body=QPushButton("Test selected FBX on saved character...")
-        self.test_native_body.setToolTip("Measures every frame on private Blender copies, checks skin/root motion and renders sampled views. Originals are preserved; visual/engine quality is not approved.")
+        self.test_native_body.setToolTip("Measures every frame on private Blender copies, applies bounded joint smoothing for supported automatic maps, checks skin/root motion and renders sampled views. Originals are preserved; visual/engine quality is not approved.")
         self.test_native_body.clicked.connect(self.native_body_requested.emit)
         native_layout.addWidget(self.test_native_body)
         native_open=QHBoxLayout()

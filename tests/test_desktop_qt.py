@@ -609,6 +609,16 @@ class DesktopQtSmoke(unittest.TestCase):
         self.assertIn("0.0001 mm",text)
         self.assertIn("foot-contact quality and engine import remain unverified",text)
 
+    def test_native_corrective_result_discloses_private_smoothing_and_actual_reopen(self):
+        from types import SimpleNamespace
+        from fixtures.native_body_contract import contract
+        from ucc.desktop.native_body import native_result_text
+        data=contract()[0];data["skin_deformation_policy"]="BOUND_CORRECTIVE_SMOOTH_V1"
+        text=native_result_text(SimpleNamespace(evidence=data,private_reopen_job_id="unit-third-job"))
+        self.assertIn("Bound joint smoothing applied",text)
+        self.assertIn("third Blender process",text)
+        self.assertIn("foot-contact quality and engine import remain unverified",text)
+
     def test_native_open_refuses_missing_or_changed_review_artifacts(self):
         from types import SimpleNamespace
         from ucc.desktop.native_body import open_native_result

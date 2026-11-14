@@ -15,7 +15,7 @@ from ucc.jobs.native_body import preview_native_body
 from ucc.animations import native_math as nm
 
 
-def verify_native_body(blender: Path,store: ProjectStore,folder: Path,*,hip_anchor=False) -> dict:
+def verify_native_body(blender: Path,store: ProjectStore,folder: Path,*,hip_anchor=False,corrective=False) -> dict:
     project=store.load();master=store.root/project.master_blend
     digest=lambda p:sha256(p.read_bytes()).hexdigest()
     metadata=store.root/"project.ucc.json"
@@ -24,7 +24,7 @@ def verify_native_body(blender: Path,store: ProjectStore,folder: Path,*,hip_anch
     def run(*args):
         subprocess.run([str(blender),"--background","--factory-startup","--disable-autoexec",
             "--python-exit-code","13","--python",str(script),"--",*map(str,args)],check=True,timeout=300)
-    run("--mode","author","--master",master,"--folder",folder,"--origin","ground" if hip_anchor else "target-root")
+    run("--mode","author","--master",master,"--folder",folder,"--origin","ground" if hip_anchor else "target-root",*(("--corrective-challenge",) if corrective else ()))
     source=folder/"original-native-body.fbx";source_sha=digest(source)
     policy=LicensePolicy("Original UCC native-body test fixture","CC0","ci-original://native-body-reference",
                          reviewed=True,local_preview_allowed=True,no_ai=True)
@@ -35,6 +35,7 @@ def verify_native_body(blender: Path,store: ProjectStore,folder: Path,*,hip_anch
              "snapshot_sha256":intake["snapshot"]["sha256"],"master_sha256":before[0],**spec}
     profile_path=folder/"explicit-body-map.json"
     if hip_anchor:profile["root_motion_policy"]="SOURCE_HIP_MIDPOINT_V1"
+    if corrective:profile["skin_deformation_policy"]="BOUND_CORRECTIVE_SMOOTH_V1"
     profile_path.write_text(json.dumps(profile,indent=2))
     profile_sha=digest(profile_path)
     result=preview_native_body(store,source_fbx=source,mapping_profile=profile_path,blender_exe=blender,
@@ -52,6 +53,17 @@ def verify_native_body(blender: Path,store: ProjectStore,folder: Path,*,hip_anch
         previous=rotation
     if not (400<angle<420 if hip_anchor else 399.9<angle<400.1):raise RuntimeError("Native root turn did not preserve the authored full path")
     anchor_evidence={}
+    skin_evidence={}
+    if corrective:
+        if not result.private_reopen_job_id or result.reopen_evidence["uncorrected_skin_frames_verified"]!=300:
+            raise RuntimeError("Corrective preview did not independently reopen all raw and corrected frames")
+        skin_evidence={"skin_deformation_policy":data["skin_deformation_policy"],"application_reopen_verified":True,
+            "neutral_shape_error_local":data["skin_deformation"]["max_neutral_displacement_local"],
+            "source_modifier_count":data["skin_deformation"]["source_modifier_count"],"review_modifier_count":data["skin_deformation"]["review_modifier_count"],
+            "max_skin_correction_local":max(r["skin_correction"]["max_correction_local"] for r in data["full_timeline_frames"]),
+            "max_original_master_stretch":max(r["max_edge_stretch_ratio"] for r in data["master_relative_frames"]),
+            "bind_and_mid_action_settings_faults_restored":True,"rehashed_saved_settings_tamper_rejected":True,
+            "rehashed_saved_object_transform_tamper_rejected":True}
     if hip_anchor:
         hip_travel=math.dist(data["full_timeline_frames"][-1]["hip_midpoint_world"],data["hip_anchor"]["target_bind_midpoint_world"])
         if hip_travel<3.99:raise RuntimeError("Native hip anchor lost the authored four-meter anatomical trajectory")
@@ -72,7 +84,7 @@ def verify_native_body(blender: Path,store: ProjectStore,folder: Path,*,hip_anch
     run("--mode","fault","--master",master,"--job",Path(result.private_timeline).parent,"--folder",folder)
     if (before!=(digest(master),digest(metadata)) or source_sha!=digest(source) or profile_sha!=digest(profile_path) or store.load()!=project):
         raise RuntimeError("Native body verification changed original source/master/project/map bytes")
-    return {**anchor_evidence,"provenance":"ORIGINAL_CI_ARMATURE_ON_REAL_MPFB_NOT_OWNER_OR_FAB_ASSET","frames":300,"mapped_body_bones":21,
+    return {**anchor_evidence,**skin_evidence,"provenance":"ORIGINAL_CI_ARMATURE_ON_REAL_MPFB_NOT_OWNER_OR_FAB_ASSET","frames":300,"mapped_body_bones":21,
         "independent_skin_probes":len(data["deformation_probes"]),"root_travel_world":data["root_motion_metrics"]["max_distance_from_bind_world"],
         "root_rotation_path_degrees":angle,"max_source_fk_pose_residual":data["max_global_pose_residual"],
         "max_measured_target_rotation_projection":data["max_target_rotation_projection"],"two_workers_agree":True,
@@ -88,7 +100,8 @@ if __name__=="__main__":
     parser.add_argument("--project",type=Path,required=True)
     parser.add_argument("--output",type=Path,required=True)
     parser.add_argument("--hip-anchor",action="store_true")
+    parser.add_argument("--corrective",action="store_true")
     args=parser.parse_args()
-    report=verify_native_body(args.blender,ProjectStore(args.project),args.output,hip_anchor=args.hip_anchor)
+    report=verify_native_body(args.blender,ProjectStore(args.project),args.output,hip_anchor=args.hip_anchor,corrective=args.corrective)
     (args.output/"native-body-summary.json").write_text(json.dumps(report,indent=2))
     print(json.dumps(report))

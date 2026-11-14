@@ -1,8 +1,8 @@
 """Blender-only job entrypoint, isolated from the desktop process.
 
-This is real bpy/MPFB HumanService integration code but is NOT yet validated
-with Blender 5.3 + MPFB. All outputs are staged; a fresh Blender open and
-manual deformation check are required before a usable character is claimed.
+Real bpy/MPFB integration runs only on isolated staged inputs. Acceptance docs
+record executed Blender 5.3 gates; numerical diagnostics and saved-copy reopen
+do not grant visual quality, arbitrary-rig compatibility or engine approval.
 """
 from __future__ import annotations
 import argparse
@@ -34,9 +34,10 @@ from blender_bridge.result_encoding import encode_result
 from blender_bridge.channel_bone_conversion import CONVENTION
 from blender_bridge.fbx_source import inspect_fbx_source
 from blender_bridge.native_retarget import retarget_native
+from blender_bridge.native_review_reopen import reopen_native
 
 PROTOCOL_VERSION = 1
-OPERATIONS = {"inspect_environment", "inspect_character", "create_human", "export_preview_glb", "refit_human", "verify_skin_deformation", "verify_keyframed_timeline", "verify_local_bvh_motion", "verify_multi_bvh_chain", "verify_calibrated_bvh_chain", "verify_reviewed_bvh_chain", "inspect_fbx_animation", "verify_native_fbx_body"}
+OPERATIONS = {"inspect_environment", "inspect_character", "create_human", "export_preview_glb", "refit_human", "verify_skin_deformation", "verify_keyframed_timeline", "verify_local_bvh_motion", "verify_multi_bvh_chain", "verify_calibrated_bvh_chain", "verify_reviewed_bvh_chain", "inspect_fbx_animation", "verify_native_fbx_body", "reopen_native_fbx_body"}
 
 
 def verify_native_body(job: dict, root: Path) -> dict:
@@ -47,6 +48,15 @@ def verify_native_body(job: dict, root: Path) -> dict:
             any(type(options[k]) is not str or len(options[k])!=64 or any(c not in "0123456789abcdef" for c in options[k]) for k in hashes)):
         raise ValueError("Native body job needs exact bound source/snapshot/map/master and explicit rendering")
     return retarget_native(bpy,root,options)
+
+
+def reopen_native_body(job: dict, root: Path) -> dict:
+    options=job["options"]
+    hashes={"source_sha256","snapshot_sha256","mapping_sha256","master_sha256","review_sha256","timeline_sha256"}
+    if (job["input_project"]!="candidate.blend" or set(options)!=hashes or
+            any(type(options[k]) is not str or len(options[k])!=64 or any(c not in "0123456789abcdef" for c in options[k]) for k in hashes)):
+        raise ValueError("Native reopen needs six exact input identities and no paths or override flags")
+    return reopen_native(bpy,root,options)
 
 
 def inspect_native_fbx(job: dict, root: Path) -> dict:
@@ -289,7 +299,8 @@ def main() -> int:
                   "verify_calibrated_bvh_chain": verify_calibrated_bvh_chain,
                    "verify_reviewed_bvh_chain": verify_reviewed_bvh_chain,
                    "inspect_fbx_animation": inspect_native_fbx,
-                   "verify_native_fbx_body": verify_native_body}[operation]
+                   "verify_native_fbx_body": verify_native_body,
+                   "reopen_native_fbx_body": reopen_native_body}[operation]
         reply["details"] = action(data, root)
         reply["status"] = "ok"
         reply["error"] = None
