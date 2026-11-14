@@ -62,7 +62,10 @@
         "inspect_native_complete_anatomical_safety",
         "verify_native_complete_anatomical_safety",
         "inspect_fitted_complete_anatomical_safety",
-        "verify_fitted_complete_anatomical_safety"
+        "verify_fitted_complete_anatomical_safety",
+        "stage_mpfb_face",
+        "verify_mpfb_face",
+        "inspect_mpfb_face_assets"
       ]
     },
     "input_project": {
@@ -2510,6 +2513,120 @@
                 "base_fitted_sha256"
               ]
             }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "stage_mpfb_face"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "input_project": {
+            "const": "candidate.blend"
+          },
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "master_sha256",
+              "recipe_sha256",
+              "narrow_target_sha256",
+              "wide_target_sha256"
+            ],
+            "properties": {
+              "master_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "recipe_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "narrow_target_sha256": {
+                "const": "95d8dc4a3589bbb6105191abc6e3cae47c3c424ce189b5f0a611dc098806060d"
+              },
+              "wide_target_sha256": {
+                "const": "ba550cc15c894a4412bb368acc92bd6ad94bbb63d0135c561fe30230ef6344bd"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "verify_mpfb_face"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "input_project": {
+            "const": "candidate.blend"
+          },
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "master_sha256",
+              "recipe_sha256",
+              "narrow_target_sha256",
+              "wide_target_sha256",
+              "face_sha256",
+              "report_sha256"
+            ],
+            "properties": {
+              "master_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "recipe_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "narrow_target_sha256": {
+                "const": "95d8dc4a3589bbb6105191abc6e3cae47c3c424ce189b5f0a611dc098806060d"
+              },
+              "wide_target_sha256": {
+                "const": "ba550cc15c894a4412bb368acc92bd6ad94bbb63d0135c561fe30230ef6344bd"
+              },
+              "face_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "report_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "inspect_mpfb_face_assets"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "input_project": {
+            "type": "null"
+          },
+          "options": {
+            "type": "object",
+            "maxProperties": 0
           }
         }
       }

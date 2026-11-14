@@ -12,6 +12,11 @@ on:
       - 'Stage0_Starter/tools/run_mpfb_smoke.py'
       - 'ci/verify_production_worker.py'
       - 'ci/verify_project_generation.py'
+      - 'ci/verify_custom_face.py'
+      - 'tests/fixtures/blender_face_checks.py'
+      - 'src/ucc/core/facial.py'
+      - 'src/ucc/jobs/face_*.py'
+      - 'src/ucc/jobs/customized_humanoid.py'
       - 'ci/verify_native_body.py'
       - 'ci/verify_native_fit.py'
       - 'ci/verify_symmetric_fit.py'
@@ -76,6 +81,11 @@ on:
       - 'Stage0_Starter/tools/run_mpfb_smoke.py'
       - 'ci/verify_production_worker.py'
       - 'ci/verify_project_generation.py'
+      - 'ci/verify_custom_face.py'
+      - 'tests/fixtures/blender_face_checks.py'
+      - 'src/ucc/core/facial.py'
+      - 'src/ucc/jobs/face_*.py'
+      - 'src/ucc/jobs/customized_humanoid.py'
       - 'ci/verify_native_body.py'
       - 'ci/verify_native_fit.py'
       - 'ci/verify_symmetric_fit.py'
@@ -174,7 +184,9 @@ jobs:
     # Preserve all gates and individual worker limits; bound this suite at 3h.
     # The separate layer gate reopens the complete original/base/new sequence
     # in every process and retains both anatomical comparison workers.
-    timeout-minutes: ${{ matrix.suite == 'native-fit' && 180 || matrix.suite == 'symmetric-fit' && 120 || matrix.suite == 'body-contacts' && 90 || 40 }}
+    # Regression also runs the bounded original-only facial gate (three builds,
+    # existing-body refit, 80 poses and seven faults); retain explicit headroom.
+    timeout-minutes: ${{ matrix.suite == 'native-fit' && 180 || matrix.suite == 'symmetric-fit' && 120 || matrix.suite == 'body-contacts' && 90 || 45 }}
     env:
       PYTHONUNBUFFERED: '1'
     steps:
@@ -269,6 +281,14 @@ jobs:
           python3 ci/verify_project_generation.py \
             --blender "$BLENDER_EXE" \
             --outdir "$RUNNER_TEMP/ucc-project-integration"
+      - name: Verify original MPFB facial generation, body refit, 80 poses and saved-scene faults
+        if: matrix.suite == 'regression'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ci/verify_custom_face.py \
+            --blender "$BLENDER_EXE" \
+            --outdir "$RUNNER_TEMP/ucc-custom-face"
       - name: Verify original full-timeline target fitting and real saved-scene corruptions
         if: matrix.suite == 'native-fit'
         shell: bash
@@ -307,6 +327,7 @@ jobs:
             ${{ runner.temp }}/ucc-mpfb-smoke/reopen_result.json
             ${{ runner.temp }}/ucc-production-worker/production_summary.json
             ${{ runner.temp }}/ucc-project-integration/transaction_summary.json
+            ${{ runner.temp }}/ucc-custom-face/custom_face_summary.json
             ${{ runner.temp }}/ucc-native-fit/native_fit_summary.json
             ${{ runner.temp }}/ucc-body-contacts/body_contact_summary.json
             ${{ runner.temp }}/ucc-symmetric-math.json

@@ -35,7 +35,10 @@
         "inspect_fbx_animation",
         "verify_native_fbx_body",
         "reopen_native_fbx_body",
-        "cache_native_fbx_body"
+        "cache_native_fbx_body",
+        "stage_mpfb_face",
+        "verify_mpfb_face",
+        "inspect_mpfb_face_assets"
       ]
     },
     "status": {

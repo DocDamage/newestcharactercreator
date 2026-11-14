@@ -208,7 +208,7 @@ def _instances(doc: dict[str, Any], meshes: list) -> list[tuple[int, tuple[float
     return out
 
 
-def load_glb_preview(path: Path | str) -> PreviewMesh:
+def load_glb_preview(path: Path | str, *, full_surface: bool = False) -> PreviewMesh:
     """Read-only sampled flat triangle geometry; never verify animation or rigging."""
     source = Path(path).expanduser()
     if source.is_symlink() or not source.is_file() or source.suffix.lower() != ".glb":
@@ -257,7 +257,12 @@ def load_glb_preview(path: Path | str) -> PreviewMesh:
                 raise PreviewError("GLB contains too many aggregate triangles for a safe static preview")
     if not total:
         raise PreviewError("No displayable triangular geometry found")
-    skip = max(1, math.ceil(total / MAX_FACES_DRAWN))
+    if type(full_surface) is not bool:
+        raise PreviewError('Static surface selection must be explicit Boolean')
+    if full_surface and total > 100_000:
+        raise PreviewError('Full static surface exceeds 100000-triangle GPU preview limit')
+    face_limit = total if full_surface else MAX_FACES_DRAWN
+    skip = max(1, math.ceil(total / face_limit))
     faces: list[Face] = []
     k = 0
     for mesh_id, transform in instances:
@@ -274,7 +279,7 @@ def load_glb_preview(path: Path | str) -> PreviewMesh:
     vertices = [vertex for face in faces for vertex in face]
     lower = tuple(min(p[d] for p in vertices) for d in range(3))
     upper = tuple(max(p[d] for p in vertices) for d in range(3))
-    if total > MAX_FACES_DRAWN:
+    if total > face_limit:
         warnings.append(f"Sampled {len(faces)} of {total} triangles for responsiveness")
     if report.skin_count or report.animation_count or report.morph_target_count:
         warnings.append("Skinning, animations and morphs are NOT evaluated; bind/static geometry only")

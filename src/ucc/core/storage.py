@@ -22,6 +22,19 @@ LOCK_FILE = ".project.ucc.lock"
 MAX_JSON_BYTES = 4 * 1024 * 1024
 
 
+def _unique_project_fields(rows: list[tuple[str, object]]) -> dict[str, object]:
+    result = {}
+    for key, value in rows:
+        if key in result:
+            raise ValidationError(f"Duplicate project JSON field: {key}")
+        result[key] = value
+    return result
+
+
+def _nonfinite_project_number(value: str) -> None:
+    raise ValidationError(f"Nonfinite project JSON number: {value}")
+
+
 @contextmanager
 def _lock(path: Path, timeout_s: float = 3.0) -> Iterator[None]:
     start = time.monotonic()
@@ -66,9 +79,11 @@ class ProjectStore:
         if self.file.stat().st_size > MAX_JSON_BYTES:
             raise ProjectStorageError("Project JSON exceeds safety limit")
         try:
-            content = json.loads(self.file.read_text(encoding="utf-8"))
+            content = json.loads(self.file.read_text(encoding="utf-8"),
+                                 object_pairs_hook=_unique_project_fields,
+                                 parse_constant=_nonfinite_project_number)
             return CharacterProject.from_dict(content)
-        except (OSError, ValueError, TypeError, KeyError, ValidationError) as exc:
+        except (OSError, ValueError, TypeError, KeyError, RecursionError, ValidationError) as exc:
             raise ProjectStorageError(f"Could not open project; no changes made: {exc}") from exc
 
     def load(self) -> CharacterProject:

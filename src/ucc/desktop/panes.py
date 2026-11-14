@@ -27,7 +27,13 @@ class CharacterPane(QWidget):
 
     def __init__(self) -> None:
         super().__init__()
-        layout = QVBoxLayout(self)
+        outer = QVBoxLayout(self)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        content = QWidget()
+        scroll.setWidget(content)
+        outer.addWidget(scroll)
+        layout = QVBoxLayout(content)
         self.heading = QLabel("Open or create a character project to begin")
         self.heading.setWordWrap(True)
         self.heading.setStyleSheet("font-size: 16px; font-weight: 600;")
@@ -80,6 +86,9 @@ class CharacterPane(QWidget):
         )
         self.note.setWordWrap(True)
         layout.addWidget(self.note)
+        from .face_controls import FaceControls
+        self.face = FaceControls()
+        layout.addWidget(self.face)
 
         self.advanced = QGroupBox("Anatomy sockets and export status")
         adv_layout = QVBoxLayout(self.advanced)
@@ -169,6 +178,9 @@ class CharacterPane(QWidget):
     def set_active(self, active: bool) -> None:
         self.identity.setEnabled(active)
         self.morph_box.setEnabled(active)
+        self.face.setEnabled(active)
+        if not active:
+            self.face.apply.setEnabled(False)
         self.generate.setEnabled(active)
         self.apply_body.setEnabled(False)
         self.check_rig_pose.setEnabled(False)
@@ -182,6 +194,7 @@ class CharacterPane(QWidget):
 
     def display(self, view: ProjectView) -> None:
         self.set_active(True)
+        self.face.display(view)
         self.heading.setText(view.name + ("  •  unsaved edits" if view.dirty else ""))
         if self.name.text() != view.name:
             self.name.blockSignals(True)

@@ -31,6 +31,7 @@ class MasterPreview:
     glb_sha256: str
     selected_vertex_count: int
     blender_version: str
+    full_surface: bool = False
 
     @property
     def certified_for_engine_import(self) -> bool:
@@ -84,9 +85,12 @@ def preview_saved_master(
     expected_master_blend: str,
     cancel: Event | None = None,
     timeout_s: float = 300,
+    full_surface: bool = False,
 ) -> MasterPreview:
     """Read and preview the selected saved master without changing project JSON."""
     project = store.load()
+    if type(full_surface) is not bool:
+        raise ValidationError('Full static preview selection must be explicit Boolean')
     if (project.project_id != expected_project_id or
             project.revision != expected_revision or
             project.master_blend != expected_master_blend):
@@ -137,7 +141,7 @@ def preview_saved_master(
     ):
         raise ProjectStorageError("Blender preview GLB is missing or oversized")
     _check_cancel(cancel)
-    mesh = load_glb_preview(output)
+    mesh = load_glb_preview(output, full_surface=True) if full_surface else load_glb_preview(output)
     if mesh.source_face_count == 0:
         raise ProjectStorageError("Blender preview contains no displayable mesh faces")
     glb_hash = _digest(output, cancel)
@@ -151,4 +155,4 @@ def preview_saved_master(
         raise ProjectConflict("Saved master or project changed during preview; discard old preview")
     return MasterPreview(mesh, project.project_id, project.revision, expected_master_blend,
                          expected_hash, glb_hash, details["selected_vertex_count"],
-                         details["blender_version"])
+                         details["blender_version"], full_surface)
