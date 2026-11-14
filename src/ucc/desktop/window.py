@@ -533,6 +533,15 @@ class MainWindow(QMainWindow):
             self.mesh_dock.show()
             self.log.setPlainText(f"Read-only GLB preview loaded: {result.sample_count} sampled of "
                                   f"{result.source_face_count} triangles. No rig/animation/export validation.")
+        elif self._work_kind == "fbx_intake":
+            self.log.setPlainText(
+                "FBX SOURCE SKELETON AND COMPLETE TIMELINE MEASURED\n"
+                f"Bones: {result['bone_count']}; roots: {result['root_count']}\n"
+                f"Frames: {result['first_frame']}–{result['last_frame']} at {result['fps']:g} fps\n"
+                "Two independent Blender runs agree; original source unchanged.\n"
+                f"Private source snapshot: {result['private_snapshot']}\n"
+                "No animation was applied to the character. Target retargeting, visual quality and engine import remain unverified."
+            )
         else:
             self.log.setPlainText(json.dumps(result, ensure_ascii=False, indent=2, default=str)[:100000])
         self.statusBar().showMessage("Local operation completed; review results above")
@@ -927,6 +936,40 @@ class MainWindow(QMainWindow):
     def inspect_animation(self, file: str) -> None:
         if not file:
             self._error("Select an animation source file first")
+            return
+        if Path(file).suffix.lower() == ".fbx":
+            from ucc.jobs.fbx_intake import inspect_selected_fbx
+            if self.jobs.busy:
+                self._error("Another local task is still running")
+                return
+            pane = self.animations
+            if (not pane.local_preview_review.isChecked() or not pane.provider.text().strip() or
+                    not pane.uri.text().strip() or pane.license.text().strip().casefold() in {"", "unknown", "unreviewed", "n/a"}):
+                self._error("Enter the FBX provider/license/source and confirm reviewed local Blender rights before full-frame inspection")
+                return
+            if self.controller.store is None:
+                self._error("Open a project to hold the private FBX inspection jobs")
+                return
+            blender = self._blender_executable
+            if blender is None or blender.is_symlink() or not blender.is_file():
+                selected, _ = QFileDialog.getOpenFileName(self,"Choose installed Blender for FBX intake","",
+                    "Blender executable (*.exe);;All files (*)" if os.name == "nt" else "All files (*)")
+                if not selected:
+                    return
+                blender = Path(selected)
+                if blender.is_symlink() or not blender.is_file():
+                    self._error("Select a regular installed Blender executable")
+                    return
+                self._blender_executable = blender
+            from ucc.desktop.generation import bundled_worker_path
+            policy = LicensePolicy(pane.provider.text().strip(), pane.license.text().strip(), pane.uri.text().strip(),
+                                   reviewed=True, local_preview_allowed=True, no_ai=True)
+            store = self.controller.store
+            cancel = Event()
+            self._submit("fbx_intake", lambda: inspect_selected_fbx(
+                Path(file), blender_exe=blender, worker_script=bundled_worker_path(),
+                jobs_root=store.root/".ucc-jobs", permission=policy, cancel=cancel,
+            ), cancel=cancel)
             return
         self._submit("animation", lambda: inspect_animation_file(Path(file)).to_dict())
 

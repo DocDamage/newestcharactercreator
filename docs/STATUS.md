@@ -2,9 +2,11 @@
 
 **Target:** Windows 11 + Blender 5.3 + installed MPFB, PySide6 desktop, optional local ComfyUI/WebUI and future Godot/Unity/Unreal workflows.
 
-**Merged:** PRs #24–#37. Authoritative `main` was verified at `6e765d817134864db4019fd5cebb0c986395ce30` (PR #37). Existing numerical guards cover 36 MPFB joints and 26,756 evaluated edges over 25 frames, independent quality remeasurement and partial-Action cleanup.
+**Merged:** PRs #24–#38. Authoritative `main` was verified at `9ae588af96fae06b76e1d2048d7b4fb7f11f8657` (PR #38). Existing numerical guards cover 36 MPFB joints and 26,756 evaluated edges over 25 frames, independent quality remeasurement and partial-Action cleanup.
 
-**In development:** [UCC-P1-ANIM-006D](acceptance/UCC-P1-ANIM-006D.md) adds explicit audited channel-to-bone basis conversion followed by 15 private rendered skin views. Both workers measure every frame and agree on conversion traces. The app independently checks PNG pixels and SHA-bound provenance. Conversion preserves existing first-frame-relative target motion; source roll correction, arbitrary rest-pose/FK retargeting, human visual approval and purchased asset compatibility remain unverified. See [source-rest format](acceptance/UCC-P1-ANIM-006C.md), [numerical guards](acceptance/UCC-P1-ANIM-006B.md), and [initial branching slice](acceptance/UCC-P1-ANIM-006.md).
+**In development:** [UCC-P1-ANIM-006E](acceptance/UCC-P1-ANIM-006E.md) adds private native FBX bind/pose intake, including multiple roots and complete 300-frame clips. Authorized inspection found actual FBX/Unreal assets in the project `animations` directory. Source rest data is measured directly; the owner need not author BVH sidecars. Thirty actual licensed clips passed source intake only. Explicit MPFB rest-pose/FK retargeting remains next.
+
+**Local Windows progress:** official MPFB 2.0.18 is installed in a project-local profile with registry SHA verification. Actual Blender 5.3.0 generation/refit/reopen, deformation, timeline, branching audit and private renders pass locally. A private owner project/launcher and Qt static-preview smoke were verified. Earlier table rows retain historical Linux evidence; owner FBX retargeting, human visual acceptance and engine imports remain unverified.
 
 ## Verified capabilities and remaining gates
 

@@ -453,8 +453,12 @@ def verify(blender: Path, root: Path) -> dict:
                                  local_authorization, root,
                                  required_targets=("head", "wrist.L", "wrist.R", "foot.L", "foot.R"))
 
+    from verify_fbx_source import verify_fbx_source
+    native_fbx = verify_fbx_source(blender, root / "native-fbx-contract")
     return {
         "status": "REAL_LINUX_PROJECT_GENERATE_REOPEN_STAGED",
+        "runtime_platform": sys.platform,
+        "native_fbx_source_contract": native_fbx,
         "anim006_branching_review": branching,
         "blender_version": transaction.observed["blender_version"],
         "created_vertices": transaction.observed["created_vertex_count"],

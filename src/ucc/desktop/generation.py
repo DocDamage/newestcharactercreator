@@ -45,6 +45,7 @@ def bundled_worker_path() -> Path:
     result_encoding = worker.parent / "result_encoding.py"
     channel_conversion = worker.parent / "channel_bone_conversion.py"
     private_renders = worker.parent / "private_review_render.py"
+    fbx_source = worker.parent / "fbx_source.py"
     if (not worker.is_file() or worker.is_symlink()
             or not service.is_file() or service.is_symlink()
             or not preview.is_file() or preview.is_symlink()
@@ -63,7 +64,8 @@ def bundled_worker_path() -> Path:
             or not source_rest_intake.is_file() or source_rest_intake.is_symlink()
             or not result_encoding.is_file() or result_encoding.is_symlink()
             or not channel_conversion.is_file() or channel_conversion.is_symlink()
-            or not private_renders.is_file() or private_renders.is_symlink()):
+            or not private_renders.is_file() or private_renders.is_symlink()
+            or not fbx_source.is_file() or fbx_source.is_symlink()):
         raise ValidationError(
             "Blender worker bridge is unavailable. Run from the repo checkout "
             "or a complete Windows alpha archive."

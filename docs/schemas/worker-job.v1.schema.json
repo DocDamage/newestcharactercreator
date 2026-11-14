@@ -30,7 +30,8 @@
         "verify_local_bvh_motion",
         "verify_multi_bvh_chain",
         "verify_calibrated_bvh_chain",
-        "verify_reviewed_bvh_chain"
+        "verify_reviewed_bvh_chain",
+        "inspect_fbx_animation"
       ]
     },
     "input_project": {
@@ -111,6 +112,35 @@
               "render_private_frames": [
                 "source_frame_conversion"
               ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "inspect_fbx_animation"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "input_project": {
+            "type": "null"
+          },
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "source_sha256"
+            ],
+            "properties": {
+              "source_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
             }
           }
         }

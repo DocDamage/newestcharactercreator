@@ -32,9 +32,19 @@ from blender_bridge.bvh_multichain import verify_multibone_source
 from blender_bridge.bvh_calibration_probe import calibrate_bvh_source
 from blender_bridge.result_encoding import encode_result
 from blender_bridge.channel_bone_conversion import CONVENTION
+from blender_bridge.fbx_source import inspect_fbx_source
 
 PROTOCOL_VERSION = 1
-OPERATIONS = {"inspect_environment", "inspect_character", "create_human", "export_preview_glb", "refit_human", "verify_skin_deformation", "verify_keyframed_timeline", "verify_local_bvh_motion", "verify_multi_bvh_chain", "verify_calibrated_bvh_chain", "verify_reviewed_bvh_chain"}
+OPERATIONS = {"inspect_environment", "inspect_character", "create_human", "export_preview_glb", "refit_human", "verify_skin_deformation", "verify_keyframed_timeline", "verify_local_bvh_motion", "verify_multi_bvh_chain", "verify_calibrated_bvh_chain", "verify_reviewed_bvh_chain", "inspect_fbx_animation"}
+
+
+def inspect_native_fbx(job: dict, root: Path) -> dict:
+    options = job["options"]
+    digest = options.get("source_sha256")
+    if (job["input_project"] is not None or set(options) != {"source_sha256"} or
+            type(digest) is not str or len(digest) != 64 or any(c not in "0123456789abcdef" for c in digest)):
+        raise ValueError("Native FBX intake requires exact source SHA and no master")
+    return inspect_fbx_source(bpy, member(root,"source.fbx"), member(root,"source_snapshot.json"), digest)
 
 
 def arguments() -> argparse.Namespace:
@@ -266,7 +276,8 @@ def main() -> int:
                   "verify_local_bvh_motion": verify_local_bvh_motion,
                   "verify_multi_bvh_chain": verify_multi_bvh_chain,
                   "verify_calibrated_bvh_chain": verify_calibrated_bvh_chain,
-                   "verify_reviewed_bvh_chain": verify_reviewed_bvh_chain}[operation]
+                   "verify_reviewed_bvh_chain": verify_reviewed_bvh_chain,
+                   "inspect_fbx_animation": inspect_native_fbx}[operation]
         reply["details"] = action(data, root)
         reply["status"] = "ok"
         reply["error"] = None

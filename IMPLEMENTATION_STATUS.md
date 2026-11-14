@@ -1,4 +1,4 @@
-> Current follow-up: **UCC-P1-ANIM-006C SHA-bound source rest-frame intake and validation**, based on merged PR #36. [Format, checks and limitations](docs/acceptance/UCC-P1-ANIM-006C.md). Intake is validation-only; supplied bone frames do not silently replace BVH channel axes.
+> Current follow-up: **UCC-P1-ANIM-006E native FBX bind/pose intake**, based on merged PR #38. [Format, actual Windows/owner-source evidence and limitations](docs/acceptance/UCC-P1-ANIM-006E.md). Authorized assets and official MPFB setup are available locally. Source intake does not certify target retargeting.
 
 > Current follow-up: **UCC-P1-ANIM-006B numerical joint and local mesh guards**, based on merged PR #35. See [acceptance and limitations](docs/acceptance/UCC-P1-ANIM-006B.md). Independent source rest frames and human visual approval remain unresolved.
 

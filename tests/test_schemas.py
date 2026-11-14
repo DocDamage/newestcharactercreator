@@ -56,6 +56,17 @@ class SchemaTests(unittest.TestCase):
                 Draft202012Validator(schema).validate(obj)
 
     @unittest.skipIf(Draft202012Validator is None, "Install jsonschema to validate v1 contracts")
+    def test_native_fbx_request_schema_requires_only_sha_and_no_master(self):
+        request=JobRequest.new("inspect_fbx_animation",options={"source_sha256":"a"*64}).as_dict()
+        validator=Draft202012Validator(self.read_schema("worker-job.v1.schema.json"))
+        validator.validate(request)
+        request["input_project"]="master.blend"
+        self.assertTrue(list(validator.iter_errors(request)))
+        request["input_project"]=None
+        request["options"]["arbitrary_path"]="../../source.fbx"
+        self.assertTrue(list(validator.iter_errors(request)))
+
+    @unittest.skipIf(Draft202012Validator is None, "Install jsonschema to validate v1 contracts")
     def test_schema_rejects_unknown_project_fields(self):
         data = CharacterProject.new("Test").to_dict()
         data["unknown"] = "unapproved"

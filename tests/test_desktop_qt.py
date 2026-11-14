@@ -527,6 +527,32 @@ class DesktopQtSmoke(unittest.TestCase):
         self.assertIn("SHA-bound", error.call_args.args[0])
         submit.assert_not_called()
 
+    def test_fbx_inspection_requires_rights_before_prompt_or_launch(self):
+        with patch.object(self.window,"_error") as error, patch.object(self.window,"_submit") as submit:
+            self.window.inspect_animation("selected.fbx")
+        self.assertIn("local Blender rights",error.call_args.args[0])
+        submit.assert_not_called()
+
+    def test_fbx_inspection_dispatches_private_cancelable_job_and_reports_limits(self):
+        pane=self.window.animations
+        source=Path(self.tmp.name)/"UI_ONLY_NOT_REAL.fbx";source.write_bytes(b"UI_ONLY")
+        blender=Path(self.tmp.name)/"blender-not-running";blender.write_bytes(b"UI_ONLY")
+        self.window._blender_executable=blender
+        pane.provider.setText("original");pane.license.setText("Original retained rights")
+        pane.uri.setText("local-original://fixture");pane.local_preview_review.setChecked(True)
+        with patch("ucc.jobs.fbx_intake.inspect_selected_fbx") as service,patch.object(self.window,"_submit") as submit:
+            self.window.inspect_animation(str(source))
+            submit.call_args.args[1]()
+        self.assertEqual(submit.call_args.args[0],"fbx_intake")
+        self.assertEqual(service.call_args.args[0],source)
+        self.assertIs(service.call_args.kwargs["cancel"],submit.call_args.kwargs["cancel"])
+        self.assertTrue(service.call_args.kwargs["permission"].local_preview_allowed)
+        self.window._work_kind="fbx_intake"
+        self.window._job_success({"bone_count":76,"root_count":3,"first_frame":1,"last_frame":300,
+                                  "fps":30.,"private_snapshot":"PRIVATE LOCAL TEST PATH"})
+        self.assertIn("No animation was applied",self.window.log.toPlainText())
+        self.assertIn("300",self.window.log.toPlainText())
+
     def test_tools_are_real_and_cannot_claim_geometry(self):
         self.assertIn("PNG", self.window.tools.pack.text())
         self.assertFalse(self.window.character.open_master.isEnabled())

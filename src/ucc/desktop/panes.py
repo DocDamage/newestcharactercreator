@@ -244,7 +244,7 @@ class AnimationPane(QWidget):
             form.addRow(title, field)
         layout.addLayout(form)
         self.local_preview_review = QCheckBox(
-            "I reviewed the actual license and confirm this BVH and selected rest metadata may be used "
+            "I reviewed the actual license and confirm this animation and selected rest metadata may be used "
             "locally in Blender (not UE-only); no AI/cloud or export."
         )
         layout.addWidget(self.local_preview_review)

@@ -11,7 +11,7 @@ from ucc.core.models import safe_relative_path
 from .phenotype import validate_macro_parameters
 
 PROTOCOL_VERSION = 1
-SUPPORTED_OPERATIONS = {"inspect_environment", "inspect_character", "create_human", "export_preview_glb", "refit_human", "verify_skin_deformation", "verify_keyframed_timeline", "verify_local_bvh_motion", "verify_multi_bvh_chain", "verify_calibrated_bvh_chain", "verify_reviewed_bvh_chain"}
+SUPPORTED_OPERATIONS = {"inspect_environment", "inspect_character", "create_human", "export_preview_glb", "refit_human", "verify_skin_deformation", "verify_keyframed_timeline", "verify_local_bvh_motion", "verify_multi_bvh_chain", "verify_calibrated_bvh_chain", "verify_reviewed_bvh_chain", "inspect_fbx_animation"}
 MAX_REQUEST_BYTES = 256 * 1024
 
 
@@ -46,6 +46,10 @@ class JobRequest:
         if type(self.options) is not dict:
             raise ValidationError("options must be JSON object")
         _check_json(self.as_dict())
+        if self.operation == "inspect_fbx_animation":
+            from ucc.animations.source_rest_frames import is_sha256
+            if self.input_project is not None or set(self.options) != {"source_sha256"} or not is_sha256(self.options["source_sha256"]):
+                raise ValidationError("FBX intake requires only a source SHA-256 and no master")
         if self.operation == "create_human":
             if self.input_project is not None:
                 raise ValidationError("create_human creates a new master; no input project allowed")
