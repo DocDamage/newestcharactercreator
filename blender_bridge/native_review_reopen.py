@@ -50,7 +50,7 @@ def same_strain(measured: dict, expected: Any, frame: int) -> bool:
                 for k,v in measured.items()))
 
 
-def reopen_native(bpy: Any, root: Path, options: dict) -> dict:
+def reopen_native(bpy: Any, root: Path, options: dict, *, frame_observer=None) -> dict:
     from mathutils import Matrix
     paths={"candidate.blend":"master_sha256","review_motion.blend":"review_sha256",
            "source_snapshot.json":"snapshot_sha256","native_mapping.json":"mapping_sha256","target_timeline.json":"timeline_sha256"}
@@ -186,6 +186,7 @@ def reopen_native(bpy: Any, root: Path, options: dict) -> dict:
             actual=[(rig.matrix_world@rig.pose.bones[n].matrix).translation for n in data["hip_anchor"]["target_bones"]]
             if math.dist([sum(p[i] for p in actual)/2 for i in range(3)],row.get("hip_midpoint_world",[]))>1e-6:
                 raise ValueError("Native reopened hip trajectory differs")
+        if frame_observer is not None:frame_observer(bpy,human,rig,frame,skin_sha)
     if source_stack(human,rig,modifiers=mods[:-1])!=original_stack:
         raise ValueError("Native reopen changed original source masks or weights")
     for name,key in paths.items():

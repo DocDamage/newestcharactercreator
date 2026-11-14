@@ -109,3 +109,30 @@ class MotionQtTests(unittest.TestCase):
         for changes in ({'fps':60.},{'source_first_frame':1},{'hips':((0,0,2),)*3},{'vertex_count':121},{'world_matrix':(0.,)*16}):
             with self.subTest(changes=changes),self.assertRaises(ValidationError):v.show_comparison(self.cache,replace(self.cache,**changes))
             self.assertIs(v.cache,self.cache);self.assertIsNone(v.comparison)
+
+    def test_body_and_arm_inspections_switch_on_same_clock_frame_and_camera(self):
+        from dataclasses import replace
+        from ucc.preview.surface_review import SurfaceReview
+        from ucc.preview.body_contacts import POLICY
+        arm=SurfaceReview('CHECKED','',((1,),(),()),((1,0),(0,0),(0,0)),('a'*64,)*3)
+        body=SurfaceReview('CHECKED','',((),(3,),()),((0,0),(2,0),(0,0)),('a'*64,)*3,POLICY)
+        fitted_body=replace(body,pairs=((0,0),(1,0),(0,0)))
+        base=replace(self.cache,surface_review=arm);v=self.viewer;v.show_comparison(base,base);v.seek(1)
+        clock=v.clock;v.canvas.yaw=1.;v.canvas.zoom=2.;v.show_body_contacts(body,fitted_body)
+        self.assertIs(v.clock,clock);self.assertEqual(v.clock.frame,1);self.assertEqual((v.canvas.yaw,v.canvas.zoom),(1.,2.))
+        self.assertEqual(v.cache.surface_review.policy,POLICY);self.assertIn('Hand/body',v.surface_status.text())
+        self.assertFalse(v.try_fit.isEnabled());self.assertFalse(v.review_body.isEnabled())
+        v.variant.setCurrentIndex(1);self.assertEqual(v.cache.surface_review.pairs[1],(1,0))
+        v.inspection.setCurrentIndex(0);self.assertIs(v.cache.surface_review,arm);self.assertIn('opposite-arm',v.surface_status.text())
+        v.clear();self.assertIsNone(v._body_caches);self.assertTrue(v.inspection.isHidden())
+
+    def test_body_review_cannot_revive_failed_gpu_and_rejects_wrong_topology(self):
+        from dataclasses import replace
+        from ucc.preview.surface_review import SurfaceReview
+        from ucc.preview.body_contacts import POLICY
+        from ucc.core.errors import ValidationError
+        arm=SurfaceReview('CHECKED','',((),)*3,((0,0),)*3,('a'*64,)*3)
+        body=replace(arm,policy=POLICY);v=self.viewer;v.show_cache(replace(self.cache,surface_review=arm))
+        with self.assertRaises(ValidationError):v.show_body_contacts(replace(body,triangle_hashes=('b'*64,)*3))
+        v.canvas.failed.emit('test GPU failure');v.show_body_contacts(body);v.set_fit_busy(False)
+        self.assertFalse(v.play.isEnabled());self.assertFalse(v.inspection.isEnabled());self.assertFalse(v.review_body.isEnabled())

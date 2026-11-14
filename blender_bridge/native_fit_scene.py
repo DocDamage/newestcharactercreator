@@ -55,10 +55,11 @@ def bone_controls(rig):
     return {bone.name:tuple(getattr(bone,key) for key in fields) for bone in rig.data.bones}
 
 
-def original_context(bpy,root,options):
+def original_context(bpy,root,options,*,source_frame_observer=None):
     unchanged(root,options)
     base={k:options[k] for k in BASE_HASHES}
-    reopened=reopen_native(bpy,root,base)
+    reopened=(reopen_native(bpy,root,base) if source_frame_observer is None else
+              reopen_native(bpy,root,base,frame_observer=source_frame_observer))
     baseline=read_json(root/'target_timeline.json',base['timeline_sha256'],64*1024*1024)
     profile=validate_profile(read_json(root/'native_mapping.json',base['mapping_sha256'],64*1024),
                              base['source_sha256'],base['snapshot_sha256'],base['master_sha256'])

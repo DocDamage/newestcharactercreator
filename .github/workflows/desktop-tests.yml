@@ -4,6 +4,9 @@ on:
     paths:
       - 'src/ucc/desktop/**'
       - 'src/ucc/preview/**'
+      - 'src/ucc/jobs/**'
+      - 'tests/test_*qt.py'
+      - 'tests/fixtures/**'
       - 'tests/test_motion_*.py'
       - 'tests/test_desktop_*.py'
       - 'pyproject.toml'
@@ -47,5 +50,11 @@ jobs:
         run: python -m unittest discover -s tests -p test_preview_qt.py -v
       - name: Run cached-motion Qt transport and error tests (no GPU claim)
         run: python -m unittest discover -s tests -p test_motion_qt.py -v
+      - name: Run original/fitted publication and bound-input watcher tests
+        run: python -m unittest discover -s tests -p test_fitted_comparison_qt.py -v
+      - name: Run measured-contact fitting action and rejection tests
+        run: python -m unittest discover -s tests -p test_contact_fit_qt.py -v
+      - name: Run body-contact action and annotation publication tests
+        run: python -m unittest discover -s tests -p test_body_review_qt.py -v
       - name: Run dependency-free controller tests
         run: python -m unittest discover -s tests -p test_desktop_controller.py -v

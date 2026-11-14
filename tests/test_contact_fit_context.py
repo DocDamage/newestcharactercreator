@@ -41,12 +41,12 @@ class ContactFitContextTests(unittest.TestCase):
         (self.folder/'result.json').write_text(json.dumps(JobResult(self.folder.name,operation,'ok',self.report).as_dict()))
         (self.verify_folder/'result.json').write_text(json.dumps(JobResult(self.verify_folder.name,'verify_native_surface_review','ok',self.verified).as_dict()))
 
-    def load(self):
+    def load(self,**kwargs):
         f=self.f
         with (patch('ucc.jobs.contact_fit_context.read_native_profile',return_value=(self.profile,f.bindings['mapping_sha256'])),
               patch('ucc.jobs.contact_fit_context.validate_snapshot'),
               patch('ucc.jobs.contact_fit_context.read_native_timeline',return_value=(self.timeline,f.folder/'target_timeline.json'))):
-            return contact_context(f.store,f.preview,self.playback,source_fbx=f.source)
+            return contact_context(f.store,f.preview,self.playback,source_fbx=f.source,**kwargs)
 
     def test_cache_and_surface_are_redecoded_with_current_original_bindings(self):
         ctx=self.load();self.assertEqual(ctx.playback.cache.frame_count,3)
@@ -70,6 +70,14 @@ class ContactFitContextTests(unittest.TestCase):
                     if fault=='path':case.playback=replace(case.playback,private_manifest=str(case.f.root/'outside/motion_skin.json'))
                     with self.assertRaises((ValidationError,ProjectConflict)):case.load()
                 finally:case.doCleanups()
+
+    def test_read_only_review_can_use_zero_crossing_cache_while_fitting_still_rejects_it(self):
+        from hashlib import sha256
+        for row in self.surface['frames']:
+            for side in ('left','right'):row[side]={'pair_count':0,'pair_sha256':sha256().hexdigest(),'hand_triangles':[],'opposite_arm_triangles':[]}
+        self.write()
+        with self.assertRaisesRegex(ValidationError,'No checked hand/arm crossings'):self.load()
+        ctx=self.load(require_crossings=False);self.assertFalse(ctx.playback.cache.surface_review.flagged_frames)
 
 
 if __name__=='__main__':unittest.main()

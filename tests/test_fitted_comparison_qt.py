@@ -73,6 +73,32 @@ class FittedComparisonQtTests(unittest.TestCase):
         self.w.animations.local_preview_review.setChecked(False)
         with self.assertRaises(ValidationError):publish_comparison(self.w,self.original,self.fitted)
 
+    def test_new_private_job_does_not_invalidate_but_atomic_input_replacement_does(self):
+        from ucc.desktop.motion_inputs import directory_changed
+        publish_comparison(self.w,self.original,self.fitted)
+        root=self.w.controller.store.root
+        jobs=root/'.ucc-jobs';jobs.mkdir(exist_ok=True)
+        (jobs/'new-private-job').mkdir()
+        (root/'unrelated-diagnostic.log').write_text('private diagnostic progress')
+        QTest.qWait(150)
+        self.assertIs(self.w._native_review,self.preview)
+        self.assertIsNotNone(self.w.motion_viewer.comparison)
+        # Same bytes at a new identity still count as a replacement. Exercise
+        # the parent handler directly as well as actual OS watcher delivery.
+        replacement=self.policy.with_name('replacement.json')
+        replacement.write_bytes(self.policy.read_bytes());replacement.replace(self.policy)
+        directory_changed(self.w,str(self.policy.parent))
+        self.assertIsNone(self.w._native_review)
+        self.assertIsNone(self.w.motion_viewer.cache)
+
+    def test_deleted_bound_input_clears_on_parent_event_even_without_file_event(self):
+        from ucc.desktop.motion_inputs import directory_changed
+        publish_comparison(self.w,self.original,self.fitted)
+        self.w._motion_watcher.blockSignals(True)
+        self.policy.unlink()
+        directory_changed(self.w,str(self.policy.parent))
+        self.assertIsNone(self.w._native_review)
+
     def test_mismatched_original_selection_or_project_never_publishes(self):
         self.original.revision+=1
         with self.assertRaises(ValidationError):publish_comparison(self.w,self.original,self.fitted)

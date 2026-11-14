@@ -20,6 +20,7 @@ class SurfaceReview:
     triangles: tuple[tuple[int,...],...]
     pairs: tuple[tuple[int,int],...]
     triangle_hashes: tuple[str,...]
+    policy: str=POLICY
 
     @property
     def flagged_frames(self) -> tuple[int,...]:

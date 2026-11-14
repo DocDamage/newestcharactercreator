@@ -15,6 +15,11 @@ on:
       - 'ci/verify_native_body.py'
       - 'ci/verify_native_fit.py'
       - 'ci/verify_contact_candidate.py'
+      - 'ci/verify_body_contacts.py'
+      - 'src/ucc/jobs/body_contact*.py'
+      - 'src/ucc/jobs/cached_job_evidence.py'
+      - 'src/ucc/preview/body_contacts.py'
+      - 'tests/fixtures/blender_body_contact_faults.py'
       - 'src/ucc/jobs/contact_fit*.py'
       - 'tests/fixtures/blender_native_body.py'
       - 'tests/fixtures/blender_native_fit_faults.py'
@@ -52,6 +57,11 @@ on:
       - 'ci/verify_native_body.py'
       - 'ci/verify_native_fit.py'
       - 'ci/verify_contact_candidate.py'
+      - 'ci/verify_body_contacts.py'
+      - 'src/ucc/jobs/body_contact*.py'
+      - 'src/ucc/jobs/cached_job_evidence.py'
+      - 'src/ucc/preview/body_contacts.py'
+      - 'tests/fixtures/blender_body_contact_faults.py'
       - 'src/ucc/jobs/contact_fit*.py'
       - 'tests/fixtures/blender_native_body.py'
       - 'tests/fixtures/blender_native_fit_faults.py'
@@ -86,12 +96,12 @@ concurrency:
 
 jobs:
   verify-mpfb-linux:
-    name: ${{ matrix.suite == 'regression' && 'verify-mpfb-linux' || 'verify-native-fit-linux' }}
+    name: ${{ matrix.suite == 'regression' && 'verify-mpfb-linux' || matrix.suite == 'native-fit' && 'verify-native-fit-linux' || 'verify-body-contacts-linux' }}
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
-        suite: [regression, native-fit]
+        suite: [regression, native-fit, body-contacts]
     # The full 300-frame neutral-reference regression completed at the old
     # 25-minute job boundary (including tool setup), cancelling a passing run.
     # Keep every integration assertion and allow bounded setup/runner headroom.
@@ -119,9 +129,14 @@ jobs:
           mkdir -p "$RUNNER_TEMP/ucc-blender" "$BLENDER_USER_CONFIG" "$BLENDER_USER_SCRIPTS"
           cd "$RUNNER_TEMP/ucc-blender"
           origin='https://download.blender.org/release/Blender5.3'
-          curl --fail --location --retry 3 --silent --show-error \
+          # The public origin intermittently returns HTTP 403 on individual
+          # runners. Default curl retries do not retry that status. Retain the
+          # official origin/checksum and bound retries and stalled transfers.
+          curl --fail --location --retry 3 --retry-all-errors --retry-delay 10 \
+            --connect-timeout 20 --max-time 180 --retry-max-time 360 --silent --show-error \
             "$origin/blender-5.3.0-linux-x64.tar.xz" -o blender-5.3.0-linux-x64.tar.xz
-          curl --fail --location --retry 3 --silent --show-error \
+          curl --fail --location --retry 3 --retry-all-errors --retry-delay 10 \
+            --connect-timeout 20 --max-time 60 --retry-max-time 180 --silent --show-error \
             "$origin/blender-5.3.0.sha256" -o blender-5.3.0.sha256
           grep -E '^[a-fA-F0-9]{64} [ *]blender-5\.3\.0-linux-x64\.tar\.xz$' blender-5.3.0.sha256 | sha256sum --check --strict
           tar -xf blender-5.3.0-linux-x64.tar.xz
@@ -193,6 +208,14 @@ jobs:
           python3 ci/verify_native_fit.py \
             --blender "$BLENDER_EXE" \
             --outdir "$RUNNER_TEMP/ucc-native-fit" --contact-candidate-check
+      - name: Verify full-sequence hand/head/torso observations and real geometry faults
+        if: matrix.suite == 'body-contacts'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ci/verify_body_contacts.py \
+            --blender "$BLENDER_EXE" \
+            --outdir "$RUNNER_TEMP/ucc-body-contacts"
       - name: Retain JSON diagnostics only; no assets or .blend in artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -205,5 +228,6 @@ jobs:
             ${{ runner.temp }}/ucc-production-worker/production_summary.json
             ${{ runner.temp }}/ucc-project-integration/transaction_summary.json
             ${{ runner.temp }}/ucc-native-fit/native_fit_summary.json
+            ${{ runner.temp }}/ucc-body-contacts/body_contact_summary.json
           if-no-files-found: ignore
           retention-days: 3

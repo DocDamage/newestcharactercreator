@@ -1,0 +1,587 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ucc.local/schemas/body-contacts.v1.schema.json",
+  "title": "Private independently reproduced hand/head-and-torso surface observations",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "policy",
+    "measurement",
+    "bindings",
+    "paired",
+    "source_frame_count",
+    "source_first_frame",
+    "fps",
+    "original",
+    "fitted",
+    "original_review_verification",
+    "fitted_frames_verified",
+    "originals_unchanged",
+    "contact_quality_verified",
+    "animation_visual_quality_verified",
+    "engine_import_verified"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "policy": {
+      "const": "HAND_CENTRAL_BODY_TRIANGLES_V1"
+    },
+    "measurement": {
+      "const": "FRESH_SAVED_ACTION_BODY_SURFACES_V1"
+    },
+    "bindings": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/source_bindings"
+        },
+        {
+          "$ref": "#/$defs/fit_bindings"
+        }
+      ]
+    },
+    "paired": {
+      "type": "boolean"
+    },
+    "source_frame_count": {
+      "type": "integer",
+      "minimum": 2,
+      "maximum": 2000
+    },
+    "source_first_frame": {
+      "type": "integer"
+    },
+    "fps": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 240
+    },
+    "original": {
+      "$ref": "#/$defs/variant"
+    },
+    "fitted": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/variant"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "original_review_verification": {
+      "type": "object"
+    },
+    "fitted_frames_verified": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2000
+    },
+    "originals_unchanged": {
+      "const": true
+    },
+    "contact_quality_verified": {
+      "const": false
+    },
+    "animation_visual_quality_verified": {
+      "const": false
+    },
+    "engine_import_verified": {
+      "const": false
+    }
+  },
+  "$defs": {
+    "hit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pair_count",
+        "pair_sha256",
+        "hand_triangles",
+        "central_triangles"
+      ],
+      "properties": {
+        "pair_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 250000
+        },
+        "pair_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "hand_triangles": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 200000,
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 199999
+          },
+          "uniqueItems": true
+        },
+        "central_triangles": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 200000,
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 199999
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "frame": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "frame",
+        "skin_sha256",
+        "triangle_sha256",
+        "left",
+        "right"
+      ],
+      "properties": {
+        "frame": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2000
+        },
+        "skin_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "triangle_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "left": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/hit"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "right": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/hit"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "variant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policy",
+        "status",
+        "reason",
+        "hands",
+        "head",
+        "parents",
+        "deform_bones",
+        "world_matrix",
+        "region_bones",
+        "region_vertex_counts",
+        "frame_count",
+        "frames",
+        "contact_quality_verified",
+        "engine_import_verified"
+      ],
+      "properties": {
+        "policy": {
+          "const": "HAND_CENTRAL_BODY_TRIANGLES_V1"
+        },
+        "status": {
+          "enum": [
+            "CHECKED",
+            "UNAVAILABLE"
+          ]
+        },
+        "reason": {
+          "enum": [
+            "",
+            "CENTRAL_BRANCH_UNAVAILABLE",
+            "WEIGHTED_REGIONS_UNAVAILABLE",
+            "SURFACE_WORKLOAD_EXCEEDED",
+            "SURFACE_PAIR_BUDGET_EXCEEDED",
+            "SURFACE_HIGHLIGHTS_EXCEEDED"
+          ]
+        },
+        "hands": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "left",
+            "right"
+          ],
+          "properties": {
+            "left": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "right": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
+          }
+        },
+        "head": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "parents": {
+          "type": "object",
+          "minProperties": 1,
+          "maxProperties": 256,
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "deform_bones": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 256,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "uniqueItems": true
+        },
+        "world_matrix": {
+          "type": "array",
+          "minItems": 16,
+          "maxItems": 16,
+          "items": {
+            "type": "number",
+            "minimum": -10000,
+            "maximum": 10000
+          }
+        },
+        "region_bones": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [],
+          "properties": {
+            "left_hand": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 256,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "uniqueItems": true
+            },
+            "right_hand": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 256,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "uniqueItems": true
+            },
+            "central_body": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 256,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "uniqueItems": true
+            }
+          },
+          "oneOf": [
+            {
+              "maxProperties": 0
+            },
+            {
+              "required": [
+                "left_hand",
+                "right_hand",
+                "central_body"
+              ]
+            }
+          ]
+        },
+        "region_vertex_counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [],
+          "properties": {
+            "left_hand": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100000
+            },
+            "right_hand": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100000
+            },
+            "central_body": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100000
+            }
+          },
+          "oneOf": [
+            {
+              "maxProperties": 0
+            },
+            {
+              "required": [
+                "left_hand",
+                "right_hand",
+                "central_body"
+              ]
+            }
+          ]
+        },
+        "frame_count": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 2000
+        },
+        "frames": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2000,
+          "items": {
+            "$ref": "#/$defs/frame"
+          }
+        },
+        "contact_quality_verified": {
+          "const": false
+        },
+        "engine_import_verified": {
+          "const": false
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "CHECKED"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "reason": {
+                "const": ""
+              },
+              "frames": {
+                "items": {
+                  "properties": {
+                    "left": {
+                      "$ref": "#/$defs/hit"
+                    },
+                    "right": {
+                      "$ref": "#/$defs/hit"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "UNAVAILABLE"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "frames": {
+                "items": {
+                  "properties": {
+                    "left": {
+                      "type": "null"
+                    },
+                    "right": {
+                      "type": "null"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "source_bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_sha256",
+        "snapshot_sha256",
+        "mapping_sha256",
+        "master_sha256",
+        "review_sha256",
+        "timeline_sha256"
+      ],
+      "properties": {
+        "source_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "snapshot_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "mapping_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "master_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "review_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "timeline_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "fit_bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_sha256",
+        "snapshot_sha256",
+        "mapping_sha256",
+        "master_sha256",
+        "review_sha256",
+        "timeline_sha256",
+        "fit_sha256",
+        "fitted_sha256",
+        "fit_report_sha256"
+      ],
+      "properties": {
+        "source_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "snapshot_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "mapping_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "master_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "review_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "timeline_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "fit_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "fitted_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "fit_report_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "paired": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "bindings": {
+            "$ref": "#/$defs/fit_bindings"
+          },
+          "fitted": {
+            "$ref": "#/$defs/variant"
+          },
+          "fitted_frames_verified": {
+            "minimum": 2
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "paired": {
+            "const": false
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "bindings": {
+            "$ref": "#/$defs/source_bindings"
+          },
+          "fitted": {
+            "type": "null"
+          },
+          "fitted_frames_verified": {
+            "const": 0
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 """Interactive full-surface playback of verified precomputed Blender skin."""
 from __future__ import annotations
+from dataclasses import replace
 import time
 
 from PySide6.QtCore import Qt, QTimer, Signal
@@ -9,6 +10,8 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushBu
 
 from ucc.preview.motion_cache import MotionCache
 from ucc.preview.playback_clock import PlaybackClock
+from ucc.preview.surface_review import POLICY as ARM_POLICY
+from ucc.preview.body_contacts import POLICY as BODY_POLICY
 from ucc.core.errors import ValidationError
 from .motion_gpu import SkinRenderer
 
@@ -80,9 +83,11 @@ class MotionCanvas(QOpenGLWidget):
 
 class MotionViewer(QWidget):
     fit_requested=Signal()
+    body_review_requested=Signal()
     def __init__(self,parent=None):
         super().__init__(parent)
         self.cache=None;self.clock=None;self.canvas=None;self.comparison=None;self.fit_busy=False
+        self._base_cache=None;self._body_caches=None;self._gpu_failed=False
         self.layout=QVBoxLayout(self)
         self.status=QLabel("Prepare a verified FBX body preview, then load its motion in UCC.")
         self.status.setWordWrap(True);self.layout.addWidget(self.status)
@@ -90,6 +95,10 @@ class MotionViewer(QWidget):
         self.variant.setToolTip('Compare at the same source frame and camera. Fitting changes target motion; contact quality remains unapproved.')
         self.variant.hide();self.layout.addWidget(self.variant)
         self.variant.currentIndexChanged.connect(self._switch_variant)
+        self.inspection=QComboBox();self.inspection.addItems(['Hand / opposite arm','Hand / head and torso'])
+        self.inspection.setToolTip('Central body includes the head, neck and spine chain. Other body pairs, solid containment and grasp intent are not evaluated. Focus resets when changing inspection.')
+        self.inspection.hide();self.layout.addWidget(self.inspection)
+        self.inspection.currentIndexChanged.connect(lambda _index:self._select_cache())
         self.transport=QHBoxLayout()
         self.play=QPushButton("Play");self.loop=QCheckBox("Loop");self.loop.setChecked(True)
         self.reset=QPushButton("Reset view");self.position=QLabel("Frame —")
@@ -103,10 +112,14 @@ class MotionViewer(QWidget):
         self.try_fit=QPushButton('Try bounded hand/arm fit')
         self.try_fit.setToolTip('Try a local correction limited to 30 mm and existing joint/skin bounds. Original motion is retained on failure. Grasp and visual quality remain unapproved.')
         self.try_fit.clicked.connect(self.fit_requested.emit)
+        self.review_body=QPushButton('Review hand/body contacts')
+        self.review_body.setToolTip('Independently inspect every saved frame against the head, neck and spine chain. Read-only; can take several minutes.')
+        self.review_body.clicked.connect(self.body_review_requested.emit)
         self.max_pairs.setToolTip("Jump to the frame with the most intersecting triangle pairs. This ranks pair counts, not penetration depth or contact quality.")
         for w in (self.highlight,self.focus,self.next_flagged,self.max_pairs):surface_controls.addWidget(w)
         self.layout.addLayout(surface_controls)
         self.layout.addWidget(self.try_fit)
+        self.layout.addWidget(self.review_body)
         self.surface_status=QLabel("Surface inspection has not been run for this cache.")
         self.surface_status.setWordWrap(True);self.layout.addWidget(self.surface_status)
         self.scrub=QSlider(Qt.Orientation.Horizontal);self.scrub.setRange(0,0);self.layout.addWidget(self.scrub)
@@ -127,15 +140,20 @@ class MotionViewer(QWidget):
         checked=bool(enabled and surface and surface.status=="CHECKED")
         self.highlight.setEnabled(checked)
         for w in (self.focus,self.next_flagged,self.max_pairs):w.setEnabled(checked and bool(surface.flagged_frames))
-        self.try_fit.setEnabled(checked and bool(surface.flagged_frames) and self.comparison is None and not self.fit_busy)
+        self.try_fit.setEnabled(checked and surface.policy==ARM_POLICY and bool(surface.flagged_frames) and self.comparison is None and not self.fit_busy)
+        self.review_body.setEnabled(bool(enabled and self._base_cache and self._base_cache.surface_review and
+            self._base_cache.surface_review.status=='CHECKED' and self._body_caches is None and not self.fit_busy))
         self.variant.setEnabled(enabled)
+        self.inspection.setEnabled(enabled)
 
     def set_fit_busy(self,busy: bool):
-        self.fit_busy=busy;self._enable(self.clock is not None and not getattr(self.canvas,'error',''))
+        self.fit_busy=busy;self._enable(self.clock is not None and not self._gpu_failed and not getattr(self.canvas,'error',''))
 
     def clear(self):
         self.timer.stop();self.clock=None;self.cache=None;self.comparison=None
+        self._base_cache=None;self._body_caches=None;self._gpu_failed=False
         self.variant.blockSignals(True);self.variant.setCurrentIndex(0);self.variant.blockSignals(False);self.variant.hide()
+        self.inspection.blockSignals(True);self.inspection.setCurrentIndex(0);self.inspection.blockSignals(False);self.inspection.hide()
         if self.canvas is not None:
             self.canvas.release();self.layout.removeWidget(self.canvas);self.canvas.hide();self.canvas.deleteLater();self.canvas=None
         self.play.setText("Play");self.scrub.setRange(0,0);self.position.setText("Frame —");self._enable(False)
@@ -144,7 +162,7 @@ class MotionViewer(QWidget):
         self.focus.setChecked(False);self.surface_status.setText("Surface inspection has not been run for this cache.")
 
     def show_cache(self,cache: MotionCache):
-        self.clear();self.cache=cache;self.clock=PlaybackClock(cache.frame_count,cache.fps,loop=self.loop.isChecked())
+        self.clear();self.cache=cache;self._base_cache=cache;self.clock=PlaybackClock(cache.frame_count,cache.fps,loop=self.loop.isChecked())
         self.canvas=MotionCanvas(cache,self);self.canvas.failed.connect(self._failed)
         self.layout.insertWidget(1,self.canvas,1)
         self.scrub.setRange(0,cache.frame_count-1);self._enable(True)
@@ -162,11 +180,29 @@ class MotionViewer(QWidget):
 
     def _switch_variant(self,index):
         if self.comparison is None or self.canvas is None:return
-        self.cache=self.comparison[index];self.canvas.cache=self.cache
+        self._select_cache()
+
+    def show_body_contacts(self,original,fitted=None):
+        bases=self.comparison if self.comparison is not None else (self._base_cache,)
+        reviews=(original,fitted) if fitted is not None else (original,)
+        if (not bases[0] or len(bases)!=len(reviews) or any(base.surface_review is None or review.policy!=BODY_POLICY or
+            len(review.pairs)!=base.frame_count or len(review.triangles)!=base.frame_count or
+            review.triangle_hashes!=base.surface_review.triangle_hashes for base,review in zip(bases,reviews))):
+            raise ValidationError('Body inspection does not match the complete visible playback topology')
+        self._body_caches=tuple(replace(base,surface_review=review) for base,review in zip(bases,reviews))
+        self.inspection.show();self.inspection.setCurrentIndex(1);self._select_cache()
+
+    def _select_cache(self):
+        if self.canvas is None or self.clock is None:return
+        index=self.variant.currentIndex() if self.comparison is not None else 0
+        bases=self._body_caches if self.inspection.currentIndex()==1 and self._body_caches is not None else (
+            self.comparison if self.comparison is not None else (self._base_cache,))
+        self.cache=bases[index];self.canvas.cache=self.cache
         self.focus.setChecked(False)
-        self._enable(True);self._present()
+        self._enable(not self._gpu_failed and not getattr(self.canvas,'error',''));self._present()
 
     def _failed(self,error):
+        self._gpu_failed=True
         self.timer.stop()
         if self.clock:self.clock.playing=False
         self._enable(False)
@@ -218,7 +254,11 @@ class MotionViewer(QWidget):
         self.play.setText("Pause" if self.clock.playing else "Play")
         surface=self.cache.surface_review
         if surface is not None:
-            text=(f"Hand/opposite-arm review: {len(surface.flagged_frames)} flagged frames; current frame {sum(surface.pairs[frame])} triangle pairs. Contact quality remains unapproved."
+            label='Hand/body' if surface.policy==BODY_POLICY else 'Hand/opposite-arm'
+            self.highlight.setText('Highlight hand/body intersections' if surface.policy==BODY_POLICY else 'Highlight hand/arm intersections')
+            self.highlight.setToolTip('Checks each hand against the head and torso. Arms, legs, solid containment and grasp intent are outside this review.' if surface.policy==BODY_POLICY else
+                'Checks each hand against the opposite upper-limb branch, including the shoulder. Other body-part pairs and correct grasp/contact are not evaluated.')
+            text=(f"{label} review: {len(surface.flagged_frames)} flagged frames; current frame {sum(surface.pairs[frame])} triangle pairs. Contact quality remains unapproved."
                   if surface.status=="CHECKED" else "Surface inspection unavailable for this rig or workload; no contact verdict.")
             self.surface_status.setText(text)
         self.canvas.highlight_intersections=self.highlight.isChecked() and self.highlight.isEnabled()

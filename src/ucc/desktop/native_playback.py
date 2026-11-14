@@ -7,6 +7,7 @@ from PySide6.QtWidgets import QDockWidget
 from ucc.core.errors import ValidationError
 from ucc.jobs.master_preview import _digest
 from .motion_viewer import MotionViewer
+from .motion_inputs import watch_inputs,directory_changed
 
 
 def publish_playback(window,result):
@@ -24,26 +25,27 @@ def publish_playback(window,result):
         window.motion_viewer=MotionViewer()
         from .contact_fit import start_contact_fit
         window.motion_viewer.fit_requested.connect(lambda:start_contact_fit(window))
+        from .body_contact_review import start_body_contact_review
+        window.motion_viewer.body_review_requested.connect(lambda:start_body_contact_review(window))
         window.motion_dock=QDockWidget("Verified cached animation — private preview",window)
         window.motion_dock.setObjectName("MotionPreviewDock");window.motion_dock.setWidget(window.motion_viewer)
         window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea,window.motion_dock)
         window.mesh_action.parent().addAction(window.motion_dock.toggleViewAction())
         window._motion_watcher=QFileSystemWatcher(window)
         window._motion_watcher.fileChanged.connect(lambda _path:window._clear_native_review())
-        window._motion_watcher.directoryChanged.connect(lambda _path:window._clear_native_review())
+        window._motion_watcher.directoryChanged.connect(lambda path:directory_changed(window,path))
     watcher=window._motion_watcher
     watcher.blockSignals(True)
     old=watcher.files()+watcher.directories()
     if old:watcher.removePaths(old)
+    window._motion_input_identities={}
     paths=[source,controller.master_path(),controller.store.root/"project.ucc.json",Path(preview.mapping_profile_used),
            Path(preview.private_timeline),Path(preview.private_visual_review_blend)]
-    # Watch parent directories too: an atomic replacement may remove a file watch.
-    watch_paths=sorted({str(p) for p in paths}|{str(p.parent) for p in paths})
-    failed=watcher.addPaths(watch_paths);watcher.blockSignals(False)
-    if failed:
-        window._clear_native_review();raise ValidationError("Could not monitor animation originals; playback was not published")
+    try:watch_inputs(window,paths)
+    finally:watcher.blockSignals(False)
     window.motion_viewer.show_cache(result.cache)
     window._native_playback=result
+    window._fitted_playback=None;window._body_contact_review=None
     window.mesh_dock.hide();window.motion_dock.show();window.motion_dock.raise_()
     window.log.setPlainText("VERIFIED CACHED SKIN PLAYBACK READY IN UCC\n"
         f"{result.cache.frame_count} complete frames at {result.cache.fps:g} fps; full visible mesh.\n"
@@ -67,13 +69,11 @@ def publish_comparison(window,original,fitted):
         any(p.is_symlink() or not p.is_file() or _digest(p)!=digest for p,digest in paths.items())):
         raise ValidationError('Fitted comparison policy, source review or saved fitted evidence changed')
     publish_playback(window,original)
-    watch_paths=sorted({str(p) for p in paths}|{str(p.parent) for p in paths})
-    missing=[p for p in watch_paths if p not in window._motion_watcher.files()+window._motion_watcher.directories()]
-    if missing and window._motion_watcher.addPaths(missing):
-        window._clear_native_review();raise ValidationError('Could not monitor fitted originals; comparison not published')
+    watch_inputs(window,paths)
     try:window.motion_viewer.show_comparison(original.cache,fitted.cache)
     except Exception:
         window._clear_native_review();raise
+    window._fitted_playback=fitted
     window.log.setPlainText('VERIFIED ORIGINAL / FITTED MOTION COMPARISON\n'
         f'{fitted.cache.frame_count} full frames at {fitted.cache.fps:g} fps. Switch Original motion / Fitted motion in the viewer.\n'
         'The source frame, camera and playback clock are shared. Focus resets when switching.\n'
