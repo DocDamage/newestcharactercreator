@@ -135,7 +135,7 @@ def verify_native_body(blender: Path,store: ProjectStore,folder: Path,*,hip_anch
             raise RuntimeError("Both declared palm planes were not verified against actual saved rig rest geometry")
     if fit_check:
         from ci.verify_native_fit import verify_fit_on_preview
-        skin_evidence['bounded_target_fit_contract']=verify_fit_on_preview(blender,store,result,source,policy,folder/'bounded-fit')
+        skin_evidence['bounded_target_fit_contract']=verify_fit_on_preview(blender,store,result,source,policy,folder/'bounded-fit',original_playback=playback)
     return {**anchor_evidence,**skin_evidence,"provenance":"ORIGINAL_CI_ARMATURE_ON_REAL_MPFB_NOT_OWNER_OR_FAB_ASSET","frames":300,"mapped_body_bones":len(data["mapped_pairs"]),
         "mapped_hand_joints":38 if include_hands else 0,
         "hand_reference_planes_verified":2 if include_hands else 0,

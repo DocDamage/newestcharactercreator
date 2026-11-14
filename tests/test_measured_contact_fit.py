@@ -71,16 +71,29 @@ class MeasuredContactFitTests(unittest.TestCase):
             self.operations.append('prepare_fitted_playback')
             if self.fault=='cache':raise ValidationError('unit rejected fitted cache')
             return SimpleNamespace(unit_only=True)
+        def body(*args,**kw):
+            self.operations.append('review_body_contact_areas')
+            if self.fault=='body':raise ValidationError('unit incomplete body areas')
+            if self.fault=='body_cancel':f.cancel.set()
+            return SimpleNamespace(unit_only=True)
+        def guard(review):
+            self.operations.append('require_body_fit_guard')
+            if self.fault=='body_guard':raise ValidationError('unit unsafe new contact areas')
+            return SimpleNamespace(unit_only=True)
         args={'source_fbx':f.source,'permission':f.permission,'blender_exe':Path('unit.blender'),
               'worker_script':Path('unit.py'),'cancel':f.cancel};args.update(overrides)
         with (patch('ucc.jobs.contact_fit.contact_context',return_value=self.ctx),
               patch('ucc.jobs.contact_fit.BlenderJobRunner.run',side_effect=worker),
               patch('ucc.jobs.contact_fit.fit_native_preview',side_effect=bake),
-              patch('ucc.jobs.contact_fit.prepare_fitted_playback',side_effect=cache)):
+              patch('ucc.jobs.contact_fit.prepare_fitted_playback',side_effect=cache),
+              patch('ucc.jobs.contact_fit.review_body_contact_areas',side_effect=body),
+              patch('ucc.jobs.contact_fit.require_body_fit_guard',side_effect=guard)):
             return fit_measured_contacts(f.store,f.preview,self.playback,**args)
 
     def test_candidate_then_saved_fit_then_cache_before_any_pair_is_returned(self):
-        result=self.run_fit();self.assertEqual(self.operations,['propose_native_contact_fit','fit_native_preview','prepare_fitted_playback'])
+        result=self.run_fit();self.assertEqual(self.operations,['propose_native_contact_fit','fit_native_preview','prepare_fitted_playback',
+            'review_body_contact_areas','require_body_fit_guard'])
+        self.assertIsNotNone(result.body_review);self.assertIsNotNone(result.body_fit_guard)
         self.assertTrue(result.candidate_job_id);self.assertTrue(Path(result.private_candidate_policy).is_file())
         self.assertEqual(self.f.store.load(),self.f.project);self.assertIs(result.original,self.playback)
 
@@ -89,7 +102,7 @@ class MeasuredContactFitTests(unittest.TestCase):
         self.assertFalse(self.operations)
 
     def test_all_faults_keep_original_and_never_return_partial_comparison(self):
-        for fault in ('source','staged','revision','cancel','scope','algorithm','trials','receipt','interval','crop','budget','bool','rest','omit_crossing','bake','cache'):
+        for fault in ('source','staged','revision','cancel','scope','algorithm','trials','receipt','interval','crop','budget','bool','rest','omit_crossing','bake','cache','body','body_guard','body_cancel'):
             with self.subTest(fault=fault):
                 case=MeasuredContactFitTests();case.setUp()
                 try:

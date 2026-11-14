@@ -65,14 +65,14 @@ class BodyCollector:
         self.inspector.inspect(mesh,frame,skin,triangles)
 
 
-def measure_body_contacts(bpy: Any,root: Path,options: dict) -> dict:
+def measure_body_contacts(bpy: Any,root: Path,options: dict,*,collector_factory=BodyCollector) -> dict:
     base={k:v for k,v in options.items() if k!='body_review_sha256'}
     unchanged(root,options)
     try:
         baseline=read_json(root/'target_timeline.json',base['timeline_sha256'],64*1024*1024)
         profile=validate_profile(read_json(root/'native_mapping.json',base['mapping_sha256'],64*1024),
             base['source_sha256'],base['snapshot_sha256'],base['master_sha256'])
-        source=BodyCollector(profile);fitted=BodyCollector(profile);paired='fitted_sha256' in base
+        source=collector_factory(profile);fitted=collector_factory(profile);paired='fitted_sha256' in base
         if paired:
             actual=measure_saved_fit(bpy,root,base,source_frame_observer=source.source_frame,fitted_frame_observer=fitted.fitted_frame)
             expected=read_json(root/'fitted_timeline.json',base['fit_report_sha256'],64*1024*1024)

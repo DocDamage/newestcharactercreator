@@ -602,8 +602,8 @@ class MainWindow(QMainWindow):
             except (UCCError,OSError,ValueError) as error:
                 self._error(str(error));return
         elif self._work_kind == "fitted_comparison":
-            from .native_playback import publish_comparison
-            try:publish_comparison(self,result.original,result.fitted)
+            from .contact_fit import publish_fitted_result
+            try:publish_fitted_result(self,result)
             except (UCCError,OSError,ValueError) as error:
                 self._error(str(error));return
         elif self._work_kind == 'body_contacts':

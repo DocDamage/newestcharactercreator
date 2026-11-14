@@ -10,6 +10,9 @@ from .generation import bundled_worker_path
 
 def fit_error_message(error: str) -> str:
     reasons={
+        'BODY_FIT_INTRODUCES_CONTACT_AREAS':'The candidate would move hand/body crossings onto new surface areas. The original motion was retained.',
+        'BODY_FIT_INCREASES_HAND_PAIRS':'The candidate would increase hand/body crossings on at least one frame. The original motion was retained.',
+        'BODY_FIT_AREAS_UNAVAILABLE':'A complete head/body contact comparison was unavailable. The original motion was retained.',
         'NO_CHECKED_CROSSINGS':'The original has no checked hand/arm crossings. No fitting was applied.',
         'MULTIPLE_CONTACTING_HANDS_UNSUPPORTED':'Both hands need correction. This fitter currently supports one hand at a time.',
         'CONTACT_AT_FIXED_ENDPOINT':'This clip needs a correction at its first or last pose. This fitter keeps those endpoint poses unchanged.',
@@ -50,7 +53,21 @@ def start_contact_fit(window):
         window._submit('fitted_comparison',lambda:fit_measured_contacts(store,preview,playback,source_fbx=source,
             permission=permission,blender_exe=executable,worker_script=worker,cancel=cancel),cancel=cancel)
         window.log.setPlainText('TRYING A BOUNDED LOCAL HAND/ARM FIT\n'
-            'The original animation stays available. Candidate search, saved-scene verification, targeted renders and full playback preparation can take several minutes.\n'
+            'The original animation stays available. Candidate search, saved-scene verification, targeted renders, full playback and head/body area comparison can take several minutes.\n'
             'Cancel from the Character menu. Unsupported contacts or failed joint/skin checks keep the original motion.\n'
             'A generated candidate changes target motion; it does not approve grasp intent, visual quality or engine compatibility.')
     except (UCCError,OSError,ValueError) as error:window._error(str(error))
+
+
+def publish_fitted_result(window,result):
+    from .native_playback import publish_comparison
+    from .body_contact_review import publish_body_contact_review
+    from ucc.jobs.body_fit_guard import require_body_fit_guard
+    if result.candidate_job_id:
+        if result.body_review is None or result.body_fit_guard!=require_body_fit_guard(result.body_review):
+            raise ValidationError('Automatic fit lacks its verified central-body guard')
+    publish_comparison(window,result.original,result.fitted)
+    if result.body_review is not None:
+        try:publish_body_contact_review(window,result.body_review)
+        except Exception:
+            window._clear_native_review();raise

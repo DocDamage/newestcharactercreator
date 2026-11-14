@@ -90,7 +90,15 @@ including the actual injected global hand/body triangle IDs, and rejects a
 bounds-only false positive. Re-evaluation and saved-file hashes confirm the
 original skin/review were unchanged. This gate takes approximately 272 seconds
 using the already generated original CI character/source. Remote exact-head
-workflows remain required before final review acceptance.
+workflows pass on `d412584ff6f82270221a571c3e3f597b5a9006e9`: core, Qt,
+preflight, Windows build and all three complete Linux suites. Each downloaded
+five-JSON artifact was independently checked: regression SHA-256
+`4cc6d149e40d48b136adc5025908b9806fc09ce295bbe96ae918504755ead04b`,
+native-fit `ddcf2240b22f9d48d9ab68c5ca664562dad33cce3291069a4d090746431f1609`,
+body-contact `fbf96a6c748a4fd3d60a26d40ac8beaa87b525ee90551e4c015e5bbb059c4a76`.
+The initial official-origin HTTP 403 occurred before testing; bounded retries
+retain the official checksum and every integration assertion. PR #51 is ready for
+review and remains unmerged.
 
 ## CI and limits
 

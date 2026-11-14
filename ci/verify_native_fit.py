@@ -54,7 +54,7 @@ def fit_policy(preview):
             'chain':chain,'fps':data['fps'],'frames':rows,'render_frames':[1,center-half+2,center+1,center+half,count]},maximum
 
 
-def verify_fit_on_preview(blender,store,preview,source,permission,folder):
+def verify_fit_on_preview(blender,store,preview,source,permission,folder,*,original_playback):
     folder.mkdir(exist_ok=False);policy,maximum=fit_policy(preview)
     policy_path=folder/'original-ci-fit-policy.json';policy_path.write_text(json.dumps(policy,indent=2))
     project=store.load();master=store.root/project.master_blend
@@ -72,6 +72,8 @@ def verify_fit_on_preview(blender,store,preview,source,permission,folder):
     playback=prepare_fitted_playback(store,result,source_fbx=source,permission=permission,
         blender_exe=blender,worker_script=ROOT/'blender_bridge/entrypoint.py',timeout_s=600)
     if playback.cache.frame_count!=300:raise RuntimeError('Fitted playback cropped original full sequence')
+    from ci.verify_body_fit_guard import verify_body_fit_guard
+    body_guard=verify_body_fit_guard(blender,store,preview,original_playback,playback,source,permission,folder/'body-fit-guard')
     prior=store.root/'.ucc-jobs'/result.worker_job_ids[-1]
     subprocess.run([str(blender),'-b','--factory-startup','--disable-autoexec','--python-exit-code','13','--python',
         str(ROOT/'tests/fixtures/blender_native_fit_faults.py'),'--','--scene',result.private_fitted_scene,
@@ -104,6 +106,7 @@ def verify_fit_on_preview(blender,store,preview,source,permission,folder):
         'fitted_playback':{'frames':playback.cache.frame_count,'packed_bytes':len(playback.cache.packed),
             'all_vertex_and_triangle_hashes_checked':True,'fresh_saved_scene_verified':True,'gpu_playback_tested':False},
         'application_angular_audit':result.angular_audit,'real_rehashed_scene_report_faults_rejected':rejected,
+        'stable_body_fit_guard':body_guard,
         'originals_unchanged':True,'contact_quality_approved':False,'engine_import_verified':False}
 
 

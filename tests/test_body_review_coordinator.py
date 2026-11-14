@@ -11,7 +11,7 @@ import test_native_playback as source_fixture
 from fixtures.body_contact_contract import write_body_contract
 from fixtures.motion_skin_contract import file_record
 from ucc.core.errors import ValidationError,ProjectConflict,ProjectStorageError
-from ucc.jobs.body_contact_review import review_body_contacts
+from ucc.jobs.body_contact_review import review_body_contacts,review_body_contact_areas
 from ucc.jobs.contact_fit_context import ContactFitContext
 from ucc.jobs.native_playback import NativePlayback
 from ucc.library.provenance import AssetPolicyError
@@ -40,7 +40,7 @@ class BodyReviewCoordinatorTests(unittest.TestCase):
         self.fitted_data['bindings']={k:v for k,v in self.fit_options.items() if k!='fit_report_sha256'}
         self.fitted=SimpleNamespace(cache=cache,unit_only=True);self.operations=[];self.fault=None
 
-    def run_review(self,paired=False,**overrides):
+    def run_review(self,paired=False,stable_areas=False,**overrides):
         f=self.f;captured={}
         def worker(request,**kw):
             self.operations.append(request.operation);out=f.store.root/'.ucc-jobs'/request.job_id;out.mkdir()
@@ -50,6 +50,9 @@ class BodyReviewCoordinatorTests(unittest.TestCase):
                 data['bindings']=dict(request.options);data['original_review_verification']['bindings']=dict(self.bindings)
                 if self.fault=='partial':data['original']['frames'].pop()
                 if self.fault=='topology':data['original']['frames'][0]['triangle_sha256']='e'*64
+                if stable_areas:
+                    from fixtures.body_area_contract import wrap_body_areas
+                    data=wrap_body_areas(data,self.playback.cache)
                 p=out/'body_contacts.json';p.write_text(json.dumps(data));captured['path']=p
                 report.update(bindings=dict(request.options),report=file_record(p))
                 if self.fault=='approval':report['contact_quality_verified']=True
@@ -70,7 +73,7 @@ class BodyReviewCoordinatorTests(unittest.TestCase):
         with (patch('ucc.jobs.body_contact_review.contact_context',return_value=self.ctx) as context,
               patch('ucc.jobs.body_contact_review.fitted_body_context',return_value=(self.fit_options,self.paths,self.fit_hashes,self.fitted_data,self.fitted)),
               patch('ucc.jobs.body_contact_review.BlenderJobRunner.run',side_effect=worker)):
-            result=review_body_contacts(f.store,f.preview,self.playback,fitted=self.fitted if paired else None,**args)
+            result=(review_body_contact_areas if stable_areas else review_body_contacts)(f.store,f.preview,self.playback,fitted=self.fitted if paired else None,**args)
             self.assertFalse(context.call_args.kwargs['require_crossings'])
             return result
 
@@ -86,6 +89,23 @@ class BodyReviewCoordinatorTests(unittest.TestCase):
     def test_denied_license_precedes_context_or_worker(self):
         with self.assertRaises(AssetPolicyError):self.run_review(permission=replace(self.f.policy,reviewed=False))
         self.assertFalse(self.operations)
+
+    def test_stable_face_transactions_use_distinct_closed_operations_before_areas_are_returned(self):
+        original=self.run_review(stable_areas=True)
+        self.assertEqual(self.operations,['inspect_native_body_areas','verify_native_body_areas'])
+        self.assertIsNone(original.areas.fitted);self.operations=[]
+        paired=self.run_review(True,stable_areas=True)
+        self.assertEqual(self.operations,['inspect_fitted_body_areas','verify_fitted_body_areas'])
+        self.assertEqual(paired.areas.new_area_frames,(2,));self.assertIs(paired.contacts,paired.areas.contacts)
+
+    def test_stable_face_faults_never_return_partial_or_stale_comparisons(self):
+        for fault in ('source','staged','partial','late_report','receipt'):
+            case=BodyReviewCoordinatorTests();case.setUp()
+            try:
+                case.fault=fault
+                with self.subTest(fault=fault),self.assertRaises((ValidationError,ProjectConflict,ProjectStorageError)):
+                    case.run_review(True,stable_areas=True)
+            finally:case.doCleanups()
 
     def test_faults_never_publish_partial_or_fabricated_annotations(self):
         for fault in ('source','staged','cancel','revision','approval','binding','partial','topology','receipt','verify_staged','late_report'):

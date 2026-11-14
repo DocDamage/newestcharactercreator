@@ -76,7 +76,7 @@ class BodyReviewQtTests(unittest.TestCase):
     def test_body_action_dispatches_current_pair_and_cancel_event_without_policy_editing(self):
         self.w._blender_executable=self.executable
         with (patch.object(self.w,'_submit') as submit,patch('ucc.desktop.body_contact_review.bundled_worker_path',return_value=self.executable),
-              patch('ucc.desktop.body_contact_review.review_body_contacts',return_value='unit-only') as review):
+              patch('ucc.desktop.body_contact_review.review_body_contact_areas',return_value='unit-only') as review):
             self.w.motion_viewer.review_body.click();args,kwargs=submit.call_args
             self.assertEqual(args[0],'body_contacts');self.assertEqual(args[1](),'unit-only')
             values=review.call_args.kwargs;self.assertIs(values['fitted'],self.f.fitted)
@@ -89,6 +89,43 @@ class BodyReviewQtTests(unittest.TestCase):
         self.assertIn('unavailable',self.w.motion_viewer.surface_status.text())
         self.assertNotIn('0 flagged frames',self.w.motion_viewer.surface_status.text())
         self.assertFalse(self.w.motion_viewer.highlight.isEnabled());self.assertFalse(self.w.motion_viewer.next_flagged.isEnabled())
+
+    def guarded_comparison(self):
+        from ucc.preview.contact_areas import BodyContactAreas
+        from ucc.jobs.body_fit_guard import require_body_fit_guard
+        from ucc.jobs.fitted_playback import FittedComparison
+        areas=BodyContactAreas(self.result.contacts,'CHECKED','','a'*64,
+            (frozenset({1,2}),frozenset(),frozenset()),(frozenset({1}),frozenset(),frozenset()),(),())
+        body=replace(self.result,areas=areas)
+        return FittedComparison(self.f.original,self.f.fitted,'unit-candidate','unit-policy',body,require_body_fit_guard(body))
+
+    def test_automatic_fit_requires_guard_before_publication_then_shows_stable_body_review(self):
+        from ucc.desktop.contact_fit import publish_fitted_result
+        result=self.guarded_comparison()
+        with patch('ucc.desktop.native_playback.publish_comparison') as publish:
+            with self.assertRaises(ValidationError):publish_fitted_result(self.w,replace(result,body_review=None))
+            with self.assertRaises(ValidationError):publish_fitted_result(self.w,replace(result,body_fit_guard=None))
+            publish.assert_not_called()
+        publish_fitted_result(self.w,result)
+        self.assertIs(self.w._body_contact_review,result.body_review)
+        self.assertIn('Newly involved contact areas: 0',self.w.log.toPlainText())
+
+    def test_guarded_body_publication_failure_clears_partially_published_comparison(self):
+        from ucc.desktop.contact_fit import publish_fitted_result
+        result=self.guarded_comparison();metadata=self.w.controller.store.root/'project.ucc.json'
+        metadata.write_bytes(metadata.read_bytes()+b' ')
+        with self.assertRaises(ValidationError):publish_fitted_result(self.w,result)
+        self.assertIsNone(self.w._native_review);self.assertIsNone(self.w.motion_viewer.cache)
+
+    def test_new_stable_contact_area_is_a_plain_rejection_even_when_pairs_decrease(self):
+        from ucc.desktop.contact_fit import publish_fitted_result,fit_error_message
+        result=self.guarded_comparison();body=result.body_review
+        body=replace(body,areas=replace(body.areas,fitted=(frozenset({3}),frozenset(),frozenset()),new_area_frames=(0,)))
+        with patch('ucc.desktop.native_playback.publish_comparison') as publish:
+            with self.assertRaisesRegex(ValidationError,'BODY_FIT_INTRODUCES_CONTACT_AREAS'):
+                publish_fitted_result(self.w,replace(result,body_review=body))
+            publish.assert_not_called()
+        self.assertIn('new surface areas',fit_error_message('BODY_FIT_INTRODUCES_CONTACT_AREAS; source frames 7'))
 
 
 if __name__=='__main__':unittest.main()
