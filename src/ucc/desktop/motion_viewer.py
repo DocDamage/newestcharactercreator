@@ -5,10 +5,11 @@ import time
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QSurfaceFormat
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QSlider, QCheckBox
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QSlider, QCheckBox, QComboBox
 
 from ucc.preview.motion_cache import MotionCache
 from ucc.preview.playback_clock import PlaybackClock
+from ucc.core.errors import ValidationError
 from .motion_gpu import SkinRenderer
 
 
@@ -80,10 +81,14 @@ class MotionCanvas(QOpenGLWidget):
 class MotionViewer(QWidget):
     def __init__(self,parent=None):
         super().__init__(parent)
-        self.cache=None;self.clock=None;self.canvas=None
+        self.cache=None;self.clock=None;self.canvas=None;self.comparison=None
         self.layout=QVBoxLayout(self)
         self.status=QLabel("Prepare a verified FBX body preview, then load its motion in UCC.")
         self.status.setWordWrap(True);self.layout.addWidget(self.status)
+        self.variant=QComboBox();self.variant.addItems(['Original motion','Fitted motion'])
+        self.variant.setToolTip('Compare at the same source frame and camera. Fitting changes target motion; contact quality remains unapproved.')
+        self.variant.hide();self.layout.addWidget(self.variant)
+        self.variant.currentIndexChanged.connect(self._switch_variant)
         self.transport=QHBoxLayout()
         self.play=QPushButton("Play");self.loop=QCheckBox("Loop");self.loop.setChecked(True)
         self.reset=QPushButton("Reset view");self.position=QLabel("Frame —")
@@ -119,11 +124,13 @@ class MotionViewer(QWidget):
         for w in (self.focus,self.next_flagged,self.max_pairs):w.setEnabled(checked and bool(surface.flagged_frames))
 
     def clear(self):
-        self.timer.stop();self.clock=None;self.cache=None
+        self.timer.stop();self.clock=None;self.cache=None;self.comparison=None
+        self.variant.blockSignals(True);self.variant.setCurrentIndex(0);self.variant.blockSignals(False);self.variant.hide()
         if self.canvas is not None:
             self.canvas.release();self.layout.removeWidget(self.canvas);self.canvas.hide();self.canvas.deleteLater();self.canvas=None
         self.play.setText("Play");self.scrub.setRange(0,0);self.position.setText("Frame —");self._enable(False)
         self.status.setText("Prepare a verified FBX body preview, then load its motion in UCC.")
+        self.note.setText('Precomputed skin playback • private joint correction • visual/contact/engine quality unapproved')
         self.focus.setChecked(False);self.surface_status.setText("Surface inspection has not been run for this cache.")
 
     def show_cache(self,cache: MotionCache):
@@ -133,6 +140,21 @@ class MotionViewer(QWidget):
         self.scrub.setRange(0,cache.frame_count-1);self._enable(True)
         self.status.setText(f"Verified cached motion: {cache.frame_count} frames at {cache.fps:g} fps • {cache.vertex_count:,} visible vertices • {cache.triangle_count:,} triangles")
         self._present()
+
+    def show_comparison(self,original: MotionCache,fitted: MotionCache):
+        if (original.frame_count!=fitted.frame_count or original.fps!=fitted.fps or
+            original.source_first_frame!=fitted.source_first_frame or original.hips!=fitted.hips or
+            original.world_matrix!=fitted.world_matrix or original.vertex_count!=fitted.vertex_count or
+            original.triangle_count!=fitted.triangle_count):
+            raise ValidationError('Original/fitted playback timing, character or root trajectory differs')
+        self.show_cache(original);self.comparison=(original,fitted);self.variant.show()
+        self.note.setText('Original/fitted comparison at the same frame and camera • target motion is changed • contact/engine quality unapproved')
+
+    def _switch_variant(self,index):
+        if self.comparison is None or self.canvas is None:return
+        self.cache=self.comparison[index];self.canvas.cache=self.cache
+        self.focus.setChecked(False)
+        self._enable(True);self._present()
 
     def _failed(self,error):
         self.timer.stop()

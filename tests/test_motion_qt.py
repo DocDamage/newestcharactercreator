@@ -83,3 +83,26 @@ class MotionQtTests(unittest.TestCase):
         v=self.viewer;v.show_cache(replace(self.cache,surface_review=review))
         self.assertFalse(v.next_flagged.isEnabled());self.assertFalse(v.highlight.isEnabled());self.assertFalse(v.max_pairs.isEnabled())
         self.assertIn('unavailable',v.surface_status.text())
+
+    def test_comparison_switch_preserves_frame_clock_and_camera_and_clears_both(self):
+        from dataclasses import replace
+        from ucc.preview.surface_review import SurfaceReview
+        original=replace(self.cache,surface_review=SurfaceReview('CHECKED','',((1,),(),()),((1,0),(0,0),(0,0)),('a'*64,)*3))
+        fitted=replace(self.cache,surface_review=SurfaceReview('CHECKED','',((),)*3,((0,0),)*3,('a'*64,)*3))
+        v=self.viewer;v.show_comparison(original,fitted);v.seek(1);clock=v.clock
+        v.canvas.yaw=1.;v.canvas.pitch=.4;v.canvas.zoom=2.;v.canvas.pan=(.1,.2)
+        v.play.click();v.variant.setCurrentIndex(1)
+        self.assertIs(v.cache,fitted);self.assertIs(v.canvas.cache,fitted);self.assertIs(v.clock,clock)
+        self.assertEqual(v.clock.frame,1);self.assertTrue(v.clock.playing);self.assertTrue(v.timer.isActive())
+        self.assertEqual((v.canvas.yaw,v.canvas.pitch,v.canvas.zoom,v.canvas.pan),(1.,.4,2.,(.1,.2)))
+        self.assertFalse(v.next_flagged.isEnabled());self.assertIn('0 flagged frames',v.surface_status.text())
+        v.variant.setCurrentIndex(0);self.assertIs(v.cache,original);self.assertTrue(v.next_flagged.isEnabled())
+        v.clear();self.assertIsNone(v.comparison);self.assertTrue(v.variant.isHidden());self.assertFalse(v.timer.isActive())
+
+    def test_comparison_rejects_incompatible_complete_clips_without_replacing_current(self):
+        from dataclasses import replace
+        from ucc.core.errors import ValidationError
+        v=self.viewer;v.show_cache(self.cache)
+        for changes in ({'fps':60.},{'source_first_frame':1},{'hips':((0,0,2),)*3},{'vertex_count':121},{'world_matrix':(0.,)*16}):
+            with self.subTest(changes=changes),self.assertRaises(ValidationError):v.show_comparison(self.cache,replace(self.cache,**changes))
+            self.assertIs(v.cache,self.cache);self.assertIsNone(v.comparison)

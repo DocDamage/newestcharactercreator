@@ -32,7 +32,7 @@ class NativeFitProtocolTests(unittest.TestCase):
     @unittest.skipIf(Draft202012Validator is None,'Optional JSON Schema validator unavailable')
     def test_job_schema_closes_all_fitting_operations(self):
         schema=Draft202012Validator(json.loads((ROOT/'docs/schemas/worker-job.v1.schema.json').read_text()))
-        for operation in ('fit_native_fbx_body','measure_native_fit','verify_native_fit'):
+        for operation in ('fit_native_fbx_body','measure_native_fit','verify_native_fit','cache_native_fit'):
             request=JobRequest.new(operation,input_project='candidate.blend',options={k:'a'*64 for k in job_hashes(operation)}).as_dict()
             schema.validate(request)
             for fault in ('missing','extra','bool_hash','wrong_path','weak_hash'):
@@ -80,7 +80,7 @@ class NativeFitProtocolTests(unittest.TestCase):
 
     def test_all_three_jobs_have_exact_hashes_fixed_paths_and_no_override_flags(self):
 
-        for operation in ('fit_native_fbx_body','measure_native_fit','verify_native_fit'):
+        for operation in ('fit_native_fbx_body','measure_native_fit','verify_native_fit','cache_native_fit'):
             options={k:'a'*64 for k in job_hashes(operation)}
             request=JobRequest.new(operation,input_project='candidate.blend',options=options)
             self.assertEqual(checked_job(request.as_dict()),options)

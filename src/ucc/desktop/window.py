@@ -82,6 +82,7 @@ class MainWindow(QMainWindow):
         self.mesh_dock.hide()
         self._blender_executable: Path | None = None  # Session-only; no disk scan.
         self._native_review = None
+        self._native_playback = None
         self.motion_viewer = None
         self.motion_dock = None
         self._motion_watcher = None
@@ -199,6 +200,7 @@ class MainWindow(QMainWindow):
 
     def _clear_native_review(self) -> None:
         self._native_review=None
+        self._native_playback=None
         if self._motion_watcher is not None:
             self._motion_watcher.blockSignals(True)
             paths=self._motion_watcher.files()+self._motion_watcher.directories()
@@ -591,6 +593,11 @@ class MainWindow(QMainWindow):
         elif self._work_kind == "native_playback":
             from .native_playback import publish_playback
             try:publish_playback(self,result)
+            except (UCCError,OSError,ValueError) as error:
+                self._error(str(error));return
+        elif self._work_kind == "fitted_comparison":
+            from .native_playback import publish_comparison
+            try:publish_comparison(self,result.original,result.fitted)
             except (UCCError,OSError,ValueError) as error:
                 self._error(str(error));return
         else:

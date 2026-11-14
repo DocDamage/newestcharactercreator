@@ -38,7 +38,8 @@
         "verify_native_surface_review",
         "fit_native_fbx_body",
         "measure_native_fit",
-        "verify_native_fit"
+        "verify_native_fit",
+        "cache_native_fit"
       ]
     },
     "input_project": {
@@ -496,6 +497,75 @@
         "properties": {
           "operation": {
             "const": "verify_native_fit"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "input_project": {
+            "const": "candidate.blend"
+          },
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "fit_report_sha256",
+              "fit_sha256",
+              "fitted_sha256",
+              "mapping_sha256",
+              "master_sha256",
+              "review_sha256",
+              "snapshot_sha256",
+              "source_sha256",
+              "timeline_sha256"
+            ],
+            "properties": {
+              "fit_report_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "fit_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "fitted_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "mapping_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "master_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "review_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "snapshot_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "source_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "timeline_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "cache_native_fit"
           }
         }
       },
