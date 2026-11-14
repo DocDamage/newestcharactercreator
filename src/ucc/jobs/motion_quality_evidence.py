@@ -11,9 +11,9 @@ def _number(value: Any, low: float, high: float) -> bool:
     return type(value) in (float, int) and math.isfinite(value) and low <= value <= high
 
 
-def validate_motion_quality(raw: dict[str, Any], targets: list[str]) -> None:
+def validate_motion_quality(raw: dict[str, Any], targets: list[str], *, neutral_reference: bool=False) -> None:
     if (type(raw.get("motion_quality_schema_version")) is not int or
-            raw["motion_quality_schema_version"] != 1 or
+            raw["motion_quality_schema_version"] != (2 if neutral_reference else 1) or
             raw.get("target_pose_environment_checked") is not True):
         raise ValidationError("Missing versioned joint/mesh quality measurements")
     mesh = raw.get("mesh_edge_strain")
@@ -30,7 +30,7 @@ def validate_motion_quality(raw: dict[str, Any], targets: list[str]) -> None:
     for i, frame in enumerate(raw["full_timeline_frames"]):
         lo, hi = frame.get("min_edge_length_ratio"), frame.get("max_edge_stretch_ratio")
         if (not _number(lo, .05, 4.) or not _number(hi, .05, 4.) or lo > hi or
-                (i == 0 and (abs(lo - 1) > 1e-6 or abs(hi - 1) > 1e-6))):
+                (i == 0 and not neutral_reference and (abs(lo - 1) > 1e-6 or abs(hi - 1) > 1e-6))):
             raise ValidationError("Missing or extreme full-frame local edge strain")
     joints = raw.get("joint_motion_metrics")
     if not isinstance(joints, list) or len(joints) != len(targets):

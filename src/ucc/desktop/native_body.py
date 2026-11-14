@@ -63,6 +63,8 @@ def native_result_text(result):
           if data.get("skin_deformation_policy")=="BOUND_CORRECTIVE_SMOOTH_V1" else "")
     reopened=("A third Blender process reopened the saved preview and reproduced every corrected and uncorrected skin frame.\n"
               if getattr(result,"private_reopen_job_id","") else "")
+    neutral=("Every frame meets the saved character's neutral-shape deformation limits; first-pose comparisons remain recorded.\n"
+             if data.get("mesh_strain_reference")=="TRUE_NEUTRAL_BIND_V2" else "")
     return ("EXPERIMENTAL FBX MOTION MEASURED ON A PRIVATE CHARACTER COPY\n"
         f"Complete source timeline: {data['source_frame_count']} frames at {data['fps']:g} fps\n"
         f"Mapped body joints: {len(data['mapped_pairs'])}; unmapped source bones: {len(data['omitted_source_bones'])}\n"
@@ -71,6 +73,7 @@ def native_result_text(result):
         f"{anchor}"
         f"{skin}"
         f"{reopened}"
+        f"{neutral}"
         "Two independent Blender workers agree on all measured target poses and skin frames.\n"
         "Original animation, saved character and project are unchanged.\n"
         "Use Open private animation to scrub/play in Blender, or Open sampled views for five-frame comparisons.\n"

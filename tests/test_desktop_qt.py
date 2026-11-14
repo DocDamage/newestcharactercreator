@@ -654,6 +654,16 @@ class DesktopQtSmoke(unittest.TestCase):
         self.assertIn("third Blender process",text)
         self.assertIn("foot-contact quality and engine import remain unverified",text)
 
+    def test_native_neutral_reference_result_discloses_unchanged_shape_limits(self):
+        from types import SimpleNamespace
+        from fixtures.native_body_contract import contract
+        from ucc.desktop.native_body import native_result_text
+        data=contract()[0];data["mesh_strain_reference"]="TRUE_NEUTRAL_BIND_V2"
+        text=native_result_text(SimpleNamespace(evidence=data))
+        self.assertIn("neutral-shape deformation limits",text)
+        self.assertIn("first-pose comparisons remain recorded",text)
+        self.assertIn("foot-contact quality and engine import remain unverified",text)
+
     def test_native_open_refuses_missing_or_changed_review_artifacts(self):
         from types import SimpleNamespace
         from ucc.desktop.native_body import open_native_result

@@ -41,6 +41,7 @@ def measured_body_profile(source,source_sha,snapshot_sha,master_sha):
         ("left_foot","LeftFoot","foot.L"),("right_foot","RightFoot","foot.R"))}
     profile={"schema_version":1,"convention":CONVENTION,"source_sha256":source_sha,"root_motion_policy":"SOURCE_HIP_MIDPOINT_V1",
              "skin_deformation_policy":"BOUND_CORRECTIVE_SMOOTH_V1",
+             "mesh_strain_reference":"TRUE_NEUTRAL_BIND_V2",
              "snapshot_sha256":snapshot_sha,"master_sha256":master_sha,"landmarks":landmarks,
              "pairs":[dict(zip(("source","target","source_tip","target_tip","secondary"),row)) for row in pairs]}
     return validate_native_profile(profile,source_sha,snapshot_sha,master_sha)

@@ -232,7 +232,8 @@ def retarget_native(bpy: Any, root: Path, options: dict) -> dict:
                 "sources":[landmarks[k]["source"] for k in ("left_hip","right_hip")],
                 "targets":[landmarks[k]["target"] for k in ("left_hip","right_hip")],"expected":expected_hips} if hip_anchor else None
         review=evaluate_native_timeline(bpy,human,rig,source,expected,pairs,tw,root_bind_head,bind_points,
-            lambda matrix:_rotation(matrix,target_projections)[0],root/"review_motion.blend",hip_anchor=anchor,corrective=corrective)
+            lambda matrix:_rotation(matrix,target_projections)[0],root/"review_motion.blend",hip_anchor=anchor,corrective=corrective,
+            strain_reference=profile.get("mesh_strain_reference","FIRST_POSE_AND_NEUTRAL_V1"))
         review["root_motion_metrics"].update(max_rotation_step_degrees=root_rotation.maximum_step,
             max_rotation_step_frame=root_rotation.maximum_frame)
         timeline={**review,"schema_version":1,"convention":CONVENTION,

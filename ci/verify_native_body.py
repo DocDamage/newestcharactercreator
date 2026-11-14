@@ -16,7 +16,9 @@ from ucc.jobs.native_playback import prepare_native_playback
 from ucc.animations import native_math as nm
 
 
-def verify_native_body(blender: Path,store: ProjectStore,folder: Path,*,hip_anchor=False,corrective=False) -> dict:
+def verify_native_body(blender: Path,store: ProjectStore,folder: Path,*,hip_anchor=False,corrective=False,neutral_reference=False) -> dict:
+    if neutral_reference and not (corrective and hip_anchor):
+        raise ValueError("The neutral-reference CI challenge requires corrected skin and anatomical hip anchoring")
     project=store.load();master=store.root/project.master_blend
     digest=lambda p:sha256(p.read_bytes()).hexdigest()
     metadata=store.root/"project.ucc.json"
@@ -25,7 +27,7 @@ def verify_native_body(blender: Path,store: ProjectStore,folder: Path,*,hip_anch
     def run(*args):
         subprocess.run([str(blender),"--background","--factory-startup","--disable-autoexec",
             "--python-exit-code","13","--python",str(script),"--",*map(str,args)],check=True,timeout=300)
-    run("--mode","author","--master",master,"--folder",folder,"--origin","ground" if hip_anchor else "target-root",*(("--corrective-challenge",) if corrective else ()))
+    run("--mode","author","--master",master,"--folder",folder,"--origin","ground" if hip_anchor else "target-root",*(("--corrective-challenge",) if corrective else ()),*(("--posed-origin-challenge",) if neutral_reference else ()))
     source=folder/"original-native-body.fbx";source_sha=digest(source)
     policy=LicensePolicy("Original UCC native-body test fixture","CC0","ci-original://native-body-reference",
                          reviewed=True,local_preview_allowed=True,no_ai=True)
@@ -37,6 +39,7 @@ def verify_native_body(blender: Path,store: ProjectStore,folder: Path,*,hip_anch
     profile_path=folder/"explicit-body-map.json"
     if hip_anchor:profile["root_motion_policy"]="SOURCE_HIP_MIDPOINT_V1"
     if corrective:profile["skin_deformation_policy"]="BOUND_CORRECTIVE_SMOOTH_V1"
+    if neutral_reference:profile["mesh_strain_reference"]="TRUE_NEUTRAL_BIND_V2"
     profile_path.write_text(json.dumps(profile,indent=2))
     profile_sha=digest(profile_path)
     result=preview_native_body(store,source_fbx=source,mapping_profile=profile_path,blender_exe=blender,
@@ -55,16 +58,23 @@ def verify_native_body(blender: Path,store: ProjectStore,folder: Path,*,hip_anch
     if not (400<angle<420 if hip_anchor else 399.9<angle<400.1):raise RuntimeError("Native root turn did not preserve the authored full path")
     anchor_evidence={}
     skin_evidence={}
+    if neutral_reference:
+        if (data["motion_quality_schema_version"]!=2 or result.reopen_evidence.get("first_pose_observation_frames_verified")!=300 or
+                len(data["first_pose_relative_frames"])!=300):raise RuntimeError("Neutral-reference evidence did not cover every frame")
+        skin_evidence.update(mesh_strain_reference=data["mesh_strain_reference"],
+            posed_origin_observation_frames=300,neutral_quality_first_frame_min=data["full_timeline_frames"][0]["min_edge_length_ratio"],
+            max_posed_origin_stretch=max(r["max_edge_stretch_ratio"] for r in data["first_pose_relative_frames"]),
+            rehashed_saved_observation_tamper_rejected=True)
     if corrective:
         if not result.private_reopen_job_id or result.reopen_evidence["uncorrected_skin_frames_verified"]!=300:
             raise RuntimeError("Corrective preview did not independently reopen all raw and corrected frames")
-        skin_evidence={"skin_deformation_policy":data["skin_deformation_policy"],"application_reopen_verified":True,
+        skin_evidence.update({"skin_deformation_policy":data["skin_deformation_policy"],"application_reopen_verified":True,
             "neutral_shape_error_local":data["skin_deformation"]["max_neutral_displacement_local"],
             "source_modifier_count":data["skin_deformation"]["source_modifier_count"],"review_modifier_count":data["skin_deformation"]["review_modifier_count"],
             "max_skin_correction_local":max(r["skin_correction"]["max_correction_local"] for r in data["full_timeline_frames"]),
             "max_original_master_stretch":max(r["max_edge_stretch_ratio"] for r in data["master_relative_frames"]),
             "bind_and_mid_action_settings_faults_restored":True,"rehashed_saved_settings_tamper_rejected":True,
-            "rehashed_saved_object_transform_tamper_rejected":True}
+            "rehashed_saved_object_transform_tamper_rejected":True})
         playback=prepare_native_playback(store,result,source_fbx=source,permission=policy,
             blender_exe=blender,worker_script=ROOT/"blender_bridge/entrypoint.py")
         cache=playback.cache
@@ -113,7 +123,8 @@ if __name__=="__main__":
     parser.add_argument("--output",type=Path,required=True)
     parser.add_argument("--hip-anchor",action="store_true")
     parser.add_argument("--corrective",action="store_true")
+    parser.add_argument("--neutral-reference",action="store_true")
     args=parser.parse_args()
-    report=verify_native_body(args.blender,ProjectStore(args.project),args.output,hip_anchor=args.hip_anchor,corrective=args.corrective)
+    report=verify_native_body(args.blender,ProjectStore(args.project),args.output,hip_anchor=args.hip_anchor,corrective=args.corrective,neutral_reference=args.neutral_reference)
     (args.output/"native-body-summary.json").write_text(json.dumps(report,indent=2))
     print(json.dumps(report))

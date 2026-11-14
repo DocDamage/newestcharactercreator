@@ -10,13 +10,17 @@ from blender_bridge.fbx_source import pose_digest
 
 
 def evaluate_native_timeline(bpy,human,rig,source,expected,pairs,world,root_bind_head,
-                             bind_points,rotation_reader,review_path,*,hip_anchor=None,corrective=None):
+                             bind_points,rotation_reader,review_path,*,hip_anchor=None,corrective=None,
+                             strain_reference="FIRST_POSE_AND_NEUTRAL_V1"):
     from mathutils import Vector
     scene=bpy.context.scene
+    if strain_reference not in ("FIRST_POSE_AND_NEUTRAL_V1","TRUE_NEUTRAL_BIND_V2"):
+        raise ValueError("Invalid native strain reference")
+    neutral_reference=strain_reference=="TRUE_NEUTRAL_BIND_V2"
     prior=(scene.frame_start,scene.frame_end,rig.show_in_front,scene.frame_current)
     frames=len(expected)
     before=previous=None
-    rows,bind_rows=[],[]
+    rows,bind_rows,first_rows=[],[],[]
     bind_strain=EdgeStrain(bind_points,evaluated_edges(bpy,human))
     master_strain=EdgeStrain(corrective.original,evaluated_edges(bpy,human)) if corrective else None
     master_rows=[]
@@ -67,16 +71,23 @@ def evaluate_native_timeline(bpy,human,rig,source,expected,pairs,world,root_bind
             maximum_residual=max(maximum_residual,residual)
             deformation_hash=sha256()
             for point in deformed: deformation_hash.update(struct.pack("<qqq",*(round(v*1000000) for v in point)))
+            first_measure=(first_strain.observe if neutral_reference else first_strain.measure)(points,edges,frame)
+            # Both actual neutral references always enforce the original limits,
+            # even on frame 1. A posed origin is only an observation in V2.
+            bind_measure=bind_strain.measure(points,edges,frame)
+            master_measure=master_strain.measure(points,edges,frame) if corrective else None
+            quality_measure=bind_measure if neutral_reference else first_measure
+            if neutral_reference:first_rows.append({"frame":frame,**first_measure})
             rows.append({"frame":frame,"source_frame":source["first_frame"]+frame-1,
                 "evaluated_sha256":digest,"evaluated_vertex_count":len(points),"deformation_sha256":deformation_hash.hexdigest(),
                 "moved_vertices":moving,"max_displacement_local":maximum,"adjacent_max_displacement_local":adjacent,
-                "max_bind_displacement_local":bind_maximum,**first_strain.measure(points,edges,frame),
+                "max_bind_displacement_local":bind_maximum,**quality_measure,
                 "root_world_head":list(root_head),"root_speed_world":speed,
                 "target_global_poses":matrices,"target_pose_sha256":pose_digest([float(v) for line in world for v in line],matrices),
                 "global_pose_residual":residual})
             if corrective:
                 rows[-1]["skin_correction"]=corrective.measure_raw(points,diagonal)
-                master_rows.append({"frame":frame,**master_strain.measure(points,edges,frame)})
+                master_rows.append({"frame":frame,**master_measure})
             if hip_anchor is not None:
                 points_hip=[world@rig.pose.bones[name].matrix.translation for name in hip_anchor["targets"]]
                 center=[sum(p[i] for p in points_hip)/2 for i in range(3)]
@@ -84,7 +95,7 @@ def evaluate_native_timeline(bpy,human,rig,source,expected,pairs,world,root_bind
                 if error>1e-4:raise ValueError("Actual native hip trajectory differs from source joint heads")
                 rows[-1]["hip_midpoint_world"]=center
                 max_hip_error=max(max_hip_error,error)
-            bind_rows.append({"frame":frame,**bind_strain.measure(points,edges,frame)})
+            bind_rows.append({"frame":frame,**bind_measure})
             previous=deformed
         if len({r["deformation_sha256"] for r in rows})<3 or sum(r["moved_vertices"]>=16 for r in rows[1:])<2:
             raise ValueError("Native source did not measurably articulate the skin beyond rigid root travel")
@@ -104,7 +115,10 @@ def evaluate_native_timeline(bpy,human,rig,source,expected,pairs,world,root_bind
             "frames_measured":frames,"max_residual_world":max_hip_error}}
         skin_evidence={} if not corrective else {"skin_deformation_policy":"BOUND_CORRECTIVE_SMOOTH_V1",
             "skin_deformation":corrective.proof,"master_relative_frames":master_rows,"master_bind_edge_strain":master_strain.report()}
-        return {**anchor_evidence,**skin_evidence,"motion_quality_schema_version":1,"mesh_edge_strain":first_strain.report(),
+        first_evidence={"first_pose_relative_frames":first_rows,"first_pose_edge_strain":first_strain.report()} if neutral_reference else {}
+        return {**anchor_evidence,**skin_evidence,**first_evidence,"mesh_strain_reference":strain_reference,
+                "motion_quality_schema_version":2 if neutral_reference else 1,
+                "mesh_edge_strain":(bind_strain if neutral_reference else first_strain).report(),
                 "bind_edge_strain":bind_strain.report(),"bind_relative_frames":bind_rows,
                 "full_timeline_frames":rows,"root_motion_metrics":root_metrics,
                 "deformation_reference":"ROOT_TRANSLATION_REMOVED",

@@ -71,7 +71,10 @@ concurrency:
 jobs:
   verify-mpfb-linux:
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    # The full 300-frame neutral-reference regression completed at the old
+    # 25-minute job boundary (including tool setup), cancelling a passing run.
+    # Keep every integration assertion and allow bounded setup/runner headroom.
+    timeout-minutes: 40
     env:
       PYTHONUNBUFFERED: '1'
     steps:

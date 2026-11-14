@@ -12,12 +12,13 @@ from .source_rest_frames import is_sha256
 CONVENTION = "NATIVE_ANATOMICAL_REFERENCE_V1"
 ROOT_POLICIES = {"ARMATURE_ORIGIN_DISPLACEMENT_V1", "SOURCE_HIP_MIDPOINT_V1"}
 SKIN_POLICIES = {"MASTER_MODIFIERS_V1", "BOUND_CORRECTIVE_SMOOTH_V1"}
+STRAIN_REFERENCES = {"FIRST_POSE_AND_NEUTRAL_V1", "TRUE_NEUTRAL_BIND_V2"}
 LANDMARKS = {"left_hip","right_hip","head","left_hand","right_hand","left_foot","right_foot"}
 MAX_PROFILE_BYTES = 64*1024
 
 
 def validate_native_profile(data: Any, source_sha: str, snapshot_sha: str, master_sha: str) -> dict:
-    if (type(data) is not dict or set(data)-{"root_motion_policy","skin_deformation_policy"} != {"schema_version","convention","source_sha256",
+    if (type(data) is not dict or set(data)-{"root_motion_policy","skin_deformation_policy","mesh_strain_reference"} != {"schema_version","convention","source_sha256",
             "snapshot_sha256","master_sha256","landmarks","pairs"} or
             type(data["schema_version"]) is not int or data["schema_version"] != 1 or
             data["convention"] != CONVENTION):
@@ -26,6 +27,8 @@ def validate_native_profile(data: Any, source_sha: str, snapshot_sha: str, maste
         raise ValidationError("Invalid explicit native root-motion policy")
     if "skin_deformation_policy" in data and (type(data["skin_deformation_policy"]) is not str or data["skin_deformation_policy"] not in SKIN_POLICIES):
         raise ValidationError("Invalid explicit native skin-deformation policy")
+    if "mesh_strain_reference" in data and (type(data["mesh_strain_reference"]) is not str or data["mesh_strain_reference"] not in STRAIN_REFERENCES):
+        raise ValidationError("Invalid explicit native mesh-strain reference")
     for key,value in (("source_sha256",source_sha),("snapshot_sha256",snapshot_sha),("master_sha256",master_sha)):
         if not is_sha256(value) or data[key] != value:
             raise ValidationError("Native body map source/snapshot/master SHA binding differs")
