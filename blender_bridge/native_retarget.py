@@ -96,7 +96,8 @@ def retarget_native(bpy: Any, root: Path, options: dict) -> dict:
     sb,source_height=body_frame(*(tuple(landmark("source",k)) for k in ("left_hip","right_hip","head")))
     tb,target_height=body_frame(*(tuple(landmark("target",k)) for k in ("left_hip","right_hip","head")))
     axes=multiply(tb,transpose(sb));scale=target_height/source_height
-    palm_proofs=measure_planes(profile,source_points,target_points,parents,target_parents,source_height,target_height)
+    palm_proofs=measure_planes(profile,source_points,target_points,parents,target_parents,
+        source_height,target_height,source_snapshot=source)
     if not .25<=scale<=4:
         raise ValueError("Source/target body proportions are incompatible")
     for side,basis,height in (("source",sb,source_height),("target",tb,target_height)):

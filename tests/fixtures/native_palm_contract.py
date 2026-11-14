@@ -26,3 +26,20 @@ def palm_contract():
     data={"hand_plane_proofs":{"schema_version":1,"planes":proofs}}
     landmarks={k:sp[v["source"]][:] for k,v in profile["landmarks"].items()}
     return profile,data,sp,tp,parents,target_parents,landmarks
+
+
+def transformed_palm_contract(translation: tuple[float, float, float], scale: float):
+    """Invented rigid frame for origin/scale invariance; no source motion data."""
+    profile, _, points, targets, parents, target_parents, landmarks = palm_contract()
+    profile["hand_reference_planes"]["schema_version"] = 2
+    x, y, z = translation
+    source = {
+        "armature_rest_world": [
+            scale, 0., 0., x,
+            0., .8 * scale, -.6 * scale, y,
+            0., .6 * scale, .8 * scale, z,
+            0., 0., 0., 1.,
+        ],
+        "bones": [{"name": name, "head": point[:]} for name, point in points.items()],
+    }
+    return profile, source, targets, parents, target_parents, landmarks
