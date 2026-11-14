@@ -38,8 +38,14 @@ class NativeFitEvidenceTests(unittest.TestCase):
         with self.assertRaisesRegex(ValidationError,'policy differs'):self.read()
 
     def test_hand_measurement_requires_complete_independently_matching_angular_evidence(self):
+        self._check_independent_hand_angular_evidence('BOUNDED_NATIVE_ARM_HAND_IK_V2')
+
+    def test_body_shape_measurement_requires_independently_matching_hand_angular_evidence(self):
+        self._check_independent_hand_angular_evidence('BOUNDED_NATIVE_BODY_SHAPE_IK_V3')
+
+    def _check_independent_hand_angular_evidence(self,policy):
         from ucc.animations.contact_fit import read_fit_plan,fit_frame,verify_fitted_sequence
-        self.policy['policy']='BOUNDED_NATIVE_ARM_HAND_IK_V2'
+        self.policy['policy']=policy
         for row,v in zip(self.policy['frames'],(0.,.1,.2,.1,0.)):row['hand_rotation_local_degrees']=[v,0.,0.]
         self.policy_path.write_text(json.dumps(self.policy));self.options['fit_sha256']=sha256(self.policy_path.read_bytes()).hexdigest()
         self.data['policy']=self.policy['policy'];self.data['bindings']=dict(self.options)

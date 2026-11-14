@@ -148,7 +148,9 @@ jobs:
     # Retain all prior assertions and bound the additional integration workload.
     # Closed-skin adds two complete source workers, a full rehashed-report
     # rejection and an independently reopened actual MPFB geometry fault.
-    timeout-minutes: ${{ matrix.suite == 'native-fit' && 100 || matrix.suite == 'body-contacts' && 60 || 40 }}
+    # PR #58's body job was still executing at the verified 60-minute limit.
+    # Preserve every full-sequence assertion and allow bounded runner headroom.
+    timeout-minutes: ${{ matrix.suite == 'native-fit' && 100 || matrix.suite == 'body-contacts' && 75 || 40 }}
     env:
       PYTHONUNBUFFERED: '1'
     steps:

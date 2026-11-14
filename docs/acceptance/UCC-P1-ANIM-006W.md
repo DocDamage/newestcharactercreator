@@ -1,4 +1,28 @@
-# UCC-P1-ANIM-006W — guarded central-body enclosure (in progress)
+# UCC-P1-ANIM-006W — guarded central-body enclosure (ready for review)
+
+## Final acceptance checkpoint
+
+PR #57 is ready for review and unmerged at
+`ae7b4cc3fd97cab66ce095110756b3df65a60a44`. This checkpoint supersedes the
+pending execution statements recorded below. All five exact-head workflows
+pass: core 43438089069, Qt 43438089015, preflight 43438089191,
+Blender/MPFB 43438089094 and Windows portable 43438089095. All three final
+Linux artifact ZIPs are independently SHA-checked; all fifteen JSON records
+pass domain assertions, including production generation/reopening, audited
+channel conversion, complete native fitting and actual enclosure faults.
+
+The clean actual nine-job desktop run completes in 3,261.578 seconds. Both
+publication guards pass, all 300 highlighted fitted frames draw through the
+GPU in 10.062 seconds, and changing the receipt invalidates both views.
+Protected source/master/project bytes remain unchanged. Actual Cancel menu
+actions stop both running Blender job types in 0.468 / 0.421 seconds. The
+final frozen Windows executable also passes its local project/Qt/bridge smoke
+after independent archive SHA and bundled-module verification.
+
+This is guard acceptance, not animation-quality approval. The retained fit
+still has 164 body-contact flagged frames and 161 frames with measured
+enclosed hand polygons. The next task is measured body-shape adaptation for
+the remaining interval. Private owner evidence remains outside the repository.
 
 Dependency: #55's working bounded hand fit and #56's finding that whole-skin
 winding can cancel through connected hand/wrist folds. This task measures the

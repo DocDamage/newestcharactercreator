@@ -4,6 +4,7 @@ from blender_bridge.native_inputs import read_json
 from blender_bridge.native_hand_fit import POLICY as HAND_POLICY,rotations,orient
 
 POLICY='BOUNDED_NATIVE_ARM_IK_V1'
+BODY_POLICY='BOUNDED_NATIVE_BODY_SHAPE_IK_V3'
 BASE_HASHES={'source_sha256','snapshot_sha256','mapping_sha256','master_sha256','review_sha256','timeline_sha256'}
 OPERATIONS={'fit_native_fbx_body':{'fit_sha256'},
             'measure_native_fit':{'fit_sha256','fitted_sha256'},
@@ -27,7 +28,7 @@ def checked_job(job):
 def parse_fit(data,bindings,baseline,profile,parents):
     required={'schema_version','policy','bindings','coordinate_space','chain','fps','frames'}
     if (type(data) is not dict or set(data)-{'render_frames'}!=required or
-        type(data['schema_version']) is not int or data['schema_version']!=1 or type(data['policy']) is not str or data['policy'] not in (POLICY,HAND_POLICY) or
+        type(data['schema_version']) is not int or data['schema_version']!=1 or type(data['policy']) is not str or data['policy'] not in (POLICY,HAND_POLICY,BODY_POLICY) or
         data['coordinate_space']!='BLENDER_WORLD_METERS' or data['bindings']!=bindings or
         profile.get('skin_deformation_policy')!='BOUND_CORRECTIVE_SMOOTH_V1' or
         profile.get('mesh_strain_reference')!='TRUE_NEUTRAL_BIND_V2'):
@@ -63,7 +64,8 @@ def parse_fit(data,bindings,baseline,profile,parents):
     feet=[(landmarks['left_foot'][i]+landmarks['right_foot'][i])/2 for i in range(3)]
     span=math.dist(landmarks['head'],feet)
     if not .1<span<10:raise ValueError('Invalid native fitting body span')
-    maximum=min(.03,.02*span);offsets=[];hand_policy=data['policy']==HAND_POLICY
+    maximum=min(.08,.05*span) if data['policy']==BODY_POLICY else min(.03,.02*span)
+    offsets=[];hand_policy=data['policy'] in (HAND_POLICY,BODY_POLICY)
     for frame,row in enumerate(data['frames'],1):
         if type(row) is not dict or set(row)!=({'frame','offset_world'}|({'hand_rotation_local_degrees'} if hand_policy else set())) or type(row['frame']) is not int or row['frame']!=frame:
             raise ValueError('Incomplete or reordered native fit trajectory')
