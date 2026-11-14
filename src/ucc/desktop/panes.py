@@ -218,6 +218,7 @@ class AnimationPane(QWidget):
     native_body_requested = Signal()
     native_animation_open_requested = Signal()
     native_renders_open_requested = Signal()
+    native_playback_requested = Signal()
     refresh_requested = Signal()
 
     def __init__(self) -> None:
@@ -307,6 +308,11 @@ class AnimationPane(QWidget):
         self.open_native_renders.clicked.connect(self.native_renders_open_requested.emit)
         native_open.addWidget(self.open_native_animation);native_open.addWidget(self.open_native_renders)
         native_layout.addLayout(native_open)
+        self.load_native_motion=QPushButton("Load verified motion in UCC...")
+        self.load_native_motion.setToolTip("Reopens and checks the saved corrected animation, then loads every evaluated skin frame into an interactive 3D player. Precomputed playback; originals unchanged.")
+        self.load_native_motion.setEnabled(False)
+        self.load_native_motion.clicked.connect(self.native_playback_requested.emit)
+        native_layout.addWidget(self.load_native_motion)
         layout.addWidget(native)
         layout.addWidget(self.test_local_bvh)
 

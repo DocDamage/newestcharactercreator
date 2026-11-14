@@ -11,6 +11,7 @@ from PySide6.QtGui import QDesktopServices
 from ucc.core.errors import UCCError, ValidationError
 from ucc.library.provenance import LicensePolicy
 from ucc.jobs.native_body import preview_native_body
+from ucc.jobs.native_playback import prepare_native_playback
 from ucc.jobs.native_evidence import bound_file
 from .generation import bundled_worker_path
 
@@ -93,3 +94,22 @@ def open_native_result(window, *, rendered=False):
             subprocess.Popen([str(executable),"--disable-autoexec",str(path)],shell=False)
     except (UCCError,OSError,KeyError,ValueError) as error:
         window._error("Private animation review failed: "+str(error))
+
+
+def start_native_playback(window):
+    result=getattr(window,"_native_review",None)
+    if window.jobs.busy:window._error("Another local task is still running");return
+    if result is None or window.controller.store is None or window.controller.dirty:
+        window._error("Complete a private FBX preview on the saved character first");return
+    pane=window.animations
+    if not pane.local_preview_review.isChecked():window._error("Confirm local animation preview rights first");return
+    try:
+        policy=LicensePolicy(pane.provider.text().strip(),pane.license.text().strip(),pane.uri.text().strip(),
+                             reviewed=True,local_preview_allowed=True,no_ai=True)
+        worker=bundled_worker_path()
+        executable=window._blender_executable
+        if executable is None or executable.is_symlink() or not executable.is_file():raise ValidationError("Select Blender and repeat the body preview")
+        store=window.controller.store;source=Path(pane.selected.text());cancel=Event()
+        window._submit("native_playback",lambda:prepare_native_playback(store,result,source_fbx=source,
+            permission=policy,blender_exe=executable,worker_script=worker,cancel=cancel),cancel=cancel)
+    except (UCCError,OSError,ValueError) as error:window._error(str(error))

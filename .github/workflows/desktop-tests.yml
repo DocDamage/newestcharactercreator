@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - 'src/ucc/desktop/**'
+      - 'src/ucc/preview/**'
+      - 'tests/test_motion_*.py'
       - 'tests/test_desktop_*.py'
       - 'pyproject.toml'
       - '.github/workflows/desktop-tests.yml'
@@ -43,5 +45,7 @@ jobs:
         run: python -m unittest discover -s tests -p test_desktop_qt.py -v
       - name: Run actual GLB mesh viewport widget tests (no skips)
         run: python -m unittest discover -s tests -p test_preview_qt.py -v
+      - name: Run cached-motion Qt transport and error tests (no GPU claim)
+        run: python -m unittest discover -s tests -p test_motion_qt.py -v
       - name: Run dependency-free controller tests
         run: python -m unittest discover -s tests -p test_desktop_controller.py -v

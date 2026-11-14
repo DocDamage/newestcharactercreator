@@ -5,6 +5,7 @@ on:
   pull_request:
     paths:
       - 'src/ucc/desktop/**'
+      - 'src/ucc/preview/**'
       - 'src/ucc/core/**'
       - 'src/ucc/jobs/**'
       - 'blender_bridge/**'
@@ -58,6 +59,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Qt UI tests failed' }
           python -m unittest discover -s tests -p 'test_desktop_entrypoint.py' -v
           if ($LASTEXITCODE -ne 0) { throw 'Qt diagnostic tests failed' }
+          python -m unittest discover -s tests -p 'test_motion_qt.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Cached motion transport tests failed' }
       - name: Freeze windowed desktop application
         shell: pwsh
         run: |
