@@ -1,6 +1,6 @@
-# UCC-P1-ANIM-007C — measured catalog clips and project registration
+# UCC-P1-ANIM-007C â€” measured catalog clips and project registration
 
-Status: local metadata API, existing desktop Index workflow and fresh source-reference verification accepted; full project action registration remains incomplete. Local branch `feat/anim-007-registered-clips` builds on frozen draft PR #65 at `b873ed0013ff90cdfc24134eb7c70ccf073d876e`. This follow-up is not pushed or remotely accepted. PR #65 has passed Core, Qt, preflight and Windows; its independently audited Windows package contains all 89 exact-head bridge modules and its extracted executable passes all three self-tests. PR #65 Linux acceptance remains pending. PRs #61–65 remain draft and unmerged.
+Status: local metadata API, existing desktop Index workflow, fresh source-reference verification and read-only neutral-master inspection accepted; full project action registration remains incomplete. Local branch `feat/anim-007-registered-clips` builds on frozen draft PR #65 at `b873ed0013ff90cdfc24134eb7c70ccf073d876e`. This follow-up is not pushed or remotely accepted. PR #65 has passed Core, Qt, preflight and Windows; its independently audited Windows package contains all 89 exact-head bridge modules and its extracted executable passes all three self-tests. PR #65 body-contact and symmetric archives are independently accepted (11 records); native-fit is still running. Regression exceeded its 60-minute job limit during expressions, and regional failed official Blender setup. A bounded regression-time-budget fix is prepared; complete Linux acceptance remains pending. PRs #61â€“65 remain draft and unmerged.
 
 ## Implemented metadata boundary
 
@@ -20,6 +20,14 @@ The programmatic sequence is to index a selected source using `AnimationCatalog.
 
 A coherent stored receipt is still insufficient. The verifier repeats the normal complete two-worker Blender intake and compares it against the saved metadata/receipt without repairing either. A typed `VerifiedCatalogClip` binds the existing catalog ID, source SHA, exact policy, snapshot and receipt hashes, skeleton fingerprint and source timeline. Its target-preview and engine approvals remain false. Project admission must additionally prove the editable master's actual neutrality and preserve revision/history/source guards.
 
+## Read-only neutral-master inspection
+
+`ucc.jobs.neutral_master.inspect_saved_neutral_master` binds an immutable master and the complete saved project metadata to two fresh `inspect_mpfb_neutral_master` workers. The pinned MPFB family intake checks actual geometry/rig structure. The neutral check independently requires exact identity bone bases, no bone constraints (including muted ones), no Actions (including unused ones), no animation/drivers/NLA on loaded ID data or embedded node trees, no linked libraries, and complete neutral reserved expression keys when present. It never clears pose channels or repairs the source.
+
+Before/after exact state fingerprints cover skin, original weights, rest, keys and source invariants. Both workers must agree and all original/staged/project identities must remain unchanged. Unsupported timeout values, missing/redirected executable or script, redirected jobs, cancellation and project/master changes fail explicitly.
+
+The inspection can observe a genuinely neutral master even when metadata lists a clip ID. This does not grant admission or editing permission: the report explicitly keeps source-provenance, project-action-admission, visual-quality and engine flags false. Existing library/part provenance and canonical prepared-expression checks remain separate requirements. Existing nonempty-animation edit guards are preserved. The current source launcher includes 90 bridge modules; PR #65's separately verified package still contains its own 89-module revision.
+
 ## Executed local evidence
 
 Private evidence is outside Git under `evidence/anim007c`.
@@ -31,20 +39,24 @@ Private evidence is outside Git under `evidence/anim007c`.
 | Desktop wiring required-Qt regression | 951 tests in 115.024 seconds; 937 passed, 14 existing Windows symlink skips |
 | Focused desktop/API smoke | 55 tests passed |
 | Source-reference boundaries | 12 tests passed, including bounded/duplicate/nonfinite/type-mismatched metadata and coherent saved identity faults |
-| Final required-Qt regression with references | 963 tests in 115.802 seconds; 949 passed, 14 existing Windows symlink skips |
+| Reference API required-Qt regression | 963 tests in 115.802 seconds; 949 passed, 14 existing Windows symlink skips |
 | Actual fresh reference and coherent faults | Valid original source plus coherent Action/skeleton/FPS catalog rewrites: eight fresh Blender workers each inspect all 300 frames, total 2,400 source-frame observations in 29.359 seconds. The three rewrites reject with the precise identity failure; source and accepted baseline database remain byte-identical |
 | Bound reference failures | Wrong caller source SHA, changed caller policy and missing receipt reject before any worker starts |
 | Actual Qt Index button/background workflow | Original-only 300-frame/71-bone source measured by two fresh Blender workers in 6.781 seconds; both measured and unreviewed catalog entries displayed and database/project reopened |
 | Actual cancellation and immutable policy | Cancel menu action after an observed live Blender PID stops the worker; no partial clip/receipt. Attempted upgrade of an old unreviewed ID rejects before any Blender job |
-| Actual source launcher | Three-check SELF_TEST_OK; cancelled Blender PID independently confirmed exited |
+| Actual source launcher | Three-check SELF_TEST_OK with all 90 current bridge sources; earlier cancelled Blender PID independently confirmed exited |
+| Final required-Qt regression with neutral inspection | 976 tests in 115.424 seconds; 962 passed, 14 existing Windows symlink skips |
+| Neutral/protocol boundaries | 31 focused tests passed |
+| Actual neutral observations | Three original body/face targets, a plain unprepared master and a neutral clone with metadata clip IDs; ten fresh final-host workers reproduce all five exact state hashes in 37.844 seconds |
+| Actual saved-scene neutral faults | Ten coherently rehashed scenes reject: assigned/unused Actions, a 5e-6 pose-channel translation, muted constraint, nonneutral/partial expression keys, scene/embedded-node-tree drivers, REST mode and linked library |
 | Earlier preflight and guardrails | 3 and 12 tests passed |
 | Real original-only FBX intake | Two fresh normal Blender workers, each measuring all 300 frames, 71 bones and three roots at 30 FPS |
-| Independent saved-result/catalog audit | Both complete snapshots and source hashes agree; actual imported range 2–301 retained; real Action identity, 72 sampled transform tracks, stable clip ID and database receipt verified after reopening |
+| Independent saved-result/catalog audit | Both complete snapshots and source hashes agree; actual imported range 2â€“301 retained; real Action identity, 72 sampled transform tracks, stable clip ID and database receipt verified after reopening |
 | Failure boundaries | Changed source/policy, malformed report/snapshot, disagreement, escaped snapshot, cancellation, coherent conflicting Action and injected SQLite failure reject without partial clip publication |
 | Source preservation/privacy | Original authored FBX unchanged; no purchased inputs, geometry or poses stored in the catalog or uploaded |
 
-The original source is reused from the accepted original-only regional gate. This is an actual Blender source integration, not evidence of seven usable product actions. The first four API Python source/test files are frozen in `source-under-test-02.json`; an explicit AST/compiled-code comparison records LF normalization of the pre-existing catalog file. Desktop regression and genuine Qt intake/cancellation use the eight source/test files frozen in `source-under-test-04-desktop.json`. Final reference regression and actual coherent-fault checks use all eleven source/test files frozen in `source-under-test-05-reference.json`; the earlier eight files remain unchanged.
+The original source is reused from the accepted original-only regional gate. This is an actual Blender source integration, not evidence of seven usable product actions. The first four API Python source/test files are frozen in `source-under-test-02.json`; an explicit AST/compiled-code comparison records LF normalization of the pre-existing catalog file. Desktop regression and genuine Qt intake/cancellation use the eight source/test files frozen in `source-under-test-04-desktop.json`. Final reference regression and actual coherent-fault checks use all eleven source/test files frozen in `source-under-test-05-reference.json`; the earlier eight files remain unchanged. Neutral inspection is frozen in `source-under-test-07-neutral.json` (17 files). The five cases were repeated after host-only timeout/path validation was added. Ten saved-fault results from phase 06 retain exact current worker/dispatch/protocol bytes and were independently rechecked without rerunning unchanged fault workers.
 
 ## Remaining acceptance
 
-The existing Index control is wired; no Action is attached to an editable master. The new reference API validates source IDs; it does not attach them to a character. Still required: admitting those bound references into a character project, independently proving neutral-master provenance, history/save/reopen and stale-input behavior, supported edits with external clip references, seven appropriate usable actions, root/loop/foot quality, human visual/grasp review, and real engine imports. Arbitrary animated masters remain rejected by the existing edit guards. PR #65 remote Linux/artifact acceptance must finish before publishing this follow-up. No dependencies, software installation or asset permissions changed.
+The existing Index control is wired; no Action is attached to an editable master. The new reference API validates source IDs; it does not attach them to a character. Still required: admitting those bound references into a character project, combining the new actual neutral observations with existing source/library provenance to admit references, history/save/reopen and stale-input behavior, supported edits with external clip references, seven appropriate usable actions, root/loop/foot quality, human visual/grasp review, and real engine imports. Arbitrary animated masters remain rejected by the existing edit guards. PR #65 remote Linux/artifact acceptance must finish before publishing this follow-up. No dependencies, software installation or asset permissions changed.
