@@ -77,7 +77,7 @@ class BodyReviewQtTests(unittest.TestCase):
     def test_body_action_dispatches_current_pair_and_cancel_event_without_policy_editing(self):
         self.w._blender_executable=self.executable
         with (patch.object(self.w,'_submit') as submit,patch('ucc.desktop.body_contact_review.bundled_worker_path',return_value=self.executable),
-              patch('ucc.desktop.body_contact_review.review_body_contact_areas',return_value='unit-only') as review):
+              patch('ucc.desktop.body_contact_review.review_complete_anatomical_safety',return_value='unit-only') as review):
             self.w.motion_viewer.review_body.click();args,kwargs=submit.call_args
             self.assertEqual(args[0],'body_contacts');self.assertEqual(args[1](),'unit-only')
             values=review.call_args.kwargs;self.assertIs(values['fitted'],self.f.fitted)
@@ -133,7 +133,16 @@ class BodyReviewQtTests(unittest.TestCase):
         body=replace(self.result,areas=areas,enclosure=CentralEnclosure(variant,variant),
             private_enclosure_report=str(enclosure),enclosure_report_sha256=sha256(enclosure.read_bytes()).hexdigest(),
             private_anatomical_verification=str(receipt),anatomical_verification_sha256=sha256(receipt.read_bytes()).hexdigest())
-        return FittedComparison(self.f.original,self.f.fitted,'unit-candidate','unit-policy',body,require_body_fit_guard(body),enclosure_fit_guard=require_enclosure_fit_guard(body))
+        from ucc.preview.central_surface import CompleteSurfaceVariant,CompleteTrunkSurfaces,POLICY as FULL_POLICY
+        from ucc.jobs.complete_trunk_fit_guard import require_complete_trunk_fit_guard
+        full_report=self.report.parent/'full_trunk_contacts.json';full_report.write_text('{"unit_only":true}')
+        faces=((frozenset({1}),frozenset()),(frozenset(),frozenset()),(frozenset(),frozenset()))
+        source=CompleteSurfaceVariant(replace(body.contacts.original,policy=FULL_POLICY),faces,faces)
+        fitted=CompleteSurfaceVariant(replace(body.contacts.fitted,policy=FULL_POLICY),faces,faces)
+        body=replace(body,full_trunk=CompleteTrunkSurfaces(source,fitted,(),()),private_full_trunk_report=str(full_report),
+            full_trunk_report_sha256=sha256(full_report.read_bytes()).hexdigest())
+        return FittedComparison(self.f.original,self.f.fitted,'unit-candidate','unit-policy',body,require_body_fit_guard(body),
+            enclosure_fit_guard=require_enclosure_fit_guard(body),complete_trunk_fit_guard=require_complete_trunk_fit_guard(body))
 
     def test_automatic_fit_requires_guard_before_publication_then_shows_stable_body_review(self):
         from ucc.desktop.contact_fit import publish_fitted_result
@@ -142,10 +151,31 @@ class BodyReviewQtTests(unittest.TestCase):
             with self.assertRaises(ValidationError):publish_fitted_result(self.w,replace(result,body_review=None))
             with self.assertRaises(ValidationError):publish_fitted_result(self.w,replace(result,body_fit_guard=None))
             with self.assertRaises(ValidationError):publish_fitted_result(self.w,replace(result,enclosure_fit_guard=None))
+            with self.assertRaises(ValidationError):publish_fitted_result(self.w,replace(result,complete_trunk_fit_guard=None))
             publish.assert_not_called()
         publish_fitted_result(self.w,result)
         self.assertIs(self.w._body_contact_review,result.body_review)
-        self.assertIn('Newly involved contact areas: 0',self.w.log.toPlainText())
+        self.assertIn('Complete torso newly involved areas: 0',self.w.log.toPlainText())
+        self.assertIn('complete trunk',self.w.motion_viewer.surface_status.text())
+
+    def test_complete_trunk_report_change_clears_both_views(self):
+        from ucc.desktop.contact_fit import publish_fitted_result
+        result=self.guarded_comparison();publish_fitted_result(self.w,result)
+        path=Path(result.body_review.private_full_trunk_report)
+        self.assertIn(str(path),self.w._motion_watcher.files())
+        path.write_text('changed unit complete report',encoding='utf-8');QTest.qWait(150)
+        self.assertIsNone(self.w.motion_viewer.cache);self.assertIsNone(self.w._fitted_playback)
+
+    def test_new_complete_trunk_contact_is_rejected_before_comparison_publication(self):
+        from ucc.desktop.contact_fit import publish_fitted_result,fit_error_message
+        result=self.guarded_comparison();body=result.body_review;full=body.full_trunk
+        fitted=replace(full.fitted,body_polygons=((frozenset({7}),frozenset()),)+full.fitted.body_polygons[1:])
+        body=replace(body,full_trunk=replace(full,fitted=fitted,new_area_frames=(0,)))
+        with patch('ucc.desktop.native_playback.publish_comparison') as publish:
+            with self.assertRaisesRegex(ValidationError,'COMPLETE_TRUNK_FIT_INTRODUCES_CONTACT_AREAS'):
+                publish_fitted_result(self.w,replace(result,body_review=body))
+            publish.assert_not_called()
+        self.assertIn('new torso surface areas',fit_error_message('COMPLETE_TRUNK_FIT_INTRODUCES_CONTACT_AREAS'))
 
     def test_guarded_body_publication_failure_clears_partially_published_comparison(self):
         from ucc.desktop.contact_fit import publish_fitted_result

@@ -4,6 +4,7 @@ from pathlib import Path
 import unittest
 
 from blender_bridge.anatomical_review import OPERATIONS as ANATOMICAL_OPERATIONS
+from blender_bridge.complete_anatomical_review import OPERATIONS as COMPLETE_OPERATIONS
 from blender_bridge.body_contact_areas import OPERATIONS as BODY_AREA_OPERATIONS
 from blender_bridge.skin_inclusion_review import OPERATIONS as SKIN_OPERATIONS
 from blender_bridge.native_area_candidate import OPERATION as AREA_CANDIDATE_OPERATION
@@ -22,7 +23,7 @@ class WorkerDispatchContractTests(unittest.TestCase):
                   node.value.func.value.id=='OPERATIONS' and node.value.func.attr=='add'):nodes.append(node)
         # Execute only the inspected static operation-set declarations, never
         # imports, Blender functions or the worker entrypoint.
-        scope={'ANATOMICAL_OPERATIONS':ANATOMICAL_OPERATIONS,'BODY_AREA_OPERATIONS':BODY_AREA_OPERATIONS,'AREA_CANDIDATE_OPERATION':AREA_CANDIDATE_OPERATION,'SKIN_OPERATIONS':SKIN_OPERATIONS}
+        scope={'COMPLETE_OPERATIONS':COMPLETE_OPERATIONS,'ANATOMICAL_OPERATIONS':ANATOMICAL_OPERATIONS,'BODY_AREA_OPERATIONS':BODY_AREA_OPERATIONS,'AREA_CANDIDATE_OPERATION':AREA_CANDIDATE_OPERATION,'SKIN_OPERATIONS':SKIN_OPERATIONS}
         exec(compile(ast.Module(body=nodes,type_ignores=[]),'worker-operation-metadata','exec'),scope)
         self.assertEqual(scope['OPERATIONS'],SUPPORTED_OPERATIONS)
         main=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='main')

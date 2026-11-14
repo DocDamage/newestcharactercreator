@@ -10,6 +10,12 @@ from .generation import bundled_worker_path
 
 def fit_error_message(error: str) -> str:
     reasons={
+        'COMPLETE_TRUNK_FIT_INTRODUCES_CONTACT_AREAS':'The correction would move hand/body crossings onto new torso surface areas. Original motion is retained.',
+        'COMPLETE_TRUNK_FIT_INCREASES_HAND_PAIRS':'The correction would increase torso crossings for at least one hand. Original motion is retained.',
+        'COMPLETE_TRUNK_FIT_UNAVAILABLE':'A complete torso-surface comparison was unavailable. Original motion is retained.',
+        'COMPLETE_TRUNK_FIT_COVERAGE_CHANGED':'The complete torso comparison no longer covers the visible motion. Original motion is retained.',
+        'COMPLETE_TRUNK_FIT_EVIDENCE_CHANGED':'Torso-surface evidence changed before publication. Original motion is retained.',
+        'COMPLETE_TRUNK_FIT_COMPARISON_CHANGED':'The torso-surface comparison changed before publication. Original motion is retained.',
         'ENCLOSURE_FIT_INTRODUCES_BURIED_SKIN':'The correction would bury new hand areas inside the torso. Original motion is retained.',
         'ENCLOSURE_FIT_INTRODUCES_UNCERTAINTY':'The correction creates new hand areas whose torso clearance cannot be determined. Original motion is retained.',
         'ENCLOSURE_FIT_UNAVAILABLE':'A complete torso-enclosure comparison was unavailable. Original motion is retained.',
@@ -63,7 +69,7 @@ def start_contact_fit(window):
         window._submit('fitted_comparison',lambda:fit_measured_contacts(store,preview,playback,source_fbx=source,
             permission=permission,blender_exe=executable,worker_script=worker,cancel=cancel),cancel=cancel)
         window.log.setPlainText('TRYING A BOUNDED LOCAL HAND/ARM FIT\n'
-            'The original animation stays available. Original head/body review, bounded arm and wrist search, saved-scene verification, targeted renders and final body comparison can take several minutes.\n'
+            'The original animation stays available. Original head/body review, bounded arm and wrist search, saved-scene verification, targeted renders and final body comparison can take tens of minutes.\n'
             'Cancel from the Character menu. Unsupported contacts or failed joint/skin checks keep the original motion.\n'
             'A generated candidate changes target motion; it does not approve grasp intent, visual quality or engine compatibility.')
     except (UCCError,OSError,ValueError) as error:window._error(str(error))
@@ -74,11 +80,14 @@ def publish_fitted_result(window,result):
     from .body_contact_review import publish_body_contact_review
     from ucc.jobs.body_fit_guard import require_body_fit_guard
     from ucc.jobs.enclosure_fit_guard import require_enclosure_fit_guard
+    from ucc.jobs.complete_trunk_fit_guard import require_complete_trunk_fit_guard
     if result.candidate_job_id:
         if result.body_review is None or result.body_fit_guard!=require_body_fit_guard(result.body_review):
             raise ValidationError('Automatic fit lacks its verified central-body guard')
         if result.enclosure_fit_guard!=require_enclosure_fit_guard(result.body_review):
             raise ValidationError('Automatic fit lacks its verified trunk-enclosure guard')
+        if result.complete_trunk_fit_guard!=require_complete_trunk_fit_guard(result.body_review):
+            raise ValidationError('Automatic fit lacks its verified complete torso-surface guard')
     publish_comparison(window,result.original,result.fitted)
     if result.body_review is not None:
         try:publish_body_contact_review(window,result.body_review)

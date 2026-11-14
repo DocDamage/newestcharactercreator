@@ -1,5 +1,6 @@
 """Actual MPFB trunk/hand geometry faults, no substitute assets or saved scenes."""
 from hashlib import sha256
+from dataclasses import replace
 import argparse
 import json
 import math
@@ -18,6 +19,7 @@ from blender_bridge.body_contact_regions import weighted_central_region
 from blender_bridge.central_regions import volume_regions
 from blender_bridge.central_enclosure import observe_central_enclosure
 from blender_bridge.central_geometry import central_geometry,outward_probe
+from blender_bridge.central_surface import observe_central_surfaces
 from blender_bridge.central_cap import in_cap_box,safe_ray_directions
 from blender_bridge.central_self import require_body_surface
 from blender_bridge.skin_winding import signed_ray,consistent_winding
@@ -85,7 +87,31 @@ def verify(job,output):
             {s:selected.vertices[s+'_hand'] for s in ('left','right')},(1.,0.,0.,0.,0.,1.,0.,0.,0.,0.,1.,0.,0.,0.,0.,1.))
         if (len(production['right']['nonzero_triangles'])!=len(hand_faces) or production['right']['ambiguous_triangles'] or
             not production['right']['inside_polygons']):raise RuntimeError('Production sampler missed fully enclosed actual hand')
+        hands={s:selected.vertices[s+'_hand'] for s in ('left','right')}
+        polygon_ids=[t.polygon_index for t in mesh.loop_triangles]
+        buried=observe_central_surfaces(replace(geometry,skin_points=tuple(moved)),triangles,polygon_ids,hands,BVHTree)
+        if buried['right']['pair_count']!=0:raise RuntimeError('Fully buried hand unexpectedly crosses the complete actual trunk skin')
+        # Move one actual hand triangle across an actual trunk triangle omitted
+        # by the older head/spine-only weighted partition. No source is saved.
+        legacy=selected.vertices['central_body']
+        omitted=next(i for i in geometry.body_triangle_ids if not set(triangles[i])<=legacy and
+            (Vector(geometry.skin_points[triangles[i][1]])-Vector(geometry.skin_points[triangles[i][0]])).cross(
+             Vector(geometry.skin_points[triangles[i][2]])-Vector(geometry.skin_points[triangles[i][0]])).length>1e-9)
+        a,b,c=(Vector(geometry.skin_points[v]) for v in triangles[omitted]);middle=(a+b+c)/3
+        normal=(b-a).cross(c-a).normalized();tangent=(b-a).normalized()
+        extent=min((b-a).length,(c-a).length,(c-b).length)*.1
+        chosen=next(i for i,t in enumerate(triangles) if set(t)<=hand);fault=list(geometry.skin_points)
+        for v,p in zip(triangles[chosen],(middle+normal*extent,middle-normal*extent+tangent*extent,
+                                         middle-normal*extent-tangent*extent)):fault[v]=tuple(p)
+        crossing=observe_central_surfaces(replace(geometry,skin_points=tuple(fault)),triangles,polygon_ids,hands,BVHTree)
+        if omitted not in crossing['right']['central_triangles'] or chosen not in crossing['right']['hand_triangles']:
+            raise RuntimeError('Complete trunk producer missed actual crossing outside the older partition')
         from unittest.mock import patch
+        with patch('blender_bridge.central_surface.MAX_PAIR_WORK',1):
+            try:observe_central_surfaces(geometry,triangles,polygon_ids,hands,BVHTree)
+            except ValueError as error:
+                if str(error)!='COMPLETE_TRUNK_SURFACE_SELECTION_OR_WORKLOAD':raise
+            else:raise RuntimeError('Complete trunk pair budget produced a partial verdict')
         with patch('blender_bridge.central_enclosure.MAX_FRAME_RAY_HITS',1):
             try:observe_central_enclosure(moved,triangles,[t.polygon_index for t in mesh.loop_triangles],
                 [tuple(p.vertices) for p in mesh.polygons],members,
@@ -123,7 +149,11 @@ def verify(job,output):
         'production_ray_budget_rejected_without_partial_verdict':True,'nonadjacent_body_fault_rejected':True,
         'bounded_body_workload_rejected_without_partial_verdict':True,'cap_interiors_never_definite':True,
         'original_inputs_unchanged':True,'saved_scene_created':False,'anatomical_or_animation_quality_approved':False,
-        'body_surface_audit':audit}
+        'body_surface_audit':audit,'complete_surface_faults':{
+            'actual_omitted_region_triangle':omitted,'actual_omitted_region_crossing_detected':True,
+            'global_hand_triangle_highlighted':chosen in crossing['right']['hand_triangles'],
+            'injected_pairs':crossing['right']['pair_count'],'fully_buried_complete_surface_pairs':buried['right']['pair_count'],
+            'buried_hand_requires_separate_enclosure':True,'pair_budget_rejected_without_partial_verdict':True}}
     with output.open('x',encoding='utf-8') as stream:json.dump(summary,stream,indent=2,allow_nan=False)
     return summary
 

@@ -11,7 +11,7 @@ import test_native_playback as source_fixture
 from fixtures.body_contact_contract import write_body_contract
 from fixtures.motion_skin_contract import file_record
 from ucc.core.errors import ValidationError,ProjectConflict,ProjectStorageError
-from ucc.jobs.body_contact_review import review_body_contacts,review_body_contact_areas,review_anatomical_safety
+from ucc.jobs.body_contact_review import review_body_contacts,review_body_contact_areas,review_anatomical_safety,review_complete_anatomical_safety
 from ucc.jobs.contact_fit_context import ContactFitContext
 from ucc.jobs.native_playback import NativePlayback
 from ucc.library.provenance import AssetPolicyError
@@ -40,7 +40,8 @@ class BodyReviewCoordinatorTests(unittest.TestCase):
         self.fitted_data['bindings']={k:v for k,v in self.fit_options.items() if k!='fit_report_sha256'}
         self.fitted=SimpleNamespace(cache=cache,unit_only=True);self.operations=[];self.fault=None
 
-    def run_review(self,paired=False,stable_areas=False,anatomical=False,**overrides):
+    def run_review(self,paired=False,stable_areas=False,anatomical=False,complete=False,**overrides):
+        if complete:anatomical=True
         f=self.f;captured={}
         def worker(request,**kw):
             self.operations.append(request.operation);out=f.store.root/'.ucc-jobs'/request.job_id;out.mkdir()
@@ -59,6 +60,11 @@ class BodyReviewCoordinatorTests(unittest.TestCase):
                     ep=out/'central_enclosure.json';ep.write_text('{"unit_only":true}',encoding='utf-8')
                     captured['enclosure']=ep;captured['measurement']=report
                     report.update(status='REAL_ANATOMICAL_SAFETY_MEASURED',enclosure_report=file_record(ep))
+                if complete:
+                    fp=out/'full_trunk_contacts.json';fp.write_text('{"unit_only":true}',encoding='utf-8')
+                    captured['full']=fp
+                    report.update(status='REAL_COMPLETE_ANATOMICAL_SAFETY_MEASURED',full_trunk_report=file_record(fp))
+                    if self.fault=='full_record':report.pop('full_trunk_report')
                 if self.fault=='approval':report['contact_quality_verified']=True
                 if self.fault=='binding':report['bindings']['source_sha256']='e'*64
                 if self.fault=='source':f.source.write_bytes(b'changed')
@@ -73,6 +79,11 @@ class BodyReviewCoordinatorTests(unittest.TestCase):
                     if self.fault=='enclosure_staged':(out/'central_enclosure.json').write_bytes(b'changed')
                     if self.fault=='late_enclosure':captured['enclosure'].write_bytes(b'changed')
                     if self.fault=='enclosure_receipt':report['bindings']['enclosure_review_sha256']='0'*64
+                if complete:
+                    report['status']='REAL_COMPLETE_ANATOMICAL_SAFETY_VERIFIED'
+                    if self.fault=='full_staged':(out/'full_trunk_contacts.json').write_bytes(b'changed')
+                    if self.fault=='late_full':captured['full'].write_bytes(b'changed')
+                    if self.fault=='full_receipt':report['bindings'].pop('full_trunk_review_sha256')
                 if self.fault=='receipt':report['frames_verified']=2
                 if self.fault=='verify_staged':(out/'source_snapshot.json').write_bytes(b'changed')
                 if self.fault=='late_report':captured['path'].write_bytes(b'changed')
@@ -85,11 +96,29 @@ class BodyReviewCoordinatorTests(unittest.TestCase):
             validate_anatomical_receipt(verified,bindings,baseline,paired,measured)
             variant=EnclosureVariant(((frozenset(),frozenset()),)*3,((frozenset(),frozenset()),)*3)
             return CentralEnclosure(variant,variant if paired else None)
+        def complete_parser(folder,measured,verified,bindings,baseline,profile,cache,**kwargs):
+            from ucc.jobs.complete_anatomical_evidence import validate_complete_receipt,CompleteAnatomicalEvidence
+            from ucc.jobs.native_fit_evidence import read_json_record
+            from ucc.preview.contact_areas import parse_body_contact_areas
+            from ucc.preview.central_surface import CompleteSurfaceVariant,CompleteTrunkSurfaces,POLICY
+            from ucc.preview.central_enclosure import CentralEnclosure,EnclosureVariant
+            from ucc.preview.surface_review import SurfaceReview
+            validate_complete_receipt(verified,measured,bindings,baseline,paired)
+            read_json_record(folder,measured['full_trunk_report'],'full_trunk_contacts.json',64*1024*1024)
+            raw,_=read_json_record(folder,measured['report'],'body_contacts.json',40*1024*1024)
+            areas=parse_body_contact_areas(raw,bindings,baseline,profile,cache,**kwargs)
+            empty=((frozenset(),frozenset()),)*3
+            variant=EnclosureVariant(empty,empty)
+            surface=SurfaceReview('CHECKED','',((),)*3,((0,0),)*3,('a'*64,)*3,POLICY)
+            full=CompleteSurfaceVariant(surface,empty,empty)
+            return CompleteAnatomicalEvidence(areas,CentralEnclosure(variant,variant if paired else None),
+                CompleteTrunkSurfaces(full,full if paired else None,() if paired else None,() if paired else None))
         with (patch('ucc.preview.central_enclosure.read_central_enclosure',side_effect=enclosure_parser),
+              patch('ucc.jobs.complete_anatomical_evidence.read_complete_anatomy',side_effect=complete_parser),
               patch('ucc.jobs.body_contact_review.contact_context',return_value=self.ctx) as context,
               patch('ucc.jobs.body_contact_review.fitted_body_context',return_value=(self.fit_options,self.paths,self.fit_hashes,self.fitted_data,self.fitted)),
               patch('ucc.jobs.body_contact_review.BlenderJobRunner.run',side_effect=worker)):
-            result=(review_anatomical_safety if anatomical else review_body_contact_areas if stable_areas else review_body_contacts)(f.store,f.preview,self.playback,fitted=self.fitted if paired else None,**args)
+            result=(review_complete_anatomical_safety if complete else review_anatomical_safety if anatomical else review_body_contact_areas if stable_areas else review_body_contacts)(f.store,f.preview,self.playback,fitted=self.fitted if paired else None,**args)
             self.assertFalse(context.call_args.kwargs['require_crossings'])
             return result
 
@@ -101,6 +130,26 @@ class BodyReviewCoordinatorTests(unittest.TestCase):
         self.operations=[];paired=self.run_review(True)
         self.assertEqual(self.operations,['inspect_fitted_body_contacts','verify_fitted_body_contacts'])
         self.assertEqual(paired.contacts.more_pair_frames,(2,));self.assertEqual(self.f.store.load(),self.f.project)
+
+    def test_complete_review_binds_three_reports_and_retains_separate_legacy_scope(self):
+        for paired in (False,True):
+            self.operations=[];result=self.run_review(paired,complete=True)
+            kind='fitted' if paired else 'native'
+            self.assertEqual(self.operations,['inspect_'+kind+'_complete_anatomical_safety','verify_'+kind+'_complete_anatomical_safety'])
+            self.assertEqual(result.full_trunk_report_sha256,self.f.digest(Path(result.private_full_trunk_report)))
+            self.assertEqual(result.anatomical_verification_sha256,self.f.digest(Path(result.private_anatomical_verification)))
+            self.assertEqual(result.contacts,result.areas.contacts)
+            self.assertIsNotNone(result.full_trunk)
+            self.assertEqual(result.full_trunk.fitted is not None,paired)
+
+    def test_complete_report_or_receipt_mutation_cancellation_or_revision_never_returns_a_result(self):
+        for fault in ('full_record','full_staged','late_full','full_receipt','receipt','approval','cancel','revision','verify_staged'):
+            case=BodyReviewCoordinatorTests();case.setUp()
+            try:
+                case.fault=fault
+                with self.subTest(fault=fault),self.assertRaises((ValidationError,ProjectConflict,ProjectStorageError)):
+                    case.run_review(complete=True)
+            finally:case.doCleanups()
 
     def test_combined_review_binds_both_reports_and_fresh_receipt_without_legacy_statuses(self):
         result=self.run_review(anatomical=True)

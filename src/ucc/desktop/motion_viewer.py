@@ -12,6 +12,7 @@ from ucc.preview.motion_cache import MotionCache
 from ucc.preview.playback_clock import PlaybackClock
 from ucc.preview.surface_review import POLICY as ARM_POLICY
 from ucc.preview.body_contacts import POLICY as BODY_POLICY
+from ucc.preview.central_surface import POLICY as COMPLETE_BODY_POLICY
 from ucc.core.errors import ValidationError
 from .motion_gpu import SkinRenderer
 
@@ -185,7 +186,8 @@ class MotionViewer(QWidget):
     def show_body_contacts(self,original,fitted=None):
         bases=self.comparison if self.comparison is not None else (self._base_cache,)
         reviews=(original,fitted) if fitted is not None else (original,)
-        if (not bases[0] or len(bases)!=len(reviews) or any(base.surface_review is None or review.policy!=BODY_POLICY or
+        if (not bases[0] or len(bases)!=len(reviews) or any(base.surface_review is None or review.policy not in (BODY_POLICY,COMPLETE_BODY_POLICY) or
+            review.policy!=reviews[0].policy or
             len(review.pairs)!=base.frame_count or len(review.triangles)!=base.frame_count or
             review.triangle_hashes!=base.surface_review.triangle_hashes for base,review in zip(bases,reviews))):
             raise ValidationError('Body inspection does not match the complete visible playback topology')
@@ -254,9 +256,11 @@ class MotionViewer(QWidget):
         self.play.setText("Pause" if self.clock.playing else "Play")
         surface=self.cache.surface_review
         if surface is not None:
-            label='Hand/body' if surface.policy==BODY_POLICY else 'Hand/opposite-arm'
-            self.highlight.setText('Highlight hand/body intersections' if surface.policy==BODY_POLICY else 'Highlight hand/arm intersections')
-            self.highlight.setToolTip('Highlights hand crossings against the head and spine chain. Automatic fitting reports its separate trunk-enclosure check in the log. Other body pairs and grasp intent remain unverified.' if surface.policy==BODY_POLICY else
+            body=surface.policy in (BODY_POLICY,COMPLETE_BODY_POLICY)
+            label='Hand/body (complete trunk)' if surface.policy==COMPLETE_BODY_POLICY else 'Hand/body' if body else 'Hand/opposite-arm'
+            self.highlight.setText('Highlight hand/body intersections' if body else 'Highlight hand/arm intersections')
+            self.highlight.setToolTip('Highlights crossings against the complete measured head and torso skin. Buried hands are checked separately. Other body-part contacts and grasp quality remain unverified.' if surface.policy==COMPLETE_BODY_POLICY else
+                'Highlights hand crossings against the head and spine chain. Automatic fitting reports its separate trunk-enclosure check in the log. Other body pairs and grasp intent remain unverified.' if body else
                 'Checks each hand against the opposite upper-limb branch, including the shoulder. Other body-part pairs and correct grasp/contact are not evaluated.')
             text=(f"{label} review: {len(surface.flagged_frames)} flagged frames; current frame {sum(surface.pairs[frame])} triangle pairs. Contact quality remains unapproved."
                   if surface.status=="CHECKED" else "Surface inspection unavailable for this rig or workload; no contact verdict.")

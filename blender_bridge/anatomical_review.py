@@ -56,10 +56,10 @@ class AnatomicalCollector(BodyCollector):
         self.inspector.inspect(mesh,frame,skin,triangles)
 
 
-def measure_anatomical_safety(bpy,root,options):
+def measure_anatomical_safety(bpy,root,options,*,collector_factory=AnatomicalCollector):
     collectors=[]
     def factory(profile):
-        collector=AnatomicalCollector(profile);collectors.append(collector);return collector
+        collector=collector_factory(profile);collectors.append(collector);return collector
     base={k:v for k,v in options.items() if k not in {'body_review_sha256','enclosure_review_sha256'}}
     contacts=measure_body_contacts(bpy,root,base,collector_factory=factory)
     inspectors=[c.inspector for c in collectors if c.inspector is not None]

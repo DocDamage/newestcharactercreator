@@ -37,7 +37,7 @@ class ContactFitQtTests(unittest.TestCase):
             self.assertIs(fargs[1],self.preview);self.assertIs(fargs[2],self.playback)
             self.assertEqual(fkw['source_fbx'],self.source);self.assertEqual(fkw['blender_exe'],self.executable)
             self.assertIs(fkw['cancel'],kwargs['cancel']);self.assertTrue(fkw['permission'].allow('local_preview')[0])
-            self.assertIn('several minutes',self.w.log.toPlainText())
+            self.assertIn('tens of minutes',self.w.log.toPlainText())
 
     def test_missing_preview_or_revoked_review_does_not_dispatch(self):
         with patch.object(self.w,'_submit') as submit,patch.object(self.w,'_error') as error:
