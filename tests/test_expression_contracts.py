@@ -193,9 +193,14 @@ class ExpressionPublicationTests(unittest.TestCase):
         common={'blender_exe':Path('not-used.exe'),'worker_script':Path('not-used.py'),
                 'expected_project_id':project.project_id,'expected_revision':project.revision}
         for method,extras in ((generate_humanoid,{}),
-                (apply_saved_body_revision,{'expected_master_blend':project.master_blend}),
-                (generate_customized_humanoid,{'mpfb_data_dir':Path('not-used-data')})):
+                (apply_saved_body_revision,{'expected_master_blend':project.master_blend})):
             with self.subTest(method=method.__name__),self.assertRaisesRegex(ValidationError,'expression-aware'):
                 method(self.store,**common,**extras)
             self.assertEqual(self.store.file.read_bytes(),before)
+        self.assertFalse((self.store.root/'.ucc-jobs').exists())
+        # The composed entry point now routes prepared projects through actual
+        # provenance admission. This structural marker has no registered library.
+        with self.assertRaises(ProjectStorageError):
+            generate_customized_humanoid(self.store,**common,mpfb_data_dir=Path('not-used-data'))
+        self.assertEqual(self.store.file.read_bytes(),before)
         self.assertFalse((self.store.root/'.ucc-jobs').exists())

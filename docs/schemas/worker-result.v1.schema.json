@@ -45,7 +45,8 @@
         "verify_mpfb_hand_revision",
         "inspect_mpfb_hand_bounds",
         "stage_mpfb_expression_keys",
-        "verify_mpfb_expression_keys"
+        "verify_mpfb_expression_keys",
+        "inspect_mpfb_expression_keys"
       ]
     },
     "status": {

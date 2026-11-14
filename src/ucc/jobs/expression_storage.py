@@ -63,11 +63,14 @@ def install_master_copy(store: ProjectStore, source: Path, expected: str, author
         temporary.unlink(missing_ok=True)
 
 
-def _install_bytes(directory: Path, identity: str, data: bytes, cancel: Event | None) -> Path:
+def _install_bytes(directory: Path, identity: str, data: bytes, cancel: Event | None,
+                    *, basename: str | None = None) -> Path:
     from hashlib import sha256
     if not is_sha256(identity) or sha256(data).hexdigest() != identity:
         raise ValidationError('Expression immutable JSON bytes differ from their identity')
-    destination = directory/(identity+'.json')
+    if basename is not None and (type(basename) is not str or not basename.endswith('.json') or not is_sha256(basename[:-5])):
+        raise ValidationError('Expression object basename must be one content-addressed JSON component')
+    destination = directory/(basename if basename is not None else identity+'.json')
     fd, name = tempfile.mkstemp(prefix='.ucc-expression-', suffix='.tmp', dir=directory)
     temporary = Path(name)
     try:

@@ -57,3 +57,29 @@ def validate_expression_manifest(raw: object) -> dict:
     if canonical_digest(raw) != canonical_digest(expected):
         raise ValidationError('Expression provenance differs from pinned preparation or retained rights')
     return expected
+
+
+def build_expression_receipt(library_sha256: str, source_master_sha256: str, master_sha256: str,
+                              operation: str, inspection_sha256: str, observation_sha256: str,
+                              expression_keys_sha256: str) -> dict:
+    if (not all(is_sha256(v) for v in (library_sha256, source_master_sha256, master_sha256,
+            inspection_sha256, observation_sha256, expression_keys_sha256))
+            or type(operation) is not str or operation not in {'body_generation', 'body_refit', 'face_revision'}
+            or source_master_sha256 == master_sha256):
+        raise ValidationError('Expression revision requires a genuine source/output transition and complete hashes')
+    return {'schema_version': 1, 'policy': POLICY, 'library_sha256': library_sha256,
+            'source_master_sha256': source_master_sha256, 'master_sha256': master_sha256,
+            'operation': operation, 'inspection_sha256': inspection_sha256,
+            'observation_sha256': observation_sha256, 'expression_keys_sha256': expression_keys_sha256}
+
+
+def validate_expression_receipt(raw: object) -> dict:
+    fields = {'schema_version', 'policy', 'library_sha256', 'source_master_sha256', 'master_sha256',
+              'operation', 'inspection_sha256', 'observation_sha256', 'expression_keys_sha256'}
+    if type(raw) is not dict or set(raw) != fields or type(raw['schema_version']) is not int:
+        raise ValidationError('Invalid closed expression revision receipt')
+    expected = build_expression_receipt(*(raw[name] for name in ('library_sha256', 'source_master_sha256',
+        'master_sha256', 'operation', 'inspection_sha256', 'observation_sha256', 'expression_keys_sha256')))
+    if canonical_digest(raw) != canonical_digest(expected):
+        raise ValidationError('Expression receipt differs from its original transition bindings')
+    return expected

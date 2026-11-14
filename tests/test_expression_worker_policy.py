@@ -29,7 +29,7 @@ class ExpressionPolicyTests(unittest.TestCase):
         job_validator = Draft202012Validator(schema('worker-job.v1.schema.json'))
         result_validator = Draft202012Validator(schema('worker-result.v1.schema.json'))
         from ucc.jobs.protocol import JobResult
-        for operation in ('stage_mpfb_expression_keys', 'verify_mpfb_expression_keys'):
+        for operation in ('stage_mpfb_expression_keys', 'verify_mpfb_expression_keys', 'inspect_mpfb_expression_keys'):
             options = {'master_sha256': 'a'*64, 'recipe_sha256': 'b'*64,
                        **{t.role+'_'+t.family+'_sha256': t.sha256 for t in TARGETS}}
             if operation.startswith('verify'):
@@ -66,7 +66,7 @@ class ExpressionPolicyTests(unittest.TestCase):
                 with self.assertRaises(ValidationError): validate_expression_recipe(raw)
 
     def test_requests_require_all_hashes_and_fixed_source(self):
-        for operation in ('stage_mpfb_expression_keys', 'verify_mpfb_expression_keys'):
+        for operation in ('stage_mpfb_expression_keys', 'verify_mpfb_expression_keys', 'inspect_mpfb_expression_keys'):
             options = {'master_sha256': 'a'*64, 'recipe_sha256': 'b'*64,
                        **{t.role+'_'+t.family+'_sha256': t.sha256 for t in TARGETS}}
             if operation.startswith('verify'):

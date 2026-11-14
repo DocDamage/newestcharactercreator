@@ -45,10 +45,7 @@ def source_state(bpy, human, rig, targets, *, strip_expression: bool = False) ->
             'full_sha256': points_digest(full), 'visible_sha256': points_digest(visible)}
 
 
-def build_keys(bpy, root, human, targets, *, manual: bool) -> tuple:
-    keys = human.data.shape_keys.key_blocks
-    if any(k.name.startswith(PREFIX) for k in keys):
-        raise ValueError('Expression preparation refuses existing or ambiguous reserved keys')
+def macro_context(human, targets) -> tuple:
     module = importlib.import_module(targets.__module__)
     scale = module.GeneralObjectProperties.get_value('scale_factor', entity_reference=human)
     race = targets.get_macro_info_dict_from_basemesh(human)['race']
@@ -57,6 +54,14 @@ def build_keys(bpy, root, human, targets, *, manual: bool) -> tuple:
             or any(type(v) not in (int, float) or not math.isfinite(v) or not 0 <= v <= 1 for v in race.values())
             or not .98 <= sum(race.values()) <= 1.02):
         raise ValueError('Unsupported MPFB expression scale or actual race mix')
+    return scale, race
+
+
+def build_keys(bpy, root, human, targets, *, manual: bool) -> tuple:
+    keys = human.data.shape_keys.key_blocks
+    if any(k.name.startswith(PREFIX) for k in keys):
+        raise ValueError('Expression preparation refuses existing or ambiguous reserved keys')
+    scale, race = macro_context(human, targets)
     basis = keys['Basis']; active = human.active_shape_key_index
     base = array('f', [0.])*(len(basis.data)*3); basis.data.foreach_get('co', base)
     loaded = {}; support = {}

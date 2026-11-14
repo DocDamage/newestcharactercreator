@@ -61,6 +61,12 @@ def apply_saved_face_revision(
     if (type(expected_revision) is not int or initial.project_id != expected_project_id or initial.revision != expected_revision
             or initial.master_blend != expected_master_blend):
         raise ProjectConflict('Project changed while preparing facial revision')
+    if initial.expression is not None:
+        from .expression_mutation import preserve_expressions
+        return preserve_expressions(store, operation='face_revision', blender_exe=blender_exe,
+            worker_script=worker_script, mpfb_data_dir=mpfb_data_dir,
+            expected_project_id=expected_project_id, expected_revision=expected_revision,
+            expected_master_blend=expected_master_blend, cancel=cancel, timeout_s=timeout_s)
     if initial.family != 'humanoid.v1' or initial.base_provider != 'mpfb' or initial.parts or initial.animations:
         raise ValidationError('Facial revision supports only an unattached saved MPFB humanoid')
     if not initial.facial_parameters:
