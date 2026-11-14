@@ -71,8 +71,10 @@ posed-origin observation, cancellation, SHA, revision and rollback guards remain
   guardrail tests, compilation and whitespace checks pass. The standalone actual
   Blender T-pose hand challenge passes all 300 frames, both reopened palm planes,
   complete cache and rehashed ray/same-branch rejection with originals restored.
-  Full combined local
-  regression and final-head CI remain pending.
+  Full combined local Windows regression and all five final-head CI workflows
+  passed on `63298f31c8ba305d68b9bf9a832cc56b701ae83d`.
+  [PR #46](https://github.com/DocDamage/newestcharactercreator/pull/46) records
+  the independently verified JSON artifact digest and all run links.
 
 ## Limits and next task
 

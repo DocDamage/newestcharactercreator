@@ -1,0 +1,389 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Measured hand/opposite-upper-limb surface review v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "policy",
+    "bindings",
+    "status",
+    "reason",
+    "hands",
+    "region_bones",
+    "region_vertex_counts",
+    "frame_count",
+    "frames",
+    "contact_quality_verified",
+    "engine_import_verified"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "policy": {
+      "const": "HAND_OPPOSITE_UPPER_LIMB_TRIANGLES_V1"
+    },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_sha256",
+        "snapshot_sha256",
+        "mapping_sha256",
+        "master_sha256",
+        "review_sha256",
+        "timeline_sha256"
+      ],
+      "properties": {
+        "source_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "snapshot_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "mapping_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "master_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "review_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "timeline_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "status": {
+      "enum": [
+        "CHECKED",
+        "UNAVAILABLE"
+      ]
+    },
+    "reason": {
+      "enum": [
+        "",
+        "HAND_BRANCHES_UNAVAILABLE",
+        "WEIGHTED_REGIONS_UNAVAILABLE",
+        "SURFACE_WORKLOAD_EXCEEDED"
+      ]
+    },
+    "hands": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "left",
+        "right"
+      ],
+      "properties": {
+        "left": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "right": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      }
+    },
+    "region_bones": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "left_hand": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 256,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "right_hand": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 256,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "left_arm": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 256,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "right_arm": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 256,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        }
+      },
+      "oneOf": [
+        {
+          "maxProperties": 0
+        },
+        {
+          "required": [
+            "left_hand",
+            "right_hand",
+            "left_arm",
+            "right_arm"
+          ]
+        }
+      ]
+    },
+    "region_vertex_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "left_hand": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000
+        },
+        "right_hand": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000
+        },
+        "left_arm": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000
+        },
+        "right_arm": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000
+        }
+      },
+      "oneOf": [
+        {
+          "maxProperties": 0
+        },
+        {
+          "required": [
+            "left_hand",
+            "right_hand",
+            "left_arm",
+            "right_arm"
+          ]
+        }
+      ]
+    },
+    "frame_count": {
+      "type": "integer",
+      "minimum": 2,
+      "maximum": 2000
+    },
+    "frames": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "frame",
+          "skin_sha256",
+          "triangle_sha256",
+          "left",
+          "right"
+        ],
+        "properties": {
+          "frame": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2000
+          },
+          "skin_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "triangle_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "left": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/$defs/hit"
+              }
+            ]
+          },
+          "right": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/$defs/hit"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "contact_quality_verified": {
+      "const": false
+    },
+    "engine_import_verified": {
+      "const": false
+    }
+  },
+  "$defs": {
+    "hit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pair_count",
+        "pair_sha256",
+        "hand_triangles",
+        "opposite_arm_triangles"
+      ],
+      "properties": {
+        "pair_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5000000
+        },
+        "pair_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "hand_triangles": {
+          "type": "array",
+          "maxItems": 200000,
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 199999
+          }
+        },
+        "opposite_arm_triangles": {
+          "type": "array",
+          "maxItems": 200000,
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 199999
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "CHECKED"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "reason": {
+            "const": ""
+          },
+          "region_bones": {
+            "required": [
+              "left_hand",
+              "right_hand",
+              "left_arm",
+              "right_arm"
+            ]
+          },
+          "region_vertex_counts": {
+            "required": [
+              "left_hand",
+              "right_hand",
+              "left_arm",
+              "right_arm"
+            ],
+            "properties": {
+              "left_hand": {
+                "minimum": 1
+              },
+              "right_hand": {
+                "minimum": 1
+              },
+              "left_arm": {
+                "minimum": 1
+              },
+              "right_arm": {
+                "minimum": 1
+              }
+            }
+          },
+          "frames": {
+            "items": {
+              "properties": {
+                "left": {
+                  "$ref": "#/$defs/hit"
+                },
+                "right": {
+                  "$ref": "#/$defs/hit"
+                }
+              }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "reason": {
+            "not": {
+              "const": ""
+            }
+          },
+          "frames": {
+            "items": {
+              "properties": {
+                "left": {
+                  "type": "null"
+                },
+                "right": {
+                  "type": "null"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

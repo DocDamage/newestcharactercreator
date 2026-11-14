@@ -90,6 +90,13 @@ def verify_native_body(blender: Path,store: ProjectStore,folder: Path,*,hip_anch
             "all_vertex_skin_hashes_reproduced":True,"saved_action_reopened_before_cache":True,
             "distinct_actual_triangle_buffers":len(indices),"source_fps":cache.fps,
             "gpu_playback_tested_in_this_gate":False,"engine_import_verified":False}
+        if cache.surface_review is None or cache.surface_review.status!="CHECKED" or not playback.surface_verification_job_id:
+            raise RuntimeError("Complete real MPFB surface review was not independently reproduced")
+        skin_evidence["verified_skin_cache"].update(surface_frames_verified=cache.frame_count,
+            surface_flagged_frames=len(cache.surface_review.flagged_frames),pose_specific_topology_independently_verified=True)
+        if include_hands:
+            from ci.verify_surface_review import verify_surface_review
+            skin_evidence['surface_fault_contract']=verify_surface_review(blender,ROOT,playback,folder)
     if hip_anchor:
         hip_travel=math.dist(data["full_timeline_frames"][-1]["hip_midpoint_world"],data["hip_anchor"]["target_bind_midpoint_world"])
         if hip_travel<3.99:raise RuntimeError("Native hip anchor lost the authored four-meter anatomical trajectory")

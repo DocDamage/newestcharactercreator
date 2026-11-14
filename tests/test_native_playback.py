@@ -41,14 +41,39 @@ class PlaybackCoordinatorTests(unittest.TestCase):
             self.bindings["source_sha256"],self.timeline,str(self.folder/"review_motion.blend"),"",str(self.folder/"target_timeline.json"),
             ("unit-one","unit-two"),str(self.folder/"native_mapping.json"),report)
         self.policy=LicensePolicy("original","CC0","original-unit://cache",reviewed=True,local_preview_allowed=True,no_ai=True)
-        self.cancel=Event();self.fault=None;self.runs=0
+        self.cancel=Event();self.fault=None;self.runs=0;self.surface=False
 
     def prepare(self,**overrides):
+        profile={"skin_deformation_policy":"BOUND_CORRECTIVE_SMOOTH_V1"}
+        if self.surface:
+            profile['landmarks']={'left_hand':{'target':'WL'},'right_hand':{'target':'WR'}}
+            self.timeline.update(mapped_pairs=[{'target':'WL'},{'target':'WR'}],neutral_target_helpers=['AL','AR'])
         def worker(request,**kwargs):
-            self.runs+=1;self.assertEqual(request.operation,"cache_native_fbx_body");self.assertIs(kwargs["cancel"],self.cancel)
+            self.runs+=1;self.assertIs(kwargs["cancel"],self.cancel)
             output=self.store.root/".ucc-jobs"/request.job_id;output.mkdir()
             for name,path in kwargs["staged_inputs"].items():(output/name).write_bytes(path.read_bytes())
-            data,report,_,_=write_cache(output)
+            if request.operation=='verify_native_surface_review':
+                base={k:v for k,v in request.options.items() if k!='surface_review_sha256'}
+                from fixtures.motion_skin_contract import write_cache as cache_fixture
+                _,baseline,_,_=cache_fixture(output)
+                reopened=baseline['saved_review_verification'];reopened['bindings']=base
+                verified={'status':'REAL_NATIVE_SURFACE_REVIEW_VERIFIED','bindings':dict(request.options),'frames_verified':3,
+                          'saved_review_verification':reopened,'world_matrix':[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1],
+                          'originals_unchanged':True,'contact_quality_verified':False}
+                if self.fault=='verify_count':verified['frames_verified']=2
+                if self.fault=='verify_approval':verified['contact_quality_verified']=True
+                if self.fault=='verify_staged':(output/'candidate.blend').write_bytes(b'CHANGED')
+                if self.fault=='verify_cancel':self.cancel.set()
+                if self.fault=='verify_revision':self.store.save(replace(self.store.load(),revision=self.project.revision+1))
+                return SimpleNamespace(details=verified),output
+            self.assertEqual(request.operation,"cache_native_fbx_body")
+            if self.surface:
+                from fixtures.surface_cache_contract import write_surface_cache
+                data,report,_,_,_,contact,_=write_surface_cache(output)
+                contact['bindings']=dict(request.options)
+                path=output/'motion_contacts.json';path.write_text(json.dumps(contact))
+                data['surface_review']=report['surface_review']=file_record(path)
+            else:data,report,_,_=write_cache(output)
             data["bindings"]=dict(request.options);report["bindings"]=dict(request.options)
             report["saved_review_verification"]["bindings"]=dict(request.options)
             manifest=output/"motion_skin.json";manifest.write_text(json.dumps(data));report["manifest"]=file_record(manifest)
@@ -63,7 +88,7 @@ class PlaybackCoordinatorTests(unittest.TestCase):
             result=read_motion_cache(*args,**kwargs)
             if self.fault=="late_revision":self.store.save(replace(self.store.load(),revision=self.project.revision+1))
             return result
-        with patch("ucc.jobs.native_playback.read_native_profile",return_value=({"skin_deformation_policy":"BOUND_CORRECTIVE_SMOOTH_V1"},self.bindings["mapping_sha256"])),\
+        with patch("ucc.jobs.native_playback.read_native_profile",return_value=(profile,self.bindings["mapping_sha256"])),\
              patch("ucc.jobs.native_playback.validate_snapshot"),\
              patch("ucc.jobs.native_playback.read_native_timeline",return_value=(self.timeline,self.folder/"target_timeline.json")),\
              patch("ucc.jobs.native_playback.BlenderJobRunner") as runner,\
@@ -76,6 +101,19 @@ class PlaybackCoordinatorTests(unittest.TestCase):
         master=self.master.read_bytes();project=self.store.load();result=self.prepare()
         self.assertEqual(result.cache.frame_count,3);self.assertEqual(result.source_sha256,self.bindings["source_sha256"])
         self.assertEqual(self.runs,1);self.assertEqual(self.master.read_bytes(),master);self.assertEqual(self.store.load(),project)
+
+    def test_surface_cache_requires_second_worker_before_publishing_annotations(self):
+        self.surface=True;before=self.master.read_bytes();result=self.prepare()
+        self.assertEqual(self.runs,2);self.assertTrue(result.surface_verification_job_id)
+        self.assertEqual(result.cache.surface_review.flagged_frames,(1,))
+        self.assertEqual(self.master.read_bytes(),before);self.assertEqual(self.store.load(),self.project)
+
+    def test_surface_verifier_failure_cancel_staged_change_or_stale_project_never_publishes(self):
+        for fault in ('verify_count','verify_approval','verify_staged','verify_cancel','verify_revision'):
+            with self.subTest(fault=fault):
+                self.setUp();self.surface=True;self.fault=fault
+                with self.assertRaises((ProjectStorageError,ProjectConflict,ValidationError)):self.prepare()
+                self.assertEqual(self.runs,2);self.assertEqual(self.digest(self.master),self.bindings['master_sha256'])
 
     def test_source_staged_cancel_revision_reopen_and_geometry_faults_never_publish(self):
         for fault in ("source","staged","cancel","revision","reopen","geometry","late_revision"):

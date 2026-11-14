@@ -36,9 +36,10 @@ from blender_bridge.fbx_source import inspect_fbx_source
 from blender_bridge.native_retarget import retarget_native
 from blender_bridge.native_review_reopen import reopen_native
 from blender_bridge.native_playback_cache import export_native_cache
+from blender_bridge.native_surface_verify import verify_surface_review
 
 PROTOCOL_VERSION = 1
-OPERATIONS = {"inspect_environment", "inspect_character", "create_human", "export_preview_glb", "refit_human", "verify_skin_deformation", "verify_keyframed_timeline", "verify_local_bvh_motion", "verify_multi_bvh_chain", "verify_calibrated_bvh_chain", "verify_reviewed_bvh_chain", "inspect_fbx_animation", "verify_native_fbx_body", "reopen_native_fbx_body", "cache_native_fbx_body"}
+OPERATIONS = {"inspect_environment", "inspect_character", "create_human", "export_preview_glb", "refit_human", "verify_skin_deformation", "verify_keyframed_timeline", "verify_local_bvh_motion", "verify_multi_bvh_chain", "verify_calibrated_bvh_chain", "verify_reviewed_bvh_chain", "inspect_fbx_animation", "verify_native_fbx_body", "reopen_native_fbx_body", "cache_native_fbx_body", "verify_native_surface_review"}
 
 
 def verify_native_body(job: dict, root: Path) -> dict:
@@ -54,10 +55,13 @@ def verify_native_body(job: dict, root: Path) -> dict:
 def reopen_native_body(job: dict, root: Path) -> dict:
     options=job["options"]
     hashes={"source_sha256","snapshot_sha256","mapping_sha256","master_sha256","review_sha256","timeline_sha256"}
+    if job["operation"]=="verify_native_surface_review":hashes.add("surface_review_sha256")
     if (job["input_project"]!="candidate.blend" or set(options)!=hashes or
             any(type(options[k]) is not str or len(options[k])!=64 or any(c not in "0123456789abcdef" for c in options[k]) for k in hashes)):
         raise ValueError("Native reopen needs six exact input identities and no paths or override flags")
-    return (export_native_cache if job["operation"]=="cache_native_fbx_body" else reopen_native)(bpy,root,options)
+    action={"cache_native_fbx_body":export_native_cache,"reopen_native_fbx_body":reopen_native,
+            "verify_native_surface_review":verify_surface_review}[job["operation"]]
+    return action(bpy,root,options)
 
 
 def inspect_native_fbx(job: dict, root: Path) -> dict:
@@ -302,7 +306,8 @@ def main() -> int:
                    "inspect_fbx_animation": inspect_native_fbx,
                    "verify_native_fbx_body": verify_native_body,
                    "reopen_native_fbx_body": reopen_native_body,
-                   "cache_native_fbx_body": reopen_native_body}[operation]
+                   "cache_native_fbx_body": reopen_native_body,
+                   "verify_native_surface_review": reopen_native_body}[operation]
         reply["details"] = action(data, root)
         reply["status"] = "ok"
         reply["error"] = None

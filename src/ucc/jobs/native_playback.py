@@ -28,6 +28,7 @@ class NativePlayback:
     cache: MotionCache
     job_id: str
     private_manifest: str
+    surface_verification_job_id: str=""
 
 
 def prepare_native_playback(store: ProjectStore, preview: NativeBodyPreview, *, source_fbx: Path,
@@ -86,6 +87,20 @@ def prepare_native_playback(store: ProjectStore, preview: NativeBodyPreview, *, 
         if (output/name).is_symlink() or not (output/name).is_file() or _digest(output/name,cancel)!=digest:
             raise ProjectStorageError("Playback worker changed staged originals")
     validate_reopen_report(result.details.get("saved_review_verification"),options,data)
-    cache=read_motion_cache(output,result.details,options,data,cancel_check=check_cancel)
+    surface_report=None;surface_job_id=""
+    if "surface_review" in result.details:
+        record=result.details["surface_review"]
+        contact=bound_file(output,record,"motion_contacts.json",16*1024*1024,cancel_check=check_cancel)
+        check=JobRequest.new("verify_native_surface_review",input_project="candidate.blend",
+            options={**options,"surface_review_sha256":record["sha256"]})
+        verified,verify_folder=BlenderJobRunner(blender_exe,jobs_root,worker_script).run(check,timeout_s=timeout_s,cancel=cancel,
+            staged_inputs={**staged,"motion_contacts.json":contact})
+        unchanged()
+        if verify_folder.is_symlink() or verify_folder.resolve().parent!=jobs_root.resolve():raise ValidationError("Surface verifier folder is redirected")
+        for name,digest in {**expected,"motion_contacts.json":record["sha256"]}.items():
+            if (verify_folder/name).is_symlink() or not (verify_folder/name).is_file() or _digest(verify_folder/name,cancel)!=digest:
+                raise ProjectStorageError("Surface verifier changed staged originals")
+        surface_report=verified.details;surface_job_id=check.job_id
+    cache=read_motion_cache(output,result.details,options,data,cancel_check=check_cancel,profile=profile,surface_verification=surface_report)
     unchanged()
-    return NativePlayback(project.project_id,project.revision,master_sha,preview.source_sha256,cache,request.job_id,str(output/"motion_skin.json"))
+    return NativePlayback(project.project_id,project.revision,master_sha,preview.source_sha256,cache,request.job_id,str(output/"motion_skin.json"),surface_job_id)

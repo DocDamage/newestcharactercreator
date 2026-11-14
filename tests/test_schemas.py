@@ -27,7 +27,7 @@ class SchemaTests(unittest.TestCase):
 
     def test_all_schema_files_load(self):
         files = list((ROOT / "docs" / "schemas").glob("*.schema.json"))
-        self.assertEqual(len(files), 10)
+        self.assertEqual(len(files), 11)
         for path in files:
             with self.subTest(path=path.name):
                 schema = self.read_schema(path.name)
@@ -86,6 +86,28 @@ class SchemaTests(unittest.TestCase):
         request["options"]["render_private_frames"]=False
         request["input_project"]="authoritative.blend"
         self.assertTrue(list(validator.iter_errors(request)))
+
+    @unittest.skipIf(Draft202012Validator is None, "Install jsonschema to validate v1 contracts")
+    def test_surface_verifier_requires_its_seventh_hash_and_fixed_stage_name(self):
+        hashes={k:'a'*64 for k in ('source_sha256','snapshot_sha256','mapping_sha256','master_sha256','review_sha256','timeline_sha256','surface_review_sha256')}
+        request=JobRequest.new('verify_native_surface_review',input_project='candidate.blend',options=hashes).as_dict()
+        validator=Draft202012Validator(self.read_schema('worker-job.v1.schema.json'));validator.validate(request)
+        request['options']['surface_review_sha256']=True
+        self.assertTrue(list(validator.iter_errors(request)))
+        request['options']['surface_review_sha256']='a'*64;request['input_project']='authoritative.blend'
+        self.assertTrue(list(validator.iter_errors(request)))
+
+    @unittest.skipIf(Draft202012Validator is None, "Install jsonschema to validate v1 contracts")
+    def test_surface_review_schema_closes_unavailable_partial_annotations(self):
+        import tempfile
+        from fixtures.surface_cache_contract import write_surface_cache
+        with tempfile.TemporaryDirectory() as folder:
+            surface=write_surface_cache(Path(folder))[5]
+        validator=Draft202012Validator(self.read_schema('motion-surface-review.v1.schema.json'));validator.validate(surface)
+        surface['status']='UNAVAILABLE';surface['reason']='WEIGHTED_REGIONS_UNAVAILABLE'
+        self.assertTrue(list(validator.iter_errors(surface)))
+        for row in surface['frames']:row['left']=row['right']=None
+        validator.validate(surface)
 
     @unittest.skipIf(Draft202012Validator is None, "Install jsonschema to validate v1 contracts")
     def test_schema_rejects_unknown_project_fields(self):
