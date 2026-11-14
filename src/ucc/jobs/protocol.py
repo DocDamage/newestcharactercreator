@@ -15,6 +15,8 @@ SUPPORTED_OPERATIONS = {"inspect_environment", "inspect_character", "create_huma
 SUPPORTED_OPERATIONS |= {"propose_native_contact_fit", "fit_native_fbx_body", "measure_native_fit", "verify_native_fit", "cache_native_fit"}
 SUPPORTED_OPERATIONS.add('propose_native_area_contact_fit')
 SUPPORTED_OPERATIONS.add('propose_native_hand_contact_fit')
+SUPPORTED_OPERATIONS |= {'stage_mpfb_face', 'verify_mpfb_face'}
+SUPPORTED_OPERATIONS.add('inspect_mpfb_face_assets')
 BODY_CONTACT_OPERATIONS = {'verify_fitted_body_contacts', 'verify_native_body_contacts', 'inspect_fitted_body_contacts', 'inspect_native_body_contacts'}
 BODY_CONTACT_OPERATIONS |= {'inspect_native_body_areas','verify_native_body_areas','inspect_fitted_body_areas','verify_fitted_body_areas'}
 BODY_CONTACT_OPERATIONS |= {'inspect_native_skin_inclusion','verify_native_skin_inclusion','inspect_fitted_skin_inclusion','verify_fitted_skin_inclusion'}
@@ -55,6 +57,18 @@ class JobRequest:
         if type(self.options) is not dict:
             raise ValidationError("options must be JSON object")
         _check_json(self.as_dict())
+        if self.operation == 'inspect_mpfb_face_assets' and (self.input_project is not None or self.options):
+            raise ValidationError('Facial asset inspection has no selectable paths or options')
+        if self.operation in {'stage_mpfb_face', 'verify_mpfb_face'}:
+            from ucc.core.facial import NOSE_TARGETS
+            from ucc.animations.source_rest_frames import is_sha256
+            fields = {'master_sha256', 'recipe_sha256', 'narrow_target_sha256', 'wide_target_sha256'}
+            if self.operation == 'verify_mpfb_face':
+                fields |= {'face_sha256', 'report_sha256'}
+            if (self.input_project != 'candidate.blend' or set(self.options) != fields
+                    or any(not is_sha256(v) for v in self.options.values())
+                    or any(self.options[t.role+'_target_sha256'] != t.sha256 for t in NOSE_TARGETS)):
+                raise ValidationError('Facial worker requires exact pinned hashes and fixed staged filenames')
         if self.operation in {"fit_native_fbx_body", "measure_native_fit", "verify_native_fit", "cache_native_fit"}:
             from ucc.animations.source_rest_frames import is_sha256
             from ucc.animations.contact_fit import HASHES

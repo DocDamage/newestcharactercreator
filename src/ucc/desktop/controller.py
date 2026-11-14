@@ -29,6 +29,7 @@ class ProjectView:
     blockers: tuple[str, ...]
     can_undo: bool
     can_redo: bool
+    facial_parameters: tuple[tuple[str, float], ...] = ()
 
 
 class DesktopController:
@@ -98,6 +99,20 @@ class DesktopController:
         self._dirty = True
         return self.view()
 
+    def set_face_parameter(self, name: str, value: float) -> ProjectView:
+        session = self._get_session()
+        previous = session.project
+        session.set_face_parameter(name, value)
+        self._dirty |= previous != session.project
+        return self.view()
+
+    def accept_saved_master(self, saved: CharacterProject) -> ProjectView:
+        if self.store is None or self._dirty or self.store.load() != saved:
+            raise ValidationError('Saved master cannot replace a changed or unsaved desktop session')
+        self._get_session().accept_saved_master(saved)
+        self._saved_revision = saved.revision
+        return self.view()
+
     def redo(self) -> ProjectView:
         self._get_session().redo()
         self._dirty = True
@@ -134,6 +149,7 @@ class DesktopController:
             project.geometry_state, project.rig_profile, project.master_blend,
             tuple(sorted(project.parameters)), len(project.parts), len(project.animations),
             project.export_readiness(), self.session.can_undo, self.session.can_redo,
+            tuple(project.facial_parameters),
         )
 
     def _get_session(self) -> CharacterSession:

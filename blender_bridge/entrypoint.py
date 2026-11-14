@@ -60,6 +60,23 @@ OPERATIONS |= set(COMPLETE_OPERATIONS)
 OPERATIONS |= {"propose_native_contact_fit", "fit_native_fbx_body", "measure_native_fit", "verify_native_fit", "cache_native_fit"}
 OPERATIONS.add(AREA_CANDIDATE_OPERATION)
 OPERATIONS.add('propose_native_hand_contact_fit')
+OPERATIONS |= {'stage_mpfb_face', 'verify_mpfb_face'}
+OPERATIONS.add('inspect_mpfb_face_assets')
+
+
+def mpfb_face_assets(job: dict, root: Path) -> dict:
+    from blender_bridge.face_assets import installed_face_assets
+    if job['input_project'] is not None or job['options']:
+        raise ValueError('Facial asset inspection has no selectable paths or options')
+    return installed_face_assets()
+
+
+def mpfb_face(job: dict, root: Path) -> dict:
+    from blender_bridge.face_operations import stage_face, verify_face
+    if job['input_project'] != 'candidate.blend':
+        raise ValueError('Facial worker requires fixed staged candidate.blend')
+    action = stage_face if job['operation'] == 'stage_mpfb_face' else verify_face
+    return action(bpy, root, job['options'])
 
 
 def native_body_contacts(job: dict, root: Path) -> dict:
@@ -355,6 +372,9 @@ def main() -> int:
              "operation": operation, "status": "error", "details": {}, "error": "Unknown error"}
     try:
         action = {"inspect_environment": inspect_environment,
+                  'stage_mpfb_face': mpfb_face,
+                  'verify_mpfb_face': mpfb_face,
+                  'inspect_mpfb_face_assets': mpfb_face_assets,
                   "inspect_character": inspect_character,
                   "create_human": create_human,
                   "export_preview_glb": export_preview_glb,

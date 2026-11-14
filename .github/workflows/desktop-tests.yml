@@ -46,6 +46,8 @@ jobs:
         run: python -c "from PySide6.QtWidgets import QApplication; from ucc.desktop.window import MainWindow"
       - name: Run real offscreen Qt widgets
         run: python -m unittest discover -s tests -p test_desktop_qt.py -v
+      - name: Run facial intent, save, history and cancellation controls (no skips)
+        run: python -m unittest discover -s tests -p test_face_qt.py -v
       - name: Run actual GLB mesh viewport widget tests (no skips)
         run: python -m unittest discover -s tests -p test_preview_qt.py -v
       - name: Run cached-motion Qt transport and error tests (no GPU claim)

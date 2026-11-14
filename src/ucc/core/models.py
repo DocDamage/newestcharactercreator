@@ -13,6 +13,7 @@ from uuid import uuid4
 
 from .anatomy import get_slot
 from .errors import CompatibilityError, ValidationError
+from .facial import validate_face_parameters
 
 SCHEMA_VERSION = 1
 MORPH_LIMITS = {"height": (0.0, 1.0), "muscle": (0.0, 1.0), "weight": (0.0, 1.0)}
@@ -150,8 +151,21 @@ class CharacterProject:
     appearance: tuple[tuple[str, str], ...] = ()
     revision: int = 0
     created_utc: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    schema_version: int = SCHEMA_VERSION
+    facial_parameters: tuple[tuple[str, float], ...] = ()
 
     def __post_init__(self) -> None:
+        if type(self.schema_version) is not int or self.schema_version not in (1, 2):
+            raise ValidationError("Unsupported schema version; do not overwrite this project")
+        if (type(self.facial_parameters) is not tuple or any(
+                type(row) is not tuple or len(row) != 2 or type(row[0]) is not str
+                for row in self.facial_parameters)):
+            raise ValidationError("Facial parameters require immutable named values")
+        if len(dict(self.facial_parameters)) != len(self.facial_parameters):
+            raise ValidationError("Duplicate facial parameter")
+        validate_face_parameters(dict(self.facial_parameters))
+        if self.schema_version == 1 and self.facial_parameters:
+            raise ValidationError("Facial parameters require an explicit version 2 project")
         _text(self.project_id, "project_id")
         _text(self.name, "name", 200)
         if self.family != "humanoid.v1":
@@ -199,8 +213,8 @@ class CharacterProject:
         return cls(project_id=str(uuid4()), name=name)
 
     def to_dict(self) -> dict[str, Any]:
-        return {
-            "schema_version": SCHEMA_VERSION, "project_id": self.project_id, "name": self.name,
+        result = {
+            "schema_version": self.schema_version, "project_id": self.project_id, "name": self.name,
             "family": self.family, "base_provider": {"kind": self.base_provider},
             "master_blend": self.master_blend, "geometry_state": self.geometry_state,
             "rig_profile": self.rig_profile, "scale": {"unit": "meter", "height_m": self.height_m},
@@ -208,15 +222,23 @@ class CharacterProject:
             "animations": list(self.animations), "appearance": dict(self.appearance),
             "revision": self.revision, "created_utc": self.created_utc,
         }
+        if self.schema_version == 2:
+            result["facial_parameters"] = dict(self.facial_parameters)
+        return result
 
     @classmethod
     def from_dict(cls, raw: dict[str, Any]) -> "CharacterProject":
+        if (not isinstance(raw, dict) or type(raw.get("schema_version")) is not int
+                or raw["schema_version"] not in (1, 2)):
+            raise ValidationError("Unsupported schema version; do not overwrite this project")
+        version = raw["schema_version"]
         required = {"schema_version", "project_id", "name", "family", "base_provider",
                     "master_blend", "geometry_state", "rig_profile", "scale", "parameters",
                     "parts", "animations", "appearance", "revision", "created_utc"}
+        if version == 2:
+            required.add("facial_parameters")
         _keys(raw, required)
-        if raw["schema_version"] != 1 or type(raw["schema_version"]) is not int:
-            raise ValidationError("Unsupported schema version; do not overwrite this project")
+        face = validate_face_parameters(raw["facial_parameters"]) if version == 2 else {}
         provider = raw["base_provider"]
         scale = raw["scale"]
         _keys(provider, {"kind"})
@@ -234,7 +256,8 @@ class CharacterProject:
                    parts=tuple(PartInstance.from_dict(p) for p in raw["parts"]),
                    animations=tuple(raw["animations"]),
                    appearance=tuple(sorted(raw["appearance"].items())),
-                   revision=raw["revision"], created_utc=raw["created_utc"])
+                   revision=raw["revision"], created_utc=raw["created_utc"], schema_version=version,
+                   facial_parameters=tuple(sorted(face.items())))
 
     def export_readiness(self) -> tuple[str, ...]:
         """Metadata checks only; engine import must additionally be tested."""

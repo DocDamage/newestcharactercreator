@@ -139,6 +139,9 @@ class MainWindow(QMainWindow):
     def _connect(self) -> None:
         self.character.name_requested.connect(self.rename)
         self.character.morph_requested.connect(self.set_morph)
+        from .face_workflow import edit_face, start_face
+        self.character.face.parameter_changed.connect(lambda name, value: edit_face(self, name, value))
+        self.character.face.apply_requested.connect(lambda: start_face(self))
         self.character.open_master_requested.connect(self.open_master_in_blender)
         self.character.generate_human_requested.connect(self.generate_humanoid)
         self.character.refit_human_requested.connect(self.apply_saved_body)
@@ -196,6 +199,8 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Universal Character Creator — " + state.name + (" *" if state.dirty else ""))
 
     def _clear_preview(self) -> None:
+        from .static_preview_binding import clear_binding
+        clear_binding(self)
         self._clear_native_review()
         self.mesh_viewer.clear_model()
         self.mesh_dock.hide()
@@ -261,9 +266,11 @@ class MainWindow(QMainWindow):
             self._apply(lambda: self.controller.set_morph(key, value))
 
     def undo(self) -> None:
+        self._clear_preview()
         self._apply(self.controller.undo)
 
     def redo(self) -> None:
+        self._clear_preview()
         self._apply(self.controller.redo)
 
     def open_master_in_blender(self) -> None:
@@ -326,10 +333,12 @@ class MainWindow(QMainWindow):
             self.undo_action.setEnabled(not busy and state.can_undo)
             self.redo_action.setEnabled(not busy and state.can_redo)
         self.cancel_generation_action.setEnabled(
-            busy and self._work_kind in {"generate_humanoid", "saved_master_preview", "body_refit", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain", "native_body", "native_playback", "fbx_intake", "fitted_comparison", "body_contacts"}
+            busy and self._work_kind in {"generate_humanoid", "saved_master_preview", "body_refit", "face_revision", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain", "native_body", "native_playback", "fbx_intake", "fitted_comparison", "body_contacts"}
         )
         self.statusBar().showMessage(
-            ("Generating real MPFB humanoid in Blender..."
+            ("Applying saved face shape on a private Blender copy..."
+             if self._work_kind == "face_revision" else
+             "Generating real MPFB humanoid in Blender..."
              if self._work_kind == "generate_humanoid" else
              "Refitting existing MPFB human on a private Blender copy..."
              if self._work_kind == "body_refit" else
@@ -356,11 +365,15 @@ class MainWindow(QMainWindow):
              "Measuring native FBX source skeleton and complete timeline..."
              if self._work_kind == "fbx_intake" else
              "Converting saved Blender master to a static GLB preview...")
-            if busy and self._work_kind in {"generate_humanoid", "saved_master_preview", "body_refit", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain", "native_body", "native_playback", "fbx_intake", "fitted_comparison", "body_contacts"}
+            if busy and self._work_kind in {"generate_humanoid", "saved_master_preview", "body_refit", "face_revision", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain", "native_body", "native_playback", "fbx_intake", "fitted_comparison", "body_contacts"}
             else ("Working on local files..." if busy else "Local task finished")
         )
 
     def _job_success(self, result: object) -> None:
+        if self._work_kind in {'face_revision', 'generate_humanoid', 'body_refit'}:
+            from .face_workflow import finish_face_build
+            if finish_face_build(self, result):
+                return
         if self._work_kind == "catalog":
             assert isinstance(result, list)
             self.animations.display_catalog(result)
@@ -562,7 +575,17 @@ class MainWindow(QMainWindow):
                     on_disk.master_blend != result.master_blend):
                 self._error("Project changed while previewing; preview was discarded")
                 return
-            self.mesh_viewer.show_model(result.mesh)
+            if result.full_surface:
+                self.mesh_viewer.show_full_model(result.mesh)
+                try:
+                    from .static_preview_binding import bind_preview
+                    bind_preview(self, result)
+                except (UCCError, OSError, ValueError) as exc:
+                    self._clear_preview()
+                    self._error(str(exc))
+                    return
+            else:
+                self.mesh_viewer.show_model(result.mesh)
             self.mesh_dock.show()
             self.log.setPlainText(
                 f"STATIC PREVIEW OF SAVED UCC MASTER — revision {result.revision}\n"

@@ -87,6 +87,8 @@ def apply_saved_body_revision(
         raise ValidationError("Body refit supports only saved MPFB humanoid projects")
     if initial.parts or initial.animations:
         raise ValidationError("Body refit with external parts/animations is not validated yet")
+    if initial.facial_parameters:
+        raise ValidationError("Saved facial intent requires face-aware refit; body-only refit cannot discard it")
     if type(timeout_s) not in (int, float) or not 0.05 <= timeout_s <= 3600:
         raise ValidationError("timeout_s outside supported range")
     macro = from_saved_parameters(initial.parameters)

@@ -1,7 +1,7 @@
-"""Interactive CPU-drawn GLB triangle preview for *existing* local geometry.
+"""Static GLB inspection: sampled CPU view or complete humanoid GPU face view.
 
-No OpenGL requirement, no material/shader execution, no animation, no skinning,
-no editing or engine-export claims. A capped triangle subset is drawn.
+The complete surface reuses the fixed local clay shader. Neither mode runs
+asset shaders, edits geometry, plays animation or certifies engine imports.
 """
 from __future__ import annotations
 
@@ -125,6 +125,7 @@ class MeshViewer(QWidget):
     def __init__(self) -> None:
         super().__init__()
         layout = QVBoxLayout(self)
+        self.gpu_canvas = None
         self.status = QLabel("Select a GLB from View → Preview GLB model...")
         self.status.setWordWrap(True)
         layout.addWidget(self.status)
@@ -136,16 +137,53 @@ class MeshViewer(QWidget):
         self.note = QLabel("Mouse: left drag orbit, right drag pan, wheel zoom. Read-only static triangles.")
         self.note.setWordWrap(True)
         layout.addWidget(self.note)
+        self.face_focus = QPushButton('Focus face')
+        self.whole_focus = QPushButton('Whole character')
+        self.face_focus.hide(); self.whole_focus.hide()
+        layout.addWidget(self.face_focus); layout.addWidget(self.whole_focus)
+        self.face_focus.clicked.connect(lambda: self._focus_gpu(True))
+        self.whole_focus.clicked.connect(lambda: self._focus_gpu(False))
 
     def clear_model(self) -> None:
         """Never leave another project's character visible after project change."""
+        self._clear_gpu()
         self.canvas.mesh = None
         self.canvas.reset_view()
         self.status.setText("No model loaded. Select a local GLB or preview the saved master.")
 
     def show_model(self, model: PreviewMesh) -> None:
+        self._clear_gpu()
         self.canvas.set_mesh(model)
         self.status.setText(f"Parsed {model.source_face_count:,} source triangles; previewing "
                             f"{model.sample_count:,}. Declared skins: {model.skin_count}; "
                             f"animations: {model.animation_count}. "
                             + " | ".join(model.warnings))
+
+    def _clear_gpu(self):
+        if self.gpu_canvas is not None:
+            self.gpu_canvas.release(); self.gpu_canvas.hide()
+            self.layout().removeWidget(self.gpu_canvas)
+            self.gpu_canvas.deleteLater(); self.gpu_canvas = None
+        self.canvas.show(); self.reset.show()
+        self._static_surface = None
+        self.face_focus.hide(); self.whole_focus.hide()
+        self.note.setText('Mouse: left drag orbit, right drag pan, wheel zoom. Read-only static triangles.')
+
+    def _focus_gpu(self, face):
+        if self.gpu_canvas is not None:
+            self.gpu_canvas.cache = self._static_surface.focused() if face else self._static_surface
+            self.gpu_canvas.reset_view()
+
+    def show_full_model(self, model: PreviewMesh):
+        from ucc.preview.static_surface import from_full_mesh
+        from .motion_viewer import MotionCanvas
+        self.clear_model()
+        self._static_surface = from_full_mesh(model)
+        self.gpu_canvas = MotionCanvas(self._static_surface.focused(), self)
+        self.gpu_canvas.setToolTip('Static saved-master geometry • drag to orbit, right-drag to pan, wheel to zoom')
+        self.gpu_canvas.failed.connect(lambda error: self.status.setText('Static GPU preview failed: '+error))
+        self.canvas.hide(); self.reset.hide()
+        self.layout().insertWidget(1, self.gpu_canvas, 1)
+        self.face_focus.show(); self.whole_focus.show()
+        self.note.setText('Complete static surface. Face focus uses the upper region of an upright humanoid. Read-only; no live morphing or animation.')
+        self.status.setText(f'Complete saved-master surface: {model.source_face_count:,} triangles. Visual quality and engine imports remain unapproved.')

@@ -7,6 +7,7 @@ from uuid import uuid4
 from .anatomy import get_slot
 from .errors import CompatibilityError, ValidationError
 from .models import CharacterProject, MORPH_LIMITS, PartAsset, PartInstance, finite_number
+from .facial import FACE_DEFAULTS, validate_face_parameters
 
 
 class CharacterSession:
@@ -62,6 +63,38 @@ class CharacterSession:
 
     def rename(self, value: str) -> CharacterProject:
         return self._commit(replace(self._project, name=value))
+
+    def set_face_parameter(self, name: str, value: float) -> CharacterProject:
+        """Record intent only; the later Blender transaction must apply real geometry."""
+        intent = validate_face_parameters({name: value})
+        if self._project.parts or self._project.animations:
+            raise CompatibilityError("Facial editing with attached parts or animations is not validated")
+        values = dict(self._project.facial_parameters)
+        if values.get(name, FACE_DEFAULTS[name]) == intent[name]:
+            return self._project
+        values.update(intent)
+        geometry = "generated_unverified" if self._project.master_blend else "not_generated"
+        return self._commit(replace(self._project, schema_version=2,
+                                   facial_parameters=tuple(sorted(values.items())), geometry_state=geometry))
+
+    def accept_saved_master(self, saved: CharacterProject) -> CharacterProject:
+        """Keep an externally committed immutable-master pointer in session history."""
+        if saved == self._project:
+            return saved
+        previous, actual = self._project.to_dict(), saved.to_dict()
+        previous.pop('updated_at', None); actual.pop('updated_at', None)
+        if previous == actual:
+            self._project = saved
+            return saved
+        for field in ('master_blend', 'geometry_state', 'rig_profile', 'revision', 'updated_at'):
+            previous.pop(field, None); actual.pop(field, None)
+        if previous != actual or saved.revision != self._project.revision+1:
+            raise ValidationError('Saved master does not extend the exact current character intent')
+        self._undo.append(self._project)
+        self._undo = self._undo[-self._history_limit:]
+        self._redo.clear()
+        self._project = saved
+        return saved
 
     def propose_part(self, asset_id: str) -> CharacterProject:
         asset = self._assets.get(asset_id)

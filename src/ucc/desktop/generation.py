@@ -14,6 +14,7 @@ from ucc.core.errors import ValidationError
 from ucc.core.storage import ProjectStore
 from ucc.jobs.humanoid_generation import HumanoidGeneration, generate_humanoid
 from ucc.jobs.body_revision import BodyRevisionResult, apply_saved_body_revision
+from ucc.jobs.customized_humanoid import CustomizedHumanoidBuild
 from ucc.jobs.master_preview import MasterPreview, preview_saved_master
 from ucc.jobs.pose_diagnostic import SavedMasterPoseCheck, check_saved_master_pose
 from ucc.jobs.timeline_diagnostic import SavedTimelineDiagnostic, check_saved_master_timeline
@@ -47,6 +48,8 @@ def bundled_worker_path() -> Path:
     private_renders = worker.parent / "private_review_render.py"
     fbx_source = worker.parent / "fbx_source.py"
     native_files=[worker.parent/name for name in ("native_reference.py","native_inputs.py","native_retarget.py","native_timeline.py","native_skin.py","native_anchor.py","native_corrective.py","native_skin_stack.py","native_review_reopen.py","native_playback_cache.py")]
+    native_files += [worker.parent/name for name in ('face_policy.py', 'face_geometry.py',
+                    'face_materials.py', 'face_operations.py', 'face_assets.py')]
     if (not worker.is_file() or worker.is_symlink()
             or not service.is_file() or service.is_symlink()
             or not preview.is_file() or preview.is_symlink()
@@ -82,7 +85,15 @@ def generate_from_desktop(
     project_id: str,
     revision: int,
     cancel: Event,
-) -> HumanoidGeneration:
+) -> HumanoidGeneration | CustomizedHumanoidBuild:
+    if store.load().facial_parameters:
+        from ucc.jobs.customized_humanoid import generate_customized_humanoid
+        from ucc.jobs.face_discovery import discover_face_data
+        script = bundled_worker_path()
+        data = discover_face_data(store, blender_exe=blender_exe, worker_script=script, cancel=cancel)
+        return generate_customized_humanoid(
+            store, blender_exe=blender_exe, worker_script=script, mpfb_data_dir=data,
+            expected_project_id=project_id, expected_revision=revision, cancel=cancel)
     return generate_humanoid(
         store, blender_exe=blender_exe, worker_script=bundled_worker_path(),
         expected_project_id=project_id, expected_revision=revision,
@@ -103,6 +114,7 @@ def preview_master_from_desktop(
         store, blender_exe=blender_exe, worker_script=bundled_worker_path(),
         expected_project_id=project_id, expected_revision=revision,
         expected_master_blend=master_blend, cancel=cancel, timeout_s=300,
+        full_surface=bool(store.load().facial_parameters),
     )
 
 
@@ -114,7 +126,16 @@ def refit_from_desktop(
     revision: int,
     master_blend: str,
     cancel: Event,
-) -> BodyRevisionResult:
+) -> BodyRevisionResult | CustomizedHumanoidBuild:
+    if store.load().facial_parameters:
+        from ucc.jobs.customized_humanoid import apply_saved_customized_body_revision
+        from ucc.jobs.face_discovery import discover_face_data
+        script = bundled_worker_path()
+        data = discover_face_data(store, blender_exe=blender_exe, worker_script=script, cancel=cancel)
+        return apply_saved_customized_body_revision(
+            store, blender_exe=blender_exe, worker_script=script, mpfb_data_dir=data,
+            expected_project_id=project_id, expected_revision=revision,
+            expected_master_blend=master_blend, cancel=cancel)
     return apply_saved_body_revision(
         store, blender_exe=blender_exe, worker_script=bundled_worker_path(),
         expected_project_id=project_id, expected_revision=revision,

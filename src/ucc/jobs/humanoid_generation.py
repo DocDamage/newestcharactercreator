@@ -79,6 +79,8 @@ def generate_humanoid(
             "Cannot regenerate a new base while character parts or animation "
             "references are attached; create a clean project for this operation"
         )
+    if initial.facial_parameters:
+        raise ValidationError("Saved facial intent requires face-aware generation; body-only generation cannot discard it")
     macros = from_saved_parameters(initial.parameters)
     if type(timeout_s) not in (int, float) or not 0.05 <= timeout_s <= 3600:
         raise ValidationError("timeout_s must be between 0.05 and 3600 seconds")
