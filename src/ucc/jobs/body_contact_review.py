@@ -8,6 +8,7 @@ from ucc.core.storage import ProjectStore
 from ucc.library.provenance import LicensePolicy,AssetPolicyError
 from ucc.preview.body_contacts import BodyContacts,read_body_contacts,validate_body_measurement
 from ucc.preview.contact_areas import BodyContactAreas,read_body_contact_areas
+from ucc.preview.skin_inclusion import read_skin_inclusion,validate_skin_measurement
 from .contact_fit_context import contact_context
 from .body_contact_context import fitted_body_context
 from .native_body import NativeBodyPreview
@@ -51,7 +52,8 @@ def review_body_contact_areas(store: ProjectStore,preview: NativeBodyPreview,pla
 
 
 def _review_body(store,preview,playback,*,source_fbx,permission,blender_exe,worker_script,fitted=None,
-                 cancel=None,timeout_s=900,stable_areas=False):
+                 cancel=None,timeout_s=900,stable_areas=False,skin_inclusion=False):
+    if stable_areas and skin_inclusion:raise ValueError('Choose one explicit inspection policy')
     allowed,reason=permission.allow('local_preview')
     if not allowed:raise AssetPolicyError(reason)
     def check_cancel():
@@ -83,16 +85,23 @@ def _review_body(store,preview,playback,*,source_fbx,permission,blender_exe,work
                 raise ProjectStorageError('Body contact worker changed a bound staged input')
         ids.append(request.job_id);return result.details,folder
     kind='fitted' if fitted is not None else 'native'
-    suffix='_body_areas' if stable_areas else '_body_contacts';limit=(40 if stable_areas else 32)*1024*1024
+    suffix='_skin_inclusion' if skin_inclusion else '_body_areas' if stable_areas else '_body_contacts'
+    limit=(64 if skin_inclusion else 40 if stable_areas else 32)*1024*1024
     measured,folder=run('inspect_'+kind+suffix)
-    validate_body_measurement(measured,options,ctx.baseline,fitted is not None)
+    (validate_skin_measurement if skin_inclusion else validate_body_measurement)(measured,options,ctx.baseline,fitted is not None)
     report=bound_file(folder,measured['report'],'body_contacts.json',limit,cancel_check=check_cancel)
     staged['body_contacts.json']=report;expected['body_contacts.json']=measured['report']['sha256']
     originals.append((report,measured['report']['sha256']));options['body_review_sha256']=measured['report']['sha256']
     verified,_verify_folder=run('verify_'+kind+suffix)
     base={k:v for k,v in options.items() if k!='body_review_sha256'}
-    parsed=(read_body_contact_areas if stable_areas else read_body_contacts)(folder,measured,verified,base,ctx.baseline,ctx.profile,ctx.playback.cache,
+    parser=read_skin_inclusion if skin_inclusion else read_body_contact_areas if stable_areas else read_body_contacts
+    parsed=parser(folder,measured,verified,base,ctx.baseline,ctx.profile,ctx.playback.cache,
         fitted_timeline=fitted_data,fitted_cache=variant.cache if variant is not None else None,cancel_check=check_cancel)
+    if skin_inclusion:
+        from .skin_inclusion import SkinInclusionReview
+        unchanged();bound_file(folder,measured['report'],'body_contacts.json',limit,cancel_check=check_cancel)
+        return SkinInclusionReview(ctx.project.project_id,ctx.project.revision,preview.master_sha256,preview.source_sha256,
+            parsed,ctx.playback,variant,tuple(ids),str(report),measured['report']['sha256'],tuple(sorted(base.items())),metadata_sha)
     contacts=parsed.contacts if stable_areas else parsed
     unchanged();bound_file(folder,measured['report'],'body_contacts.json',limit,cancel_check=check_cancel)
     return BodyContactReview(ctx.project.project_id,ctx.project.revision,preview.master_sha256,preview.source_sha256,

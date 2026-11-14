@@ -17,6 +17,7 @@ SUPPORTED_OPERATIONS.add('propose_native_area_contact_fit')
 SUPPORTED_OPERATIONS.add('propose_native_hand_contact_fit')
 BODY_CONTACT_OPERATIONS = {'verify_fitted_body_contacts', 'verify_native_body_contacts', 'inspect_fitted_body_contacts', 'inspect_native_body_contacts'}
 BODY_CONTACT_OPERATIONS |= {'inspect_native_body_areas','verify_native_body_areas','inspect_fitted_body_areas','verify_fitted_body_areas'}
+BODY_CONTACT_OPERATIONS |= {'inspect_native_skin_inclusion','verify_native_skin_inclusion','inspect_fitted_skin_inclusion','verify_fitted_skin_inclusion'}
 SUPPORTED_OPERATIONS |= BODY_CONTACT_OPERATIONS
 MAX_REQUEST_BYTES = 256 * 1024
 

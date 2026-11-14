@@ -27,7 +27,7 @@ class SchemaTests(unittest.TestCase):
 
     def test_all_schema_files_load(self):
         files = list((ROOT / "docs" / "schemas").glob("*.schema.json"))
-        self.assertEqual(len(files), 15)
+        self.assertEqual(len(files), 16)
         for path in files:
             with self.subTest(path=path.name):
                 schema = self.read_schema(path.name)
