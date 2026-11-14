@@ -219,7 +219,7 @@ jobs:
     # Expression regression adds three prepared bodies, preservation, a registered
     # hand, complete 25-frame previews and thirteen faults. Keep earlier gates
     # and individual subprocess bounds, with explicit regression headroom.
-    timeout-minutes: ${{ matrix.suite == 'native-fit' && 180 || matrix.suite == 'symmetric-fit' && 120 || matrix.suite == 'body-contacts' && 90 || matrix.suite == 'regional-skin' && 90 || 60 }}
+    timeout-minutes: ${{ matrix.suite == 'native-fit' && 180 || matrix.suite == 'symmetric-fit' && 120 || matrix.suite == 'body-contacts' && 90 || matrix.suite == 'regional-skin' && 90 || 120 }}
     env:
       PYTHONUNBUFFERED: '1'
     steps:
