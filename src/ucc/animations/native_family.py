@@ -4,7 +4,7 @@ import json
 
 from ucc.core.errors import ValidationError
 from .native_profile import CONVENTION, validate_native_profile
-from .native_hands import hand_pairs
+from .native_hands import hand_pairs, with_hand_planes
 
 # Metadata fingerprint only: no purchased rest/pose data or assets are bundled.
 # Measured on all 30 authorized local sources; positions/axes/skin compatibility
@@ -49,4 +49,5 @@ def measured_body_profile(source,source_sha,snapshot_sha,master_sha,*,include_ha
              "mesh_strain_reference":"TRUE_NEUTRAL_BIND_V2",
              "snapshot_sha256":snapshot_sha,"master_sha256":master_sha,"landmarks":landmarks,
              "pairs":[dict(zip(("source","target","source_tip","target_tip","secondary"),row)) for row in pairs]}
+    if include_hands:profile=with_hand_planes(profile)
     return validate_native_profile(profile,source_sha,snapshot_sha,master_sha)

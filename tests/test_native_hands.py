@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 from ucc.animations.native_family import measured_body_profile
 from ucc.animations.native_hands import hand_pairs, HAND_TARGETS
+from ucc.animations.native_hands import with_hand_planes
 from ucc.core.errors import ValidationError
 from blender_bridge.native_inputs import validate_profile
 
@@ -39,6 +40,23 @@ class NativeHandMappingTests(unittest.TestCase):
             self.assertIsNone(by_name[side+"HandThumb3"]["target_tip"])
         self.assertEqual({r["target"] for r in hands["pairs"][21:]},HAND_TARGETS)
         self.assertEqual(body["pairs"][10]["source_tip"],"LeftHandMiddle1")
+        self.assertNotIn("hand_reference_planes",body)
+        self.assertEqual(set(hands["hand_reference_planes"]["planes"]),{"left","right"})
+        self.assertEqual(sum(r["secondary"].startswith("PALM_") for r in hands["pairs"]),38)
+
+    def test_declaring_palms_preserves_the_explicit_legacy_input(self):
+        from copy import deepcopy
+        source,fingerprint=self.source()
+        with patch("ucc.animations.native_family.HIPS_OBJECT_TOPOLOGY",fingerprint):
+            profile=measured_body_profile(source,"a"*64,"b"*64,"c"*64,include_hands=True)
+        del profile["hand_reference_planes"]
+        for row in profile["pairs"]:
+            if row["target"] in HAND_TARGETS:row["secondary"]="FORWARD"
+        before=deepcopy(profile)
+        declared=with_hand_planes(profile)
+        self.assertEqual(profile,before)
+        self.assertNotEqual(declared,profile)
+        validate_profile(profile,"a"*64,"b"*64,"c"*64)
 
     def test_unknown_topology_and_nonboolean_selection_never_get_a_hand_map(self):
         source,_=self.source()

@@ -71,6 +71,12 @@ class SchemaTests(unittest.TestCase):
         from fixtures.native_body_contract import contract
         _,_,_,profile,bindings=contract()
         Draft202012Validator(self.read_schema("native-body-map.v1.schema.json")).validate(profile)
+        from fixtures.native_palm_contract import palm_contract
+        palm=palm_contract()[0]
+        validator=Draft202012Validator(self.read_schema("native-body-map.v1.schema.json"))
+        validator.validate(palm)
+        del palm["hand_reference_planes"]
+        self.assertTrue(list(validator.iter_errors(palm)))
         request=JobRequest.new("verify_native_fbx_body",input_project="candidate.blend",
                                options={**bindings,"render_private_frames":True}).as_dict()
         validator=Draft202012Validator(self.read_schema("worker-job.v1.schema.json"))

@@ -53,7 +53,9 @@ nonboolean/conflicting scope, generator dispatch, original immutability, UI
 invalidation, explicit-map ownership and inherited-motion negatives. Current
 suite: 485 tests, successful with 13 Windows symlink-privilege skips. All 15
 preflight/guardrail tests, compilation and whitespace checks pass. Full combined
-Blender regression and all five final-head CI gates remain pending.
+Windows Blender regression and all five final-head CI gates passed on
+`1a890a8d4a63b01021f6aaac5e149e2b1205e4f9`; [PR #45](https://github.com/DocDamage/newestcharactercreator/pull/45)
+contains the verified artifact digest and run links. Main is unchanged.
 
 ## Remaining limits and next task
 

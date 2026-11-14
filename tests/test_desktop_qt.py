@@ -669,6 +669,15 @@ class DesktopQtSmoke(unittest.TestCase):
         self.assertIn("including 1 hand/finger joints",text)
         self.assertIn("omitted source motion remains unapplied",text)
 
+    def test_palm_result_claims_reopened_rest_geometry_only_with_actual_report_count(self):
+        from types import SimpleNamespace
+        from fixtures.native_body_contract import contract
+        from ucc.desktop.native_body import native_result_text
+        data=contract()[0];data["hand_plane_proofs"]={"planes":{"left":{},"right":{}}}
+        self.assertNotIn("declared wrist/knuckle",native_result_text(SimpleNamespace(evidence=data)))
+        result=SimpleNamespace(evidence=data,reopen_evidence={"hand_reference_planes_verified":2})
+        self.assertIn("declared wrist/knuckle",native_result_text(result))
+
     def test_native_corrective_result_discloses_private_smoothing_and_actual_reopen(self):
         from types import SimpleNamespace
         from fixtures.native_body_contract import contract

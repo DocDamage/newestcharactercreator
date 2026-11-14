@@ -80,8 +80,10 @@ contact problems, unapplied finger/face/toe motion or engine incompatibility.
   retains the fixed 20-degree opposing bend, travels four meters and turns
   through more than 400 degrees. Rehashed observation forgery is rejected.
 - Full combined Windows regression passes, including the new neutral-reference
-  contract, complete cache and rehashed-observation rejection. Final-head CI
-  remains pending. The first Linux run completed every test and artifact step
+  contract, complete cache and rehashed-observation rejection. All five final-head
+  workflows passed on `ab9cbe2737a6c2e7d0e407f4ec5956b38e7c0067`;
+  [PR #44](https://github.com/DocDamage/newestcharactercreator/pull/44) records the
+  independently verified diagnostic artifact and run links. The first Linux run completed every test and artifact step
   but hit the 25-minute whole-job boundary; its bounded timeout is now 40 minutes
   to retain every assertion with setup and runner headroom.
   The new original CI challenge
