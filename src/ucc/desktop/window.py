@@ -351,7 +351,7 @@ class MainWindow(QMainWindow):
             self.undo_action.setEnabled(not busy and state.can_undo)
             self.redo_action.setEnabled(not busy and state.can_redo)
         self.cancel_generation_action.setEnabled(
-            busy and self._work_kind in {"expression_prepare", "expression_preview", "generate_humanoid", "saved_master_preview", "body_refit", "face_revision", "hand_library", "hand_revision", "hand_preview", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain", "native_body", "native_playback", "fbx_intake", "fitted_comparison", "body_contacts"}
+            busy and self._work_kind in {"expression_prepare", "expression_preview", "generate_humanoid", "saved_master_preview", "body_refit", "face_revision", "hand_library", "hand_revision", "hand_preview", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain", "native_body", "native_playback", "fbx_intake", "fbx_catalog", "fitted_comparison", "body_contacts"}
         )
         self.statusBar().showMessage(
             ("Preparing and independently checking neutral facial controls..."
@@ -391,9 +391,9 @@ class MainWindow(QMainWindow):
              "Reviewing hand/body contacts on private animation copies..."
              if self._work_kind == "body_contacts" else
              "Measuring native FBX source skeleton and complete timeline..."
-             if self._work_kind == "fbx_intake" else
+             if self._work_kind in {"fbx_intake", "fbx_catalog"} else
              "Converting saved Blender master to a static GLB preview...")
-            if busy and self._work_kind in {"expression_prepare", "expression_preview", "generate_humanoid", "saved_master_preview", "body_refit", "face_revision", "hand_library", "hand_revision", "hand_preview", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain", "native_body", "native_playback", "fbx_intake", "fitted_comparison", "body_contacts"}
+            if busy and self._work_kind in {"expression_prepare", "expression_preview", "generate_humanoid", "saved_master_preview", "body_refit", "face_revision", "hand_library", "hand_revision", "hand_preview", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain", "native_body", "native_playback", "fbx_intake", "fbx_catalog", "fitted_comparison", "body_contacts"}
             else ("Working on local files..." if busy else "Local task finished")
         )
 
@@ -638,6 +638,9 @@ class MainWindow(QMainWindow):
             self.mesh_dock.show()
             self.log.setPlainText(f"Read-only GLB preview loaded: {result.sample_count} sampled of "
                                   f"{result.source_face_count} triangles. No rig/animation/export validation.")
+        elif self._work_kind == "fbx_catalog":
+            from .animation_catalog import finish_index
+            finish_index(self, result)
         elif self._work_kind == "fbx_intake":
             self.log.setPlainText(
                 "FBX SOURCE SKELETON AND COMPLETE TIMELINE MEASURED\n"
@@ -1119,15 +1122,8 @@ class MainWindow(QMainWindow):
 
     def index_animation(self, file: str, asset_id: str, provider: str,
                         license_name: str, uri: str) -> None:
-        if not file or not asset_id.strip() or not provider.strip() or not uri.strip():
-            self._error("Choose a source and enter an asset ID, provider and actual source URI")
-            return
-        def job() -> dict:
-            # Always unreviewed; GUI cannot grant cross-engine/NoAI permissions.
-            policy = LicensePolicy(provider, license_name, uri, reviewed=False)
-            with AnimationCatalog(self._catalog_path()) as catalog:
-                return catalog.index_file(asset_id, Path(file), policy).to_dict()
-        self._submit("index", job)
+        from .animation_catalog import start_index
+        start_index(self, file, asset_id, provider, license_name, uri)
 
     def refresh_catalog(self) -> None:
         def job() -> list[dict]:
