@@ -122,6 +122,13 @@ class DesktopController:
         self._dirty |= previous != session.project
         return self.view()
 
+    def accept_saved_animation_references(self, saved: CharacterProject) -> ProjectView:
+        if self.store is None or self._dirty or self.store.load() != saved:
+            raise ValidationError('Saved references cannot replace a changed or unsaved desktop session')
+        self._get_session().accept_saved_animation_references(saved)
+        self._saved_revision = saved.revision
+        return self.view()
+
     def reset_expression(self) -> ProjectView:
         session = self._get_session()
         previous = session.project

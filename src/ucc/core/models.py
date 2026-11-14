@@ -282,5 +282,7 @@ class CharacterProject:
         if any(p.status != "geometry_validated" for p in self.parts):
             errors.append("At least one attached part is only a proposal")
         if not self.animations:
-            errors.append("No verified animation references")
+            errors.append("No animation source references")
+        else:
+            errors.append("Animation references require separate target and engine acceptance")
         return tuple(errors)

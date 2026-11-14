@@ -173,6 +173,8 @@ class MainWindow(QMainWindow):
         self.animations.inspect_requested.connect(self.inspect_animation)
         self.animations.index_requested.connect(self.index_animation)
         self.animations.refresh_requested.connect(self.refresh_catalog)
+        self.animations.reference_attach_requested.connect(self.attach_animation_reference)
+        self.animations.reference_detach_requested.connect(self.detach_animation_reference)
         self.tools.glb_requested.connect(self.inspect_glb_file)
         self.tools.ai_requested.connect(self.probe_ai)
         self.tools.atlas_requested.connect(self.pack_atlas)
@@ -201,6 +203,9 @@ class MainWindow(QMainWindow):
                 self.controller.require_project().project_id!=self._native_review.project_id):
             self._clear_native_review()
         self.character.display(state)
+        self.animations.display_reference_ids(self.controller.require_project().animations)
+        from .animation_references import refresh_reference_controls
+        refresh_reference_controls(self)
         from .hand_workflow import refresh_hands
         refresh_hands(self)
         self.preview_master_action.setEnabled(state.master_blend is not None and not self.jobs.busy)
@@ -351,7 +356,7 @@ class MainWindow(QMainWindow):
             self.undo_action.setEnabled(not busy and state.can_undo)
             self.redo_action.setEnabled(not busy and state.can_redo)
         self.cancel_generation_action.setEnabled(
-            busy and self._work_kind in {"expression_prepare", "expression_preview", "generate_humanoid", "saved_master_preview", "body_refit", "face_revision", "hand_library", "hand_revision", "hand_preview", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain", "native_body", "native_playback", "fbx_intake", "fbx_catalog", "fitted_comparison", "body_contacts"}
+            busy and self._work_kind in {"expression_prepare", "expression_preview", "generate_humanoid", "saved_master_preview", "body_refit", "face_revision", "hand_library", "hand_revision", "hand_preview", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain", "native_body", "native_playback", "fbx_intake", "fbx_catalog", "animation_reference_attach", "animation_reference_detach", "fitted_comparison", "body_contacts"}
         )
         self.statusBar().showMessage(
             ("Preparing and independently checking neutral facial controls..."
@@ -390,14 +395,23 @@ class MainWindow(QMainWindow):
              if self._work_kind == "fitted_comparison" else
              "Reviewing hand/body contacts on private animation copies..."
              if self._work_kind == "body_contacts" else
+             "Checking source references and the saved character..."
+             if self._work_kind in {"animation_reference_attach", "animation_reference_detach"} else
              "Measuring native FBX source skeleton and complete timeline..."
              if self._work_kind in {"fbx_intake", "fbx_catalog"} else
              "Converting saved Blender master to a static GLB preview...")
-            if busy and self._work_kind in {"expression_prepare", "expression_preview", "generate_humanoid", "saved_master_preview", "body_refit", "face_revision", "hand_library", "hand_revision", "hand_preview", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain", "native_body", "native_playback", "fbx_intake", "fbx_catalog", "fitted_comparison", "body_contacts"}
+            if busy and self._work_kind in {"expression_prepare", "expression_preview", "generate_humanoid", "saved_master_preview", "body_refit", "face_revision", "hand_library", "hand_revision", "hand_preview", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain", "native_body", "native_playback", "fbx_intake", "fbx_catalog", "animation_reference_attach", "animation_reference_detach", "fitted_comparison", "body_contacts"}
             else ("Working on local files..." if busy else "Local task finished")
         )
 
+        from .animation_references import refresh_reference_controls
+        refresh_reference_controls(self)
+
     def _job_success(self, result: object) -> None:
+        if self._work_kind in {'animation_reference_attach', 'animation_reference_detach'}:
+            from .animation_references import finish_reference
+            finish_reference(self, result)
+            return
         if self._work_kind in {'expression_prepare', 'expression_preview'}:
             from .expression_workflow import finish_expression
             finish_expression(self, result)
@@ -681,6 +695,10 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Local operation completed; review results above")
 
     def _job_error(self, error: str) -> None:
+        if self._work_kind in {'animation_reference_attach', 'animation_reference_detach'}:
+            from .animation_references import show_reference_error
+            show_reference_error(self, error)
+            return
         if self._work_kind in {'expression_prepare', 'expression_preview'}:
             from .expression_workflow import expression_error
             expression_error(self, error)
@@ -1124,6 +1142,14 @@ class MainWindow(QMainWindow):
                         license_name: str, uri: str) -> None:
         from .animation_catalog import start_index
         start_index(self, file, asset_id, provider, license_name, uri)
+
+    def attach_animation_reference(self) -> None:
+        from .animation_references import start_reference
+        start_reference(self)
+
+    def detach_animation_reference(self) -> None:
+        from .animation_references import start_reference
+        start_reference(self, remove=True)
 
     def refresh_catalog(self) -> None:
         def job() -> list[dict]:

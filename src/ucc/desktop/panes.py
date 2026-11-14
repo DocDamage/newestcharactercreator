@@ -7,7 +7,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QCheckBox, QComboBox, QFormLayout, QGroupBox, QHBoxLayout, QLabel,
     QLineEdit, QPushButton, QSlider, QSpinBox, QTableWidget, QTableWidgetItem,
-    QTextEdit, QVBoxLayout, QWidget, QFileDialog, QScrollArea,
+    QTextEdit, QVBoxLayout, QWidget, QFileDialog, QScrollArea, QListWidget,
 )
 
 from ucc.core.anatomy import slot_catalog
@@ -244,6 +244,8 @@ class AnimationPane(QWidget):
     native_renders_open_requested = Signal()
     native_playback_requested = Signal()
     refresh_requested = Signal()
+    reference_attach_requested = Signal()
+    reference_detach_requested = Signal()
 
     def __init__(self) -> None:
         super().__init__()
@@ -454,6 +456,42 @@ class AnimationPane(QWidget):
         self.catalog.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.catalog.horizontalHeader().setStretchLastSection(True)
         layout.addWidget(self.catalog, 1)
+        references = QGroupBox("Character source references")
+        reference_layout = QVBoxLayout(references)
+        info = QLabel("Attach measured sources to this saved character. Target playback and engine checks run separately.")
+        info.setWordWrap(True); reference_layout.addWidget(info)
+        self.references = QListWidget(); self.references.setMaximumHeight(120)
+        reference_layout.addWidget(self.references)
+        buttons = QHBoxLayout()
+        self.attach_reference = QPushButton("Attach selected source reference")
+        self.detach_reference = QPushButton("Detach selected reference")
+        self.attach_reference.clicked.connect(self.reference_attach_requested.emit)
+        self.detach_reference.clicked.connect(self.reference_detach_requested.emit)
+        buttons.addWidget(self.attach_reference); buttons.addWidget(self.detach_reference)
+        reference_layout.addLayout(buttons); layout.addWidget(references)
+        self._reference_target_ready = False
+        self.catalog.currentCellChanged.connect(lambda *_: self._refresh_reference_buttons())
+        self.references.currentRowChanged.connect(lambda *_: self._refresh_reference_buttons())
+        self._refresh_reference_buttons()
+
+    def set_reference_target_ready(self, ready: bool) -> None:
+        self._reference_target_ready = ready
+        self._refresh_reference_buttons()
+
+    def display_reference_ids(self, identifiers: tuple[str, ...]) -> None:
+        selected = self.references.currentItem().text() if self.references.currentItem() else None
+        self.references.clear(); self.references.addItems(identifiers)
+        if selected in identifiers: self.references.setCurrentRow(identifiers.index(selected))
+        elif identifiers: self.references.setCurrentRow(0)
+        self._refresh_reference_buttons()
+
+    def _refresh_reference_buttons(self) -> None:
+        row = self.catalog.currentRow()
+        measured = (row >= 0 and all(self.catalog.item(row, i) is not None for i in range(4)) and
+                    [self.catalog.item(row, i).text() for i in (1, 2, 3)] == ['fbx', '1', 'METADATA_EXTRACTED'])
+        self.attach_reference.setEnabled(self._reference_target_ready and measured)
+        self.detach_reference.setEnabled(self._reference_target_ready and self.references.currentItem() is not None)
+
 
     def choose_source_rest_profile(self) -> None:
         path, _ = QFileDialog.getOpenFileName(
@@ -476,6 +514,7 @@ class AnimationPane(QWidget):
             values = (item["asset_id"], item["format"], str(len(item["clips"])), item["status"])
             for col, value in enumerate(values):
                 self.catalog.setItem(row, col, QTableWidgetItem(value))
+        self._refresh_reference_buttons()
 
 
 class ToolsPane(QWidget):

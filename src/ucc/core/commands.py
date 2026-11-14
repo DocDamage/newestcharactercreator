@@ -12,6 +12,12 @@ from .expressions import (DEFAULTS as EXPRESSION_DEFAULTS, ExpressionState,
                           validate_expression_parameters, validate_expression_part_rebind, is_sha256)
 
 
+def _reference_identifier(value: str) -> str:
+    if type(value) is not str or not value.strip() or len(value) > 256 or any(ord(c) < 32 for c in value):
+        raise ValidationError('Animation reference requires a bounded source identifier')
+    return value
+
+
 class CharacterSession:
     """A bounded in-memory undo/redo stack for metadata editing.
 
@@ -65,6 +71,37 @@ class CharacterSession:
 
     def rename(self, value: str) -> CharacterProject:
         return self._commit(replace(self._project, name=value))
+
+    def attach_animation_reference(self, clip_id: str) -> CharacterProject:
+        """Metadata intent only; a job must verify source and target boundaries."""
+        _reference_identifier(clip_id)
+        if clip_id in self._project.animations:
+            return self._project
+        return self._commit(replace(self._project, animations=(*self._project.animations, clip_id)))
+
+    def detach_animation_reference(self, clip_id: str) -> CharacterProject:
+        if type(clip_id) is not str:
+            raise ValidationError('Select an existing animation reference')
+        return self._commit(replace(self._project, animations=tuple(x for x in self._project.animations if x != clip_id)))
+
+    def accept_saved_animation_references(self, saved: CharacterProject) -> CharacterProject:
+        """Adopt one source-reference transaction without changing master intent."""
+        if saved == self._project:
+            return saved
+        added = set(saved.animations)-set(self._project.animations)
+        removed = set(self._project.animations)-set(saved.animations)
+        if len(added)+len(removed) != 1:
+            raise ValidationError('Saved reference transaction must attach or detach one identifier')
+        if added: _reference_identifier(next(iter(added)))
+        expected_refs = ((*self._project.animations, next(iter(added))) if added else
+                         tuple(x for x in self._project.animations if x not in removed))
+        expected = replace(self._project, animations=expected_refs, revision=self._project.revision+1)
+        if saved != expected:
+            raise ValidationError('Saved reference transaction changed unrelated character intent')
+        self._undo.append(self._project)
+        self._undo = self._undo[-self._history_limit:]
+        self._redo.clear(); self._project = saved
+        return saved
 
     def set_face_parameter(self, name: str, value: float) -> CharacterProject:
         """Record intent only; the later Blender transaction must apply real geometry."""
