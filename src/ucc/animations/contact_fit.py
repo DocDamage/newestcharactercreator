@@ -12,6 +12,7 @@ from pathlib import Path
 from ucc.core.errors import ValidationError
 from .source_rest_frames import is_sha256
 from . import native_math as nm
+from .hand_fit import POLICY as HAND_POLICY,read_rotations,orient_hand
 
 POLICY = "BOUNDED_NATIVE_ARM_IK_V1"
 HASHES = {"source_sha256", "snapshot_sha256", "mapping_sha256", "master_sha256",
@@ -66,6 +67,8 @@ class ContactFit:
     fps: float
     maximum_offset: float
     render_frames: tuple[int, ...] = ()
+    policy: str = POLICY
+    hand_rotations: tuple[tuple[float,float,float], ...] = ()
 
 
 def read_contact_fit(path: Path, expected_sha: str, bindings: dict, baseline: dict, profile: dict,
@@ -106,7 +109,7 @@ def read_fit_plan(data: dict, bindings: dict, baseline: dict, profile: dict,
     """
     fields = {"schema_version", "policy", "bindings", "coordinate_space", "chain", "fps", "frames"}
     if (type(data) is not dict or set(data)-{"render_frames"} != fields or type(data["schema_version"]) is not int or
-            data["schema_version"] != 1 or data["policy"] != POLICY or
+            data["schema_version"] != 1 or type(data['policy']) is not str or data["policy"] not in (POLICY,HAND_POLICY) or
             data["coordinate_space"] != "BLENDER_WORLD_METERS" or
             type(bindings) is not dict or set(bindings) != HASHES or
             any(not is_sha256(v) for v in bindings.values()) or data["bindings"] != bindings):
@@ -142,6 +145,8 @@ def read_fit_plan(data: dict, bindings: dict, baseline: dict, profile: dict,
     if (not _number(fps) or not 1 <= fps <= 240 or fps != baseline["fps"] or
             type(count) is not int or not 3 <= count <= 2000 or type(data["frames"]) is not list or len(data["frames"]) != count):
         raise ValidationError("Contact fitting requires the complete source timeline and original frame rate")
+    if data['policy']==HAND_POLICY and count<5:
+        raise ValidationError('Hand fitting requires at least five complete source frames')
     points = baseline["target_anatomical_landmarks"]
     # Hip-to-head height is the orientation reference, not standing body span.
     # Bound fitting by the measured head/foot landmarks as well as meters.
@@ -149,9 +154,10 @@ def read_fit_plan(data: dict, bindings: dict, baseline: dict, profile: dict,
     span = math.dist(points["head"], feet)
     if not .1 < span < 10: raise ValidationError("Invalid contact-fitting anatomical body span")
     maximum = min(MAX_OFFSET_METERS, span*MAX_BODY_SPAN_RATIO)
+    hand_policy=data['policy']==HAND_POLICY
     offsets = []
     for frame, row in enumerate(data["frames"], 1):
-        if type(row) is not dict or set(row) != {"frame", "offset_world"} or type(row["frame"]) is not int or row["frame"] != frame:
+        if type(row) is not dict or set(row) != ({"frame", "offset_world"}|({'hand_rotation_local_degrees'} if hand_policy else set())) or type(row["frame"]) is not int or row["frame"] != frame:
             raise ValidationError("Contact-fitting frames must be complete and sequential")
         offset = _vector(row["offset_world"])
         if _length(offset) > maximum+1e-12:
@@ -172,7 +178,8 @@ def read_fit_plan(data: dict, bindings: dict, baseline: dict, profile: dict,
     if samples and not any(_length(offsets[f-1])>1e-7 for f in samples):
         raise ValidationError("Fitting render samples must include an actual target correction")
     return ContactFit(tuple(sorted(bindings.items())), targets, (upper, lower, hand), descendants,
-                      tuple(offsets), float(fps), maximum, tuple(samples))
+                      tuple(offsets), float(fps), maximum, tuple(samples),data['policy'],
+                      read_rotations(data['frames'],fps) if hand_policy else ())
 
 
 def _between(a, b):
@@ -189,7 +196,7 @@ def _between(a, b):
     return rotation
 
 
-def fit_frame(plan: ContactFit, poses: list[list[float]], frame: int) -> list[list[float]]:
+def _fit_arm_frame(plan: ContactFit, poses: list[list[float]], frame: int) -> list[list[float]]:
     """Independent analytic two-bone solve; retain hand orientation and elbow pole."""
     if type(frame) is not int or not 1 <= frame <= len(plan.offsets) or type(poses) is not list or len(poses) != len(plan.targets):
         raise ValidationError("Contact-fitting pose coverage differs")
@@ -228,6 +235,12 @@ def fit_frame(plan: ContactFit, poses: list[list[float]], frame: int) -> list[li
     return result
 
 
+def fit_frame(plan: ContactFit, poses: list[list[float]], frame: int) -> list[list[float]]:
+    """Apply explicit arm fitting and optional V2 hand-frame orientation."""
+    result=_fit_arm_frame(plan,poses,frame)
+    return orient_hand(plan,result,frame) if plan.hand_rotations else result
+
+
 def verify_fitted_frame(plan: ContactFit, original: list, actual: list, frame: int) -> None:
     expected = fit_frame(plan, original, frame)
     if type(actual) is not list or len(actual) != len(expected):
@@ -254,7 +267,7 @@ def verify_fitted_sequence(plan: ContactFit, originals: list, actuals: list) -> 
     count = len(plan.offsets)
     if type(originals) is not list or type(actuals) is not list or len(originals) != count or len(actuals) != count:
         raise ValidationError("Contact-fitting angular audit needs the complete original and fitted sequences")
-    indices = [plan.targets.index(n) for n in plan.chain[:2]]
+    indices = [plan.targets.index(n) for n in (plan.chain if plan.hand_rotations else plan.chain[:2])]
     previous = {}; previous_velocity = {i:(0., 0., 0.) for i in indices}
     maximum_speed = maximum_acceleration = 0.
     for frame, (original, actual) in enumerate(zip(originals, actuals), 1):

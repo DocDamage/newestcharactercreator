@@ -98,6 +98,8 @@ def verify_fit_on_preview(blender,store,preview,source,permission,folder,*,origi
         raise RuntimeError('Real fitted-scene corruption was accepted: '+name)
     cases=(('helper_ulp','unkeyed helper'),('weight_ulp','exact weights'),('deform_flag','bone controls'),('rest_roll','rest/roll'),('action','declared bounded trajectory'),('polygon','source topology'),('report','measurement differs'))
     with ThreadPoolExecutor(max_workers=2) as pool:rejected=list(pool.map(negative,cases))
+    from ci.verify_hand_fit import verify_hand_fit
+    hand_fit=verify_hand_fit(blender,store,preview,source,permission,folder/'hand-orientation',policy)
     if before!={p:digest(Path(p)) for p in before} or store.load()!=project:
         raise RuntimeError('Original source/master/project changed during real fitting gate')
     return {'scope':'ORIGINAL_CI_SOURCE_ON_REAL_MPFB_NOT_OWNER_OR_PACK_COMPATIBILITY','frames':300,'mapped_joints':len(preview.evidence['mapped_pairs']),
@@ -107,6 +109,7 @@ def verify_fit_on_preview(blender,store,preview,source,permission,folder,*,origi
             'all_vertex_and_triangle_hashes_checked':True,'fresh_saved_scene_verified':True,'gpu_playback_tested':False},
         'application_angular_audit':result.angular_audit,'real_rehashed_scene_report_faults_rejected':rejected,
         'stable_body_fit_guard':body_guard,
+        'bounded_hand_orientation':hand_fit,
         'originals_unchanged':True,'contact_quality_approved':False,'engine_import_verified':False}
 
 

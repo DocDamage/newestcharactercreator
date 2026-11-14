@@ -14,6 +14,8 @@ on:
       - 'ci/verify_project_generation.py'
       - 'ci/verify_native_body.py'
       - 'ci/verify_native_fit.py'
+      - 'ci/verify_hand_fit.py'
+      - 'src/ucc/animations/hand_fit.py'
       - 'ci/verify_contact_candidate.py'
       - 'ci/verify_body_contacts.py'
       - 'ci/verify_body_fit_guard.py'
@@ -61,6 +63,8 @@ on:
       - 'ci/verify_project_generation.py'
       - 'ci/verify_native_body.py'
       - 'ci/verify_native_fit.py'
+      - 'ci/verify_hand_fit.py'
+      - 'src/ucc/animations/hand_fit.py'
       - 'ci/verify_contact_candidate.py'
       - 'ci/verify_body_contacts.py'
       - 'ci/verify_body_fit_guard.py'
@@ -124,7 +128,7 @@ jobs:
     # R's complete native-fit suite passed in about 61 minutes. S adds two
     # original-source full-sequence proposal negatives, run in parallel.
     # Retain all prior assertions and bound the additional integration workload.
-    timeout-minutes: ${{ matrix.suite == 'native-fit' && 75 || 40 }}
+    timeout-minutes: ${{ matrix.suite == 'native-fit' && 90 || 40 }}
     env:
       PYTHONUNBUFFERED: '1'
     steps:

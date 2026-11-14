@@ -4,6 +4,7 @@ from blender_bridge.native_fit_policy import fitted_world_poses
 from blender_bridge.native_review_reopen import scene_objects,digest
 from blender_bridge.motion_quality import JointMotion
 from blender_bridge.native_reference import RootRotation
+from blender_bridge.native_hand_fit import changed
 
 
 def stage_native_fit(bpy,root,options):
@@ -29,7 +30,7 @@ def stage_native_fit(bpy,root,options):
                 bone=pb.bone
                 kw={'parent_matrix':computed[pb.parent.name],'parent_matrix_local':pb.parent.bone.matrix_local} if pb.parent else {}
                 tracker=root_metric if pb.name==root_name else metrics.get(pb.name)
-                if pb.name in modified and any(plan['offsets'][frame-1]):
+                if pb.name in modified and changed(plan,frame):
                     desired=inverse@expected[pb.name]
                     basis=bone.convert_local_to_pose(desired,bone.matrix_local,invert=True,**kw)
                     scale_error=max(abs(v-1) for v in basis.to_scale());max_scale_error=max(max_scale_error,scale_error)

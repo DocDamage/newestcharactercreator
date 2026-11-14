@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "UCC bounded native target arm fitting v1",
+  "title": "UCC bounded native target arm and optional hand fitting",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -18,7 +18,10 @@
       "type": "integer"
     },
     "policy": {
-      "const": "BOUNDED_NATIVE_ARM_IK_V1"
+      "enum": [
+        "BOUNDED_NATIVE_ARM_IK_V1",
+        "BOUNDED_NATIVE_ARM_HAND_IK_V2"
+      ]
     },
     "coordinate_space": {
       "const": "BLENDER_WORLD_METERS"
@@ -125,6 +128,16 @@
               "minimum": -0.03,
               "maximum": 0.03
             }
+          },
+          "hand_rotation_local_degrees": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 3,
+            "items": {
+              "type": "number",
+              "minimum": -15,
+              "maximum": 15
+            }
           }
         }
       }
@@ -140,5 +153,41 @@
         "maximum": 2000
       }
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "policy": {
+            "const": "BOUNDED_NATIVE_ARM_HAND_IK_V2"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "frames": {
+            "minItems": 5,
+            "items": {
+              "required": [
+                "hand_rotation_local_degrees"
+              ]
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "frames": {
+            "items": {
+              "not": {
+                "required": [
+                  "hand_rotation_local_degrees"
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
 }
