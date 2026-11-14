@@ -287,7 +287,9 @@ class AnimationPane(QWidget):
         row = QHBoxLayout()
         self.inspect = QPushButton("Inspect selected file")
         self.inspect.clicked.connect(lambda: self.inspect_requested.emit(self.selected.text()))
-        self.index = QPushButton("Index as unreviewed")
+        self.index = QPushButton("Index selected source")
+        self.index.setToolTip("Reviewed local FBX inputs are measured in Blender before source clips are indexed. "
+                              "Without local review, indexing stores unreviewed metadata only.")
         self.index.clicked.connect(lambda: self.index_requested.emit(
             self.selected.text(), self.asset_id.text(), self.provider.text(),
             self.license.text(), self.uri.text()))
