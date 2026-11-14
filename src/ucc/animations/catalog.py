@@ -6,6 +6,7 @@ motion bytes. An indexed clip is NOT retargeted, previewed or engine-ready.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from hashlib import sha256
 import json
 from pathlib import Path
 from typing import Any
@@ -76,6 +77,10 @@ class AnimationCatalog:
                 UNIQUE(asset_id, ordinal)
             );
             CREATE INDEX IF NOT EXISTS idx_clips_asset ON animation_clips(asset_id, ordinal);
+            CREATE TABLE IF NOT EXISTS animation_fbx_intakes (
+                asset_id TEXT PRIMARY KEY REFERENCES animation_sources(asset_id) ON DELETE RESTRICT,
+                receipt_json TEXT NOT NULL
+            );
         """)
 
     def __enter__(self) -> "AnimationCatalog":
@@ -125,6 +130,74 @@ class AnimationCatalog:
         if result is None:
             raise RuntimeError("Indexed animation is missing after transaction")
         return result
+
+    def record_fbx_intake(self, asset_id: str, data: dict, report: dict, *,
+                          expected_entry: AssetEntry, cancel_check=lambda: None) -> None:
+        """Publish one measured clip and bounded receipt in a single transaction.
+
+        The job coordinator supplies two-worker intake, never a filename-derived
+        clip. Existing policies and any incompatible measured identities stay
+        immutable. This cannot grant target-preview or engine approval.
+        """
+        from ucc.animations.fbx_catalog import POLICY, measured_metadata
+        from ucc.animations.fbx_snapshot import validate_snapshot
+        from ucc.animations.source_rest_frames import is_sha256
+        inspected = measured_metadata(data, expected_entry.sha256, cancel_check=cancel_check)
+        observed = validate_snapshot(data, expected_entry.sha256, cancel_check=cancel_check)
+        if (type(report) is not dict or report.get('status') != 'REAL_BLENDER_FBX_SOURCE_SNAPSHOT'
+                or report.get('source_sha256') != expected_entry.sha256
+                or report.get('two_workers_agree') is not True or report.get('source_bytes_unchanged') is not True
+                or report.get('policy') != expected_entry.policy.to_dict()
+                or any(type(report.get(k)) is not type(v) or report[k] != v for k, v in observed.items())
+                or any(report.get(k) is not False for k in
+                       ('retargeting_verified', 'animation_visual_quality_verified', 'engine_import_verified'))):
+            raise AnimationMetadataError('Measured FBX report differs from its complete source snapshot')
+        snapshot = report.get('snapshot')
+        if (type(snapshot) is not dict or set(snapshot) != {'name', 'bytes', 'sha256'}
+                or snapshot['name'] != 'source_snapshot.json' or type(snapshot['bytes']) is not int
+                or not 0 < snapshot['bytes'] <= 64*1024*1024 or not is_sha256(snapshot['sha256'])):
+            raise AnimationMetadataError('Measured FBX requires a bound private snapshot identity')
+        receipt = {'schema_version': 1, 'policy': POLICY, 'source_sha256': expected_entry.sha256,
+                   'snapshot_sha256': snapshot['sha256'], 'observation': observed,
+                   'skeleton_fingerprint': inspected.skeleton_fingerprint,
+                   'clip': inspected.clips[0].to_dict()}
+        encoded = json.dumps(receipt, sort_keys=True, separators=(',', ':'), allow_nan=False)
+        with self.db:
+            self.db.execute('BEGIN IMMEDIATE')
+            if expected_entry.asset_id != asset_id or self.library.get(asset_id) != expected_entry:
+                raise AssetPolicyError('Indexed FBX identity or permissions changed during measurement')
+            self.library.require_permission(asset_id, 'local_preview')
+            source = Path(expected_entry.source_path)
+            if (source.suffix.lower() != '.fbx' or source.is_symlink() or not source.is_file()
+                    or source.stat().st_size != expected_entry.size_bytes):
+                raise AssetPolicyError('Indexed FBX source is missing, redirected or changed')
+            checksum = sha256()
+            with source.open('rb') as stream:
+                for block in iter(lambda: stream.read(1024*1024), b''):
+                    cancel_check(); checksum.update(block)
+            if source.is_symlink() or checksum.hexdigest() != expected_entry.sha256:
+                raise AssetPolicyError('Indexed FBX bytes changed before metadata publication')
+            previous = self.get(asset_id)
+            saved = self.db.execute('SELECT receipt_json FROM animation_fbx_intakes WHERE asset_id=?',
+                                    (asset_id,)).fetchone()
+            expected = IndexedAnimation(asset_id, expected_entry.sha256, 'fbx', inspected.status,
+                inspected.skeleton_fingerprint, inspected.bone_names, inspected.clips,
+                inspected.warnings, _policy_rights(expected_entry.policy))
+            if saved is not None:
+                if saved[0] != encoded or previous != expected:
+                    raise AnimationMetadataError('Existing measured FBX identity differs; original clip retained')
+                cancel_check()
+                return
+            if (previous is None or previous.source_format != 'fbx'
+                    or previous.status != 'REQUIRES_CONVERSION' or previous.clips):
+                raise AnimationMetadataError('FBX measurement requires an indexed source without existing clips')
+            self.db.execute('''UPDATE animation_sources SET status=?,fingerprint=?,bone_names_json=?,warnings_json=?
+                               WHERE asset_id=?''', (inspected.status, inspected.skeleton_fingerprint,
+                json.dumps(inspected.bone_names), json.dumps(inspected.warnings), asset_id))
+            self.db.execute('INSERT INTO animation_clips VALUES (?,?,?,?)',
+                (asset_id+'#clip-0000', asset_id, 0, json.dumps(inspected.clips[0].to_dict(), allow_nan=False)))
+            self.db.execute('INSERT INTO animation_fbx_intakes VALUES (?,?)', (asset_id, encoded))
+            cancel_check()
 
     def get(self, asset_id: str) -> IndexedAnimation | None:
         entry = self.library.get(asset_id)
