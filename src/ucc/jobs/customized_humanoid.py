@@ -66,6 +66,8 @@ def _build(store, *, refit, blender_exe, worker_script, mpfb_data_dir,
             or (refit and initial.master_blend != expected_master_blend)):
         raise ProjectConflict('Project changed while preparing customized humanoid build')
     common = dict(blender_exe=blender_exe, worker_script=worker_script, cancel=cancel, timeout_s=timeout_s)
+    if initial.expression is not None:
+        raise ValidationError('Prepared facial controls require expression-aware composition; the saved master is unchanged')
     if not initial.facial_parameters:
         if refit:
             return apply_saved_body_revision(store, **common, expected_project_id=expected_project_id,

@@ -70,7 +70,9 @@
         "verify_mpfb_hand_assets",
         "stage_mpfb_hand_revision",
         "verify_mpfb_hand_revision",
-        "inspect_mpfb_hand_bounds"
+        "inspect_mpfb_hand_bounds",
+        "stage_mpfb_expression_keys",
+        "verify_mpfb_expression_keys"
       ]
     },
     "input_project": {
@@ -2996,6 +2998,180 @@
               },
               "longer_target_sha256": {
                 "const": "37620de4a7d2f3c8f1b233fc42ebf6c6c6b100ce1aecfe4ed4ada2f0e4006637"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "stage_mpfb_expression_keys"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "input_project": {
+            "const": "candidate.blend"
+          },
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "master_sha256",
+              "recipe_sha256",
+              "eye_left_closure_african_sha256",
+              "eye_left_closure_asian_sha256",
+              "eye_left_closure_caucasian_sha256",
+              "eye_right_closure_african_sha256",
+              "eye_right_closure_asian_sha256",
+              "eye_right_closure_caucasian_sha256",
+              "mouth_corners_african_sha256",
+              "mouth_corners_asian_sha256",
+              "mouth_corners_caucasian_sha256",
+              "mouth_open_african_sha256",
+              "mouth_open_asian_sha256",
+              "mouth_open_caucasian_sha256"
+            ],
+            "properties": {
+              "master_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "recipe_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "eye_left_closure_african_sha256": {
+                "const": "2d358745e955ead9d73f85ed224568a8d347f3f3b897c26cbd412faf2bfa9f3a"
+              },
+              "eye_left_closure_asian_sha256": {
+                "const": "0d52fee2d66b933ece83f3c7aa48e85bfe85e8adbed0931dbd37025866a1a67d"
+              },
+              "eye_left_closure_caucasian_sha256": {
+                "const": "ff0d21ceb6da55fe51e03b48a7562a650924fea9bef0c686fcd7aa44d16422ed"
+              },
+              "eye_right_closure_african_sha256": {
+                "const": "c1b0c3609d9fb59a97dabe8ace10622da58969f4566125b38f47285afef320d5"
+              },
+              "eye_right_closure_asian_sha256": {
+                "const": "0c99a5f559a1d67f630a329b9724fe3742a2c35709b8baa8a6d37903f35b9b77"
+              },
+              "eye_right_closure_caucasian_sha256": {
+                "const": "2b7be6bc65845d77e5f83b7bf852090854747e448644997795fa59b6cf76122d"
+              },
+              "mouth_corners_african_sha256": {
+                "const": "5560c685cd55ae6a00830e539ac54135cb4dcfec6a28be90510c931dcfdca478"
+              },
+              "mouth_corners_asian_sha256": {
+                "const": "d881bb8feda2637bdaef2c7d7c6bed12f0be5914949e5a2cb9b06a583af412c0"
+              },
+              "mouth_corners_caucasian_sha256": {
+                "const": "d881bb8feda2637bdaef2c7d7c6bed12f0be5914949e5a2cb9b06a583af412c0"
+              },
+              "mouth_open_african_sha256": {
+                "const": "d710d4ae1693e7278a5bbe620276970fb6e89de139b50aaaea2830c31146459a"
+              },
+              "mouth_open_asian_sha256": {
+                "const": "b52bbe631152844bb7b835c0f98d12ab0a1c0689e02e067b239d8349ccf9aab2"
+              },
+              "mouth_open_caucasian_sha256": {
+                "const": "dc1260a8728d93a9c52d6b35b5f55ad39ab8096090acd5ccad7f973c26e28818"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "verify_mpfb_expression_keys"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "input_project": {
+            "const": "candidate.blend"
+          },
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "master_sha256",
+              "recipe_sha256",
+              "eye_left_closure_african_sha256",
+              "eye_left_closure_asian_sha256",
+              "eye_left_closure_caucasian_sha256",
+              "eye_right_closure_african_sha256",
+              "eye_right_closure_asian_sha256",
+              "eye_right_closure_caucasian_sha256",
+              "mouth_corners_african_sha256",
+              "mouth_corners_asian_sha256",
+              "mouth_corners_caucasian_sha256",
+              "mouth_open_african_sha256",
+              "mouth_open_asian_sha256",
+              "mouth_open_caucasian_sha256",
+              "prepared_sha256",
+              "report_sha256"
+            ],
+            "properties": {
+              "master_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "recipe_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "eye_left_closure_african_sha256": {
+                "const": "2d358745e955ead9d73f85ed224568a8d347f3f3b897c26cbd412faf2bfa9f3a"
+              },
+              "eye_left_closure_asian_sha256": {
+                "const": "0d52fee2d66b933ece83f3c7aa48e85bfe85e8adbed0931dbd37025866a1a67d"
+              },
+              "eye_left_closure_caucasian_sha256": {
+                "const": "ff0d21ceb6da55fe51e03b48a7562a650924fea9bef0c686fcd7aa44d16422ed"
+              },
+              "eye_right_closure_african_sha256": {
+                "const": "c1b0c3609d9fb59a97dabe8ace10622da58969f4566125b38f47285afef320d5"
+              },
+              "eye_right_closure_asian_sha256": {
+                "const": "0c99a5f559a1d67f630a329b9724fe3742a2c35709b8baa8a6d37903f35b9b77"
+              },
+              "eye_right_closure_caucasian_sha256": {
+                "const": "2b7be6bc65845d77e5f83b7bf852090854747e448644997795fa59b6cf76122d"
+              },
+              "mouth_corners_african_sha256": {
+                "const": "5560c685cd55ae6a00830e539ac54135cb4dcfec6a28be90510c931dcfdca478"
+              },
+              "mouth_corners_asian_sha256": {
+                "const": "d881bb8feda2637bdaef2c7d7c6bed12f0be5914949e5a2cb9b06a583af412c0"
+              },
+              "mouth_corners_caucasian_sha256": {
+                "const": "d881bb8feda2637bdaef2c7d7c6bed12f0be5914949e5a2cb9b06a583af412c0"
+              },
+              "mouth_open_african_sha256": {
+                "const": "d710d4ae1693e7278a5bbe620276970fb6e89de139b50aaaea2830c31146459a"
+              },
+              "mouth_open_asian_sha256": {
+                "const": "b52bbe631152844bb7b835c0f98d12ab0a1c0689e02e067b239d8349ccf9aab2"
+              },
+              "mouth_open_caucasian_sha256": {
+                "const": "dc1260a8728d93a9c52d6b35b5f55ad39ab8096090acd5ccad7f973c26e28818"
+              },
+              "prepared_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "report_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
               }
             }
           }

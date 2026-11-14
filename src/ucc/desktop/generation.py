@@ -53,6 +53,8 @@ def bundled_worker_path() -> Path:
     native_files += [worker.parent/name for name in ('hand_policy.py', 'hand_geometry.py', 'hand_assets.py')]
     native_files += [worker.parent/name for name in ('hand_master.py','hand_revision.py','hand_pose_checks.py')]
     native_files += [worker.parent/'hand_bounds.py']
+    native_files += [worker.parent/name for name in ('expression_policy.py', 'expression_geometry.py',
+                                                   'expression_prepare.py')]
     if (not worker.is_file() or worker.is_symlink()
             or not service.is_file() or service.is_symlink()
             or not preview.is_file() or preview.is_symlink()

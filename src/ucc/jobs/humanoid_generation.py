@@ -79,6 +79,8 @@ def generate_humanoid(
             "Cannot regenerate a new base while character parts or animation "
             "references are attached; create a clean project for this operation"
         )
+    if initial.expression is not None:
+        raise ValidationError('Prepared facial controls require expression-aware generation; the saved master is unchanged')
     if initial.facial_parameters:
         raise ValidationError("Saved facial intent requires face-aware generation; body-only generation cannot discard it")
     macros = from_saved_parameters(initial.parameters)

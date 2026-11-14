@@ -65,6 +65,15 @@ OPERATIONS.add('inspect_mpfb_face_assets')
 OPERATIONS |= {'build_mpfb_hand_assets', 'verify_mpfb_hand_assets'}
 OPERATIONS |= {'stage_mpfb_hand_revision','verify_mpfb_hand_revision'}
 OPERATIONS.add('inspect_mpfb_hand_bounds')
+OPERATIONS |= {'stage_mpfb_expression_keys', 'verify_mpfb_expression_keys'}
+
+
+def mpfb_expression_keys(job: dict, root: Path) -> dict:
+    from blender_bridge.expression_prepare import stage_preparation, verify_preparation
+    if job['input_project'] != 'candidate.blend':
+        raise ValueError('Expression preparation requires fixed staged candidate.blend')
+    action = stage_preparation if job['operation'] == 'stage_mpfb_expression_keys' else verify_preparation
+    return action(bpy, root, job['options'])
 
 
 def mpfb_hand_bounds(job: dict,root: Path) -> dict:
@@ -398,6 +407,8 @@ def main() -> int:
     try:
         action = {"inspect_environment": inspect_environment,
                   'stage_mpfb_face': mpfb_face,
+                  'stage_mpfb_expression_keys': mpfb_expression_keys,
+                  'verify_mpfb_expression_keys': mpfb_expression_keys,
                   'verify_mpfb_face': mpfb_face,
                   'inspect_mpfb_face_assets': mpfb_face_assets,
                   'build_mpfb_hand_assets': mpfb_hand_assets,

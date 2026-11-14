@@ -8,6 +8,8 @@ from .anatomy import get_slot
 from .errors import CompatibilityError, ValidationError
 from .models import CharacterProject, MORPH_LIMITS, PartAsset, PartInstance, finite_number
 from .facial import FACE_DEFAULTS, validate_face_parameters
+from .expressions import (DEFAULTS as EXPRESSION_DEFAULTS, ExpressionState,
+                          validate_expression_parameters, validate_expression_part_rebind, is_sha256)
 
 
 class CharacterSession:
@@ -74,8 +76,49 @@ class CharacterSession:
             return self._project
         values.update(intent)
         geometry = "generated_unverified" if self._project.master_blend else "not_generated"
-        return self._commit(replace(self._project, schema_version=2,
+        return self._commit(replace(self._project, schema_version=max(2, self._project.schema_version),
                                    facial_parameters=tuple(sorted(values.items())), geometry_state=geometry))
+
+    def set_expression_parameter(self, name: str, value: float) -> CharacterProject:
+        intent = validate_expression_parameters({name: value}, partial=True)
+        state = self._project.expression
+        if state is None:
+            raise CompatibilityError('Prepare real facial controls before setting expression preview strengths')
+        values = dict(state.parameters)
+        values.update(intent)
+        return self._commit(replace(self._project, expression=ExpressionState(
+            state.library_sha256, tuple(sorted(values.items())))))
+
+    def reset_expression(self) -> CharacterProject:
+        state = self._project.expression
+        if state is None:
+            raise CompatibilityError('No prepared facial controls to reset')
+        return self._commit(replace(self._project, expression=ExpressionState(
+            state.library_sha256, tuple(EXPRESSION_DEFAULTS.items()))))
+
+    def accept_saved_expression_master(self, saved: CharacterProject, *, library_sha256: str) -> CharacterProject:
+        """Adopt one completed neutral-key/hand composition as one history step."""
+        if (not is_sha256(library_sha256) or saved.expression is None
+                or saved.expression.library_sha256 != library_sha256):
+            raise ValidationError('Prepared expression result has a different library identity')
+        if saved == self._project:
+            return saved
+        if (self._project.expression is not None or not saved.expression.neutral
+                or saved.revision != self._project.revision+1 or saved.schema_version != 3
+                or saved.geometry_state != 'generated_unverified' or saved.rig_profile is not None
+                or saved.master_blend is None or saved.master_blend == self._project.master_blend):
+            raise ValidationError('Prepared expression master does not extend the current neutral source')
+        validate_expression_part_rebind(self._project.parts, saved.parts)
+        expected = replace(self._project, schema_version=3, expression=saved.expression,
+                           master_blend=saved.master_blend, parts=saved.parts,
+                           revision=saved.revision, geometry_state='generated_unverified', rig_profile=None)
+        if expected != saved:
+            raise ValidationError('Expression preparation changed unrelated character intent')
+        self._undo.append(self._project)
+        self._undo = self._undo[-self._history_limit:]
+        self._redo.clear()
+        self._project = saved
+        return saved
 
     def accept_saved_master(self, saved: CharacterProject) -> CharacterProject:
         """Keep an externally committed immutable-master pointer in session history."""
