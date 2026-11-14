@@ -12,7 +12,8 @@ class HandArtifactPrivacyTests(unittest.TestCase):
         approved={'ucc-mpfb-smoke/summary.json','ucc-mpfb-smoke/mpfb_create_result.json',
                   'ucc-mpfb-smoke/reopen_result.json','ucc-production-worker/production_summary.json',
                   'ucc-project-integration/transaction_summary.json','ucc-custom-face/custom_face_summary.json',
-                  'ucc-hand-parts/hand_parts_summary.json','ucc-native-fit/native_fit_summary.json',
+                  'ucc-hand-parts/hand_parts_summary.json','ucc-expressions/expression_summary.json',
+                  'ucc-native-fit/native_fit_summary.json',
                   'ucc-body-contacts/body_contact_summary.json','ucc-symmetric-math.json',
                   'ucc-symmetric-fit/symmetric_fit_summary.json'}
         self.assertEqual(set(retained),{'${{ runner.temp }}/'+path for path in approved})
@@ -24,6 +25,8 @@ class HandArtifactPrivacyTests(unittest.TestCase):
                              'hand_revision_report.json','hand_assets_report.json'} for row in retained))
         self.assertLess(text.index('python3 ci/verify_custom_face.py'),text.index('python3 ci/verify_hand_parts.py'))
         self.assertIn('--source-root "$RUNNER_TEMP/ucc-custom-face"',text)
+        self.assertLess(text.index('python3 ci/verify_hand_parts.py'), text.index('python3 ci/verify_expressions.py'))
+        self.assertIn('--source-root "$RUNNER_TEMP/ucc-hand-parts"', text)
 
 
 if __name__=='__main__':unittest.main()
