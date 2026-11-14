@@ -68,6 +68,12 @@ OPERATIONS.add('inspect_mpfb_hand_bounds')
 OPERATIONS |= {'stage_mpfb_expression_keys', 'verify_mpfb_expression_keys'}
 OPERATIONS.add('inspect_mpfb_expression_keys')
 OPERATIONS |= {'stage_mpfb_expression_clip', 'verify_mpfb_expression_clip'}
+OPERATIONS.add('inspect_mpfb_neutral_master')
+
+
+def mpfb_neutral_master(job: dict, root: Path) -> dict:
+    from blender_bridge.neutral_master import inspect_neutral
+    return inspect_neutral(bpy, root, job)
 
 
 def mpfb_expression_clip(job: dict, root: Path) -> dict:
@@ -419,6 +425,7 @@ def main() -> int:
              "operation": operation, "status": "error", "details": {}, "error": "Unknown error"}
     try:
         action = {"inspect_environment": inspect_environment,
+                  'inspect_mpfb_neutral_master': mpfb_neutral_master,
                   'stage_mpfb_face': mpfb_face,
                   'stage_mpfb_expression_keys': mpfb_expression_keys,
                   'stage_mpfb_expression_clip': mpfb_expression_clip,

@@ -23,6 +23,7 @@ SUPPORTED_OPERATIONS.add('inspect_mpfb_hand_bounds')
 SUPPORTED_OPERATIONS |= {'stage_mpfb_expression_keys', 'verify_mpfb_expression_keys'}
 SUPPORTED_OPERATIONS.add('inspect_mpfb_expression_keys')
 SUPPORTED_OPERATIONS |= {'stage_mpfb_expression_clip', 'verify_mpfb_expression_clip'}
+SUPPORTED_OPERATIONS.add('inspect_mpfb_neutral_master')
 BODY_CONTACT_OPERATIONS = {'verify_fitted_body_contacts', 'verify_native_body_contacts', 'inspect_fitted_body_contacts', 'inspect_native_body_contacts'}
 BODY_CONTACT_OPERATIONS |= {'inspect_native_body_areas','verify_native_body_areas','inspect_fitted_body_areas','verify_fitted_body_areas'}
 BODY_CONTACT_OPERATIONS |= {'inspect_native_skin_inclusion','verify_native_skin_inclusion','inspect_fitted_skin_inclusion','verify_fitted_skin_inclusion'}
@@ -63,6 +64,11 @@ class JobRequest:
         if type(self.options) is not dict:
             raise ValidationError("options must be JSON object")
         _check_json(self.as_dict())
+        if self.operation == 'inspect_mpfb_neutral_master':
+            from ucc.animations.source_rest_frames import is_sha256
+            if (self.input_project != 'candidate.blend' or set(self.options) != {'master_sha256'}
+                    or not is_sha256(self.options['master_sha256'])):
+                raise ValidationError('Neutral inspection requires fixed candidate.blend and its exact SHA-256 only')
         if self.operation == 'inspect_mpfb_face_assets' and (self.input_project is not None or self.options):
             raise ValidationError('Facial asset inspection has no selectable paths or options')
         if self.operation in {'build_mpfb_hand_assets', 'verify_mpfb_hand_assets'}:
