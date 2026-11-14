@@ -4,6 +4,7 @@ from hashlib import sha256
 import os
 from pathlib import Path
 from types import SimpleNamespace
+from threading import Event
 import unittest
 from unittest.mock import patch
 
@@ -82,6 +83,34 @@ class BodyReviewQtTests(unittest.TestCase):
             values=review.call_args.kwargs;self.assertIs(values['fitted'],self.f.fitted)
             self.assertIs(values['cancel'],kwargs['cancel']);self.assertTrue(values['permission'].allow('local_preview')[0])
 
+    def test_menu_cancels_real_background_fit_and_body_review_without_replacing_motion(self):
+        from PySide6.QtCore import QEventLoop,QTimer
+        from ucc.core.errors import ProjectStorageError
+        for kind in ('fitted_comparison','body_contacts'):
+            with self.subTest(kind=kind):
+                cancel=Event();started=Event();errors=[];state={};before=self.w.motion_viewer.cache
+                def work(cancel=cancel,started=started):
+                    started.set()
+                    if not cancel.wait(2):raise RuntimeError('Menu did not deliver cancellation')
+                    raise ProjectStorageError('Unit local review cancelled; original motion retained')
+                loop=QEventLoop();poll=QTimer();guard=QTimer();guard.setSingleShot(True)
+                def tick():
+                    if started.is_set() and not state:
+                        state.update(enabled=self.w.cancel_generation_action.isEnabled(),message=self.w.statusBar().currentMessage())
+                        self.w.cancel_generation_action.trigger();state['delivered']=cancel.is_set()
+                        cancel.set()  # Clean up a failing regression without stranding its worker.
+                    if not self.w.jobs.busy:loop.quit()
+                poll.timeout.connect(tick);guard.timeout.connect(loop.quit)
+                with (patch('ucc.desktop.contact_fit.show_contact_error',side_effect=lambda _w,e:errors.append(e)),
+                      patch('ucc.desktop.body_contact_review.show_body_contact_error',side_effect=lambda _w,e:errors.append(e))):
+                    self.w._submit(kind,work,cancel=cancel)
+                    poll.start(10);guard.start(4000);loop.exec();poll.stop();guard.stop();cancel.set()
+                self.assertFalse(self.w.jobs.busy);self.assertFalse(self.w.cancel_generation_action.isEnabled())
+                self.assertTrue(started.is_set());self.assertTrue(state['enabled']);self.assertTrue(state['delivered'])
+                self.assertIn('Fitting' if kind=='fitted_comparison' else 'Reviewing',state['message'])
+                self.assertEqual(len(errors),1);self.assertIn('cancelled',errors[0])
+                self.assertIs(self.w.motion_viewer.cache,before);self.assertIs(self.w._native_playback,self.f.original)
+
     def test_unavailable_body_comparison_never_displays_zero_as_a_verdict(self):
         unavailable=SurfaceReview('UNAVAILABLE','SURFACE_WORKLOAD_EXCEEDED',((),)*3,((0,0),)*3,('a'*64,)*3,POLICY)
         result=replace(self.result,contacts=BodyContacts(unavailable,unavailable,None))
@@ -96,8 +125,15 @@ class BodyReviewQtTests(unittest.TestCase):
         from ucc.jobs.fitted_playback import FittedComparison
         areas=BodyContactAreas(self.result.contacts,'CHECKED','','a'*64,
             (frozenset({1,2}),frozenset(),frozenset()),(frozenset({1}),frozenset(),frozenset()),(),())
-        body=replace(self.result,areas=areas)
-        return FittedComparison(self.f.original,self.f.fitted,'unit-candidate','unit-policy',body,require_body_fit_guard(body))
+        from ucc.preview.central_enclosure import CentralEnclosure,EnclosureVariant
+        from ucc.jobs.enclosure_fit_guard import require_enclosure_fit_guard
+        enclosure=self.report.parent/'central_enclosure.json';enclosure.write_text('{"unit_only":true}')
+        receipt=self.report.parent/'anatomical-result.json';receipt.write_text('{"unit_only":true}')
+        variant=EnclosureVariant(((frozenset(),frozenset()),)*3,((frozenset(),frozenset()),)*3)
+        body=replace(self.result,areas=areas,enclosure=CentralEnclosure(variant,variant),
+            private_enclosure_report=str(enclosure),enclosure_report_sha256=sha256(enclosure.read_bytes()).hexdigest(),
+            private_anatomical_verification=str(receipt),anatomical_verification_sha256=sha256(receipt.read_bytes()).hexdigest())
+        return FittedComparison(self.f.original,self.f.fitted,'unit-candidate','unit-policy',body,require_body_fit_guard(body),enclosure_fit_guard=require_enclosure_fit_guard(body))
 
     def test_automatic_fit_requires_guard_before_publication_then_shows_stable_body_review(self):
         from ucc.desktop.contact_fit import publish_fitted_result
@@ -105,6 +141,7 @@ class BodyReviewQtTests(unittest.TestCase):
         with patch('ucc.desktop.native_playback.publish_comparison') as publish:
             with self.assertRaises(ValidationError):publish_fitted_result(self.w,replace(result,body_review=None))
             with self.assertRaises(ValidationError):publish_fitted_result(self.w,replace(result,body_fit_guard=None))
+            with self.assertRaises(ValidationError):publish_fitted_result(self.w,replace(result,enclosure_fit_guard=None))
             publish.assert_not_called()
         publish_fitted_result(self.w,result)
         self.assertIs(self.w._body_contact_review,result.body_review)
@@ -116,6 +153,26 @@ class BodyReviewQtTests(unittest.TestCase):
         metadata.write_bytes(metadata.read_bytes()+b' ')
         with self.assertRaises(ValidationError):publish_fitted_result(self.w,result)
         self.assertIsNone(self.w._native_review);self.assertIsNone(self.w.motion_viewer.cache)
+
+    def test_enclosure_receipt_replacement_clears_both_visible_variants(self):
+        from ucc.desktop.contact_fit import publish_fitted_result
+        result=self.guarded_comparison();publish_fitted_result(self.w,result)
+        receipt=Path(result.body_review.private_anatomical_verification)
+        self.assertIn(str(receipt),self.w._motion_watcher.files())
+        self.assertIn(result.body_review.private_enclosure_report,self.w._motion_watcher.files())
+        receipt.write_text('changed unit receipt',encoding='utf-8');QTest.qWait(150)
+        self.assertIsNone(self.w.motion_viewer.cache);self.assertIsNone(self.w._fitted_playback)
+
+    def test_new_enclosed_hand_area_is_rejected_before_either_variant_is_published(self):
+        from ucc.desktop.contact_fit import publish_fitted_result,fit_error_message
+        result=self.guarded_comparison();body=result.body_review
+        variant=replace(body.enclosure.fitted,inside=((frozenset({1}),frozenset()),)*3)
+        body=replace(body,enclosure=replace(body.enclosure,fitted=variant))
+        with patch('ucc.desktop.native_playback.publish_comparison') as publish:
+            with self.assertRaisesRegex(ValidationError,'ENCLOSURE_FIT_INTRODUCES_BURIED_SKIN'):
+                publish_fitted_result(self.w,replace(result,body_review=body))
+            publish.assert_not_called()
+        self.assertIn('bury new hand areas',fit_error_message('ENCLOSURE_FIT_INTRODUCES_BURIED_SKIN'))
 
     def test_new_stable_contact_area_is_a_plain_rejection_even_when_pairs_decrease(self):
         from ucc.desktop.contact_fit import publish_fitted_result,fit_error_message

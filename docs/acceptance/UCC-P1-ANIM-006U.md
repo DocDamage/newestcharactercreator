@@ -115,3 +115,18 @@ contacts, grasp intent, visual approval and engine imports remain unverified.
 
 Next after verification: strengthen body-contact/containment checks and address
 the separate remaining contact interval, then test additional reviewed clips.
+
+
+## Final exact-head CI acceptance
+
+At `74453368a90762390afb7d4af5dec1ff670f6fab`, all five workflows pass:
+[core](https://github.com/DocDamage/newestcharactercreator/actions/runs/43404663996),
+[Qt](https://github.com/DocDamage/newestcharactercreator/actions/runs/43404663868),
+[preflight](https://github.com/DocDamage/newestcharactercreator/actions/runs/43404663906),
+[Windows portable](https://github.com/DocDamage/newestcharactercreator/actions/runs/43404663866),
+and [all three real Blender suites](https://github.com/DocDamage/newestcharactercreator/actions/runs/43404663953).
+All three artifact ZIPs match GitHub SHA-256 digests; all fifteen JSON records
+and domain assertions are independently checked. Both area and hand proposal
+operations reject absent crossings and rehashed false areas without partial
+policies. PR #55 is ready for review and remains unmerged. Grasp, visual quality,
+remaining body contacts and engine portability remain unapproved.

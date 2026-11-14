@@ -39,6 +39,7 @@ from blender_bridge.native_playback_cache import export_native_cache
 from blender_bridge.native_surface_verify import verify_surface_review
 from blender_bridge.body_contact_review import checked_body_job,inspect_body_contacts,verify_body_contacts
 from blender_bridge.body_contact_areas import OPERATIONS as BODY_AREA_OPERATIONS,checked_area_job,inspect_body_areas,verify_body_areas
+from blender_bridge.anatomical_review import OPERATIONS as ANATOMICAL_OPERATIONS,checked_anatomical_job,inspect_anatomical_safety,verify_anatomical_safety
 from blender_bridge.skin_inclusion_review import OPERATIONS as SKIN_OPERATIONS,checked_skin_job,inspect_skin,verify_skin
 from blender_bridge.native_contact_candidate import checked_candidate_job,propose_contact_fit
 from blender_bridge.native_area_candidate import OPERATION as AREA_CANDIDATE_OPERATION,checked_area_candidate_job,propose_area_contact_fit
@@ -53,6 +54,7 @@ OPERATIONS = {"inspect_environment", "inspect_character", "create_human", "expor
 OPERATIONS |= BODY_CONTACT_OPERATIONS
 OPERATIONS |= set(BODY_AREA_OPERATIONS)
 OPERATIONS |= set(SKIN_OPERATIONS)
+OPERATIONS |= set(ANATOMICAL_OPERATIONS)
 OPERATIONS |= {"propose_native_contact_fit", "fit_native_fbx_body", "measure_native_fit", "verify_native_fit", "cache_native_fit"}
 OPERATIONS.add(AREA_CANDIDATE_OPERATION)
 OPERATIONS.add('propose_native_hand_contact_fit')
@@ -66,6 +68,11 @@ def native_body_contacts(job: dict, root: Path) -> dict:
 def native_body_areas(job: dict,root: Path) -> dict:
     options=checked_area_job(job)
     return (verify_body_areas if job['operation'].startswith('verify_') else inspect_body_areas)(bpy,root,options)
+
+
+def native_anatomical_safety(job: dict,root: Path) -> dict:
+    options=checked_anatomical_job(job)
+    return (verify_anatomical_safety if job['operation'].startswith('verify_') else inspect_anatomical_safety)(bpy,root,options)
 
 
 def native_skin_inclusion(job: dict,root: Path) -> dict:
@@ -374,7 +381,11 @@ def main() -> int:
                    "inspect_native_skin_inclusion": native_skin_inclusion,
                    "verify_native_skin_inclusion": native_skin_inclusion,
                    "inspect_fitted_skin_inclusion": native_skin_inclusion,
-                   "verify_fitted_skin_inclusion": native_skin_inclusion}[operation]
+                   "verify_fitted_skin_inclusion": native_skin_inclusion,
+                   "inspect_native_anatomical_safety": native_anatomical_safety,
+                   "verify_native_anatomical_safety": native_anatomical_safety,
+                   "inspect_fitted_anatomical_safety": native_anatomical_safety,
+                   "verify_fitted_anatomical_safety": native_anatomical_safety}[operation]
         reply["details"] = action(data, root)
         reply["status"] = "ok"
         reply["error"] = None

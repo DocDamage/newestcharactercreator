@@ -129,3 +129,18 @@ tested measurement/helper file bytes match the production files exactly. All
 647 local tests pass (634 pass, 13 Windows symlink skips; 87.997 seconds). Final
 exact-head remote workflows remain required. Angular mismatch errors now include
 bounded scalar metrics for diagnosis.
+
+
+## Final corrected-head CI acceptance
+
+At `4904d21a4ac863d915cc05970a9a71a3c9e2c9cb`, all five workflows pass:
+[core](https://github.com/DocDamage/newestcharactercreator/actions/runs/43403465593),
+[Qt](https://github.com/DocDamage/newestcharactercreator/actions/runs/43403465615),
+[preflight](https://github.com/DocDamage/newestcharactercreator/actions/runs/43403465790),
+[Windows portable](https://github.com/DocDamage/newestcharactercreator/actions/runs/43403465576),
+and [all three real Blender suites](https://github.com/DocDamage/newestcharactercreator/actions/runs/43403465575).
+All three artifact ZIPs match GitHub SHA-256 digests; all fifteen JSON records
+and their domain assertions are independently checked. V2 saved poses, raw and
+corrected skin, topology, complete cache, fifteen decoded views, hand-Action
+corruption rejection and unchanged bounds pass. PR #54 is ready for review and
+remains unmerged. This does not approve animation quality or engine imports.

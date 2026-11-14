@@ -49,6 +49,9 @@ def publish_body_contact_review(window,result):
         controller.store.root/'project.ucc.json':result.metadata_sha256,Path(preview.mapping_profile_used):bindings['mapping_sha256'],
         Path(preview.private_timeline):bindings['timeline_sha256'],Path(preview.private_visual_review_blend):bindings['review_sha256'],
         Path(preview.private_timeline).parent/'source_snapshot.json':bindings['snapshot_sha256'],Path(result.private_report):result.report_sha256}
+    if result.enclosure is not None:
+        paths.update({Path(result.private_enclosure_report):result.enclosure_report_sha256,
+                      Path(result.private_anatomical_verification):result.anatomical_verification_sha256})
     if fitted is not None:
         other=result.fitted_playback
         if (other.job_id!=fitted.job_id or other.fitted_scene_sha256!=fitted.fitted_scene_sha256 or
@@ -73,6 +76,12 @@ def publish_body_contact_review(window,result):
             if areas.status=='CHECKED':
                 text+=f' Newly involved contact areas: {len(areas.new_area_frames)} frames. Increased pairs for either hand: {len(areas.more_hand_pair_frames)} frames.'
             else:text+=' Stable contact-area comparison unavailable.'
+    if result.enclosure is not None:
+        for name in ('original','fitted'):
+            variant=getattr(result.enclosure,name)
+            if variant is not None:
+                text+=f' Trunk enclosure ({name}): {sum(any(row) for row in variant.inside)} frames with enclosed hand probes; {sum(any(row) for row in variant.ambiguous)} frames with uncertainty.'
+        text+=' These observations do not approve remaining buried or uncertain skin.'
     window.log.setPlainText('VERIFIED HAND / CENTRAL-BODY CONTACT REVIEW\n'+text+'\n'
         'Use the inspection selector to switch between opposite-arm and central-body annotations at the same source frame.\n'
         'Next flagged frame, Max pairs, Highlight and Focus use the selected inspection.\n'

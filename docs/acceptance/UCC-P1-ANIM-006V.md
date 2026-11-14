@@ -124,3 +124,18 @@ unverified. No dependency, install, model, license-right or asset-upload change.
 
 Next: independently validated anatomical body-volume observations that do not
 confuse connected-skin fold cancellation with clearance, before further fitting.
+
+
+## Updated unified Linux body gate
+
+The complete updated original-source gate passes in actual Linux job
+[131840552513](https://github.com/DocDamage/newestcharactercreator/actions/runs/43412032000).
+Its independent exact reference again has 2,089 nonzero probes; the Linux
+worker reports 2,060 definite observations and 44 unknowns, with zero definite
+false classifications. Rehashed fabrication rejection and whole-variant clearing
+pass in the unified gate. Body/regression ZIP digests and all ten contained JSON
+records are checked. All five workflows and all three Linux suites now pass at
+`f96ee6bd5f1da7477d7224305c20da9c8015a7b3`. All three ZIP digests and all fifteen
+JSON records/domain assertions are independently verified. PR #56 is ready for
+review and remains unmerged. Zero skin winding still does not prove anatomical
+clearance.

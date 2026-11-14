@@ -326,7 +326,7 @@ class MainWindow(QMainWindow):
             self.undo_action.setEnabled(not busy and state.can_undo)
             self.redo_action.setEnabled(not busy and state.can_redo)
         self.cancel_generation_action.setEnabled(
-            busy and self._work_kind in {"generate_humanoid", "saved_master_preview", "body_refit", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain", "native_body", "native_playback", "fbx_intake"}
+            busy and self._work_kind in {"generate_humanoid", "saved_master_preview", "body_refit", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain", "native_body", "native_playback", "fbx_intake", "fitted_comparison", "body_contacts"}
         )
         self.statusBar().showMessage(
             ("Generating real MPFB humanoid in Blender..."
@@ -349,10 +349,14 @@ class MainWindow(QMainWindow):
              if self._work_kind == "native_body" else
              "Preparing complete verified skin playback inside UCC..."
              if self._work_kind == "native_playback" else
+             "Fitting hand/arm motion and verifying private animation..."
+             if self._work_kind == "fitted_comparison" else
+             "Reviewing hand/body contacts on private animation copies..."
+             if self._work_kind == "body_contacts" else
              "Measuring native FBX source skeleton and complete timeline..."
              if self._work_kind == "fbx_intake" else
              "Converting saved Blender master to a static GLB preview...")
-            if busy and self._work_kind in {"generate_humanoid", "saved_master_preview", "body_refit", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain", "native_body", "native_playback", "fbx_intake"}
+            if busy and self._work_kind in {"generate_humanoid", "saved_master_preview", "body_refit", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain", "native_body", "native_playback", "fbx_intake", "fitted_comparison", "body_contacts"}
             else ("Working on local files..." if busy else "Local task finished")
         )
 

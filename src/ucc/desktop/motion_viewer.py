@@ -96,7 +96,7 @@ class MotionViewer(QWidget):
         self.variant.hide();self.layout.addWidget(self.variant)
         self.variant.currentIndexChanged.connect(self._switch_variant)
         self.inspection=QComboBox();self.inspection.addItems(['Hand / opposite arm','Hand / head and torso'])
-        self.inspection.setToolTip('Central body includes the head, neck and spine chain. Other body pairs, solid containment and grasp intent are not evaluated. Focus resets when changing inspection.')
+        self.inspection.setToolTip('Surface highlights cover the head, neck and spine chain. Automatic fitting separately checks trunk enclosure; these highlights do not show that check. Grasp intent remains unverified. Focus resets when changing inspection.')
         self.inspection.hide();self.layout.addWidget(self.inspection)
         self.inspection.currentIndexChanged.connect(lambda _index:self._select_cache())
         self.transport=QHBoxLayout()
@@ -256,7 +256,7 @@ class MotionViewer(QWidget):
         if surface is not None:
             label='Hand/body' if surface.policy==BODY_POLICY else 'Hand/opposite-arm'
             self.highlight.setText('Highlight hand/body intersections' if surface.policy==BODY_POLICY else 'Highlight hand/arm intersections')
-            self.highlight.setToolTip('Checks each hand against the head and torso. Arms, legs, solid containment and grasp intent are outside this review.' if surface.policy==BODY_POLICY else
+            self.highlight.setToolTip('Highlights hand crossings against the head and spine chain. Automatic fitting reports its separate trunk-enclosure check in the log. Other body pairs and grasp intent remain unverified.' if surface.policy==BODY_POLICY else
                 'Checks each hand against the opposite upper-limb branch, including the shoulder. Other body-part pairs and correct grasp/contact are not evaluated.')
             text=(f"{label} review: {len(surface.flagged_frames)} flagged frames; current frame {sum(surface.pairs[frame])} triangle pairs. Contact quality remains unapproved."
                   if surface.status=="CHECKED" else "Surface inspection unavailable for this rig or workload; no contact verdict.")

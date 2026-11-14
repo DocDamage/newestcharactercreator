@@ -10,6 +10,10 @@ from .generation import bundled_worker_path
 
 def fit_error_message(error: str) -> str:
     reasons={
+        'ENCLOSURE_FIT_INTRODUCES_BURIED_SKIN':'The correction would bury new hand areas inside the torso. Original motion is retained.',
+        'ENCLOSURE_FIT_INTRODUCES_UNCERTAINTY':'The correction creates new hand areas whose torso clearance cannot be determined. Original motion is retained.',
+        'ENCLOSURE_FIT_UNAVAILABLE':'A complete torso-enclosure comparison was unavailable. Original motion is retained.',
+        'ENCLOSURE_FIT_EVIDENCE_CHANGED':'Torso-enclosure evidence changed before publication. Original motion is retained.',
         'NO_BOUNDED_HAND_CONTACT_CANDIDATE_FOUND':'No arm and wrist correction cleared these crossings without creating new body-contact areas within the current limits. Original motion is retained.',
         'SEED_COMPLETE_BODY_CONSTRAINTS_UNAVAILABLE':'The starting correction did not have complete body-contact measurements. Original motion is retained.',
         'FRESH_SEED_BODY_REPRODUCTION_FAILED':'The final body-contact check did not reproduce. Original motion is retained.',
@@ -69,9 +73,12 @@ def publish_fitted_result(window,result):
     from .native_playback import publish_comparison
     from .body_contact_review import publish_body_contact_review
     from ucc.jobs.body_fit_guard import require_body_fit_guard
+    from ucc.jobs.enclosure_fit_guard import require_enclosure_fit_guard
     if result.candidate_job_id:
         if result.body_review is None or result.body_fit_guard!=require_body_fit_guard(result.body_review):
             raise ValidationError('Automatic fit lacks its verified central-body guard')
+        if result.enclosure_fit_guard!=require_enclosure_fit_guard(result.body_review):
+            raise ValidationError('Automatic fit lacks its verified trunk-enclosure guard')
     publish_comparison(window,result.original,result.fitted)
     if result.body_review is not None:
         try:publish_body_contact_review(window,result.body_review)

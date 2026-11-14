@@ -63,6 +63,13 @@ def read_body_contact_areas(folder,report,verification,bindings,baseline,profile
     validate_body_measurement(report,bindings,baseline,paired)
     validate_body_receipt(verification,bindings,baseline,paired,report['report']['sha256'])
     data,_=read_json_record(folder,report['report'],'body_contacts.json',40*1024*1024,cancel_check=cancel_check)
+    return parse_body_contact_areas(data,bindings,baseline,profile,original_cache,fitted_timeline=fitted_timeline,
+        fitted_cache=fitted_cache,cancel_check=cancel_check)
+
+
+def parse_body_contact_areas(data,bindings,baseline,profile,original_cache,*,fitted_timeline=None,
+                             fitted_cache=None,cancel_check=lambda:None) -> BodyContactAreas:
+    paired=fitted_timeline is not None
     fields={'schema_version','policy','status','reason','bindings','body_contacts','polygons','polygon_topology_sha256','originals_unchanged'}|FLAGS
     if (type(data) is not dict or set(data)!=fields or type(data['schema_version']) is not int or data['schema_version']!=1 or
         data['policy']!=POLICY or type(data['status']) is not str or data['status'] not in {'CHECKED','UNAVAILABLE'} or
