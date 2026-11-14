@@ -10,7 +10,7 @@ from blender_bridge.fbx_source import pose_digest
 
 
 def evaluate_native_timeline(bpy,human,rig,source,expected,pairs,world,root_bind_head,
-                             bind_points,rotation_reader,review_path):
+                             bind_points,rotation_reader,review_path,*,hip_anchor=None):
     from mathutils import Vector
     scene=bpy.context.scene
     prior=(scene.frame_start,scene.frame_end,rig.show_in_front,scene.frame_current)
@@ -26,6 +26,7 @@ def evaluate_native_timeline(bpy,human,rig,source,expected,pairs,world,root_bind
     maximum_residual=0.
     previous_root=None
     first_strain=None
+    max_hip_error=0.
     local_world_inverse=human.matrix_world.inverted().to_3x3()
     try:
         scene.frame_start,scene.frame_end=1,frames
@@ -71,6 +72,13 @@ def evaluate_native_timeline(bpy,human,rig,source,expected,pairs,world,root_bind
                 "root_world_head":list(root_head),"root_speed_world":speed,
                 "target_global_poses":matrices,"target_pose_sha256":pose_digest([float(v) for line in world for v in line],matrices),
                 "global_pose_residual":residual})
+            if hip_anchor is not None:
+                points_hip=[world@rig.pose.bones[name].matrix.translation for name in hip_anchor["targets"]]
+                center=[sum(p[i] for p in points_hip)/2 for i in range(3)]
+                error=math.dist(center,hip_anchor["expected"][frame-1])
+                if error>1e-4:raise ValueError("Actual native hip trajectory differs from source joint heads")
+                rows[-1]["hip_midpoint_world"]=center
+                max_hip_error=max(max_hip_error,error)
             bind_rows.append({"frame":frame,**bind_strain.measure(points,edges,frame)})
             previous=deformed
         if len({r["deformation_sha256"] for r in rows})<3 or sum(r["moved_vertices"]>=16 for r in rows[1:])<2:
@@ -84,7 +92,12 @@ def evaluate_native_timeline(bpy,human,rig,source,expected,pairs,world,root_bind
         h=sha256()
         with review_path.open("rb") as stream:
             for chunk in iter(lambda:stream.read(1024*1024),b""):h.update(chunk)
-        return {"motion_quality_schema_version":1,"mesh_edge_strain":first_strain.report(),
+        anchor_evidence={} if hip_anchor is None else {"root_motion_policy":"SOURCE_HIP_MIDPOINT_V1","hip_anchor":{
+            "source_bones":hip_anchor["sources"],"target_bones":hip_anchor["targets"],
+            "source_bind_midpoint_world":hip_anchor["source_bind_midpoint_world"],
+            "target_bind_midpoint_world":hip_anchor["target_bind_midpoint_world"],
+            "frames_measured":frames,"max_residual_world":max_hip_error}}
+        return {**anchor_evidence,"motion_quality_schema_version":1,"mesh_edge_strain":first_strain.report(),
                 "bind_edge_strain":bind_strain.report(),"bind_relative_frames":bind_rows,
                 "full_timeline_frames":rows,"root_motion_metrics":root_metrics,
                 "deformation_reference":"ROOT_TRANSLATION_REMOVED",

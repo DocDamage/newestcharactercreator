@@ -97,14 +97,16 @@ def verify_private_renders(folder: Path, raw: dict[str, Any], *, source_sha: str
 
 
 def verify_native_renders(folder: Path, raw: dict[str, Any], timeline: dict) -> str:
+    anchored=timeline.get("root_motion_policy")=="SOURCE_HIP_MIDPOINT_V1"
     bindings={**raw["bindings"],"review_action_sha256":raw["visual_review_blend"]["sha256"],
               "timeline_sha256":raw["timeline"]["sha256"],"source_first_frame":timeline["source_first_frame"],
-              "conversion_convention":"NATIVE_ANATOMICAL_REFERENCE_V1","camera_translation_policy":"FOLLOW_ROOT_TRANSLATION"}
+              "conversion_convention":"NATIVE_ANATOMICAL_REFERENCE_V1","camera_translation_policy":"FOLLOW_HIP_MIDPOINT_TRANSLATION" if anchored else "FOLLOW_ROOT_TRANSLATION"}
     return _verify_renders(folder,{**raw,"full_timeline_frames":timeline["full_timeline_frames"]},bindings,
-                           roots={r["frame"]:r["root_world_head"] for r in timeline["full_timeline_frames"]})
+                           roots={r["frame"]:r["hip_midpoint_world" if anchored else "root_world_head"] for r in timeline["full_timeline_frames"]},
+                           offset_key="camera_hip_offset_world" if anchored else "camera_root_offset_world")
 
 
-def _verify_renders(folder: Path, raw: dict[str, Any], bindings: dict, *, roots: dict | None=None) -> str:
+def _verify_renders(folder: Path, raw: dict[str, Any], bindings: dict, *, roots: dict | None=None, offset_key="camera_root_offset_world") -> str:
     summary = raw.get("private_review_renders")
     if (type(summary) is not dict or type(summary.get("image_count")) is not int or
             summary.get("image_count") != 15 or summary.get("animation_visual_quality_verified") is not False):
@@ -164,11 +166,11 @@ def _verify_renders(folder: Path, raw: dict[str, Any], bindings: dict, *, roots:
         if any(record.get(key) != value for key, value in measured.items()):
             raise ValidationError("Private PNG pixel evidence disagrees")
         if roots is not None:
-            offset=record.get("camera_root_offset_world")
+            offset=record.get(offset_key)
             expected=[roots[frame][i]-roots[samples[0]][i] for i in range(3)]
             if (type(offset) is not list or len(offset)!=3 or any(type(v) not in (int,float) for v in offset) or
                     any(not math.isfinite(v) or abs(v-e)>1e-5 for v,e in zip(offset,expected))):
-                raise ValidationError("Native render camera does not follow measured root translation")
+                raise ValidationError("Native render camera does not follow the declared measured trajectory")
     if any(len({r["sha256"] for r in records if r["view"] == view}) < 2 for view in VIEWS):
         raise ValidationError("Rendered views do not show changing samples")
     return str(root / "index.html")

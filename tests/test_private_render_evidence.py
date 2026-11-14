@@ -108,21 +108,27 @@ class PrivateRenderEvidenceTests(unittest.TestCase):
         with self.assertRaisesRegex(ValidationError, "changing"):
             self.verify()
 
-    def test_native_manifest_binds_all_inputs_and_camera_to_measured_root(self):
+    def native_manifest(self, *, hip=False):
         bindings = {key: value*64 for key, value in (("source_sha256", "a"), ("snapshot_sha256", "b"),
                     ("mapping_sha256", "c"), ("master_sha256", "e"))}
         self.raw.update(bindings=bindings, timeline={"sha256": "f"*64})
         timeline = {"source_first_frame": 7, "full_timeline_frames": self.raw["full_timeline_frames"]}
         for row in timeline["full_timeline_frames"]:
             row["root_world_head"] = [row["frame"]*.1, 0., 1.]
+            if hip:row["hip_midpoint_world"] = [row["frame"]*.02, 0., 1.]
+        if hip:timeline["root_motion_policy"]="SOURCE_HIP_MIDPOINT_V1"
         for key in ("source_bvh_sha256", "source_rest_profile_sha256", "source_master_sha256"):
             del self.manifest[key]
         self.manifest.update(**bindings, timeline_sha256="f"*64, source_first_frame=7,
                              conversion_convention="NATIVE_ANATOMICAL_REFERENCE_V1",
-                             camera_translation_policy="FOLLOW_ROOT_TRANSLATION")
+                             camera_translation_policy="FOLLOW_HIP_MIDPOINT_TRANSLATION" if hip else "FOLLOW_ROOT_TRANSLATION")
         for row in self.manifest["images"]:
-            row["camera_root_offset_world"] = [(row["frame"]-1)*.1, 0., 0.]
+            row["camera_hip_offset_world" if hip else "camera_root_offset_world"] = [(row["frame"]-1)*(.02 if hip else .1), 0., 0.]
         self.save_manifest()
+        return timeline
+
+    def test_native_manifest_binds_all_inputs_and_camera_to_measured_root(self):
+        timeline=self.native_manifest()
         self.assertEqual(verify_native_renders(self.folder, self.raw, timeline), str(self.root / "index.html"))
         original = deepcopy(self.manifest)
         for fault in ("map", "snapshot", "timeline", "first", "camera", "root"):
@@ -136,3 +142,10 @@ class PrivateRenderEvidenceTests(unittest.TestCase):
             self.save_manifest()
             with self.subTest(fault=fault), self.assertRaises(ValidationError):
                 verify_native_renders(self.folder, self.raw, timeline)
+
+    def test_anchored_camera_must_follow_actual_hip_instead_of_compensated_floor_root(self):
+        timeline=self.native_manifest(hip=True)
+        self.assertEqual(verify_native_renders(self.folder,self.raw,timeline),str(self.root/"index.html"))
+        self.manifest["images"][-1]["camera_hip_offset_world"]=[2.4,0.,0.]
+        self.save_manifest()
+        with self.assertRaisesRegex(ValidationError,"trajectory"):verify_native_renders(self.folder,self.raw,timeline)

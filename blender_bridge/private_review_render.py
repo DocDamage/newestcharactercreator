@@ -157,7 +157,8 @@ def render_private_review(bpy: Any, human: Any, frames: int, review_path: Path,
                                         "opaque_bounds": bounds,
                                         "evaluated_sha256": signatures[frame]})
                         if root_positions is not None:
-                            records[-1]["camera_root_offset_world"]=list(root_offset)
+                            offset_key="camera_hip_offset_world" if bindings.get("camera_translation_policy")=="FOLLOW_HIP_MIDPOINT_TRANSLATION" else "camera_root_offset_world"
+                            records[-1][offset_key]=list(root_offset)
                     finally:
                         bpy.data.images.remove(image)
             finally:

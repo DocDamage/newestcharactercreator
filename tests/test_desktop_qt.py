@@ -598,6 +598,17 @@ class DesktopQtSmoke(unittest.TestCase):
             self.assertFalse(pane.open_native_renders.isEnabled())
             self.assertFalse(pane.local_preview_review.isChecked())
 
+    def test_native_hip_anchor_result_discloses_error_and_keeps_quality_unverified(self):
+        from types import SimpleNamespace
+        from fixtures.native_body_contract import contract
+        from ucc.desktop.native_body import native_result_text
+        data=contract()[0]
+        data.update(root_motion_policy="SOURCE_HIP_MIDPOINT_V1",hip_anchor={"max_residual_world":1e-7})
+        text=native_result_text(SimpleNamespace(evidence=data))
+        self.assertIn("Hip movement matches",text)
+        self.assertIn("0.0001 mm",text)
+        self.assertIn("foot-contact quality and engine import remain unverified",text)
+
     def test_native_open_refuses_missing_or_changed_review_artifacts(self):
         from types import SimpleNamespace
         from ucc.desktop.native_body import open_native_result

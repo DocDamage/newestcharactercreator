@@ -17,6 +17,7 @@ from blender_bridge.pose_deformation import _evaluated_vertices
 from blender_bridge.motion_quality import JointMotion
 from blender_bridge.native_timeline import evaluate_native_timeline
 from blender_bridge.native_skin import probe_targets
+from blender_bridge.native_anchor import POLICY as HIP_ANCHOR, midpoint, root_position, validate_target_chain
 from blender_bridge.private_review_render import render_private_review
 
 
@@ -85,6 +86,10 @@ def retarget_native(bpy: Any, root: Path, options: dict) -> dict:
     source_points={b["name"]:sw@Vector(b["head"]) for b in source["bones"]}
     target_points={b.name:tw@b.head_local for b in rig.data.bones}
     landmarks=profile["landmarks"]
+    hip_anchor=profile.get("root_motion_policy")==HIP_ANCHOR
+    source_hip_mid=midpoint([source_points[landmarks[k]["source"]] for k in ("left_hip","right_hip")])
+    target_hip_mid=midpoint([target_points[landmarks[k]["target"]] for k in ("left_hip","right_hip")])
+    if hip_anchor: validate_target_chain(rig,pairs,landmarks)
     def landmark(side,key): return (source_points if side=="source" else target_points)[landmarks[key][side]]
     sb,source_height=body_frame(*(tuple(landmark("source",k)) for k in ("left_hip","right_hip","head")))
     tb,target_height=body_frame(*(tuple(landmark("target",k)) for k in ("left_hip","right_hip","head")))
@@ -151,6 +156,7 @@ def retarget_native(bpy: Any, root: Path, options: dict) -> dict:
         scene.render.fps=round(source["fps"])
         scene.render.fps_base=scene.render.fps/source["fps"]
         expected=[]
+        expected_hips=[]
         max_translation,max_scale=0.,0.
         for frame,row in enumerate(source["frames"],1):
             world=mat(row["armature_world"])
@@ -184,6 +190,12 @@ def retarget_native(bpy: Any, root: Path, options: dict) -> dict:
                 location=neutral.translation
                 if source_name=="@ARMATURE":
                     location=tw.inverted()@((tw@bone.head_local)+Matrix(axes)@(world.translation-sw.translation)*scale)
+                    if hip_anchor:
+                        source_hip=midpoint([world@poses[landmarks[k]["source"]].translation for k in ("left_hip","right_hip")])
+                        head,expected_hip=root_position(source_hip_mid,source_hip,target_hip_mid,tuple(tw@bone.head_local),
+                            axes,scale,references[name],desired)
+                        location=tw.inverted()@Vector(head)
+                        expected_hips.append(expected_hip)
                 pose=Matrix.LocRotScale(location,local_rotation,Vector((1,1,1)))
                 basis=bone.convert_local_to_pose(pose,bone.matrix_local,invert=True,**kw)
                 if max(abs(v-1) for v in basis.to_scale())>1e-4 or (source_name!="@ARMATURE" and basis.translation.length>1e-5):
@@ -210,8 +222,11 @@ def retarget_native(bpy: Any, root: Path, options: dict) -> dict:
                 raise ValueError("Native Action has incomplete baked keyframes")
             for point in curve.keyframe_points: point.interpolation="LINEAR"
         root_bind_head=list(tw@rig.data.bones[pairs[0]["target"]].head_local)
+        anchor={"source_bind_midpoint_world":list(source_hip_mid),"target_bind_midpoint_world":list(target_hip_mid),
+                "sources":[landmarks[k]["source"] for k in ("left_hip","right_hip")],
+                "targets":[landmarks[k]["target"] for k in ("left_hip","right_hip")],"expected":expected_hips} if hip_anchor else None
         review=evaluate_native_timeline(bpy,human,rig,source,expected,pairs,tw,root_bind_head,bind_points,
-            lambda matrix:_rotation(matrix,target_projections)[0],root/"review_motion.blend")
+            lambda matrix:_rotation(matrix,target_projections)[0],root/"review_motion.blend",hip_anchor=anchor)
         review["root_motion_metrics"].update(max_rotation_step_degrees=root_rotation.maximum_step,
             max_rotation_step_frame=root_rotation.maximum_frame)
         timeline={**review,"schema_version":1,"convention":CONVENTION,
@@ -242,8 +257,8 @@ def retarget_native(bpy: Any, root: Path, options: dict) -> dict:
             result["private_review_renders"]=render_private_review(bpy,human,frames,root/"review_motion.blend",
                 {**timeline["bindings"],"review_action_sha256":review["visual_review_blend"]["sha256"],
                  "timeline_sha256":result["timeline"]["sha256"],"conversion_convention":CONVENTION,
-                 "source_first_frame":source["first_frame"],"camera_translation_policy":"FOLLOW_ROOT_TRANSLATION"},
-                root_positions={r["frame"]:r["root_world_head"] for r in review["full_timeline_frames"]})
+                 "source_first_frame":source["first_frame"],"camera_translation_policy":"FOLLOW_HIP_MIDPOINT_TRANSLATION" if hip_anchor else "FOLLOW_ROOT_TRANSLATION"},
+                root_positions={r["frame"]:r["hip_midpoint_world" if hip_anchor else "root_world_head"] for r in review["full_timeline_frames"]})
         if rig_fingerprint(bpy,human)!=before or _digest(master)!=options["master_sha256"]:
             raise ValueError("Native diagnostics changed target rest/skin/master")
         if _digest(source_path)!=options["snapshot_sha256"] or _digest(profile_path)!=options["mapping_sha256"]:
