@@ -65,7 +65,12 @@
         "verify_fitted_complete_anatomical_safety",
         "stage_mpfb_face",
         "verify_mpfb_face",
-        "inspect_mpfb_face_assets"
+        "inspect_mpfb_face_assets",
+        "build_mpfb_hand_assets",
+        "verify_mpfb_hand_assets",
+        "stage_mpfb_hand_revision",
+        "verify_mpfb_hand_revision",
+        "inspect_mpfb_hand_bounds"
       ]
     },
     "input_project": {
@@ -2627,6 +2632,372 @@
           "options": {
             "type": "object",
             "maxProperties": 0
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "build_mpfb_hand_assets"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "input_project": {
+            "const": "candidate.blend"
+          },
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "master_sha256",
+              "recipe_sha256",
+              "metadata_sha256",
+              "shorter_target_sha256",
+              "longer_target_sha256"
+            ],
+            "properties": {
+              "master_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "recipe_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "metadata_sha256": {
+                "const": "8cb1417bc55ae5ec8aa99f90734e81ed5fbb556511ff6a2c00e0534b70911444"
+              },
+              "shorter_target_sha256": {
+                "const": "77e720f2da2d446262bb698f453177abbf94b3e7aec37594ddd518c893721acf"
+              },
+              "longer_target_sha256": {
+                "const": "37620de4a7d2f3c8f1b233fc42ebf6c6c6b100ce1aecfe4ed4ada2f0e4006637"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "verify_mpfb_hand_assets"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "input_project": {
+            "const": "candidate.blend"
+          },
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "master_sha256",
+              "recipe_sha256",
+              "metadata_sha256",
+              "shorter_target_sha256",
+              "longer_target_sha256",
+              "shorter_asset_sha256",
+              "longer_asset_sha256",
+              "assets_report_sha256"
+            ],
+            "properties": {
+              "master_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "recipe_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "metadata_sha256": {
+                "const": "8cb1417bc55ae5ec8aa99f90734e81ed5fbb556511ff6a2c00e0534b70911444"
+              },
+              "shorter_target_sha256": {
+                "const": "77e720f2da2d446262bb698f453177abbf94b3e7aec37594ddd518c893721acf"
+              },
+              "longer_target_sha256": {
+                "const": "37620de4a7d2f3c8f1b233fc42ebf6c6c6b100ce1aecfe4ed4ada2f0e4006637"
+              },
+              "shorter_asset_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "longer_asset_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "assets_report_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "stage_mpfb_hand_revision"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "input_project": {
+            "const": "candidate.blend"
+          },
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "master_sha256",
+              "original_master_sha256",
+              "manifest_sha256",
+              "shorter_asset_sha256",
+              "longer_asset_sha256",
+              "metadata_sha256",
+              "shorter_target_sha256",
+              "longer_target_sha256",
+              "current_selection",
+              "selection"
+            ],
+            "properties": {
+              "master_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "original_master_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "manifest_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "shorter_asset_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "longer_asset_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "metadata_sha256": {
+                "const": "8cb1417bc55ae5ec8aa99f90734e81ed5fbb556511ff6a2c00e0534b70911444"
+              },
+              "shorter_target_sha256": {
+                "const": "77e720f2da2d446262bb698f453177abbf94b3e7aec37594ddd518c893721acf"
+              },
+              "longer_target_sha256": {
+                "const": "37620de4a7d2f3c8f1b233fc42ebf6c6c6b100ce1aecfe4ed4ada2f0e4006637"
+              },
+              "current_selection": {
+                "enum": [
+                  "neutral",
+                  "shorter",
+                  "longer"
+                ]
+              },
+              "selection": {
+                "enum": [
+                  "neutral",
+                  "shorter",
+                  "longer"
+                ]
+              },
+              "current_observation_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "current_selection": {
+                      "const": "neutral"
+                    }
+                  }
+                },
+                "then": {
+                  "not": {
+                    "required": [
+                      "current_observation_sha256"
+                    ]
+                  }
+                },
+                "else": {
+                  "required": [
+                    "current_observation_sha256"
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "verify_mpfb_hand_revision"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "input_project": {
+            "const": "candidate.blend"
+          },
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "master_sha256",
+              "original_master_sha256",
+              "manifest_sha256",
+              "shorter_asset_sha256",
+              "longer_asset_sha256",
+              "revised_sha256",
+              "revision_report_sha256",
+              "metadata_sha256",
+              "shorter_target_sha256",
+              "longer_target_sha256",
+              "current_selection",
+              "selection"
+            ],
+            "properties": {
+              "master_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "original_master_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "manifest_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "shorter_asset_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "longer_asset_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "revised_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "revision_report_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "metadata_sha256": {
+                "const": "8cb1417bc55ae5ec8aa99f90734e81ed5fbb556511ff6a2c00e0534b70911444"
+              },
+              "shorter_target_sha256": {
+                "const": "77e720f2da2d446262bb698f453177abbf94b3e7aec37594ddd518c893721acf"
+              },
+              "longer_target_sha256": {
+                "const": "37620de4a7d2f3c8f1b233fc42ebf6c6c6b100ce1aecfe4ed4ada2f0e4006637"
+              },
+              "current_selection": {
+                "enum": [
+                  "neutral",
+                  "shorter",
+                  "longer"
+                ]
+              },
+              "selection": {
+                "enum": [
+                  "neutral",
+                  "shorter",
+                  "longer"
+                ]
+              },
+              "current_observation_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "current_selection": {
+                      "const": "neutral"
+                    }
+                  }
+                },
+                "then": {
+                  "not": {
+                    "required": [
+                      "current_observation_sha256"
+                    ]
+                  }
+                },
+                "else": {
+                  "required": [
+                    "current_observation_sha256"
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "inspect_mpfb_hand_bounds"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "input_project": {
+            "const": "candidate.blend"
+          },
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "master_sha256",
+              "metadata_sha256",
+              "shorter_target_sha256",
+              "longer_target_sha256"
+            ],
+            "properties": {
+              "master_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "metadata_sha256": {
+                "const": "8cb1417bc55ae5ec8aa99f90734e81ed5fbb556511ff6a2c00e0534b70911444"
+              },
+              "shorter_target_sha256": {
+                "const": "77e720f2da2d446262bb698f453177abbf94b3e7aec37594ddd518c893721acf"
+              },
+              "longer_target_sha256": {
+                "const": "37620de4a7d2f3c8f1b233fc42ebf6c6c6b100ce1aecfe4ed4ada2f0e4006637"
+              }
+            }
           }
         }
       }

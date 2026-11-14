@@ -114,6 +114,33 @@ class CharacterSession:
         replaced = tuple(p for p in self._project.parts if p.slot != asset.slot) + (proposal,)
         return self._commit(replace(self._project, parts=tuple(sorted(replaced, key=lambda p: p.slot))))
 
+    def accept_saved_part_master(self, saved: CharacterProject, *, manifest_sha256: str) -> CharacterProject:
+        """Accept a completed hand transaction as ONE part/master history step.
+
+        Hand selection stays provisional in the UI while Blender runs. The
+        revision API publishes the master pointer and proposed part together.
+        This method does not verify geometry; it accepts that saved API result.
+        """
+        from .hand_parts import hand_selection
+        previous_selection = hand_selection(self._project, manifest_sha256)
+        next_selection = hand_selection(saved, manifest_sha256)
+        if saved == self._project:
+            return saved
+        if (saved.revision != self._project.revision+1 or next_selection == previous_selection
+                or saved.geometry_state != 'generated_unverified' or saved.rig_profile is not None
+                or any(part.status != 'proposed' for part in saved.parts)):
+            raise ValidationError('Saved hand master does not extend the current selection/revision')
+        before, after = self._project.to_dict(), saved.to_dict()
+        for field in ('parts', 'master_blend', 'geometry_state', 'rig_profile', 'revision', 'updated_at'):
+            before.pop(field, None); after.pop(field, None)
+        if before != after:
+            raise ValidationError('Saved hand transaction changed unrelated character intent')
+        self._undo.append(self._project)
+        self._undo = self._undo[-self._history_limit:]
+        self._redo.clear()
+        self._project = saved
+        return saved
+
     def remove_part(self, slot: str) -> CharacterProject:
         get_slot(self._project.family, slot)
         remaining = tuple(p for p in self._project.parts if p.slot != slot)

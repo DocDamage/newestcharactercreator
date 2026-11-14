@@ -62,6 +62,31 @@ OPERATIONS.add(AREA_CANDIDATE_OPERATION)
 OPERATIONS.add('propose_native_hand_contact_fit')
 OPERATIONS |= {'stage_mpfb_face', 'verify_mpfb_face'}
 OPERATIONS.add('inspect_mpfb_face_assets')
+OPERATIONS |= {'build_mpfb_hand_assets', 'verify_mpfb_hand_assets'}
+OPERATIONS |= {'stage_mpfb_hand_revision','verify_mpfb_hand_revision'}
+OPERATIONS.add('inspect_mpfb_hand_bounds')
+
+
+def mpfb_hand_bounds(job: dict,root: Path) -> dict:
+    from blender_bridge.hand_bounds import inspect_bounds
+    if job['input_project']!='candidate.blend':raise ValueError('Hand bounds require fixed staged candidate.blend')
+    return inspect_bounds(bpy,root,job['options'])
+
+
+def mpfb_hand_revision(job: dict,root: Path) -> dict:
+    from blender_bridge.hand_revision import stage_revision,verify_revision
+    if job['input_project'] != 'candidate.blend':
+        raise ValueError('Hand revision requires fixed staged candidate.blend')
+    action=stage_revision if job['operation'] == 'stage_mpfb_hand_revision' else verify_revision
+    return action(bpy,root,job['options'])
+
+
+def mpfb_hand_assets(job: dict, root: Path) -> dict:
+    from blender_bridge.hand_assets import build_assets, verify_assets
+    if job['input_project'] != 'candidate.blend':
+        raise ValueError('Hand asset worker requires fixed staged candidate.blend')
+    action = build_assets if job['operation'] == 'build_mpfb_hand_assets' else verify_assets
+    return action(bpy, root, job['options'])
 
 
 def mpfb_face_assets(job: dict, root: Path) -> dict:
@@ -375,6 +400,11 @@ def main() -> int:
                   'stage_mpfb_face': mpfb_face,
                   'verify_mpfb_face': mpfb_face,
                   'inspect_mpfb_face_assets': mpfb_face_assets,
+                  'build_mpfb_hand_assets': mpfb_hand_assets,
+                  'verify_mpfb_hand_assets': mpfb_hand_assets,
+                  'stage_mpfb_hand_revision': mpfb_hand_revision,
+                  'verify_mpfb_hand_revision': mpfb_hand_revision,
+                  'inspect_mpfb_hand_bounds': mpfb_hand_bounds,
                   "inspect_character": inspect_character,
                   "create_human": create_human,
                   "export_preview_glb": export_preview_glb,

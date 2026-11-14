@@ -106,17 +106,22 @@ class ProjectStore:
                 raise ProjectStorageError("Master is not a Blender-format file")
         # Structural header check does NOT claim a real successful Blender reopen.
 
-    def save(self, project: CharacterProject, *, expected_revision: int | None = None) -> CharacterProject:
+    def save(self, project: CharacterProject, *, expected_revision: int | None = None,
+             expected_project: CharacterProject | None = None) -> CharacterProject:
         """Write full metadata transactionally. Caller supplies original disk revision.
 
         For new projects pass expected_revision=None. For edits pass the loaded
         revision, avoiding lost updates across two IDEs/processes.
         """
+        if expected_project is not None and not isinstance(expected_project,CharacterProject):
+            raise ValidationError('Expected project snapshot must be character metadata')
         self._check_safety()
         self.root.mkdir(parents=True, exist_ok=True)
         with _lock(self.root / LOCK_FILE):
             self._check_safety()
             existing = self._read() if self.file.exists() else None
+            if expected_project is not None and existing != expected_project:
+                raise ProjectConflict('Project changed from the expected complete snapshot')
             if existing is None:
                 if expected_revision is not None:
                     raise ProjectConflict("Project does not exist for requested revision")

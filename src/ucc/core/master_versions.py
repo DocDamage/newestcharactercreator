@@ -18,7 +18,7 @@ from threading import Event
 from typing import Callable
 
 from .errors import ProjectConflict, ProjectStorageError, ValidationError
-from .models import CharacterProject
+from .models import CharacterProject, PartInstance
 from .storage import ProjectStore
 
 MAX_BLEND_BYTES = 2 * 1024 * 1024 * 1024
@@ -98,6 +98,8 @@ def stage_unverified_master(
     expected_revision: int | None = None,
     expected_project_id: str | None = None,
     expected_sha256: str | None = None,
+    expected_project: CharacterProject | None = None,
+    proposed_parts: tuple[PartInstance, ...] | None = None,
     cancel: Event | None = None,
     before_project_save: Callable[[], None] | None = None,
 ) -> MasterRevision:
@@ -110,6 +112,11 @@ def stage_unverified_master(
     """
     if type(max_bytes) is not int or max_bytes < 16:
         raise ValidationError("max_bytes must be an integer >= 16")
+    if expected_project is not None and not isinstance(expected_project,CharacterProject):
+        raise ValidationError('Expected master project snapshot must be character metadata')
+    if proposed_parts is not None and (type(proposed_parts) is not tuple or any(
+            not isinstance(part, PartInstance) or part.status != 'proposed' for part in proposed_parts)):
+        raise ValidationError('Master staging accepts only explicit proposed part instances')
     if expected_revision is not None and (
         type(expected_revision) is not int or expected_revision < 0
     ):
@@ -136,6 +143,12 @@ def stage_unverified_master(
     if not source_resolved.is_relative_to(allowed):
         raise ProjectStorageError("Source file must be in the authorized worker output directory")
     original = store.load()  # Never create a project as an accidental side effect.
+    if expected_project is not None and original != expected_project:
+        raise ProjectConflict('Project changed from the verified master source snapshot')
+    if proposed_parts is not None:
+        # Validate the entire replacement before installing any immutable file.
+        # This is intent staging, never a claim that a part passed geometry QA.
+        replace(original, parts=proposed_parts)
     if expected_project_id is not None and original.project_id != expected_project_id:
         raise ProjectConflict("Character project changed during master generation")
     if expected_revision is not None and original.revision != expected_revision:
@@ -196,14 +209,15 @@ def stage_unverified_master(
             master_blend=f"master/versions/{digest}.blend",
             geometry_state="generated_unverified",
             rig_profile=None,  # Old rig state may not describe this revision.
-            parts=tuple(replace(part, status="proposed") for part in original.parts),
+            parts=tuple(replace(part, status="proposed") for part in
+                        (original.parts if proposed_parts is None else proposed_parts)),
             revision=original.revision + 1,
         )
         if before_project_save is not None:
             before_project_save()
         if cancel is not None and cancel.is_set():
             raise ProjectStorageError("Master staging cancelled before project commit")
-        saved = store.save(metadata, expected_revision=original.revision)
+        saved = store.save(metadata, expected_revision=original.revision, expected_project=original)
         return MasterRevision(saved, destination, digest, size, reused)
     finally:
         temporary.unlink(missing_ok=True)

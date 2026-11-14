@@ -13,6 +13,12 @@ on:
       - 'ci/verify_production_worker.py'
       - 'ci/verify_project_generation.py'
       - 'ci/verify_custom_face.py'
+      - 'ci/verify_hand_parts.py'
+      - 'ci/hand_*_checks.py'
+      - 'tests/fixtures/blender_hand_faults.py'
+      - 'src/ucc/core/hand_parts.py'
+      - 'src/ucc/core/storage.py'
+      - 'src/ucc/jobs/hand_*.py'
       - 'tests/fixtures/blender_face_checks.py'
       - 'src/ucc/core/facial.py'
       - 'src/ucc/jobs/face_*.py'
@@ -82,6 +88,12 @@ on:
       - 'ci/verify_production_worker.py'
       - 'ci/verify_project_generation.py'
       - 'ci/verify_custom_face.py'
+      - 'ci/verify_hand_parts.py'
+      - 'ci/hand_*_checks.py'
+      - 'tests/fixtures/blender_hand_faults.py'
+      - 'src/ucc/core/hand_parts.py'
+      - 'src/ucc/core/storage.py'
+      - 'src/ucc/jobs/hand_*.py'
       - 'tests/fixtures/blender_face_checks.py'
       - 'src/ucc/core/facial.py'
       - 'src/ucc/jobs/face_*.py'
@@ -289,6 +301,15 @@ jobs:
           python3 ci/verify_custom_face.py \
             --blender "$BLENDER_EXE" \
             --outdir "$RUNNER_TEMP/ucc-custom-face"
+      - name: Verify compatible hand assets, swaps, complete skin poses and saved-scene faults
+        if: matrix.suite == 'regression'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ci/verify_hand_parts.py \
+            --blender "$BLENDER_EXE" \
+            --source-root "$RUNNER_TEMP/ucc-custom-face" \
+            --outdir "$RUNNER_TEMP/ucc-hand-parts"
       - name: Verify original full-timeline target fitting and real saved-scene corruptions
         if: matrix.suite == 'native-fit'
         shell: bash
@@ -328,6 +349,7 @@ jobs:
             ${{ runner.temp }}/ucc-production-worker/production_summary.json
             ${{ runner.temp }}/ucc-project-integration/transaction_summary.json
             ${{ runner.temp }}/ucc-custom-face/custom_face_summary.json
+            ${{ runner.temp }}/ucc-hand-parts/hand_parts_summary.json
             ${{ runner.temp }}/ucc-native-fit/native_fit_summary.json
             ${{ runner.temp }}/ucc-body-contacts/body_contact_summary.json
             ${{ runner.temp }}/ucc-symmetric-math.json
