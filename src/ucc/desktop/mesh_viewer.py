@@ -6,6 +6,7 @@ asset shaders, edits geometry, plays animation or certifies engine imports.
 from __future__ import annotations
 
 import math
+from dataclasses import replace
 
 from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QBrush, QColor, QMouseEvent, QPainter, QPen, QPolygonF, QWheelEvent
@@ -139,10 +140,14 @@ class MeshViewer(QWidget):
         layout.addWidget(self.note)
         self.face_focus = QPushButton('Focus face')
         self.whole_focus = QPushButton('Whole character')
+        self.hand_focus=QPushButton('Focus left hand')
+        self.hand_focus.hide();self._hand_bounds=None
         self.face_focus.hide(); self.whole_focus.hide()
         layout.addWidget(self.face_focus); layout.addWidget(self.whole_focus)
+        layout.addWidget(self.hand_focus)
         self.face_focus.clicked.connect(lambda: self._focus_gpu(True))
         self.whole_focus.clicked.connect(lambda: self._focus_gpu(False))
+        self.hand_focus.clicked.connect(lambda:self.focus_bounds(self._hand_bounds))
 
     def clear_model(self) -> None:
         """Never leave another project's character visible after project change."""
@@ -167,12 +172,26 @@ class MeshViewer(QWidget):
         self.canvas.show(); self.reset.show()
         self._static_surface = None
         self.face_focus.hide(); self.whole_focus.hide()
+        self.hand_focus.hide();self._hand_bounds=None
         self.note.setText('Mouse: left drag orbit, right drag pan, wheel zoom. Read-only static triangles.')
 
     def _focus_gpu(self, face):
         if self.gpu_canvas is not None:
             self.gpu_canvas.cache = self._static_surface.focused() if face else self._static_surface
             self.gpu_canvas.reset_view()
+
+    def focus_bounds(self,bounds):
+        if self.gpu_canvas is None or self._static_surface is None:return
+        if (type(bounds) not in (tuple,list) or len(bounds)!=2
+                or any(type(row) not in (tuple,list) or len(row)!=3 for row in bounds)
+                or any(type(v) not in (float,int) or not math.isfinite(v) for row in bounds for v in row)
+                or any(a>=b for a,b in zip(*bounds))):
+            from ucc.core.errors import ValidationError
+            raise ValidationError('Hand view requires actual finite saved-mesh bounds')
+        center=tuple((a+b)*.5 for a,b in zip(*bounds));radius=max(.001,math.dist(*bounds)*.65)
+        self._hand_bounds=tuple(tuple(row) for row in bounds)
+        self.gpu_canvas.cache=replace(self._static_surface,hips=(center,),radius=radius)
+        self.gpu_canvas.reset_view();self.hand_focus.show()
 
     def show_full_model(self, model: PreviewMesh):
         from ucc.preview.static_surface import from_full_mesh

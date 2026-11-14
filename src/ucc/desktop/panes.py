@@ -89,6 +89,9 @@ class CharacterPane(QWidget):
         from .face_controls import FaceControls
         self.face = FaceControls()
         layout.addWidget(self.face)
+        from .hand_controls import HandControls
+        self.hands=HandControls()
+        layout.addWidget(self.hands)
 
         self.advanced = QGroupBox("Anatomy sockets and export status")
         adv_layout = QVBoxLayout(self.advanced)
@@ -179,6 +182,7 @@ class CharacterPane(QWidget):
         self.identity.setEnabled(active)
         self.morph_box.setEnabled(active)
         self.face.setEnabled(active)
+        self.hands.setEnabled(active)
         if not active:
             self.face.apply.setEnabled(False)
         self.generate.setEnabled(active)
@@ -195,6 +199,8 @@ class CharacterPane(QWidget):
     def display(self, view: ProjectView) -> None:
         self.set_active(True)
         self.face.display(view)
+        self.morph_box.setEnabled(view.part_count==0)
+        self.morph_box.setToolTip('Restore the original hand before changing body settings.' if view.part_count else '')
         self.heading.setText(view.name + ("  •  unsaved edits" if view.dirty else ""))
         if self.name.text() != view.name:
             self.name.blockSignals(True)

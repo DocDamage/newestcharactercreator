@@ -38,7 +38,12 @@
         "cache_native_fbx_body",
         "stage_mpfb_face",
         "verify_mpfb_face",
-        "inspect_mpfb_face_assets"
+        "inspect_mpfb_face_assets",
+        "build_mpfb_hand_assets",
+        "verify_mpfb_hand_assets",
+        "stage_mpfb_hand_revision",
+        "verify_mpfb_hand_revision",
+        "inspect_mpfb_hand_bounds"
       ]
     },
     "status": {

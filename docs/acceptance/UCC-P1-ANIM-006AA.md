@@ -1,6 +1,6 @@
 # UCC-P1-ANIM-006AA — explicit symmetric shoulder layers
 
-Status: technical implementation and actual owner-launcher acceptance complete. PR #61 targets main directly at implementation head `3f3310449b3fba290ec0bbfe464e637adbbaaae9`. All five workflows and all four Linux archives are independently accepted (21 JSON records). PRs #39–60 are merged; main is `2c03434c75034b8cfb810b0d38daeb00122f004e`. Further merges require owner approval. The actual owner launcher now selects the verified symmetric correction. Human visual/grasp, arbitrary-pack and engine quality remain unapproved.
+Status: technical implementation and actual owner-launcher acceptance complete. Draft PR #61 targets main at documentation head `138047ae32617086e7817cf8f3e4d48ace225809`; only four Markdown files differ from tested implementation `3f3310449b3fba290ec0bbfe464e637adbbaaae9`. Both heads pass all five workflows and all four independently accepted Linux archives (21 JSON records per head). PRs #39–60 are merged; main is `2c03434c75034b8cfb810b0d38daeb00122f004e`. Further merges require owner approval. The actual owner launcher now selects the verified symmetric correction. Human visual/grasp, arbitrary-pack and engine quality remain unapproved.
 
 ## Working implementation
 

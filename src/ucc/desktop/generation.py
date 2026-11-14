@@ -50,6 +50,9 @@ def bundled_worker_path() -> Path:
     native_files=[worker.parent/name for name in ("native_reference.py","native_inputs.py","native_retarget.py","native_timeline.py","native_skin.py","native_anchor.py","native_corrective.py","native_skin_stack.py","native_review_reopen.py","native_playback_cache.py")]
     native_files += [worker.parent/name for name in ('face_policy.py', 'face_geometry.py',
                     'face_materials.py', 'face_operations.py', 'face_assets.py')]
+    native_files += [worker.parent/name for name in ('hand_policy.py', 'hand_geometry.py', 'hand_assets.py')]
+    native_files += [worker.parent/name for name in ('hand_master.py','hand_revision.py','hand_pose_checks.py')]
+    native_files += [worker.parent/'hand_bounds.py']
     if (not worker.is_file() or worker.is_symlink()
             or not service.is_file() or service.is_symlink()
             or not preview.is_file() or preview.is_symlink()
@@ -110,11 +113,12 @@ def preview_master_from_desktop(
     master_blend: str,
     cancel: Event,
 ) -> MasterPreview:
+    project=store.load()
     return preview_saved_master(
         store, blender_exe=blender_exe, worker_script=bundled_worker_path(),
         expected_project_id=project_id, expected_revision=revision,
         expected_master_blend=master_blend, cancel=cancel, timeout_s=300,
-        full_surface=bool(store.load().facial_parameters),
+        full_surface=bool(project.facial_parameters or project.parts),
     )
 
 

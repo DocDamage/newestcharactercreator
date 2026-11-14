@@ -113,6 +113,13 @@ class DesktopController:
         self._saved_revision = saved.revision
         return self.view()
 
+    def accept_saved_part_master(self,saved: CharacterProject,*,manifest_sha256: str) -> ProjectView:
+        if self.store is None or self._dirty or self.store.load() != saved:
+            raise ValidationError('Saved hand cannot replace a changed or unsaved desktop session')
+        self._get_session().accept_saved_part_master(saved,manifest_sha256=manifest_sha256)
+        self._saved_revision=saved.revision
+        return self.view()
+
     def redo(self) -> ProjectView:
         self._get_session().redo()
         self._dirty = True

@@ -142,6 +142,10 @@ class MainWindow(QMainWindow):
         from .face_workflow import edit_face, start_face
         self.character.face.parameter_changed.connect(lambda name, value: edit_face(self, name, value))
         self.character.face.apply_requested.connect(lambda: start_face(self))
+        from .hand_workflow import start_hands,start_hand_preview
+        self.character.hands.build_requested.connect(lambda:start_hands(self,build=True))
+        self.character.hands.apply_requested.connect(lambda:start_hands(self))
+        self.character.hands.preview_requested.connect(lambda:start_hand_preview(self))
         self.character.open_master_requested.connect(self.open_master_in_blender)
         self.character.generate_human_requested.connect(self.generate_humanoid)
         self.character.refit_human_requested.connect(self.apply_saved_body)
@@ -187,6 +191,8 @@ class MainWindow(QMainWindow):
                 self.controller.require_project().project_id!=self._native_review.project_id):
             self._clear_native_review()
         self.character.display(state)
+        from .hand_workflow import refresh_hands
+        refresh_hands(self)
         self.preview_master_action.setEnabled(state.master_blend is not None and not self.jobs.busy)
         self.save_action.setEnabled(state.dirty)
         self.undo_action.setEnabled(state.can_undo)
@@ -333,10 +339,16 @@ class MainWindow(QMainWindow):
             self.undo_action.setEnabled(not busy and state.can_undo)
             self.redo_action.setEnabled(not busy and state.can_redo)
         self.cancel_generation_action.setEnabled(
-            busy and self._work_kind in {"generate_humanoid", "saved_master_preview", "body_refit", "face_revision", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain", "native_body", "native_playback", "fbx_intake", "fitted_comparison", "body_contacts"}
+            busy and self._work_kind in {"generate_humanoid", "saved_master_preview", "body_refit", "face_revision", "hand_library", "hand_revision", "hand_preview", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain", "native_body", "native_playback", "fbx_intake", "fitted_comparison", "body_contacts"}
         )
         self.statusBar().showMessage(
-            ("Applying saved face shape on a private Blender copy..."
+            ("Building and independently checking compatible hands..."
+             if self._work_kind == "hand_library" else
+             "Applying the selected hand and checking saved skin..."
+             if self._work_kind == "hand_revision" else
+             "Reading saved hand bounds and preparing complete geometry..."
+             if self._work_kind == "hand_preview" else
+             "Applying saved face shape on a private Blender copy..."
              if self._work_kind == "face_revision" else
              "Generating real MPFB humanoid in Blender..."
              if self._work_kind == "generate_humanoid" else
@@ -365,11 +377,14 @@ class MainWindow(QMainWindow):
              "Measuring native FBX source skeleton and complete timeline..."
              if self._work_kind == "fbx_intake" else
              "Converting saved Blender master to a static GLB preview...")
-            if busy and self._work_kind in {"generate_humanoid", "saved_master_preview", "body_refit", "face_revision", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain", "native_body", "native_playback", "fbx_intake", "fitted_comparison", "body_contacts"}
+            if busy and self._work_kind in {"generate_humanoid", "saved_master_preview", "body_refit", "face_revision", "hand_library", "hand_revision", "hand_preview", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain", "native_body", "native_playback", "fbx_intake", "fitted_comparison", "body_contacts"}
             else ("Working on local files..." if busy else "Local task finished")
         )
 
     def _job_success(self, result: object) -> None:
+        if self._work_kind in {'hand_library','hand_revision','hand_preview'}:
+            from .hand_workflow import finish_hands
+            if finish_hands(self,result):return
         if self._work_kind in {'face_revision', 'generate_humanoid', 'body_refit'}:
             from .face_workflow import finish_face_build
             if finish_face_build(self, result):
@@ -643,6 +658,9 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Local operation completed; review results above")
 
     def _job_error(self, error: str) -> None:
+        if self._work_kind in {'hand_library','hand_revision','hand_preview'}:
+            from .hand_workflow import show_hand_error
+            show_hand_error(self,error);return
         if self._work_kind=='body_contacts':
             from .body_contact_review import show_body_contact_error
             show_body_contact_error(self,error);return

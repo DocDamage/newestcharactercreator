@@ -1,6 +1,6 @@
 # UCC-P1-CUSTOM-001 — bounded persistent MPFB nose width
 
-Status: local functional and regression acceptance passed. Exact-head CI and Windows-package acceptance remain pending. No merge authorization or engine/visual approval is implied. This is one facial shape control, not detachable part swapping, facial animation or completion of the creator blueprint.
+Status: technical acceptance complete at `c67f672db34640120705a3780cf1c143a3d69804` / draft PR #62. All five workflows pass; all four Linux archives and 22 diagnostic records are independently accepted. The exact-head Windows package's 72 bridge sources match Git and its extracted executable passes SELF_TEST_OK. The PR remains unmerged pending owner approval. This is one facial shape control, not part swapping, facial animation or completion of the creator blueprint. Human visual and engine approval remain unclaimed.
 
 ## Behavior and boundaries
 

@@ -17,6 +17,9 @@ SUPPORTED_OPERATIONS.add('propose_native_area_contact_fit')
 SUPPORTED_OPERATIONS.add('propose_native_hand_contact_fit')
 SUPPORTED_OPERATIONS |= {'stage_mpfb_face', 'verify_mpfb_face'}
 SUPPORTED_OPERATIONS.add('inspect_mpfb_face_assets')
+SUPPORTED_OPERATIONS |= {'build_mpfb_hand_assets', 'verify_mpfb_hand_assets'}
+SUPPORTED_OPERATIONS |= {'stage_mpfb_hand_revision','verify_mpfb_hand_revision'}
+SUPPORTED_OPERATIONS.add('inspect_mpfb_hand_bounds')
 BODY_CONTACT_OPERATIONS = {'verify_fitted_body_contacts', 'verify_native_body_contacts', 'inspect_fitted_body_contacts', 'inspect_native_body_contacts'}
 BODY_CONTACT_OPERATIONS |= {'inspect_native_body_areas','verify_native_body_areas','inspect_fitted_body_areas','verify_fitted_body_areas'}
 BODY_CONTACT_OPERATIONS |= {'inspect_native_skin_inclusion','verify_native_skin_inclusion','inspect_fitted_skin_inclusion','verify_fitted_skin_inclusion'}
@@ -59,6 +62,40 @@ class JobRequest:
         _check_json(self.as_dict())
         if self.operation == 'inspect_mpfb_face_assets' and (self.input_project is not None or self.options):
             raise ValidationError('Facial asset inspection has no selectable paths or options')
+        if self.operation in {'build_mpfb_hand_assets', 'verify_mpfb_hand_assets'}:
+            from ucc.core.hand_parts import TARGETS as HAND_TARGETS, METADATA_SHA256, is_sha256
+            fields = {'master_sha256', 'recipe_sha256', 'metadata_sha256',
+                      'shorter_target_sha256', 'longer_target_sha256'}
+            if self.operation == 'verify_mpfb_hand_assets':
+                fields |= {'shorter_asset_sha256', 'longer_asset_sha256', 'assets_report_sha256'}
+            if (self.input_project != 'candidate.blend' or set(self.options) != fields
+                    or not all(is_sha256(v) for v in self.options.values())
+                    or self.options['metadata_sha256'] != METADATA_SHA256
+                    or any(self.options[t.variant+'_target_sha256'] != t.sha256 for t in HAND_TARGETS)):
+                raise ValidationError('Hand asset worker requires exact pinned hashes and fixed staged filenames')
+        if self.operation in {'stage_mpfb_hand_revision','verify_mpfb_hand_revision'}:
+            from ucc.core.hand_parts import TARGETS as HAND_TARGETS, METADATA_SHA256, is_sha256
+            for name in ('current_selection','selection'):
+                if type(self.options.get(name)) is not str or self.options[name] not in {'neutral','shorter','longer'}:
+                    raise ValidationError('Hand revision requires explicit supported selections')
+            fields={'master_sha256','original_master_sha256','manifest_sha256','metadata_sha256',
+                    'shorter_target_sha256','longer_target_sha256','shorter_asset_sha256','longer_asset_sha256',
+                    'current_selection','selection'}
+            if self.options['current_selection'] != 'neutral':fields.add('current_observation_sha256')
+            if self.operation == 'verify_mpfb_hand_revision':fields|={'revised_sha256','revision_report_sha256'}
+            if (self.input_project != 'candidate.blend' or set(self.options) != fields
+                    or any(not is_sha256(v) for k,v in self.options.items() if k not in {'current_selection','selection'})
+                    or self.options['metadata_sha256'] != METADATA_SHA256
+                    or any(self.options[t.variant+'_target_sha256'] != t.sha256 for t in HAND_TARGETS)):
+                raise ValidationError('Hand revision requires complete immutable source/library/asset bindings')
+        if self.operation == 'inspect_mpfb_hand_bounds':
+            from ucc.core.hand_parts import TARGETS as HAND_TARGETS,METADATA_SHA256,is_sha256
+            fields={'master_sha256','metadata_sha256','shorter_target_sha256','longer_target_sha256'}
+            if (self.input_project!='candidate.blend' or set(self.options)!=fields
+                    or not all(is_sha256(v) for v in self.options.values())
+                    or self.options['metadata_sha256']!=METADATA_SHA256
+                    or any(self.options[t.variant+'_target_sha256']!=t.sha256 for t in HAND_TARGETS)):
+                raise ValidationError('Hand camera bounds require exact pinned source identities')
         if self.operation in {'stage_mpfb_face', 'verify_mpfb_face'}:
             from ucc.core.facial import NOSE_TARGETS
             from ucc.animations.source_rest_frames import is_sha256
