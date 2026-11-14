@@ -40,6 +40,8 @@ class FittedPlayback:
 class FittedComparison:
     original: NativePlayback
     fitted: FittedPlayback
+    candidate_job_id: str=''
+    private_candidate_policy: str=''
 
 
 def prepare_fitted_comparison(store: ProjectStore,preview: NativeFitPreview,*,source_fbx: Path,

@@ -67,6 +67,8 @@ class MotionQtTests(unittest.TestCase):
         review=SurfaceReview('CHECKED','',((1,2),(),(3,4)),((1,0),(0,0),(0,2)),('a'*64,)*3)
         v=self.viewer;v.show_cache(replace(self.cache,surface_review=review))
         self.assertTrue(v.next_flagged.isEnabled());self.assertIn('2 flagged frames',v.surface_status.text())
+        self.assertTrue(v.try_fit.isEnabled());v.set_fit_busy(True);self.assertFalse(v.try_fit.isEnabled())
+        v.set_fit_busy(False);self.assertTrue(v.try_fit.isEnabled())
         v.play.click();v.next_flagged.click()
         self.assertFalse(v.clock.playing);self.assertEqual(v.clock.frame,2);self.assertTrue(v.focus.isChecked())
         v.highlight.setChecked(False)
@@ -90,6 +92,7 @@ class MotionQtTests(unittest.TestCase):
         original=replace(self.cache,surface_review=SurfaceReview('CHECKED','',((1,),(),()),((1,0),(0,0),(0,0)),('a'*64,)*3))
         fitted=replace(self.cache,surface_review=SurfaceReview('CHECKED','',((),)*3,((0,0),)*3,('a'*64,)*3))
         v=self.viewer;v.show_comparison(original,fitted);v.seek(1);clock=v.clock
+        self.assertFalse(v.try_fit.isEnabled())
         v.canvas.yaw=1.;v.canvas.pitch=.4;v.canvas.zoom=2.;v.canvas.pan=(.1,.2)
         v.play.click();v.variant.setCurrentIndex(1)
         self.assertIs(v.cache,fitted);self.assertIs(v.canvas.cache,fitted);self.assertIs(v.clock,clock)

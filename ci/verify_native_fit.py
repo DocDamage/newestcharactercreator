@@ -107,7 +107,7 @@ def verify_fit_on_preview(blender,store,preview,source,permission,folder):
         'originals_unchanged':True,'contact_quality_approved':False,'engine_import_verified':False}
 
 
-def verify(blender,root):
+def verify(blender,root,contact_candidate_check=False):
     from ci.verify_native_body import verify_native_body
     root.mkdir(parents=True,exist_ok=False);store=ProjectStore(root/'project')
     project=store.save(CharacterProject.new('Original native fitting CI'))
@@ -118,10 +118,14 @@ def verify(blender,root):
                            neutral_reference=True,include_hands=True,fit_check=True)
     summary={'status':'REAL_ORIGINAL_NATIVE_FITTING_GATE_PASSED','native_body':body,'bounded_fit':body['bounded_target_fit_contract'],
              'assets_uploaded':False,'engine_import_verified':False}
+    if contact_candidate_check:
+        from ci.verify_contact_candidate import verify_candidate_negatives
+        summary['contact_candidate_negative_contract']=verify_candidate_negatives(blender,store,root/'contact-candidate-negatives')
     (root/'native_fit_summary.json').write_text(json.dumps(summary,indent=2));return summary
 
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--blender',type=Path,required=True);parser.add_argument('--outdir',type=Path,required=True)
-    args=parser.parse_args();summary=verify(args.blender,args.outdir)
+    parser.add_argument('--contact-candidate-check',action='store_true')
+    args=parser.parse_args();summary=verify(args.blender,args.outdir,args.contact_candidate_check)
     print('REAL_ORIGINAL_NATIVE_FITTING_GATE_PASSED',summary['bounded_fit']['frames'],flush=True)

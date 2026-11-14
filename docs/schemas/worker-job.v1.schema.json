@@ -39,7 +39,8 @@
         "fit_native_fbx_body",
         "measure_native_fit",
         "verify_native_fit",
-        "cache_native_fit"
+        "cache_native_fit",
+        "propose_native_contact_fit"
       ]
     },
     "input_project": {
@@ -624,6 +625,65 @@
               "timeline_sha256": {
                 "type": "string",
                 "pattern": "^[0-9a-f]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "propose_native_contact_fit"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "input_project": {
+            "const": "candidate.blend"
+          },
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "source_sha256",
+              "snapshot_sha256",
+              "mapping_sha256",
+              "master_sha256",
+              "review_sha256",
+              "timeline_sha256",
+              "surface_review_sha256"
+            ],
+            "properties": {
+              "source_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "snapshot_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "mapping_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "master_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "review_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "timeline_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "surface_review_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
               }
             }
           }

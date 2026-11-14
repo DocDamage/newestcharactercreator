@@ -302,6 +302,7 @@ class MainWindow(QMainWindow):
             self._error("Could not start task")
 
     def _busy_changed(self, busy: bool) -> None:
+        if self.motion_viewer is not None:self.motion_viewer.set_fit_busy(busy)
         # A live Blender run may take minutes. Freeze ALL project-edit actions,
         # not merely the other worker tabs, to avoid stale in-memory sessions.
         self.character.setEnabled(not busy)
@@ -605,6 +606,9 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Local operation completed; review results above")
 
     def _job_error(self, error: str) -> None:
+        if self._work_kind=='fitted_comparison':
+            from .contact_fit import show_contact_error
+            show_contact_error(self,error);return
         self._error(error)
 
     def generate_humanoid(self) -> None:

@@ -87,3 +87,15 @@ Next: derive a bounded candidate fitting trajectory from the measured source
 contact interval, retain every existing full-sequence and fresh-process guard,
 and expose one understandable local fitting action with explicit rejection states.
 The current comparison remains usable while that producer is developed.
+
+## Remote gate progress
+
+Core, Qt, preflight and Windows packaging pass on head
+`9a4691137354e5582655dbbf904542d8029824fb`. The Linux native-fit matrix job
+passes all seven scene/report negatives and all 300 fitted cache buffers. Its
+five-file JSON-only artifact `14007689529` was independently downloaded and
+verified at SHA-256 `02279781f730b4c5a74bb159832f3ca3877881af28b3dc6f9b657b4346cb4460`.
+The legacy matrix job initially failed at the official Blender download (HTTP
+403), before executing tests. Its isolated retry has downloaded successfully
+and is running the unchanged regression. PR #49 remains draft until that
+final gate and its JSON artifact are verified.

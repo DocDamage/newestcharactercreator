@@ -68,7 +68,13 @@ def original_context(bpy,root,options):
     state={'rest':rest,'fingerprint':rig_fingerprint(bpy,human),'polygons':polygon_digest(human),'weights':exact_weights_digest(human),'bone_controls':bone_controls(rig),
            'rig_world':[float(v) for row in rig.matrix_world for v in row],
            'mesh_world':[float(v) for row in human.matrix_world for v in row]}
-    mod=human.modifiers[-1];old_position=rig.data.pose_position
+    state.update(original_skin_references(bpy,human,rig,baseline))
+    return baseline,profile,plan,state,reopened
+
+
+def original_skin_references(bpy,human,rig,baseline):
+    """Read the same verified bound/original neutral skin without changing poses."""
+    state={};mod=human.modifiers[-1];old_position=rig.data.pose_position
     try:
         rig.data.pose_position='REST'
         state['neutral'],state['neutral_sha']=_evaluated_vertices(bpy,human)
@@ -81,7 +87,7 @@ def original_context(bpy,root,options):
         raise ValueError('Native fitting neutral original/bound skin differs from verified master')
     if max(math.dist(a,b) for a,b in zip(state['original'],state['neutral']))>1e-6:
         raise ValueError('Native fitting neutral references no longer describe the original master')
-    return baseline,profile,plan,state,reopened
+    return state
 
 
 def check_scene(bpy,human,rig,baseline,profile,state):
