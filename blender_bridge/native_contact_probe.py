@@ -16,13 +16,14 @@ class CandidateBudgetExceeded(ValueError):pass
 
 
 class CandidateProbe:
-    def __init__(self,bpy: Any,human: Any,rig: Any,baseline: dict,profile: dict):
+    def __init__(self,bpy: Any,human: Any,rig: Any,baseline: dict,profile: dict,*,mesh_guard=None):
         self.bpy=bpy;self.human=human;self.rig=rig;self.baseline=baseline;self.profile=profile;self.tested=0
         state=original_skin_references(bpy,human,rig,baseline);edges=evaluated_edges(bpy,human)
         self.bound=EdgeStrain(state['neutral'],edges);self.master=EdgeStrain(state['original'],edges)
         self.diagonal=baseline['model_baseline_diagonal_local']
         self.ordered=sorted(rig.pose.bones,key=lambda b:len(b.parent_recursive))
         self.mapped={p['target'] for p in profile['pairs']};self.inverse=rig.matrix_world.inverted()
+        self.mesh_guard=mesh_guard
 
     def frame(self,plan: dict,frame: int) -> int:
         from mathutils import Matrix
@@ -60,9 +61,12 @@ class CandidateProbe:
             mesh.calc_loop_triangles();inspector=SurfaceInspector(self.profile,rig,human)
             indices=array('I',[0])*(len(mesh.loop_triangles)*3);mesh.loop_triangles.foreach_get('vertices',indices)
             if sys.byteorder!='little':indices.byteswap()
-            inspector.inspect(mesh,frame,skin,sha256(indices.tobytes()).hexdigest())
+            topology=sha256(indices.tobytes()).hexdigest()
+            inspector.inspect(mesh,frame,skin,topology)
             if inspector.status!='CHECKED':raise ValueError('CANDIDATE_SURFACE_UNAVAILABLE')
-            return sum(inspector.rows[-1][side]['pair_count'] for side in ('left','right'))
+            pairs=sum(inspector.rows[-1][side]['pair_count'] for side in ('left','right'))
+            if not pairs and self.mesh_guard is not None:return self.mesh_guard(bpy,human,rig,mesh,frame,skin,topology)
+            return pairs
         finally:evaluated.to_mesh_clear()
 
     def evaluate(self,plan: dict,frames: Iterable[int]) -> dict:

@@ -15,6 +15,41 @@ from blender_bridge.native_fit_policy import BASE_HASHES
 OPERATION='propose_native_contact_fit'
 
 
+def search_candidate(layout,probe,bindings,baseline,profile,parents,*,observations=None,rank_key=None,refinement_factors=(1.,),learn_failed_frames=False):
+    observations=[] if observations is None else observations
+    chosen=None;changed=range(layout.start+1,layout.end)
+    critical=list(layout.critical)
+    def evaluate(vector,frames,complete=False):
+        try:data,plan=trial_policy(layout,vector,bindings,baseline,profile,parents)
+        except ValueError as error:return None,{'vector':vector,'pairs':5_000_001,'checked':0,'reason':str(error)}
+        method=getattr(probe,'evaluate_complete',probe.evaluate) if complete else probe.evaluate
+        result=method(plan,frames)
+        failed=result.get('failed_frame')
+        if complete and learn_failed_frames and type(failed) is int and failed in changed and failed not in critical:
+            critical.append(failed)
+        return data,{'vector':vector,**result}
+    for vector in coarse_vectors(layout):
+        data,result=evaluate(vector,critical);observations.append(result)
+    best=sorted(observations,key=rank_key or (lambda r:(r['pairs'],sum(v*v for v in r['vector']))))[:8]
+    for row in best:
+        if row['pairs']==0:
+            data,result=evaluate(row['vector'],changed,True);observations.append(result)
+            if result['pairs']==0:chosen=data;break
+    for factor in refinement_factors:
+        if chosen is not None:break
+        if type(factor) not in (float,int) or not 0<factor<=1:raise ValueError('Invalid bounded refinement factor')
+        refined=(refine_vectors(layout,observations) if rank_key is None and factor==1 else
+            refine_vectors(layout,observations,rank_key=rank_key,step_size=min(.005,layout.maximum/6)*factor))
+        for vector in refined:
+            if len(observations)>=499:raise ValueError('CANDIDATE_TRIAL_BUDGET_EXCEEDED')
+            data,result=evaluate(vector,critical);observations.append(result)
+            if result['pairs']==0:
+                data,result=evaluate(vector,changed,True);observations.append(result)
+                if result['pairs']==0:chosen=data;break
+    if chosen is None:raise ValueError('NO_BOUNDED_CONTACT_CANDIDATE_FOUND; original motion retained')
+    return chosen,observations
+
+
 def checked_candidate_job(job: dict) -> dict:
     options=job['options'];keys=BASE_HASHES|{'surface_review_sha256'}
     if (job['input_project']!='candidate.blend' or type(options) is not dict or set(options)!=keys or
@@ -42,26 +77,9 @@ def propose_contact_fit(bpy: Any,root: Path,options: dict) -> dict:
         contacts=read_json(root/'motion_contacts.json',options['surface_review_sha256'],16*1024*1024)
         human,rig=scene_objects(bpy);rest=capture_rest_frames(rig);parents={n:r['parent'] for n,r in rest.items()}
         layout=candidate_layout(baseline,profile,parents,contacts);probe=CandidateProbe(bpy,human,rig,baseline,profile)
-        bindings={k:options[k] for k in BASE_HASHES};observations=[];chosen=None
+        bindings={k:options[k] for k in BASE_HASHES}
         changed=range(layout.start+1,layout.end)
-        def evaluate(vector,frames):
-            try:data,plan=trial_policy(layout,vector,bindings,baseline,profile,parents)
-            except ValueError as error:return None,{'vector':vector,'pairs':5_000_001,'checked':0,'reason':str(error)}
-            return data,{'vector':vector,**probe.evaluate(plan,frames)}
-        for vector in coarse_vectors(layout):
-            data,result=evaluate(vector,layout.critical);observations.append(result)
-        best=sorted(observations,key=lambda r:(r['pairs'],sum(v*v for v in r['vector'])))[:8]
-        for row in best:
-            if row['pairs']==0:
-                data,result=evaluate(row['vector'],changed);observations.append(result)
-                if result['pairs']==0:chosen=data;break
-        if chosen is None:
-            for vector in refine_vectors(layout,observations):
-                data,result=evaluate(vector,layout.critical);observations.append(result)
-                if result['pairs']==0:
-                    data,result=evaluate(vector,changed);observations.append(result)
-                    if result['pairs']==0:chosen=data;break
-        if chosen is None:raise ValueError('NO_BOUNDED_CONTACT_CANDIDATE_FOUND; original motion retained')
+        chosen,observations=search_candidate(layout,probe,bindings,baseline,profile,parents)
         payload=json.dumps(chosen,allow_nan=False,separators=(',',':')).encode()
         if len(payload)>512*1024:raise ValueError('Generated contact policy exceeds existing fit bound')
         unchanged()

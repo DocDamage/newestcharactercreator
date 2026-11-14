@@ -112,9 +112,11 @@ def coarse_vectors(layout: CandidateLayout) -> tuple[tuple[float,float,float],..
     return tuple(tuple(step*x for x in v) for v in product((-1,0,1),repeat=3) if 0<sum(x*x for x in v)<=2)
 
 
-def refine_vectors(layout: CandidateLayout,observations: list[dict]) -> tuple[tuple[float,float,float],...]:
-    step=min(.005,layout.maximum/6);known={tuple(round(v,9) for v in r['vector']) for r in observations}
-    best=sorted(observations,key=lambda r:(r['pairs'],math.hypot(*r['vector'])))[:8];vectors=set()
+def refine_vectors(layout: CandidateLayout,observations: list[dict],*,rank_key=None,step_size=None) -> tuple[tuple[float,float,float],...]:
+    step=min(.005,layout.maximum/6) if step_size is None else step_size
+    if type(step) not in (float,int) or not 0<step<=.005:raise ValueError('Invalid bounded refinement step')
+    known={tuple(round(v,9) for v in r['vector']) for r in observations}
+    best=sorted(observations,key=rank_key or (lambda r:(r['pairs'],math.hypot(*r['vector']))))[:8];vectors=set()
     for row in best:
         for delta in product((-step,0.,step),repeat=3):
             v=tuple(round(a+b,9) for a,b in zip(row['vector'],delta))

@@ -50,6 +50,7 @@ class FittedComparison:
     private_candidate_policy: str=''
     body_review: BodyContactReview | None=None
     body_fit_guard: BodyFitGuard | None=None
+    source_body_review: BodyContactReview | None=None
 
 
 def prepare_fitted_comparison(store: ProjectStore,preview: NativeFitPreview,*,source_fbx: Path,

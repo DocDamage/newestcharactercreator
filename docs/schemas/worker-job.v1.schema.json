@@ -48,7 +48,8 @@
         "inspect_native_body_areas",
         "verify_native_body_areas",
         "inspect_fitted_body_areas",
-        "verify_fitted_body_areas"
+        "verify_fitted_body_areas",
+        "propose_native_area_contact_fit"
       ]
     },
     "input_project": {
@@ -1202,6 +1203,70 @@
                 "pattern": "^[0-9a-f]{64}$"
               },
               "body_review_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "propose_native_area_contact_fit"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "input_project": {
+            "const": "candidate.blend"
+          },
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "source_sha256",
+              "snapshot_sha256",
+              "mapping_sha256",
+              "master_sha256",
+              "review_sha256",
+              "timeline_sha256",
+              "surface_review_sha256",
+              "source_body_areas_sha256"
+            ],
+            "properties": {
+              "source_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "snapshot_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "mapping_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "master_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "review_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "timeline_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "surface_review_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "source_body_areas_sha256": {
                 "type": "string",
                 "pattern": "^[a-f0-9]{64}$"
               }

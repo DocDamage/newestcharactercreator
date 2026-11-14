@@ -19,11 +19,12 @@ from .protocol import JobRequest
 from .runner import BlenderJobRunner
 from .body_contact_review import review_body_contact_areas
 from .body_fit_guard import require_body_fit_guard
+from .source_area_context import source_area_inputs,validate_candidate_areas
 
 
 def fit_measured_contacts(store: ProjectStore,preview: NativeBodyPreview,playback: NativePlayback,*,source_fbx: Path,
                           permission: LicensePolicy,blender_exe: Path,worker_script: Path,cancel: Event | None=None,
-                          timeout_s: float=600) -> FittedComparison:
+                          timeout_s: float=900) -> FittedComparison:
     allowed,reason=permission.allow('local_preview')
     if not allowed:raise AssetPolicyError(reason)
     def check_cancel():
@@ -37,23 +38,28 @@ def fit_measured_contacts(store: ProjectStore,preview: NativeBodyPreview,playbac
         for path,digest in originals:
             if path.is_symlink() or not path.is_file() or _digest(path,cancel)!=digest:
                 raise ProjectStorageError('Contact fitting source/master/review evidence changed')
-    options={**ctx.bindings,'surface_review_sha256':ctx.expected['motion_contacts.json']}
-    unchanged();request=JobRequest.new('propose_native_contact_fit',input_project='candidate.blend',options=options)
+    arguments=dict(source_fbx=source_fbx,permission=permission,blender_exe=blender_exe,worker_script=worker_script,
+                   cancel=cancel,timeout_s=timeout_s)
+    source_review=review_body_contact_areas(store,preview,ctx.playback,**arguments);unchanged()
+    area_path,area_sha=source_area_inputs(store,ctx,source_review,cancel=cancel);originals.append((area_path,area_sha))
+    staged={**ctx.staged,'source_body_areas.json':area_path};expected={**ctx.expected,'source_body_areas.json':area_sha}
+    options={**ctx.bindings,'surface_review_sha256':ctx.expected['motion_contacts.json'],'source_body_areas_sha256':area_sha}
+    unchanged();request=JobRequest.new('propose_native_area_contact_fit',input_project='candidate.blend',options=options)
     result,folder=BlenderJobRunner(blender_exe,store.root/'.ucc-jobs',worker_script).run(
-        request,timeout_s=timeout_s,cancel=cancel,staged_inputs=ctx.staged)
+        request,timeout_s=timeout_s,cancel=cancel,staged_inputs=staged)
     unchanged()
     if folder.is_symlink() or folder.resolve().parent!=(store.root/'.ucc-jobs').resolve():
         raise ValidationError('Contact candidate output folder is redirected')
-    for name,digest in ctx.expected.items():
+    for name,digest in expected.items():
         path=folder/name
         if path.is_symlink() or not path.is_file() or _digest(path,cancel)!=digest:
             raise ProjectStorageError('Contact search changed a bound staged original')
     raw=result.details
     fields={'status','algorithm','bindings','source_surface_verification','target_rest_frames','policy','source_frames_verified',
             'contact_interval','candidate_interval','candidate_frames_checked','candidate_pose_tests','candidate_trials',
-            'candidate_intersection_pairs','originals_unchanged'}|FLAGS
+            'candidate_intersection_pairs','originals_unchanged','body_area_verification'}|FLAGS
     if (type(raw) is not dict or set(raw)!=fields or raw['status']!='REAL_NATIVE_CONTACT_CANDIDATE_PROPOSED' or
-        raw['algorithm']!='BOUNDED_CONTACT_OFFSET_SEARCH_V1' or raw['bindings']!=options or raw['originals_unchanged'] is not True or any(raw[k] is not False for k in FLAGS) or
+        raw['algorithm']!='BOUNDED_CONTACT_AREA_SEARCH_V2' or raw['bindings']!=options or raw['originals_unchanged'] is not True or any(raw[k] is not False for k in FLAGS) or
         type(raw['source_frames_verified']) is not int or raw['source_frames_verified']!=ctx.baseline['source_frame_count'] or
         type(raw['candidate_intersection_pairs']) is not int or raw['candidate_intersection_pairs']!=0):
         raise ValidationError('Contact candidate scope, coverage or approval differs')
@@ -74,10 +80,10 @@ def fit_measured_contacts(store: ProjectStore,preview: NativeBodyPreview,playbac
         type(raw['candidate_trials']) is not int or not 1<=raw['candidate_trials']<=500):
         raise ValidationError('Contact candidate omitted measured crossings or actual changed-frame coverage')
     originals.append((policy,raw['policy']['sha256']));unchanged()
-    arguments=dict(source_fbx=source_fbx,permission=permission,blender_exe=blender_exe,worker_script=worker_script,
-                   cancel=cancel,timeout_s=timeout_s)
+    validate_candidate_areas(raw['body_area_verification'],source_review,ctx.baseline['source_frame_count'],
+        interval[1]-interval[0]+1,raw['candidate_pose_tests'])
     fitted=fit_native_preview(store,preview,fit_policy=policy,**arguments);unchanged()
     prepared=prepare_fitted_playback(store,fitted,**arguments);unchanged()
     review=review_body_contact_areas(store,preview,ctx.playback,fitted=prepared,**arguments);unchanged()
     guard=require_body_fit_guard(review);unchanged()
-    return FittedComparison(ctx.playback,prepared,request.job_id,str(policy),review,guard)
+    return FittedComparison(ctx.playback,prepared,request.job_id,str(policy),review,guard,source_review)

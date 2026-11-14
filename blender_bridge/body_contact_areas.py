@@ -43,12 +43,7 @@ class AreaCollector(BodyCollector):
         self.inspector.inspect(mesh,frame,skin,triangles)
 
 
-def measure_body_areas(bpy,root,options):
-    collectors=[]
-    def factory(profile):
-        collector=AreaCollector(profile);collectors.append(collector);return collector
-    contacts=measure_body_contacts(bpy,root,options,collector_factory=factory)
-    inspectors=[c.inspector for c in collectors if c.inspector is not None]
+def area_report(contacts,inspectors):
     source=inspectors[0];reason=''
     if any(i.status!='CHECKED' for i in inspectors):reason='BODY_CONTACTS_UNAVAILABLE'
     elif any(i.area_reason for i in inspectors):reason=next(i.area_reason for i in inspectors if i.area_reason)
@@ -56,6 +51,14 @@ def measure_body_areas(bpy,root,options):
     return {'schema_version':1,'policy':POLICY,'status':'UNAVAILABLE' if reason else 'CHECKED','reason':reason,
         'bindings':dict(contacts['bindings']),'body_contacts':contacts,'polygons':[] if reason else source.polygons,
         'polygon_topology_sha256':None if reason else source.polygon_sha,'originals_unchanged':True,**FLAGS}
+
+
+def measure_body_areas(bpy,root,options):
+    collectors=[]
+    def factory(profile):
+        collector=AreaCollector(profile);collectors.append(collector);return collector
+    contacts=measure_body_contacts(bpy,root,options,collector_factory=factory)
+    return area_report(contacts,[c.inspector for c in collectors if c.inspector is not None])
 
 
 def inspect_body_areas(bpy,root,options):
