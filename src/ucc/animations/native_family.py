@@ -4,6 +4,7 @@ import json
 
 from ucc.core.errors import ValidationError
 from .native_profile import CONVENTION, validate_native_profile
+from .native_hands import hand_pairs
 
 # Metadata fingerprint only: no purchased rest/pose data or assets are bundled.
 # Measured on all 30 authorized local sources; positions/axes/skin compatibility
@@ -11,7 +12,9 @@ from .native_profile import CONVENTION, validate_native_profile
 HIPS_OBJECT_TOPOLOGY = "37e1bed9064939b9e60010c88f3499efefd22dcfbbbacb2f2b3ece9de7f32405"
 
 
-def measured_body_profile(source,source_sha,snapshot_sha,master_sha):
+def measured_body_profile(source,source_sha,snapshot_sha,master_sha,*,include_hands=False):
+    if type(include_hands) is not bool:
+        raise ValidationError("Hand mapping selection must be a boolean")
     bones=source.get("bones")
     if (type(bones) is not list or len(bones)!=76 or any(type(b) is not dict or type(b.get("name")) is not str or
             (b.get("parent") is not None and type(b["parent"]) is not str) or "parent" not in b for b in bones) or
@@ -31,10 +34,12 @@ def measured_body_profile(source,source_sha,snapshot_sha,master_sha):
         pairs.extend([(side+"Shoulder","clavicle"+suffix,side+"Arm","upperarm01"+suffix,"FORWARD"),
             (side+"Arm","upperarm01"+suffix,side+"ForeArm","lowerarm01"+suffix,"FORWARD"),
             (side+"ForeArm","lowerarm01"+suffix,side+"Hand","wrist"+suffix,"FORWARD"),
-            (side+"Hand","wrist"+suffix,side+"HandMiddle1","finger3-1"+suffix,"FORWARD"),
+            (side+"Hand","wrist"+suffix,side+("HandMiddle2" if include_hands else "HandMiddle1"),"finger3-1"+suffix,"FORWARD"),
             (side+"Leg","upperleg01"+suffix,side+"Shin","lowerleg01"+suffix,"FORWARD"),
             (side+"Shin","lowerleg01"+suffix,side+"Foot","foot"+suffix,"FORWARD"),
             (side+"Foot","foot"+suffix,side+"ToeBase","toe3-1"+suffix,"UP")])
+    if include_hands:
+        pairs.extend(hand_pairs())
     landmarks={key:{"source":a,"target":b} for key,a,b in (
         ("left_hip","LeftLeg","upperleg01.L"),("right_hip","RightLeg","upperleg01.R"),
         ("head","Head","head"),("left_hand","LeftHand","wrist.L"),("right_hand","RightHand","wrist.R"),

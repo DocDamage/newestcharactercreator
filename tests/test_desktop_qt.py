@@ -577,6 +577,22 @@ class DesktopQtSmoke(unittest.TestCase):
         self.assertIsNone(service.call_args.kwargs["mapping_profile"])
         self.assertIs(service.call_args.kwargs["cancel"], submit.call_args.kwargs["cancel"])
         self.assertTrue(service.call_args.kwargs["permission"].no_ai)
+        self.assertFalse(service.call_args.kwargs["include_hands"])
+        pane.native_include_hands.setChecked(True)
+        self.assertFalse(pane.local_preview_review.isChecked())
+        pane.local_preview_review.setChecked(True)
+        with patch.object(self.window,"_submit") as submit,patch("ucc.desktop.native_body.preview_native_body") as service:
+            pane.test_native_body.click();submit.call_args.args[1]()
+        self.assertTrue(service.call_args.kwargs["include_hands"])
+        self.window._native_review=object()
+        pane.native_include_hands.setChecked(False)
+        self.assertIsNone(self.window._native_review)
+        pane.native_include_hands.setChecked(True)
+        pane.native_body_profile.setText("reviewed-map.json")
+        self.assertFalse(pane.native_include_hands.isEnabled())
+        self.assertFalse(pane.native_include_hands.isChecked())
+        pane.native_body_profile.clear()
+        self.assertTrue(pane.native_include_hands.isEnabled())
         for kind in ("native_body", "native_playback", "fbx_intake"):
             self.window._work_kind = kind
             self.window._busy_changed(True)
@@ -643,6 +659,15 @@ class DesktopQtSmoke(unittest.TestCase):
         self.assertIn("Hip movement matches",text)
         self.assertIn("0.0001 mm",text)
         self.assertIn("foot-contact quality and engine import remain unverified",text)
+
+    def test_native_result_counts_explicit_hand_joints_without_claiming_omitted_motion(self):
+        from types import SimpleNamespace
+        from fixtures.native_body_contract import contract
+        from ucc.desktop.native_body import native_result_text
+        data=contract()[0];data["mapped_pairs"].append({"target":"finger1-1.L"})
+        text=native_result_text(SimpleNamespace(evidence=data))
+        self.assertIn("including 1 hand/finger joints",text)
+        self.assertIn("omitted source motion remains unapplied",text)
 
     def test_native_corrective_result_discloses_private_smoothing_and_actual_reopen(self):
         from types import SimpleNamespace

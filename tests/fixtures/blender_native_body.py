@@ -1,7 +1,8 @@
 """Original native-body CI source author, independent Action reopen and faults.
 
 Source is a non-shipping armature derived from actual MPFB joint positions,
-with T-pose arms, independently assigned roll and authored 4m/400-degree travel.
+with T-pose body gates or measured A-pose hand anatomy, independent bone rolls
+and authored 4m/400-degree travel.
 It is not owner/Fab compatibility evidence. Never upload generated files.
 """
 from pathlib import Path
@@ -19,7 +20,7 @@ ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT))
 
 
-def layout():
+def layout(include_hands=False):
     rows=[("root",None,None,"BODY"),("spine05","spine03",None,"FORWARD"),
           ("spine03","spine01",None,"FORWARD"),("spine01","neck01",None,"FORWARD"),
           ("neck01","neck02",None,"FORWARD"),("neck02","head",None,"FORWARD"),
@@ -28,19 +29,27 @@ def layout():
         rows.extend([("clavicle"+suffix,"upperarm01"+suffix,None,"FORWARD"),
             ("upperarm01"+suffix,"lowerarm01"+suffix,None,"FORWARD"),
             ("lowerarm01"+suffix,"wrist"+suffix,None,"FORWARD"),
-            ("wrist"+suffix,"finger3-1"+suffix,"hand_tip"+suffix,"FORWARD"),
+            ("wrist"+suffix,"finger3-1"+suffix,None if include_hands else "hand_tip"+suffix,"FORWARD"),
             ("upperleg01"+suffix,"lowerleg01"+suffix,None,"FORWARD"),
             ("lowerleg01"+suffix,"foot"+suffix,None,"FORWARD"),
             ("foot"+suffix,"toe3-1"+suffix,"foot_tip"+suffix,"UP")])
+    if include_hands:
+        for suffix in (".L",".R"):
+            for digit in range(1,6):
+                if digit>1:rows.append((f"metacarpal{digit-1}{suffix}",f"finger{digit}-1{suffix}",None,"FORWARD"))
+                for joint in range(1,4):
+                    name=f"finger{digit}-{joint}{suffix}"
+                    rows.append((name,f"finger{digit}-{joint+1}{suffix}" if joint<3 else None,
+                                 "tip_"+name if joint==3 else None,"FORWARD"))
     return rows
 
 
-def author(master: Path,folder: Path,*,origin="target-root",corrective_challenge=False,posed_origin_challenge=False):
+def author(master: Path,folder: Path,*,origin="target-root",corrective_challenge=False,posed_origin_challenge=False,include_hands=False):
     folder.mkdir(parents=True,exist_ok=False)
     before=sha256(master.read_bytes()).hexdigest()
     bpy.ops.wm.open_mainfile(filepath=str(master),load_ui=False)
     target=next(o for o in bpy.data.objects if o.type=="ARMATURE")
-    rows=layout();names={row[0]:f"CI_Native_{i:02}" for i,row in enumerate(rows)}
+    rows=layout(include_hands);names={row[0]:f"CI_Native_{i:02}" for i,row in enumerate(rows)}
     names["root"]="@ARMATURE"
     world=target.matrix_world.copy()
     heads={b.name:world@b.head_local for b in target.data.bones}
@@ -50,8 +59,14 @@ def author(master: Path,folder: Path,*,origin="target-root",corrective_challenge
         root=(heads["upperleg01.L"]+heads["upperleg01.R"])/2
         root.z=0.
     adjusted={n:p.copy() for n,p in heads.items()}
+    tails={b.name:world@b.tail_local for b in target.data.bones}
     # Independent geometric T-pose construction, no production reference solver.
     for suffix,direction in ((".L",Vector((1,0,0))),(".R",Vector((-1,0,0)))):
+        # The hand challenge retains measured A-pose anatomy. Rotating a hand
+        # using only its middle-ray direction does not specify palm roll and
+        # can generate an incompatible thumb rest frame. Other body gates
+        # continue exercising the independently authored T-pose conversion.
+        if include_hands:continue
         upper,lower,wrist="upperarm01"+suffix,"lowerarm01"+suffix,"wrist"+suffix
         adjusted[lower]=heads[upper]+direction*(heads[lower]-heads[upper]).length
         adjusted[wrist]=adjusted[lower]+direction*(heads[wrist]-heads[lower]).length
@@ -69,7 +84,7 @@ def author(master: Path,folder: Path,*,origin="target-root",corrective_challenge
         if i==0:
             pairs.append({"source":source_name,"target":target_name,"source_tip":None,"target_tip":None,"secondary":secondary});continue
         tip_name=names[target_tip] if target_tip in names else "CI_Native_"+extra
-        endpoint=adjusted[target_tip] if target_tip else world@target.data.bones[target_name].tail_local
+        endpoint=adjusted[target_tip] if target_tip else tails[target_name]
         rest.append({"name":source_name,"parent":parent_names[source_name],"head":adjusted[target_name]-root,
                      "tail":endpoint-root,"roll":.17*(i%5)})
         if extra:
@@ -294,7 +309,8 @@ if __name__=="__main__":
     parser.add_argument("--origin",choices=("target-root","hip","ground"),default="target-root")
     parser.add_argument("--corrective-challenge",action="store_true")
     parser.add_argument("--posed-origin-challenge",action="store_true")
+    parser.add_argument("--include-hands",action="store_true")
     args=parser.parse_args(sys.argv[sys.argv.index("--")+1:])
-    if args.mode=="author":author(args.master,args.folder,origin=args.origin,corrective_challenge=args.corrective_challenge,posed_origin_challenge=args.posed_origin_challenge)
+    if args.mode=="author":author(args.master,args.folder,origin=args.origin,corrective_challenge=args.corrective_challenge,posed_origin_challenge=args.posed_origin_challenge,include_hands=args.include_hands)
     elif args.mode=="reopen":reopen(args.review,args.timeline,args.output)
     else:fault(args.master,args.job,args.folder)

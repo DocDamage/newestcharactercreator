@@ -95,7 +95,7 @@ class NativeCoordinatorTests(unittest.TestCase):
         options.update(overrides)
         with (patch("ucc.jobs.native_body.inspect_selected_fbx", return_value=intake) as inspect,
               patch("ucc.jobs.native_body.read_snapshot", return_value=(source, self.snapshot)),
-              patch("ucc.jobs.native_body.read_native_profile", return_value=(profile, digest(self.profile))),
+              patch("ucc.jobs.native_body.read_native_profile", side_effect=lambda path,*args:(profile,digest(path))),
               patch("ucc.jobs.native_body.BlenderJobRunner.run", side_effect=worker),
               patch("ucc.jobs.native_body.read_native_timeline", side_effect=evidence),
               patch("ucc.jobs.native_body.bound_file", return_value=self.root/"review_motion.blend"),
@@ -133,6 +133,21 @@ class NativeCoordinatorTests(unittest.TestCase):
         with self.assertRaises(AssetPolicyError):
             self.run_preview(permission=LicensePolicy("unknown", "unknown", "local://unknown"))
         self.assertEqual(self.runs, 0)
+
+    def test_automatic_hands_cannot_override_explicit_map_or_accept_nonboolean(self):
+        for value in (True,1,"yes",None):
+            with self.subTest(value=value),self.assertRaises(ValidationError):
+                self.run_preview(include_hands=value)
+        self.assertEqual(self.runs,0)
+
+    def test_automatic_hand_choice_reaches_bound_generator_and_preserves_originals(self):
+        profile=contract()[3]
+        with patch("ucc.jobs.native_body.measured_body_profile",return_value=profile) as generate:
+            result=self.run_preview(mapping_profile=None,include_hands=True)
+        self.assertIs(generate.call_args.kwargs["include_hands"],True)
+        self.assertEqual(self.runs,2)
+        self.assertEqual(self.before,(self.source.read_bytes(),self.master.read_bytes(),self.metadata.read_bytes()))
+        self.assertTrue(Path(result.mapping_profile_used).is_file())
 
     def test_corrective_policy_requires_successful_third_process_and_preserves_originals(self):
         self.corrective=True
