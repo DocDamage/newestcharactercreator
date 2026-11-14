@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from .complete_trunk_fit_guard import CompleteTrunkFitGuard
 
 from ucc.animations.fbx_snapshot import validate_snapshot
+from ucc.animations.symmetric_fit import fitted_hash_fields
 from ucc.animations.native_profile import read_native_profile
 from ucc.core.errors import ValidationError,ProjectConflict,ProjectStorageError
 from ucc.core.storage import ProjectStore
@@ -82,7 +83,7 @@ def prepare_fitted_playback(store: ProjectStore,preview: NativeFitPreview,*,sour
         raise ProjectConflict('Saved character changed since target fitting')
     original=preview.original_preview;raw=original.worker_report
     options=preview.verification.get('bindings')
-    if (type(options) is not dict or set(options)!=FIT_HASHES or options['source_sha256']!=preview.source_sha256 or
+    if (type(options) is not dict or set(options)!=fitted_hash_fields(options) or options['source_sha256']!=preview.source_sha256 or
         options['master_sha256']!=master_sha or options['fit_sha256']!=preview.fit_policy_sha256 or
         options['fitted_sha256']!=preview.fitted_scene_sha256):
         raise ValidationError('Fitted playback identity differs from its verified candidate')
@@ -94,6 +95,10 @@ def prepare_fitted_playback(store: ProjectStore,preview: NativeFitPreview,*,sour
         'fitted_motion.blend':Path(preview.private_fitted_scene),'fitted_timeline.json':Path(preview.private_timeline)}
     keys=('master_sha256','review_sha256','snapshot_sha256','mapping_sha256','timeline_sha256','fit_sha256','fitted_sha256','fit_report_sha256')
     expected=dict(zip(paths,(options[k] for k in keys)))
+    if 'base_fit_policy_sha256' in options:
+        from .symmetric_fit_evidence import cached_base_inputs
+        base_paths,base_expected=cached_base_inputs(paths['contact_fit.json'].parent,options,jobs)
+        paths.update(base_paths);expected.update(base_expected)
     if jobs.is_symlink() or folder.is_symlink() or folder.resolve().parent!=jobs.resolve():
         raise ValidationError('Fitted playback original review folder is redirected')
     for name in ('review_motion.blend','target_timeline.json','fitted_motion.blend','fitted_timeline.json'):

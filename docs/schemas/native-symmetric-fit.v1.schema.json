@@ -1,0 +1,203 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ucc.local/schemas/native-symmetric-fit.v1.schema.json",
+  "title": "Explicit SHA-bound shoulder layer over independently verified legacy fit",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "policy",
+    "bindings",
+    "coordinate_space",
+    "chains",
+    "fps",
+    "frames"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "type": "integer"
+    },
+    "policy": {
+      "const": "BOUNDED_NATIVE_SYMMETRIC_CLAVICLE_LAYER_V4"
+    },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_sha256",
+        "snapshot_sha256",
+        "mapping_sha256",
+        "master_sha256",
+        "review_sha256",
+        "timeline_sha256",
+        "base_fit_policy_sha256",
+        "base_fitted_sha256",
+        "base_fit_report_sha256"
+      ],
+      "properties": {
+        "source_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "snapshot_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "mapping_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "master_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "review_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "timeline_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "base_fit_policy_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "base_fitted_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "base_fit_report_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "coordinate_space": {
+      "const": "BLENDER_WORLD_METERS"
+    },
+    "chains": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "left",
+        "right"
+      ],
+      "properties": {
+        "left": {
+          "$ref": "#/$defs/chain"
+        },
+        "right": {
+          "$ref": "#/$defs/chain"
+        }
+      }
+    },
+    "fps": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 240
+    },
+    "frames": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 2000,
+      "items": {
+        "$ref": "#/$defs/frame"
+      }
+    },
+    "render_frames": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "uniqueItems": true,
+      "items": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 2000
+      }
+    }
+  },
+  "$defs": {
+    "vector3": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "number",
+        "minimum": -1000000,
+        "maximum": 1000000
+      }
+    },
+    "chain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "clavicle",
+        "upper_arm",
+        "forearm",
+        "hand"
+      ],
+      "properties": {
+        "clavicle": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "upper_arm": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "forearm": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "hand": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      }
+    },
+    "frame": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "frame",
+        "left_offset_world",
+        "left_clavicle_rotation_world_degrees",
+        "left_hand_rotation_local_degrees",
+        "right_offset_world",
+        "right_clavicle_rotation_world_degrees",
+        "right_hand_rotation_local_degrees"
+      ],
+      "properties": {
+        "frame": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2000
+        },
+        "left_offset_world": {
+          "$ref": "#/$defs/vector3"
+        },
+        "left_clavicle_rotation_world_degrees": {
+          "$ref": "#/$defs/vector3"
+        },
+        "left_hand_rotation_local_degrees": {
+          "$ref": "#/$defs/vector3"
+        },
+        "right_offset_world": {
+          "$ref": "#/$defs/vector3"
+        },
+        "right_clavicle_rotation_world_degrees": {
+          "$ref": "#/$defs/vector3"
+        },
+        "right_hand_rotation_local_degrees": {
+          "$ref": "#/$defs/vector3"
+        }
+      }
+    }
+  }
+}

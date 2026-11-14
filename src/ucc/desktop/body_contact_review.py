@@ -64,6 +64,11 @@ def publish_body_contact_review(window,result):
         fp=fitted.fitted_preview
         paths.update({Path(fp.fit_policy_used):bindings['fit_sha256'],Path(fp.private_fitted_scene):bindings['fitted_sha256'],
                       Path(fp.private_timeline):bindings['fit_report_sha256']})
+        if 'base_fit_policy_sha256' in bindings:
+            folder=Path(fp.fit_policy_used).parent
+            paths.update({folder/'base_contact_fit.json':bindings['base_fit_policy_sha256'],
+                          folder/'base_fitted_motion.blend':bindings['base_fitted_sha256'],
+                          folder/'base_fitted_timeline.json':bindings['base_fit_report_sha256']})
     if any(p.is_symlink() or not p.is_file() or _digest(p)!=digest for p,digest in paths.items()):
         raise ValidationError('Body review source/master/policy/report changed before publication')
     watch_inputs(window,paths)

@@ -34,8 +34,11 @@ def orient(plan: dict,matrices: dict,frame: int) -> dict:
 
 
 def changed(plan: dict,frame: int) -> bool:
+    if 'active_frames' in plan:return plan['active_frames'][frame-1]
     return any(plan['offsets'][frame-1]) or bool(plan.get('hand_rotations') and any(plan['hand_rotations'][frame-1]))
 
 
 def angular_bones(plan: dict) -> tuple[str,...]:
+    if 'active_frames' in plan:
+        return tuple(n for s in ('left','right') for n in (*plan[s]['chain'],plan[s]['clavicle']))
     return plan['chain'] if plan.get('hand_rotations') else plan['chain'][:2]

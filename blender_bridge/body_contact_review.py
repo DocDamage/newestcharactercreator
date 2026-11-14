@@ -24,6 +24,9 @@ FLAGS={'contact_quality_verified':False,'animation_visual_quality_verified':Fals
 
 def checked_body_job(job: dict) -> dict:
     options=job['options'];fields=OPERATIONS[job['operation']]
+    if 'fitted_sha256' in fields:
+        from blender_bridge.native_symmetric_policy import layer_fields
+        fields=layer_fields(fields,options)
     if (job['input_project']!='candidate.blend' or type(options) is not dict or set(options)!=fields or
         any(type(v) is not str or len(v)!=64 or any(c not in '0123456789abcdef' for c in v) for v in options.values())):
         raise ValueError('Body contact review requires exact hashes and fixed staged filenames')
@@ -35,6 +38,9 @@ def input_hashes(options: dict) -> dict:
            'native_mapping.json':'mapping_sha256','source_snapshot.json':'snapshot_sha256'}
     if 'fitted_sha256' in options:files.update({'contact_fit.json':'fit_sha256','fitted_motion.blend':'fitted_sha256','fitted_timeline.json':'fit_report_sha256'})
     if 'body_review_sha256' in options:files['body_contacts.json']='body_review_sha256'
+    if 'base_fit_policy_sha256' in options:
+        files.update({'base_contact_fit.json':'base_fit_policy_sha256','base_fitted_motion.blend':'base_fitted_sha256',
+                      'base_fitted_timeline.json':'base_fit_report_sha256'})
     return {n:options[k] for n,k in files.items()}
 
 

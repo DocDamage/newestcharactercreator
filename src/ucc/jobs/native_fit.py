@@ -47,7 +47,8 @@ class NativeFitPreview:
 
 def fit_native_preview(store: ProjectStore,preview: NativeBodyPreview,*,source_fbx: Path,fit_policy: Path,
                        permission: LicensePolicy,blender_exe: Path,worker_script: Path,
-                       cancel: Event | None=None,timeout_s: float=300) -> NativeFitPreview:
+                       cancel: Event | None=None,timeout_s: float=300,
+                       base_preview: NativeFitPreview | None=None) -> NativeFitPreview:
     allowed,reason=permission.allow('local_preview')
     if not allowed:raise AssetPolicyError(reason)
     def check_cancel():
@@ -75,6 +76,13 @@ def fit_native_preview(store: ProjectStore,preview: NativeBodyPreview,*,source_f
     validate_snapshot(source,preview.source_sha256,cancel_check=check_cancel)
     baseline,_=read_native_timeline(folder,raw,source,profile,bindings,cancel_check=check_cancel)
     options={**bindings,'review_sha256':raw['visual_review_blend']['sha256'],'timeline_sha256':raw['timeline']['sha256']}
+    base_paths={};base_expected={}
+    if base_preview is not None:
+        from .symmetric_fit_evidence import layer_base_inputs
+        base_paths,base_expected=layer_base_inputs(base_preview,preview,jobs,options,baseline,profile,cancel_check=check_cancel)
+        options.update(base_fit_policy_sha256=base_expected['base_contact_fit.json'],
+                       base_fitted_sha256=base_expected['base_fitted_motion.blend'],
+                       base_fit_report_sha256=base_expected['base_fitted_timeline.json'])
     if fit_policy.is_symlink() or not fit_policy.is_file() or not 0<fit_policy.stat().st_size<=MAX_FIT_BYTES:
         raise ValidationError('Select a bounded regular target-fitting policy')
     fit_sha=_digest(fit_policy,cancel)
@@ -88,6 +96,7 @@ def fit_native_preview(store: ProjectStore,preview: NativeBodyPreview,*,source_f
     expected={'candidate.blend':master_sha,'review_motion.blend':options['review_sha256'],
               'target_timeline.json':options['timeline_sha256'],'source_snapshot.json':bindings['snapshot_sha256'],
               'native_mapping.json':map_sha,'contact_fit.json':fit_sha}
+    staged.update(base_paths);expected.update(base_expected)
     metadata=store.root/'project.ucc.json'
     originals=[(p,expected[n]) for n,p in staged.items()]+[(metadata,_digest(metadata,cancel)),(source_fbx,preview.source_sha256)]
     runner=BlenderJobRunner(blender_exe,jobs,worker_script);ids=[]
@@ -111,13 +120,18 @@ def fit_native_preview(store: ProjectStore,preview: NativeBodyPreview,*,source_f
     validate_fit_stage(stage,options,baseline)
     # Independently validate the policy against the first worker's measured tree
     # before trusting any saved fitted geometry or requesting its canonical report.
-    read_contact_fit(fit_policy,fit_sha,{k:options[k] for k in HASHES},baseline,profile,
-                     rest_parents(stage['target_rest_frames'],baseline),cancel_check=check_cancel)
+    staged_policy=stage_folder/'contact_fit.json' if base_preview is not None else fit_policy
+    if base_preview is not None:
+        from .symmetric_fit_evidence import read_layer_plan
+        read_layer_plan(staged_policy,options,baseline,profile,stage['target_rest_frames'],cancel_check=check_cancel)
+    else:
+        read_contact_fit(fit_policy,fit_sha,{k:options[k] for k in HASHES},baseline,profile,
+                         rest_parents(stage['target_rest_frames'],baseline),cancel_check=check_cancel)
     fitted=bound_file(stage_folder,stage['fitted_scene'],'fitted_motion.blend',512*1024*1024,cancel_check=check_cancel)
     options['fitted_sha256']=stage['fitted_scene']['sha256'];staged['fitted_motion.blend']=fitted
     expected['fitted_motion.blend']=options['fitted_sha256'];originals.append((fitted,options['fitted_sha256']))
     measured,measure_folder=run('measure_native_fit')
-    data,fit_timeline,plan,surface,angular=read_fitted_timeline(measure_folder,measured,options,baseline,profile,fit_policy,
+    data,fit_timeline,plan,surface,angular=read_fitted_timeline(measure_folder,measured,options,baseline,profile,staged_policy,
                                                             stage['target_rest_frames'],cancel_check=check_cancel)
     if surface.status!='CHECKED' or surface.flagged_frames:
         raise ValidationError('Fitted candidate has unresolved or unavailable hand/arm intersection review; not published')
@@ -129,4 +143,4 @@ def fit_native_preview(store: ProjectStore,preview: NativeBodyPreview,*,source_f
     bound_file(stage_folder,stage['fitted_scene'],'fitted_motion.blend',512*1024*1024,cancel_check=check_cancel)
     bound_file(measure_folder,measured['timeline'],'fitted_timeline.json',64*1024*1024,cancel_check=check_cancel)
     return NativeFitPreview(project.project_id,project.revision,master_sha,preview.source_sha256,options['fitted_sha256'],fit_sha,
-                            str(fitted),str(fit_timeline),index,tuple(ids),data,surface,angular,verified,preview,str(fit_policy))
+                            str(fitted),str(fit_timeline),index,tuple(ids),data,surface,angular,verified,preview,str(staged_policy))
