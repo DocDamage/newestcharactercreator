@@ -67,6 +67,15 @@ OPERATIONS |= {'stage_mpfb_hand_revision','verify_mpfb_hand_revision'}
 OPERATIONS.add('inspect_mpfb_hand_bounds')
 OPERATIONS |= {'stage_mpfb_expression_keys', 'verify_mpfb_expression_keys'}
 OPERATIONS.add('inspect_mpfb_expression_keys')
+OPERATIONS |= {'stage_mpfb_expression_clip', 'verify_mpfb_expression_clip'}
+
+
+def mpfb_expression_clip(job: dict, root: Path) -> dict:
+    from blender_bridge.expression_clip_workers import stage_clip, verify_clip
+    if job['input_project'] != 'candidate.blend':
+        raise ValueError('Expression clip requires fixed staged candidate.blend')
+    action = stage_clip if job['operation'] == 'stage_mpfb_expression_clip' else verify_clip
+    return action(bpy, root, job['options'])
 
 
 def mpfb_expression_keys(job: dict, root: Path) -> dict:
@@ -412,6 +421,8 @@ def main() -> int:
         action = {"inspect_environment": inspect_environment,
                   'stage_mpfb_face': mpfb_face,
                   'stage_mpfb_expression_keys': mpfb_expression_keys,
+                  'stage_mpfb_expression_clip': mpfb_expression_clip,
+                  'verify_mpfb_expression_clip': mpfb_expression_clip,
                   'inspect_mpfb_expression_keys': mpfb_expression_keys,
                   'verify_mpfb_expression_keys': mpfb_expression_keys,
                   'verify_mpfb_face': mpfb_face,

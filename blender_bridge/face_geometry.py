@@ -49,7 +49,7 @@ def canonical_rest(before: dict, after: dict) -> None:
         raise ValueError('Source rest rig differs from the canonical MPFB refit')
 
 
-def intake(bpy):
+def intake(bpy, *, allowed_key_action=None):
     service, module = locate_human_service()
     target_service, _ = locate_target_service(module)
     package = importlib.import_module(module.removesuffix('.services.humanservice'))
@@ -98,7 +98,9 @@ def intake(bpy):
             raise ValueError('Facial operation rejects linked, overridden or constrained objects')
     for data in (human, rig, human.data, rig.data, human.data.shape_keys):
         animation = getattr(data, 'animation_data', None)
-        if animation and (animation.action or len(animation.drivers) or len(animation.nla_tracks)):
+        permitted_action = (allowed_key_action is not None and data == human.data.shape_keys
+                            and animation is not None and animation.action == allowed_key_action)
+        if animation and ((animation.action and not permitted_action) or len(animation.drivers) or len(animation.nla_tracks)):
             raise ValueError('Facial operation requires an unanimated neutral character')
     if rig.data.pose_position != 'POSE':
         raise ValueError('Facial operation requires normal rig pose evaluation')
