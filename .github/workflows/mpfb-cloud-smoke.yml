@@ -15,6 +15,9 @@ on:
       - 'ci/verify_custom_face.py'
       - 'ci/verify_hand_parts.py'
       - 'ci/verify_expressions.py'
+      - 'ci/verify_regional_skin.py'
+      - 'ci/regional_*.py'
+      - 'tests/fixtures/blender_regional*.py'
       - 'ci/expression_*_checks.py'
       - 'tests/fixtures/blender_expression*.py'
       - 'src/ucc/core/expression*.py'
@@ -96,6 +99,9 @@ on:
       - 'ci/verify_custom_face.py'
       - 'ci/verify_hand_parts.py'
       - 'ci/verify_expressions.py'
+      - 'ci/verify_regional_skin.py'
+      - 'ci/regional_*.py'
+      - 'tests/fixtures/blender_regional*.py'
       - 'ci/expression_*_checks.py'
       - 'tests/fixtures/blender_expression*.py'
       - 'src/ucc/core/expression*.py'
@@ -174,12 +180,12 @@ concurrency:
 
 jobs:
   verify-mpfb-linux:
-    name: ${{ matrix.suite == 'regression' && 'verify-mpfb-linux' || matrix.suite == 'native-fit' && 'verify-native-fit-linux' || matrix.suite == 'symmetric-fit' && 'verify-symmetric-fit-linux' || 'verify-body-contacts-linux' }}
+    name: ${{ matrix.suite == 'regression' && 'verify-mpfb-linux' || matrix.suite == 'native-fit' && 'verify-native-fit-linux' || matrix.suite == 'symmetric-fit' && 'verify-symmetric-fit-linux' || matrix.suite == 'regional-skin' && 'verify-regional-skin-linux' || 'verify-body-contacts-linux' }}
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
-        suite: [regression, native-fit, body-contacts, symmetric-fit]
+        suite: [regression, native-fit, body-contacts, symmetric-fit, regional-skin]
     # The full 300-frame neutral-reference regression completed at the old
     # 25-minute job boundary (including tool setup), cancelling a passing run.
     # Keep every integration assertion and allow bounded setup/runner headroom.
@@ -213,7 +219,7 @@ jobs:
     # Expression regression adds three prepared bodies, preservation, a registered
     # hand, complete 25-frame previews and thirteen faults. Keep earlier gates
     # and individual subprocess bounds, with explicit regression headroom.
-    timeout-minutes: ${{ matrix.suite == 'native-fit' && 180 || matrix.suite == 'symmetric-fit' && 120 || matrix.suite == 'body-contacts' && 90 || 60 }}
+    timeout-minutes: ${{ matrix.suite == 'native-fit' && 180 || matrix.suite == 'symmetric-fit' && 120 || matrix.suite == 'body-contacts' && 90 || matrix.suite == 'regional-skin' && 90 || 60 }}
     env:
       PYTHONUNBUFFERED: '1'
     steps:
@@ -334,6 +340,14 @@ jobs:
             --blender "$BLENDER_EXE" \
             --source-root "$RUNNER_TEMP/ucc-hand-parts" \
             --outdir "$RUNNER_TEMP/ucc-expressions"
+      - name: Verify original regional skin on three bodies, all 900 frames and saved/transaction faults
+        if: matrix.suite == 'regional-skin'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ci/verify_regional_skin.py \
+            --blender "$BLENDER_EXE" \
+            --outdir "$RUNNER_TEMP/ucc-regional-skin"
       - name: Verify original full-timeline target fitting and real saved-scene corruptions
         if: matrix.suite == 'native-fit'
         shell: bash
@@ -375,6 +389,7 @@ jobs:
             ${{ runner.temp }}/ucc-custom-face/custom_face_summary.json
             ${{ runner.temp }}/ucc-hand-parts/hand_parts_summary.json
             ${{ runner.temp }}/ucc-expressions/expression_summary.json
+            ${{ runner.temp }}/ucc-regional-skin/regional_skin_summary.json
             ${{ runner.temp }}/ucc-native-fit/native_fit_summary.json
             ${{ runner.temp }}/ucc-body-contacts/body_contact_summary.json
             ${{ runner.temp }}/ucc-symmetric-math.json

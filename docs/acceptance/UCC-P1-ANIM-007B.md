@@ -1,6 +1,6 @@
 # UCC-P1-ANIM-007B — explicit regional skin correction
 
-Status: locally implemented and verified on `feat/anim-007-basic-actions`, based on `f77cf99ad157d850035e6a0cd0831d087c032139`. New remote CI, an original-only real-Blender V2 integration gate, and a new Windows package remain unrun. Frozen PR #64's separate acceptance applies to `7db913e373c1147ea78f06408cc44c00e5d2669b`. This task does not complete the seven-action product workflow.
+Status: locally implemented and verified on `feat/anim-007-basic-actions`, based on `f77cf99ad157d850035e6a0cd0831d087c032139`. The original-only real-Blender V2 integration gate now passes locally; new remote CI and a new Windows package remain unrun. Frozen PR #64's separate acceptance applies to `7db913e373c1147ea78f06408cc44c00e5d2669b`. This task does not complete the seven-action product workflow.
 
 ## Problem and behavior
 
@@ -18,7 +18,7 @@ Private evidence is under `evidence/anim007b`, outside Git. Purchased source mot
 
 | Gate | Observed result |
 | --- | --- |
-| Final full suite, `full-regression-03.log` | 932 tests in 112.784 seconds: 918 passed, fourteen existing Windows symlink-privilege skips; required Qt enabled |
+| Latest full suite with CI follow-up, `ci-full-regression-02.log` | 935 tests in 121.515 seconds: 921 passed, fourteen existing Windows symlink-privilege skips; required Qt enabled |
 | Focused contracts and desktop boundary | 42 skin/palm/hand/reference tests pass; all eight fitted-comparison Qt tests pass, including regional rejection before job submission and unchanged project/original playback |
 | Normal API, `regional-target-01/summary.json` | Run 180 frames in 382.578 seconds, jump 120 in 262.344 seconds, death 210 in 431.891 seconds; all 21 normal workers pass in 1076.969 seconds, including paired source/body verification, saved-Action reopening, complete caches, and independent surface verification |
 | Independent persisted reload | Both saved timelines per case, profiles, original source identities, palm proofs, decoded local renders, all 510 cached frames, and surface proofs pass; source palm normal errors are zero |
@@ -33,6 +33,16 @@ The selection scan is separate observation evidence, not a normal worker accepta
 
 The final UI-only fitting guard was added after normal Blender QA completed. A final LF normalization preserves identical AST and compiled code for all 22 Python files in both host Python and pinned Blender. Original normal-worker evidence retains its earlier source manifest; final regression, persisted reload, and GPU checks use the normalized source. The final 22-file manifest, full 932-test suite, independent reload, and actual GPU checks include that additional guard and its Qt test. No Blender/API worker result is relabeled after a backend edit.
 
+## Original-only CI follow-up
+
+The separate `original-ci-regional-01/regional_skin_summary.json` gate passes in 2229.485 seconds. It creates three real MPFB body/face targets through normal application transactions, genuinely rebuilds the middle target's selected hand with prepared expression keys, and preserves four saved strengths of `0.5`. One shared original analytical armature supplies all 300 frames to each target: scaled four-meter hip travel, a complete 400-degree turn, intrinsic finger motion, and opposing torso/leg bend recovery. The existing source author and its challenge remain unchanged. No owned clip, pose, scene, render, or mesh was used as a fixture or uploaded.
+
+All 900 frames pass paired body/hand workers, normal saved-Action reopening, complete caches and independent surface verification. A separate reader independently checks exact original binary weights, the derived mask formula, original geometry/keys/rest, actual ordered bound layers, all saved poses, corrected/raw skin, and both neutral strain references. It does not call the production reopening or mask solver. Minimum/maximum observed edge ratios are `0.605140/1.780563`, `0.585475/2.210249`, and `0.639321/2.578059`; maximum correction remains below `0.63%` on every target. These authored tests do not establish purchased-pack compatibility or collision clearance.
+
+Eight actual coherently rehashed scene/timeline faults reject on the generated middle target, including original and mask one-ULP weight changes. Actual second-layer bind failure and a layer-setting mutation on the twentieth posed measurement both reject and restore exact original float32 skin, groups, rest, modifier stack, and Actions. Original generated inputs and installed targets remain unchanged. A separate domain auditor checks all three cases, 900 frames, 38 intrinsic hand joints per case, bounded metrics, and the complete ten-fault set.
+
+A fifth independent Linux matrix suite, `regional-skin`, has a bounded 90-minute job budget. Its artifact allowlist adds only `ucc-regional-skin/regional_skin_summary.json`; generated assets and worker evidence remain on the runner. Existing suites, official archive/checksum checks, and assertions are retained. The full suite initially detected the missing entry in the older closed artifact privacy test; adding that exact summary filename restored the 935-test pass without introducing wildcards.
+
 ## Remaining work and rights
 
 The V2 policy is opt-in and proves these three complete local motions on this prepared character. It does not establish arbitrary-pack compatibility, foot-contact/root/loop quality, human visual acceptance, collision clearance, or engine reproduction of Blender corrective modifiers. Existing surface observations remain observations.
@@ -41,4 +51,4 @@ The first four motion receipts remain separately bound to their earlier policies
 
 No software, model, asset, dependency, or license was added. Existing local-preview-only, NoAI, source-redistribution, and engine-export restrictions remain unchanged. Further merges require owner approval.
 
-Next task: add original-only real-Blender coverage for the new policy and finish this branch's remote CI/package acceptance before integrating the registered-action workflow.
+Next task: finish this branch's exact-head remote CI/package acceptance, including all five Linux diagnostic archives, before integrating the registered-action workflow.
