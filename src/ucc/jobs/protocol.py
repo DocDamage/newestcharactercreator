@@ -14,6 +14,7 @@ PROTOCOL_VERSION = 1
 SUPPORTED_OPERATIONS = {"inspect_environment", "inspect_character", "create_human", "export_preview_glb", "refit_human", "verify_skin_deformation", "verify_keyframed_timeline", "verify_local_bvh_motion", "verify_multi_bvh_chain", "verify_calibrated_bvh_chain", "verify_reviewed_bvh_chain", "inspect_fbx_animation", "verify_native_fbx_body", "reopen_native_fbx_body", "cache_native_fbx_body", "verify_native_surface_review"}
 SUPPORTED_OPERATIONS |= {"propose_native_contact_fit", "fit_native_fbx_body", "measure_native_fit", "verify_native_fit", "cache_native_fit"}
 SUPPORTED_OPERATIONS.add('propose_native_area_contact_fit')
+SUPPORTED_OPERATIONS.add('propose_native_hand_contact_fit')
 BODY_CONTACT_OPERATIONS = {'verify_fitted_body_contacts', 'verify_native_body_contacts', 'inspect_fitted_body_contacts', 'inspect_native_body_contacts'}
 BODY_CONTACT_OPERATIONS |= {'inspect_native_body_areas','verify_native_body_areas','inspect_fitted_body_areas','verify_fitted_body_areas'}
 SUPPORTED_OPERATIONS |= BODY_CONTACT_OPERATIONS
@@ -67,14 +68,14 @@ class JobRequest:
             if self.operation.startswith('verify_'):fields.add('body_review_sha256')
             if self.input_project!='candidate.blend' or set(self.options)!=fields or any(not is_sha256(v) for v in self.options.values()):
                 raise ValidationError('Body contact review requires exact hashes and fixed staged filenames')
-        if self.operation in {"propose_native_contact_fit",'propose_native_area_contact_fit'}:
+        if self.operation in {"propose_native_contact_fit",'propose_native_area_contact_fit','propose_native_hand_contact_fit'}:
             from ucc.animations.source_rest_frames import is_sha256
             from ucc.animations.contact_fit import HASHES
             fields=HASHES|{'surface_review_sha256'}
-            if self.operation=='propose_native_area_contact_fit':fields|={'source_body_areas_sha256'}
+            if self.operation!='propose_native_contact_fit':fields|={'source_body_areas_sha256'}
             if (self.input_project!="candidate.blend" or set(self.options)!=fields or
                 any(not is_sha256(v) for v in self.options.values())):
-                raise ValidationError("Contact candidate requires seven exact hashes and fixed staged filenames")
+                raise ValidationError("Contact candidate requires its exact hashes and fixed staged filenames")
         if self.operation == "inspect_fbx_animation":
             from ucc.animations.source_rest_frames import is_sha256
             if self.input_project is not None or set(self.options) != {"source_sha256"} or not is_sha256(self.options["source_sha256"]):

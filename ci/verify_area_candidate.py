@@ -8,7 +8,9 @@ from ucc.jobs.protocol import JobRequest
 from ucc.jobs.runner import BlenderJobRunner,WorkerFailure
 
 
-def verify_area_candidate_negatives(blender,store,playback,source_review,folder):
+def verify_area_candidate_negatives(blender,store,playback,source_review,folder,*,operation='propose_native_area_contact_fit'):
+    if operation not in {'propose_native_area_contact_fit','propose_native_hand_contact_fit'}:
+        raise ValueError('Unsupported area candidate negative operation')
     folder.mkdir(exist_ok=False);repo=Path(__file__).resolve().parents[1]
     cache=Path(playback.private_manifest).parent
     report=json.loads((cache/'result.json').read_text())['details']
@@ -22,7 +24,7 @@ def verify_area_candidate_negatives(blender,store,playback,source_review,folder)
     def negative(case):
         label,path,reason=case;staged={n:cache/n for n in names};staged['source_body_areas.json']=path
         bound={**options,'source_body_areas_sha256':sha256(path.read_bytes()).hexdigest()}
-        request=JobRequest.new('propose_native_area_contact_fit',input_project='candidate.blend',options=bound)
+        request=JobRequest.new(operation,input_project='candidate.blend',options=bound)
         try:BlenderJobRunner(blender,store.root/'.ucc-jobs',repo/'blender_bridge/entrypoint.py').run(request,timeout_s=900,staged_inputs=staged)
         except WorkerFailure as error:
             if reason not in str(error):raise
@@ -35,6 +37,6 @@ def verify_area_candidate_negatives(blender,store,playback,source_review,folder)
             ('rehashed_false_areas',forged,'Fresh source body contact areas differ'))))
     if store.load()!=project or before!={n:sha256((cache/n).read_bytes()).hexdigest() for n in names}:
         raise RuntimeError('Area candidate negative changed original source/master/project evidence')
-    return {'status':'REAL_ORIGINAL_AREA_CANDIDATE_NEGATIVES_PASSED','source_frames':300,'rejected':rejected,
+    return {'status':'REAL_ORIGINAL_AREA_CANDIDATE_NEGATIVES_PASSED','operation':operation,'source_frames':300,'rejected':rejected,
         'original_inputs_unchanged':True,'partial_candidate_policies_written':False,'candidate_success_claimed':False,
         'contact_quality_approved':False,'engine_import_verified':False}

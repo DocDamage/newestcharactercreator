@@ -53,6 +53,7 @@ OPERATIONS |= BODY_CONTACT_OPERATIONS
 OPERATIONS |= set(BODY_AREA_OPERATIONS)
 OPERATIONS |= {"propose_native_contact_fit", "fit_native_fbx_body", "measure_native_fit", "verify_native_fit", "cache_native_fit"}
 OPERATIONS.add(AREA_CANDIDATE_OPERATION)
+OPERATIONS.add('propose_native_hand_contact_fit')
 
 
 def native_body_contacts(job: dict, root: Path) -> dict:
@@ -71,6 +72,10 @@ def native_contact_candidate(job: dict, root: Path) -> dict:
 
 def native_area_contact_candidate(job: dict,root: Path) -> dict:
     return propose_area_contact_fit(bpy,root,checked_area_candidate_job(job))
+
+
+def native_hand_contact_candidate(job: dict,root: Path) -> dict:
+    return propose_area_contact_fit(bpy,root,checked_area_candidate_job(job),hand_search=True)
 
 
 def native_target_fit(job: dict, root: Path) -> dict:
@@ -350,6 +355,7 @@ def main() -> int:
                    "cache_native_fit": native_target_fit,
                    "propose_native_contact_fit": native_contact_candidate,
                    "propose_native_area_contact_fit": native_area_contact_candidate,
+                   "propose_native_hand_contact_fit": native_hand_contact_candidate,
                    "inspect_native_body_contacts": native_body_contacts,
                    "verify_native_body_contacts": native_body_contacts,
                    "inspect_fitted_body_contacts": native_body_contacts,
