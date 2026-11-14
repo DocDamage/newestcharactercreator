@@ -79,11 +79,16 @@ After **Load verified motion in UCC...**:
   Original bound inputs stay unchanged. The original articulated 300-frame
   T-pose challenge passes complete V2 cache, surface reproduction, pose-specific
   topology checks and the detector/forgery fault contract.
-- 510 tests pass with 13 Windows symlink-privilege skips; all 15 preflight and
+- 510 tests run: 497 pass with 13 Windows symlink-privilege skips; all 15 preflight and
   guardrail tests, compilation and whitespace checks pass. Combined local Windows
   regression passes, including the real surface-fault/forgery contract. The final
   world-transform binding additionally passes a fresh complete 300-frame scene
-  verification and negative unit checks. All final-head CI gates remain pending.
+  verification and negative unit checks. All five final-head CI gates pass at
+  `32386fda0e86a64b9fee23f791c80ceee7ee1438`; [PR #47](https://github.com/DocDamage/newestcharactercreator/pull/47)
+  is ready for review and unmerged. Its independently downloaded JSON-only
+  artifact SHA-256 is `8a84116de29569807c169a15fe06a632e0a01e506caed2eb47507a97c2db05ca`.
+  The Linux fault injects nine actual crossing pairs; local Windows injects five.
+  Both detect the fault, reject rehashed fabricated annotations and preserve originals.
 
 ## Limits and next task
 

@@ -13,10 +13,14 @@ on:
       - 'ci/verify_production_worker.py'
       - 'ci/verify_project_generation.py'
       - 'ci/verify_native_body.py'
+      - 'ci/verify_native_fit.py'
       - 'tests/fixtures/blender_native_body.py'
+      - 'tests/fixtures/blender_native_fit_faults.py'
       - 'src/ucc/animations/native*.py'
+      - 'src/ucc/animations/contact_fit.py'
       - 'src/ucc/jobs/native*.py'
       - 'src/ucc/preview/motion_cache.py'
+      - 'src/ucc/preview/surface_review.py'
       - 'src/ucc/jobs/geometry_evidence.py'
       - 'src/ucc/jobs/humanoid_generation.py'
       - 'src/ucc/jobs/body_revision.py'
@@ -42,10 +46,14 @@ on:
       - 'ci/verify_production_worker.py'
       - 'ci/verify_project_generation.py'
       - 'ci/verify_native_body.py'
+      - 'ci/verify_native_fit.py'
       - 'tests/fixtures/blender_native_body.py'
+      - 'tests/fixtures/blender_native_fit_faults.py'
       - 'src/ucc/animations/native*.py'
+      - 'src/ucc/animations/contact_fit.py'
       - 'src/ucc/jobs/native*.py'
       - 'src/ucc/preview/motion_cache.py'
+      - 'src/ucc/preview/surface_review.py'
       - 'src/ucc/jobs/geometry_evidence.py'
       - 'src/ucc/jobs/humanoid_generation.py'
       - 'src/ucc/jobs/body_revision.py'
@@ -70,7 +78,12 @@ concurrency:
 
 jobs:
   verify-mpfb-linux:
+    name: ${{ matrix.suite == 'regression' && 'verify-mpfb-linux' || 'verify-native-fit-linux' }}
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [regression, native-fit]
     # The full 300-frame neutral-reference regression completed at the old
     # 25-minute job boundary (including tool setup), cancelling a passing run.
     # Keep every integration assertion and allow bounded setup/runner headroom.
@@ -154,22 +167,32 @@ jobs:
             --blender "$BLENDER_EXE" \
             --outdir "$RUNNER_TEMP/ucc-production-worker" --timeout 300
       - name: Verify real MPFB BVH motion and two-landmark quaternion rest calibration
+        if: matrix.suite == 'regression'
         shell: bash
         run: |
           set -euo pipefail
           python3 ci/verify_project_generation.py \
             --blender "$BLENDER_EXE" \
             --outdir "$RUNNER_TEMP/ucc-project-integration"
+      - name: Verify original full-timeline target fitting and real saved-scene corruptions
+        if: matrix.suite == 'native-fit'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ci/verify_native_fit.py \
+            --blender "$BLENDER_EXE" \
+            --outdir "$RUNNER_TEMP/ucc-native-fit"
       - name: Retain JSON diagnostics only; no assets or .blend in artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: mpfb-linux-json-diagnostics
+          name: mpfb-linux-json-diagnostics-${{ matrix.suite }}
           path: |
             ${{ runner.temp }}/ucc-mpfb-smoke/summary.json
             ${{ runner.temp }}/ucc-mpfb-smoke/mpfb_create_result.json
             ${{ runner.temp }}/ucc-mpfb-smoke/reopen_result.json
             ${{ runner.temp }}/ucc-production-worker/production_summary.json
             ${{ runner.temp }}/ucc-project-integration/transaction_summary.json
+            ${{ runner.temp }}/ucc-native-fit/native_fit_summary.json
           if-no-files-found: ignore
           retention-days: 3
