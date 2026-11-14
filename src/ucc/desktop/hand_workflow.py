@@ -1,4 +1,5 @@
 """Desktop hand library, provisional selection and atomic part/master adoption."""
+from dataclasses import replace
 import os
 from pathlib import Path
 from threading import Event
@@ -17,7 +18,9 @@ from ucc.jobs.hand_preview import HandPreview,preview_hand
 def refresh_hands(window):
     controls=window.character.hands
     project=window.controller.require_project();store=window.controller.store
-    clean=not window.controller.dirty and project.master_blend is not None and not project.animations
+    clean=not window.controller.dirty and project.master_blend is not None
+    # Eligibility only; the submitted transaction must freshly verify all sources.
+    recipe_project=replace(project,animations=())
     identity=None;current='neutral';message='Build compatible hands for this saved character.'
     candidates=[];invalid=0
     try:
@@ -26,7 +29,7 @@ def refresh_hands(window):
             if not is_sha256(path.stem):continue
             try:
                 manifest,_=read_hand_manifest(store,path.stem)
-                ensure_source_intent(project,manifest['recipe'])
+                ensure_source_intent(recipe_project,manifest['recipe'])
                 selected=hand_selection(project,path.stem)
                 original=manifest['recipe']['bindings']['master_sha256']
                 if selected=='neutral' and project.master_blend!='master/versions/'+original+'.blend':continue
@@ -34,7 +37,8 @@ def refresh_hands(window):
             except (UCCError,OSError,ValueError):invalid+=1
         if candidates:
             _,identity,current=max(candidates)
-            message='Compatible hand assets ready. Applying checks the saved result over 20 poses.'
+            message=('Source references retained. Apply freshly checks sources, neutral state, and registered hand/expression provenance.'
+                     if project.animations else 'Compatible hand assets ready. Applying checks the saved result over 20 poses.')
         elif project.parts:
             message='This saved attachment has no compatible hand library. Restore a known character revision before rebuilding.'
         elif not clean:
@@ -43,8 +47,8 @@ def refresh_hands(window):
     except (UCCError,OSError,ValueError) as error:
         message=str(error)
     controls.display_context(key=(str(store.root),project.project_id,project.revision,window.controller.dirty),
-        identity=identity,current=current,can_build=clean and not project.parts,
-        can_apply=clean and identity is not None,can_preview=clean,message=message)
+        identity=identity,current=current,can_build=clean and not project.parts and not project.animations,
+        can_apply=clean and identity is not None,can_preview=clean and not project.animations,message=message)
 
 
 def _executable(window):
@@ -59,13 +63,18 @@ def _executable(window):
     return executable
 
 
-def _run(store,snapshot,executable,cancel,identity=None,selection=None):
+def _run(store,snapshot,executable,cancel,identity=None,selection=None,database=None):
     from .generation import bundled_worker_path
     worker=bundled_worker_path()
+    if snapshot.animations and (identity is None or database is None):
+        raise ValidationError('Reference-aware hands require an existing compatible library and catalog')
     data=discover_face_data(store,blender_exe=executable,worker_script=worker,cancel=cancel)
     kwargs={'blender_exe':executable,'worker_script':worker,'mpfb_data_dir':data,
             'expected_project_id':snapshot.project_id,'expected_revision':snapshot.revision,
             'expected_master_blend':snapshot.master_blend,'cancel':cancel}
+    if snapshot.animations:
+        from ucc.jobs.reference_hand_revision import apply_referenced_hand_revision
+        return apply_referenced_hand_revision(store,database,manifest_sha256=identity,selection=selection,**kwargs)
     if identity is None:return build_hand_library(store,**kwargs)
     return apply_hand_revision(store,manifest_sha256=identity,selection=selection,**kwargs)
 
@@ -76,7 +85,8 @@ def start_hands(window,*,build=False):
         if not window.controller.has_project or window.controller.store is None:raise ValidationError('Open a saved character first')
         if window.controller.dirty:raise ValidationError('Save all settings before building or applying hands')
         snapshot=window.controller.require_project()
-        if snapshot.master_blend is None or snapshot.animations:raise ValidationError('Hand parts require a saved unanimated MPFB character')
+        if snapshot.master_blend is None:raise ValidationError('Hand parts require a saved MPFB character')
+        if snapshot.animations and build:raise ValidationError('Use an existing compatible hand library while source references are attached')
         controls=window.character.hands
         if build and snapshot.parts:raise ValidationError('Restore the original hand before rebuilding compatible assets')
         identity=None if build else controls.manifest_sha256
@@ -84,10 +94,16 @@ def start_hands(window,*,build=False):
         executable=_executable(window)
         if executable is None:return
         store=window.controller.store;cancel=Event();selection=controls.choice.currentData()
+        database=window._catalog_path() if snapshot.animations else None
         if not build:window._clear_preview()
         window._submit('hand_library' if build else 'hand_revision',
-            lambda:_run(store,snapshot,executable,cancel,identity,selection),cancel=cancel)
-    window._apply(start)
+            lambda:_run(store,snapshot,executable,cancel,identity,selection,database=database),cancel=cancel)
+    # Starting work changes no intent. An idle refresh here would overwrite
+    # the busy callback and re-enable Undo on a session that has history.
+    try:
+        start()
+    except (UCCError,OSError,ValueError,TypeError,KeyError) as error:
+        window._error(f'{type(error).__name__}: {error}')
 
 
 def finish_hands(window,result):
@@ -125,6 +141,7 @@ def start_hand_preview(window):
         if window.controller.dirty:raise ValidationError('Save settings before viewing the saved hand')
         snapshot=window.controller.require_project()
         if snapshot.master_blend is None:raise ValidationError('Generate a character before viewing hands')
+        if snapshot.animations:raise ValidationError('Hand preview with source references is not yet validated')
         executable=_executable(window)
         if executable is None:return
         store=window.controller.store;cancel=Event()

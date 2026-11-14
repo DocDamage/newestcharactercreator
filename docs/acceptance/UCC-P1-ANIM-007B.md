@@ -1,6 +1,6 @@
 # UCC-P1-ANIM-007B — explicit regional skin correction
 
-Status: locally implemented and verified on `feat/anim-007-basic-actions`, based on `f77cf99ad157d850035e6a0cd0831d087c032139`. The original-only real-Blender V2 integration gate now passes locally; new remote CI and a new Windows package remain unrun. Frozen PR #64's separate acceptance applies to `7db913e373c1147ea78f06408cc44c00e5d2669b`. This task does not complete the seven-action product workflow.
+Status: technically accepted at exact head `9b07f0b75d5ce0f60d6b3e3d2f39a7f975819382` / draft PR #65, stacked on PR #64. All five required workflows, all five Linux archives / 29 diagnostic JSON records, and the exact-head Windows package plus actual extracted executable are accepted. The PR remains draft and unmerged pending owner approval. This task does not complete the seven-action product workflow.
 
 ## Problem and behavior
 
@@ -43,6 +43,14 @@ Eight actual coherently rehashed scene/timeline faults reject on the generated m
 
 A fifth independent Linux matrix suite, `regional-skin`, has a bounded 90-minute job budget. Its artifact allowlist adds only `ucc-regional-skin/regional_skin_summary.json`; generated assets and worker evidence remain on the runner. Existing suites, official archive/checksum checks, and assertions are retained. The full suite initially detected the missing entry in the older closed artifact privacy test; adding that exact summary filename restored the 935-test pass without introducing wildcards.
 
+## Exact-head remote acceptance
+
+All five workflows pass at `9b07f0b75d5ce0f60d6b3e3d2f39a7f975819382`: Linux 43648318052, Core 43648318060, Qt 43648318063, preflight 43648318083, Windows 43648318120. Independent archive verification accepts all 29 records: regional five, regression eight, body-contact five, symmetric-fit six and native-fit five. The original-only regional summary retains three targets / 900 normal and independent-reader frames, eight saved-scene faults and two transaction faults. Other existing suites retain their original assertions and negative cases.
+
+The Windows artifact 14134044728 has SHA-256 `101b105d12f63c211b912cbabf08d8509ddbb49183ecbadc0487af90b5db00c0`. All 89 packaged bridge files match the exact Git head; the actual extracted executable passes project save/reopen, Qt widgets and bundled-bridge self-tests without installation. This does not cover the later unpublished 90-module source-reference follow-up.
+
+The only change from historical `b873ed0` is the regression job fallback budget increase from 60 to 120 minutes; individual subprocess limits, checksums, tests and other suite budgets remain unchanged. All current-head jobs passed on attempt one. The observer finished normally; no healthy remote job was cancelled or restarted. Old-head partial records are not counted as current acceptance. Private final receipts are `pr65-budget-artifact-verification.json`, `pr65-budget-all-five-workflows.json`, `pr65-budget-Windows-acceptance-01.json` and `pr65-budget-final-acceptance-checkpoint.json` under `evidence/anim007b`.
+
 ## Remaining work and rights
 
 The V2 policy is opt-in and proves these three complete local motions on this prepared character. It does not establish arbitrary-pack compatibility, foot-contact/root/loop quality, human visual acceptance, collision clearance, or engine reproduction of Blender corrective modifiers. Existing surface observations remain observations.
@@ -51,4 +59,4 @@ The first four motion receipts remain separately bound to their earlier policies
 
 No software, model, asset, dependency, or license was added. Existing local-preview-only, NoAI, source-redistribution, and engine-export restrictions remain unchanged. Further merges require owner approval.
 
-Next task: finish this branch's exact-head remote CI/package acceptance, including all five Linux diagnostic archives, before integrating the registered-action workflow.
+Next task: continue the registered-source editing and target-action workflow. This PR remains draft; further merges require owner approval.
