@@ -30,6 +30,8 @@ class ProjectView:
     can_undo: bool
     can_redo: bool
     facial_parameters: tuple[tuple[str, float], ...] = ()
+    expression_parameters: tuple[tuple[str, float], ...] = ()
+    expression_library: str | None = None
 
 
 class DesktopController:
@@ -113,6 +115,27 @@ class DesktopController:
         self._saved_revision = saved.revision
         return self.view()
 
+    def set_expression_parameter(self, name: str, value: float) -> ProjectView:
+        session = self._get_session()
+        previous = session.project
+        session.set_expression_parameter(name, value)
+        self._dirty |= previous != session.project
+        return self.view()
+
+    def reset_expression(self) -> ProjectView:
+        session = self._get_session()
+        previous = session.project
+        session.reset_expression()
+        self._dirty |= previous != session.project
+        return self.view()
+
+    def accept_saved_expression_master(self, saved: CharacterProject, *, library_sha256: str) -> ProjectView:
+        if self.store is None or self._dirty or self.store.load() != saved:
+            raise ValidationError('Prepared expressions cannot replace a changed or unsaved desktop session')
+        self._get_session().accept_saved_expression_master(saved, library_sha256=library_sha256)
+        self._saved_revision = saved.revision
+        return self.view()
+
     def accept_saved_part_master(self,saved: CharacterProject,*,manifest_sha256: str) -> ProjectView:
         if self.store is None or self._dirty or self.store.load() != saved:
             raise ValidationError('Saved hand cannot replace a changed or unsaved desktop session')
@@ -157,6 +180,8 @@ class DesktopController:
             tuple(sorted(project.parameters)), len(project.parts), len(project.animations),
             project.export_readiness(), self.session.can_undo, self.session.can_redo,
             tuple(project.facial_parameters),
+            tuple(project.expression.parameters) if project.expression else (),
+            project.expression.library_sha256 if project.expression else None,
         )
 
     def _get_session(self) -> CharacterSession:

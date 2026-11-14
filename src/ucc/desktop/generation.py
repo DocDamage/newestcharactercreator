@@ -53,6 +53,10 @@ def bundled_worker_path() -> Path:
     native_files += [worker.parent/name for name in ('hand_policy.py', 'hand_geometry.py', 'hand_assets.py')]
     native_files += [worker.parent/name for name in ('hand_master.py','hand_revision.py','hand_pose_checks.py')]
     native_files += [worker.parent/'hand_bounds.py']
+    native_files += [worker.parent/name for name in ('expression_policy.py', 'expression_geometry.py',
+                                                   'expression_prepare.py', 'expression_existing.py')]
+    native_files += [worker.parent/name for name in ('expression_clip_policy.py', 'expression_clip_action.py',
+                                                   'expression_clip_surface.py', 'expression_clip_workers.py')]
     if (not worker.is_file() or worker.is_symlink()
             or not service.is_file() or service.is_symlink()
             or not preview.is_file() or preview.is_symlink()
@@ -89,7 +93,7 @@ def generate_from_desktop(
     revision: int,
     cancel: Event,
 ) -> HumanoidGeneration | CustomizedHumanoidBuild:
-    if store.load().facial_parameters:
+    if store.load().facial_parameters or store.load().expression is not None:
         from ucc.jobs.customized_humanoid import generate_customized_humanoid
         from ucc.jobs.face_discovery import discover_face_data
         script = bundled_worker_path()
@@ -118,7 +122,7 @@ def preview_master_from_desktop(
         store, blender_exe=blender_exe, worker_script=bundled_worker_path(),
         expected_project_id=project_id, expected_revision=revision,
         expected_master_blend=master_blend, cancel=cancel, timeout_s=300,
-        full_surface=bool(project.facial_parameters or project.parts),
+        full_surface=bool(project.facial_parameters or project.parts or project.expression),
     )
 
 
@@ -131,7 +135,7 @@ def refit_from_desktop(
     master_blend: str,
     cancel: Event,
 ) -> BodyRevisionResult | CustomizedHumanoidBuild:
-    if store.load().facial_parameters:
+    if store.load().facial_parameters or store.load().expression is not None:
         from ucc.jobs.customized_humanoid import apply_saved_customized_body_revision
         from ucc.jobs.face_discovery import discover_face_data
         script = bundled_worker_path()

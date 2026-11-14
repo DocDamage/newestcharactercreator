@@ -14,6 +14,7 @@ from uuid import uuid4
 from .anatomy import get_slot
 from .errors import CompatibilityError, ValidationError
 from .facial import validate_face_parameters
+from .expressions import ExpressionState
 
 SCHEMA_VERSION = 1
 MORPH_LIMITS = {"height": (0.0, 1.0), "muscle": (0.0, 1.0), "weight": (0.0, 1.0)}
@@ -153,10 +154,17 @@ class CharacterProject:
     created_utc: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     schema_version: int = SCHEMA_VERSION
     facial_parameters: tuple[tuple[str, float], ...] = ()
+    expression: ExpressionState | None = None
 
     def __post_init__(self) -> None:
-        if type(self.schema_version) is not int or self.schema_version not in (1, 2):
+        if type(self.schema_version) is not int or self.schema_version not in (1, 2, 3):
             raise ValidationError("Unsupported schema version; do not overwrite this project")
+        if self.expression is not None and not isinstance(self.expression, ExpressionState):
+            raise ValidationError('Expression state must reference a prepared immutable library')
+        if (self.schema_version == 3) != (self.expression is not None):
+            raise ValidationError('Prepared expressions require an explicit version 3 project')
+        if self.expression is not None and self.master_blend is None:
+            raise ValidationError('Prepared expressions require an existing editable master')
         if (type(self.facial_parameters) is not tuple or any(
                 type(row) is not tuple or len(row) != 2 or type(row[0]) is not str
                 for row in self.facial_parameters)):
@@ -222,23 +230,28 @@ class CharacterProject:
             "animations": list(self.animations), "appearance": dict(self.appearance),
             "revision": self.revision, "created_utc": self.created_utc,
         }
-        if self.schema_version == 2:
+        if self.schema_version >= 2:
             result["facial_parameters"] = dict(self.facial_parameters)
+        if self.schema_version == 3:
+            result['expression'] = self.expression.to_dict()
         return result
 
     @classmethod
     def from_dict(cls, raw: dict[str, Any]) -> "CharacterProject":
         if (not isinstance(raw, dict) or type(raw.get("schema_version")) is not int
-                or raw["schema_version"] not in (1, 2)):
+                or raw["schema_version"] not in (1, 2, 3)):
             raise ValidationError("Unsupported schema version; do not overwrite this project")
         version = raw["schema_version"]
         required = {"schema_version", "project_id", "name", "family", "base_provider",
                     "master_blend", "geometry_state", "rig_profile", "scale", "parameters",
                     "parts", "animations", "appearance", "revision", "created_utc"}
-        if version == 2:
+        if version >= 2:
             required.add("facial_parameters")
+        if version == 3:
+            required.add('expression')
         _keys(raw, required)
-        face = validate_face_parameters(raw["facial_parameters"]) if version == 2 else {}
+        face = validate_face_parameters(raw["facial_parameters"]) if version >= 2 else {}
+        expression = ExpressionState.from_dict(raw['expression']) if version == 3 else None
         provider = raw["base_provider"]
         scale = raw["scale"]
         _keys(provider, {"kind"})
@@ -257,7 +270,7 @@ class CharacterProject:
                    animations=tuple(raw["animations"]),
                    appearance=tuple(sorted(raw["appearance"].items())),
                    revision=raw["revision"], created_utc=raw["created_utc"], schema_version=version,
-                   facial_parameters=tuple(sorted(face.items())))
+                   facial_parameters=tuple(sorted(face.items())), expression=expression)
 
     def export_readiness(self) -> tuple[str, ...]:
         """Metadata checks only; engine import must additionally be tested."""

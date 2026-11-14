@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "UCC pinned neutral MPFB expression preparation v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "policy",
+    "family",
+    "mpfb_version",
+    "neutral",
+    "bindings",
+    "targets"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "policy": {
+      "const": "BOUNDED_MPFB_EXPRESSION_UNITS_V1"
+    },
+    "family": {
+      "const": "humanoid.v1"
+    },
+    "mpfb_version": {
+      "const": "2.0.18"
+    },
+    "neutral": {
+      "const": true
+    },
+    "targets": {
+      "const": [
+        {
+          "role": "eye_left_closure",
+          "family": "african",
+          "file": "expr-eye_left_closure-african.target.gz",
+          "key": "UCC_EXPR_V1_eye_left_closure_african",
+          "sha256": "2d358745e955ead9d73f85ed224568a8d347f3f3b897c26cbd412faf2bfa9f3a"
+        },
+        {
+          "role": "eye_left_closure",
+          "family": "asian",
+          "file": "expr-eye_left_closure-asian.target.gz",
+          "key": "UCC_EXPR_V1_eye_left_closure_asian",
+          "sha256": "0d52fee2d66b933ece83f3c7aa48e85bfe85e8adbed0931dbd37025866a1a67d"
+        },
+        {
+          "role": "eye_left_closure",
+          "family": "caucasian",
+          "file": "expr-eye_left_closure-caucasian.target.gz",
+          "key": "UCC_EXPR_V1_eye_left_closure_caucasian",
+          "sha256": "ff0d21ceb6da55fe51e03b48a7562a650924fea9bef0c686fcd7aa44d16422ed"
+        },
+        {
+          "role": "eye_right_closure",
+          "family": "african",
+          "file": "expr-eye_right_closure-african.target.gz",
+          "key": "UCC_EXPR_V1_eye_right_closure_african",
+          "sha256": "c1b0c3609d9fb59a97dabe8ace10622da58969f4566125b38f47285afef320d5"
+        },
+        {
+          "role": "eye_right_closure",
+          "family": "asian",
+          "file": "expr-eye_right_closure-asian.target.gz",
+          "key": "UCC_EXPR_V1_eye_right_closure_asian",
+          "sha256": "0c99a5f559a1d67f630a329b9724fe3742a2c35709b8baa8a6d37903f35b9b77"
+        },
+        {
+          "role": "eye_right_closure",
+          "family": "caucasian",
+          "file": "expr-eye_right_closure-caucasian.target.gz",
+          "key": "UCC_EXPR_V1_eye_right_closure_caucasian",
+          "sha256": "2b7be6bc65845d77e5f83b7bf852090854747e448644997795fa59b6cf76122d"
+        },
+        {
+          "role": "mouth_corners",
+          "family": "african",
+          "file": "expr-mouth_corners-african.target.gz",
+          "key": "UCC_EXPR_V1_mouth_corners_african",
+          "sha256": "5560c685cd55ae6a00830e539ac54135cb4dcfec6a28be90510c931dcfdca478"
+        },
+        {
+          "role": "mouth_corners",
+          "family": "asian",
+          "file": "expr-mouth_corners-asian.target.gz",
+          "key": "UCC_EXPR_V1_mouth_corners_asian",
+          "sha256": "d881bb8feda2637bdaef2c7d7c6bed12f0be5914949e5a2cb9b06a583af412c0"
+        },
+        {
+          "role": "mouth_corners",
+          "family": "caucasian",
+          "file": "expr-mouth_corners-caucasian.target.gz",
+          "key": "UCC_EXPR_V1_mouth_corners_caucasian",
+          "sha256": "d881bb8feda2637bdaef2c7d7c6bed12f0be5914949e5a2cb9b06a583af412c0"
+        },
+        {
+          "role": "mouth_open",
+          "family": "african",
+          "file": "expr-mouth_open-african.target.gz",
+          "key": "UCC_EXPR_V1_mouth_open_african",
+          "sha256": "d710d4ae1693e7278a5bbe620276970fb6e89de139b50aaaea2830c31146459a"
+        },
+        {
+          "role": "mouth_open",
+          "family": "asian",
+          "file": "expr-mouth_open-asian.target.gz",
+          "key": "UCC_EXPR_V1_mouth_open_asian",
+          "sha256": "b52bbe631152844bb7b835c0f98d12ab0a1c0689e02e067b239d8349ccf9aab2"
+        },
+        {
+          "role": "mouth_open",
+          "family": "caucasian",
+          "file": "expr-mouth_open-caucasian.target.gz",
+          "key": "UCC_EXPR_V1_mouth_open_caucasian",
+          "sha256": "dc1260a8728d93a9c52d6b35b5f55ad39ab8096090acd5ccad7f973c26e28818"
+        }
+      ]
+    },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "master_sha256",
+        "base_sha256",
+        "rig_sha256"
+      ],
+      "properties": {
+        "master_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "base_sha256": {
+          "const": "8e761e6624b8f54536409135d1636da63b32486a90d4897f84e121d144f6fb4c"
+        },
+        "rig_sha256": {
+          "const": "8b949de35c2dd70dbb5094e57a8586c3b9a9f650775a293212581a8f67be6797"
+        }
+      }
+    }
+  }
+}

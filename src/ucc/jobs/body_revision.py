@@ -87,6 +87,8 @@ def apply_saved_body_revision(
         raise ValidationError("Body refit supports only saved MPFB humanoid projects")
     if initial.parts or initial.animations:
         raise ValidationError("Body refit with external parts/animations is not validated yet")
+    if initial.expression is not None:
+        raise ValidationError('Prepared facial controls require expression-aware body refit; the saved master is unchanged')
     if initial.facial_parameters:
         raise ValidationError("Saved facial intent requires face-aware refit; body-only refit cannot discard it")
     if type(timeout_s) not in (int, float) or not 0.05 <= timeout_s <= 3600:

@@ -146,6 +146,11 @@ class MainWindow(QMainWindow):
         self.character.hands.build_requested.connect(lambda:start_hands(self,build=True))
         self.character.hands.apply_requested.connect(lambda:start_hands(self))
         self.character.hands.preview_requested.connect(lambda:start_hand_preview(self))
+        from .expression_workflow import edit_expression, start_expression
+        self.character.expressions.parameter_changed.connect(lambda name, value: edit_expression(self, name, value))
+        self.character.expressions.reset_requested.connect(lambda: edit_expression(self))
+        self.character.expressions.prepare_requested.connect(lambda: start_expression(self, prepare=True))
+        self.character.expressions.preview_requested.connect(lambda: start_expression(self))
         self.character.open_master_requested.connect(self.open_master_in_blender)
         self.character.generate_human_requested.connect(self.generate_humanoid)
         self.character.refit_human_requested.connect(self.apply_saved_body)
@@ -187,6 +192,11 @@ class MainWindow(QMainWindow):
 
     def refresh_project(self) -> None:
         state = self.controller.view()
+        expression = getattr(self, '_expression_preview', None)
+        if expression is not None and (state.dirty or state.revision != expression.revision or
+                self.controller.require_project().project_id != expression.project_id):
+            from .expression_binding import clear_expression
+            clear_expression(self)
         if self._native_review is not None and (state.dirty or state.revision!=self._native_review.revision or
                 self.controller.require_project().project_id!=self._native_review.project_id):
             self._clear_native_review()
@@ -205,6 +215,8 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Universal Character Creator — " + state.name + (" *" if state.dirty else ""))
 
     def _clear_preview(self) -> None:
+        from .expression_binding import clear_expression
+        clear_expression(self)
         from .static_preview_binding import clear_binding
         clear_binding(self)
         self._clear_native_review()
@@ -339,10 +351,14 @@ class MainWindow(QMainWindow):
             self.undo_action.setEnabled(not busy and state.can_undo)
             self.redo_action.setEnabled(not busy and state.can_redo)
         self.cancel_generation_action.setEnabled(
-            busy and self._work_kind in {"generate_humanoid", "saved_master_preview", "body_refit", "face_revision", "hand_library", "hand_revision", "hand_preview", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain", "native_body", "native_playback", "fbx_intake", "fitted_comparison", "body_contacts"}
+            busy and self._work_kind in {"expression_prepare", "expression_preview", "generate_humanoid", "saved_master_preview", "body_refit", "face_revision", "hand_library", "hand_revision", "hand_preview", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain", "native_body", "native_playback", "fbx_intake", "fitted_comparison", "body_contacts"}
         )
         self.statusBar().showMessage(
-            ("Building and independently checking compatible hands..."
+            ("Preparing and independently checking neutral facial controls..."
+             if self._work_kind == "expression_prepare" else
+             "Verifying all 25 saved expression frames and complete playback buffers..."
+             if self._work_kind == "expression_preview" else
+             "Building and independently checking compatible hands..."
              if self._work_kind == "hand_library" else
              "Applying the selected hand and checking saved skin..."
              if self._work_kind == "hand_revision" else
@@ -377,11 +393,15 @@ class MainWindow(QMainWindow):
              "Measuring native FBX source skeleton and complete timeline..."
              if self._work_kind == "fbx_intake" else
              "Converting saved Blender master to a static GLB preview...")
-            if busy and self._work_kind in {"generate_humanoid", "saved_master_preview", "body_refit", "face_revision", "hand_library", "hand_revision", "hand_preview", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain", "native_body", "native_playback", "fbx_intake", "fitted_comparison", "body_contacts"}
+            if busy and self._work_kind in {"expression_prepare", "expression_preview", "generate_humanoid", "saved_master_preview", "body_refit", "face_revision", "hand_library", "hand_revision", "hand_preview", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain", "native_body", "native_playback", "fbx_intake", "fitted_comparison", "body_contacts"}
             else ("Working on local files..." if busy else "Local task finished")
         )
 
     def _job_success(self, result: object) -> None:
+        if self._work_kind in {'expression_prepare', 'expression_preview'}:
+            from .expression_workflow import finish_expression
+            finish_expression(self, result)
+            return
         if self._work_kind in {'hand_library','hand_revision','hand_preview'}:
             from .hand_workflow import finish_hands
             if finish_hands(self,result):return
@@ -658,6 +678,10 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Local operation completed; review results above")
 
     def _job_error(self, error: str) -> None:
+        if self._work_kind in {'expression_prepare', 'expression_preview'}:
+            from .expression_workflow import expression_error
+            expression_error(self, error)
+            return
         if self._work_kind in {'hand_library','hand_revision','hand_preview'}:
             from .hand_workflow import show_hand_error
             show_hand_error(self,error);return
@@ -1155,5 +1179,5 @@ class MainWindow(QMainWindow):
         if not self._confirm_discard():
             event.ignore()
             return
-        self._clear_native_review()
+        self._clear_preview()
         event.accept()

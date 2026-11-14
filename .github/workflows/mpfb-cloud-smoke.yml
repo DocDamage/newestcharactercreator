@@ -14,6 +14,12 @@ on:
       - 'ci/verify_project_generation.py'
       - 'ci/verify_custom_face.py'
       - 'ci/verify_hand_parts.py'
+      - 'ci/verify_expressions.py'
+      - 'ci/expression_*_checks.py'
+      - 'tests/fixtures/blender_expression*.py'
+      - 'src/ucc/core/expression*.py'
+      - 'src/ucc/jobs/expression_*.py'
+      - 'src/ucc/preview/expression_cache.py'
       - 'ci/hand_*_checks.py'
       - 'tests/fixtures/blender_hand_faults.py'
       - 'src/ucc/core/hand_parts.py'
@@ -89,6 +95,12 @@ on:
       - 'ci/verify_project_generation.py'
       - 'ci/verify_custom_face.py'
       - 'ci/verify_hand_parts.py'
+      - 'ci/verify_expressions.py'
+      - 'ci/expression_*_checks.py'
+      - 'tests/fixtures/blender_expression*.py'
+      - 'src/ucc/core/expression*.py'
+      - 'src/ucc/jobs/expression_*.py'
+      - 'src/ucc/preview/expression_cache.py'
       - 'ci/hand_*_checks.py'
       - 'tests/fixtures/blender_hand_faults.py'
       - 'src/ucc/core/hand_parts.py'
@@ -198,7 +210,10 @@ jobs:
     # in every process and retains both anatomical comparison workers.
     # Regression also runs the bounded original-only facial gate (three builds,
     # existing-body refit, 80 poses and seven faults); retain explicit headroom.
-    timeout-minutes: ${{ matrix.suite == 'native-fit' && 180 || matrix.suite == 'symmetric-fit' && 120 || matrix.suite == 'body-contacts' && 90 || 45 }}
+    # Expression regression adds three prepared bodies, preservation, a registered
+    # hand, complete 25-frame previews and thirteen faults. Keep earlier gates
+    # and individual subprocess bounds, with explicit regression headroom.
+    timeout-minutes: ${{ matrix.suite == 'native-fit' && 180 || matrix.suite == 'symmetric-fit' && 120 || matrix.suite == 'body-contacts' && 90 || 60 }}
     env:
       PYTHONUNBUFFERED: '1'
     steps:
@@ -310,6 +325,15 @@ jobs:
             --blender "$BLENDER_EXE" \
             --source-root "$RUNNER_TEMP/ucc-custom-face" \
             --outdir "$RUNNER_TEMP/ucc-hand-parts"
+      - name: Verify original expressions, preservation, registered hand and all saved frames
+        if: matrix.suite == 'regression'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ci/verify_expressions.py \
+            --blender "$BLENDER_EXE" \
+            --source-root "$RUNNER_TEMP/ucc-hand-parts" \
+            --outdir "$RUNNER_TEMP/ucc-expressions"
       - name: Verify original full-timeline target fitting and real saved-scene corruptions
         if: matrix.suite == 'native-fit'
         shell: bash
@@ -350,6 +374,7 @@ jobs:
             ${{ runner.temp }}/ucc-project-integration/transaction_summary.json
             ${{ runner.temp }}/ucc-custom-face/custom_face_summary.json
             ${{ runner.temp }}/ucc-hand-parts/hand_parts_summary.json
+            ${{ runner.temp }}/ucc-expressions/expression_summary.json
             ${{ runner.temp }}/ucc-native-fit/native_fit_summary.json
             ${{ runner.temp }}/ucc-body-contacts/body_contact_summary.json
             ${{ runner.temp }}/ucc-symmetric-math.json

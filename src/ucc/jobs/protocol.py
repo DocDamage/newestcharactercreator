@@ -20,6 +20,9 @@ SUPPORTED_OPERATIONS.add('inspect_mpfb_face_assets')
 SUPPORTED_OPERATIONS |= {'build_mpfb_hand_assets', 'verify_mpfb_hand_assets'}
 SUPPORTED_OPERATIONS |= {'stage_mpfb_hand_revision','verify_mpfb_hand_revision'}
 SUPPORTED_OPERATIONS.add('inspect_mpfb_hand_bounds')
+SUPPORTED_OPERATIONS |= {'stage_mpfb_expression_keys', 'verify_mpfb_expression_keys'}
+SUPPORTED_OPERATIONS.add('inspect_mpfb_expression_keys')
+SUPPORTED_OPERATIONS |= {'stage_mpfb_expression_clip', 'verify_mpfb_expression_clip'}
 BODY_CONTACT_OPERATIONS = {'verify_fitted_body_contacts', 'verify_native_body_contacts', 'inspect_fitted_body_contacts', 'inspect_native_body_contacts'}
 BODY_CONTACT_OPERATIONS |= {'inspect_native_body_areas','verify_native_body_areas','inspect_fitted_body_areas','verify_fitted_body_areas'}
 BODY_CONTACT_OPERATIONS |= {'inspect_native_skin_inclusion','verify_native_skin_inclusion','inspect_fitted_skin_inclusion','verify_fitted_skin_inclusion'}
@@ -96,6 +99,25 @@ class JobRequest:
                     or self.options['metadata_sha256']!=METADATA_SHA256
                     or any(self.options[t.variant+'_target_sha256']!=t.sha256 for t in HAND_TARGETS)):
                 raise ValidationError('Hand camera bounds require exact pinned source identities')
+        if self.operation in {'stage_mpfb_expression_clip', 'verify_mpfb_expression_clip'}:
+            from ucc.core.expressions import TARGETS as EXPRESSION_TARGETS, is_sha256
+            fields = {'master_sha256', 'clip_sha256'} | {t.role+'_'+t.family+'_sha256' for t in EXPRESSION_TARGETS}
+            if self.operation == 'verify_mpfb_expression_clip':
+                fields |= {'motion_sha256', 'motion_report_sha256', 'cache_sha256', 'cache_manifest_sha256'}
+            if (self.input_project != 'candidate.blend' or set(self.options) != fields
+                    or not all(is_sha256(v) for v in self.options.values())
+                    or any(self.options[t.role+'_'+t.family+'_sha256'] != t.sha256 for t in EXPRESSION_TARGETS)):
+                raise ValidationError('Expression clip requires all pinned hashes and fixed staged filenames')
+        if self.operation in {'stage_mpfb_expression_keys', 'verify_mpfb_expression_keys', 'inspect_mpfb_expression_keys'}:
+            from ucc.core.expressions import TARGETS as EXPRESSION_TARGETS, is_sha256
+            fields = {'master_sha256', 'recipe_sha256'} | {
+                t.role+'_'+t.family+'_sha256' for t in EXPRESSION_TARGETS}
+            if self.operation == 'verify_mpfb_expression_keys':
+                fields |= {'prepared_sha256', 'report_sha256'}
+            if (self.input_project != 'candidate.blend' or set(self.options) != fields
+                    or not all(is_sha256(v) for v in self.options.values())
+                    or any(self.options[t.role+'_'+t.family+'_sha256'] != t.sha256 for t in EXPRESSION_TARGETS)):
+                raise ValidationError('Expression worker requires all pinned hashes and fixed staged filenames')
         if self.operation in {'stage_mpfb_face', 'verify_mpfb_face'}:
             from ucc.core.facial import NOSE_TARGETS
             from ucc.animations.source_rest_frames import is_sha256
