@@ -1,4 +1,8 @@
-# UCC-P1-ANIM-006Y — complete trunk surface contact (in progress)
+# UCC-P1-ANIM-006Y — complete trunk surface contact
+
+Current status: PR #59 is merged into main with owner authorization. All five workflows passed at exact head `265c17a49482169b91f7be763126f8e079eafc73`; all three Linux archives and fifteen diagnostic records were independently accepted. Exact-head Windows archive/source checks and the local extracted executable self-test passed. This supersedes the pending CI checkpoints below. The compact paired-report forgery reached the unchanged physical rejection gate. No remaining contact or visual/engine quality is approved.
+
+Historical implementation checkpoints follow.
 
 Dependency: #57's actual weighted trunk geometry and #58's explicitly bounded
 body-shape policy. A private complete-sequence diagnostic exposes a coverage
