@@ -11,11 +11,13 @@ from ucc.preview.expression_cache import read_expression_cache, read_json
 
 
 def clear_expression(window):
-    watcher = getattr(window, '_expression_watcher', None)
-    if watcher is not None:
-        watcher.blockSignals(True)
-        paths = watcher.files()+watcher.directories()
-        if paths: watcher.removePaths(paths)
+    for name in ('_expression_watcher', '_reference_expression_watcher'):
+        watcher = getattr(window, name, None)
+        if watcher is not None:
+            watcher.blockSignals(True)
+            paths = watcher.files()+watcher.directories()
+            if paths: watcher.removePaths(paths)
+    window._reference_expression_state = None
     window._expression_preview = None
     viewer = getattr(window, 'expression_viewer', None)
     if viewer is not None: viewer.clear()

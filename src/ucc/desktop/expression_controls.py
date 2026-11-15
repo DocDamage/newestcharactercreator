@@ -38,9 +38,9 @@ class ExpressionControls(QGroupBox):
         self.note.setWordWrap(True); layout.addWidget(self.note)
 
     def display(self, view):
-        supported = view.master_blend is not None and view.animation_count == 0
+        supported = view.master_blend is not None and (view.animation_count == 0 or view.referenced_master_intent)
         ready = view.expression_library is not None
-        self.prepare.setEnabled(supported and not ready and not view.dirty)
+        self.prepare.setEnabled(supported and view.animation_count == 0 and not ready and not view.dirty)
         self.preview.setEnabled(supported and ready and not view.dirty)
         parameters = dict(view.expression_parameters)
         for name, value in self.values.items():
@@ -48,4 +48,4 @@ class ExpressionControls(QGroupBox):
             value.setEnabled(supported and ready)
         self.reset.setEnabled(supported and ready and any(parameters.values()))
         self.setToolTip('Save settings first. Preparation preserves a registered compatible hand; '
-                        'projects with attached animations are unsupported.')
+                        'source references are retained and freshly verified for supported prepared characters.')

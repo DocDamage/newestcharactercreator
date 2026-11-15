@@ -5,6 +5,8 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QDockWidget
 
 from ucc.core.errors import UCCError, ValidationError
+from ucc.core.reference_master_intent import supports_referenced_master_intent
+from ucc.jobs.reference_expression_preview import ReferenceExpressionPreview, preview_referenced_expressions
 from ucc.jobs.expression_preparation import ExpressionPreparation, prepare_saved_expressions
 from ucc.jobs.expression_preview import ExpressionPreview, preview_saved_expressions
 from ucc.jobs.face_discovery import discover_face_data
@@ -25,7 +27,8 @@ def start_expression(window, *, prepare=False):
         if window.controller.store is None: raise ValidationError('Open a saved character first')
         if window.controller.dirty: raise ValidationError('Save all settings before preparing an expression preview')
         snapshot = window.controller.require_project()
-        if snapshot.master_blend is None or snapshot.animations:
+        if (snapshot.master_blend is None or
+                (snapshot.animations and (prepare or not supports_referenced_master_intent(snapshot)))):
             raise ValidationError('Expressions require an existing MPFB master without attached animations')
         if prepare == (snapshot.expression is not None):
             raise ValidationError('Facial controls are already prepared' if prepare else 'Prepare facial controls first')
@@ -33,10 +36,15 @@ def start_expression(window, *, prepare=False):
         executable = _executable(window)
         if executable is None: return
         store = window.controller.store; cancel = Event()
+        database = window._catalog_path() if snapshot.animations else None
         def run():
             from .generation import bundled_worker_path
             script = bundled_worker_path()
             data = discover_face_data(store, blender_exe=executable, worker_script=script, cancel=cancel)
+            if snapshot.animations:
+                return preview_referenced_expressions(store, database, blender_exe=executable,
+                    worker_script=script, mpfb_data_dir=data, expected_project_id=snapshot.project_id,
+                    expected_revision=snapshot.revision, expected_master_blend=snapshot.master_blend, cancel=cancel)
             operation = prepare_saved_expressions if prepare else preview_saved_expressions
             return operation(store, blender_exe=executable, worker_script=script, mpfb_data_dir=data,
                 expected_project_id=snapshot.project_id, expected_revision=snapshot.revision,
@@ -59,17 +67,23 @@ def finish_expression(window, result):
             window.log.setPlainText('Facial controls prepared and independently reopened. The saved master is neutral. '
                 'The previous master and compatible hand selection remain recoverable through undo/redo. '
                 'Set strengths, save, then request an expression preview.')
-        elif isinstance(result, ExpressionPreview):
+        elif isinstance(result, (ExpressionPreview, ReferenceExpressionPreview)):
             from .expression_binding import bind_expression, clear_expression
             from .expression_viewer import ExpressionViewer
-            bind_expression(window, result)
+            if isinstance(result, ReferenceExpressionPreview):
+                from .reference_expression_binding import bind_referenced_expression
+                bind_referenced_expression(window, result)
+                cache = result.preview.cache
+            else:
+                bind_expression(window, result)
+                cache = result.cache
             try:
                 if getattr(window, 'expression_viewer', None) is None:
                     window.expression_viewer = ExpressionViewer()
                     window.expression_dock = QDockWidget('Facial expression playback', window)
                     window.expression_dock.setWidget(window.expression_viewer)
                     window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, window.expression_dock)
-                window.expression_viewer.show_cache(result.cache)
+                window.expression_viewer.show_cache(cache)
                 window.expression_dock.show(); window.expression_dock.raise_()
             except BaseException:
                 clear_expression(window); raise

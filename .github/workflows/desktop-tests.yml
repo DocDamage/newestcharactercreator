@@ -61,5 +61,7 @@ jobs:
         run: python -m unittest discover -s tests -p test_body_review_qt.py -v
       - name: Run prepared reference body and face controls, exact history and busy locks
         run: python -m unittest discover -s tests -p test_reference_master_qt.py -v
+      - name: Run referenced expression dispatch, publication and source policy watchers
+        run: python -m unittest discover -s tests -p test_reference_expression_qt.py -v
       - name: Run dependency-free controller tests
         run: python -m unittest discover -s tests -p test_desktop_controller.py -v

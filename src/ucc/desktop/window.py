@@ -195,8 +195,10 @@ class MainWindow(QMainWindow):
     def refresh_project(self) -> None:
         state = self.controller.view()
         expression = getattr(self, '_expression_preview', None)
-        if expression is not None and (state.dirty or state.revision != expression.revision or
-                self.controller.require_project().project_id != expression.project_id):
+        from ucc.jobs.reference_expression_preview import ReferenceExpressionPreview
+        expression_owner = expression.project if isinstance(expression, ReferenceExpressionPreview) else expression
+        if expression_owner is not None and (state.dirty or state.revision != expression_owner.revision or
+                self.controller.require_project().project_id != expression_owner.project_id):
             from .expression_binding import clear_expression
             clear_expression(self)
         if self._native_review is not None and (state.dirty or state.revision!=self._native_review.revision or
