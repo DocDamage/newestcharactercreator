@@ -34,7 +34,9 @@ class ReferencedExpressionQtTests(unittest.TestCase):
 
     def setUp(self):
         temp = tempfile.TemporaryDirectory(); self.addCleanup(temp.cleanup)
-        self.root = Path(temp.name); self.f = ReferenceMasterFixture(self.root/'fixture')
+        # Windows runners may supply DOS 8.3 TMP aliases; bind canonical paths,
+        # then introduce redirects only after publication in the fault tests.
+        self.root = Path(temp.name).resolve(); self.f = ReferenceMasterFixture(self.root/'fixture')
         self.controller = DesktopController(); self.controller.open(self.f.store.root)
         self.window = MainWindow(self.controller); self.addCleanup(self.close_window)
         self.window._catalog_path = lambda: self.f.database
