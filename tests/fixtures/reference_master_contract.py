@@ -70,3 +70,15 @@ class ReferenceMasterFixture(ReferenceFixture):
         return stage_unverified_master(store, path, authorized_source_root=path.parent,
             expected_project=current, expected_revision=current.revision,
             proposed_parts=(PartInstance(part_id, hand_asset_id(library.sha256, selection), 'hand.L'),))
+
+    def saved_metadata_revision(self):
+        """Synthetic saved state for desktop history; no geometry admission proof."""
+        current = self.store.load()
+        path = self.root/'unit-metadata-revision.blend'
+        path.write_bytes(b'BLENDER'+b'NOT_REAL_REVISED_GEOMETRY'*100)
+        sha = sha256(path.read_bytes()).hexdigest()
+        install_master_copy(self.store, path, sha, self.root)
+        return self.store.save(replace(current, revision=current.revision+1,
+            master_blend='master/versions/'+sha+'.blend',
+            parts=(replace(current.parts[0], part_asset_id=hand_asset_id('e'*64, 'shorter')),)),
+            expected_revision=current.revision)

@@ -209,9 +209,9 @@ class MainWindow(QMainWindow):
         from .hand_workflow import refresh_hands
         refresh_hands(self)
         self.preview_master_action.setEnabled(state.master_blend is not None and not self.jobs.busy)
-        self.save_action.setEnabled(state.dirty)
-        self.undo_action.setEnabled(state.can_undo)
-        self.redo_action.setEnabled(state.can_redo)
+        self.save_action.setEnabled(state.dirty and not self.jobs.busy)
+        self.undo_action.setEnabled(state.can_undo and not self.jobs.busy)
+        self.redo_action.setEnabled(state.can_redo and not self.jobs.busy)
         self.statusBar().showMessage(
             f"{state.name} — revision {state.revision} — "
             + ("unsaved metadata" if state.dirty else "saved")
@@ -695,6 +695,11 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Local operation completed; review results above")
 
     def _job_error(self, error: str) -> None:
+        if (self._work_kind in {'face_revision', 'generate_humanoid', 'body_refit'}
+                and self.controller.has_project and self.controller.require_project().animations):
+            from .reference_master_workflow import show_referenced_master_error
+            show_referenced_master_error(self, error)
+            return
         if self._work_kind in {'animation_reference_attach', 'animation_reference_detach'}:
             from .animation_references import show_reference_error
             show_reference_error(self, error)
@@ -726,7 +731,8 @@ class MainWindow(QMainWindow):
             self._error("Save all metadata edits before generating a new humanoid master")
             return
         snapshot = self.controller.require_project()
-        if snapshot.parts or snapshot.animations:
+        from ucc.core.reference_master_intent import supports_referenced_master_intent
+        if (snapshot.parts or snapshot.animations) and not supports_referenced_master_intent(snapshot):
             self._error(
                 "New base generation is blocked while part or animation references "
                 "are attached. Create a clean project until compatibility is validated."
@@ -764,11 +770,14 @@ class MainWindow(QMainWindow):
         store = self.controller.store
         snapshot = self.controller.require_project()
         cancel = Event()
+        database = self._catalog_path() if snapshot.animations else None
+        if snapshot.animations: self._clear_preview()
         self._submit(
             "generate_humanoid",
             lambda: generate_from_desktop(
                 store, blender_exe=exe, project_id=snapshot.project_id,
-                revision=snapshot.revision, cancel=cancel,
+                revision=snapshot.revision, cancel=cancel, database_path=database,
+                master_blend=snapshot.master_blend,
             ),
             cancel=cancel,
         )
@@ -788,7 +797,8 @@ class MainWindow(QMainWindow):
         if snapshot.master_blend is None:
             self._error("Generate a real MPFB humanoid master before applying changes")
             return
-        if snapshot.parts or snapshot.animations:
+        from ucc.core.reference_master_intent import supports_referenced_master_intent
+        if (snapshot.parts or snapshot.animations) and not supports_referenced_master_intent(snapshot):
             self._error("Existing-master refit with attached parts or animations is not validated")
             return
         parameters = dict(snapshot.parameters)
@@ -823,12 +833,14 @@ class MainWindow(QMainWindow):
             self._blender_executable = executable
         cancel = Event()
         store = self.controller.store
+        database = self._catalog_path() if snapshot.animations else None
+        if snapshot.animations: self._clear_preview()
         self._submit(
             "body_refit",
             lambda: refit_from_desktop(
                 store, blender_exe=executable, project_id=snapshot.project_id,
                 revision=snapshot.revision, master_blend=snapshot.master_blend,
-                cancel=cancel,
+                cancel=cancel, database_path=database,
             ),
             cancel=cancel,
         )

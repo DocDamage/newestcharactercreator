@@ -13,6 +13,7 @@ from threading import Event
 from ucc.core.errors import ValidationError
 from ucc.core.storage import ProjectStore
 from ucc.jobs.humanoid_generation import HumanoidGeneration, generate_humanoid
+from ucc.jobs.reference_master_revision import ReferencedMasterResult
 from ucc.jobs.body_revision import BodyRevisionResult, apply_saved_body_revision
 from ucc.jobs.customized_humanoid import CustomizedHumanoidBuild
 from ucc.jobs.master_preview import MasterPreview, preview_saved_master
@@ -92,7 +93,15 @@ def generate_from_desktop(
     project_id: str,
     revision: int,
     cancel: Event,
-) -> HumanoidGeneration | CustomizedHumanoidBuild:
+    database_path: Path | None = None,
+    master_blend: str | None = None,
+) -> HumanoidGeneration | CustomizedHumanoidBuild | ReferencedMasterResult:
+    snapshot = store.load()
+    if snapshot.animations:
+        from .reference_master_workflow import run_referenced_master
+        return run_referenced_master(store, database_path, operation="body_generation",
+            blender_exe=blender_exe, project_id=project_id, revision=revision,
+            master_blend=master_blend, cancel=cancel)
     if store.load().facial_parameters or store.load().expression is not None:
         from ucc.jobs.customized_humanoid import generate_customized_humanoid
         from ucc.jobs.face_discovery import discover_face_data
@@ -134,7 +143,13 @@ def refit_from_desktop(
     revision: int,
     master_blend: str,
     cancel: Event,
-) -> BodyRevisionResult | CustomizedHumanoidBuild:
+    database_path: Path | None = None,
+) -> BodyRevisionResult | CustomizedHumanoidBuild | ReferencedMasterResult:
+    if store.load().animations:
+        from .reference_master_workflow import run_referenced_master
+        return run_referenced_master(store, database_path, operation="body_refit",
+            blender_exe=blender_exe, project_id=project_id, revision=revision,
+            master_blend=master_blend, cancel=cancel)
     if store.load().facial_parameters or store.load().expression is not None:
         from ucc.jobs.customized_humanoid import apply_saved_customized_body_revision
         from ucc.jobs.face_discovery import discover_face_data

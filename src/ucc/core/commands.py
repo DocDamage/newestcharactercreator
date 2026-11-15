@@ -108,6 +108,17 @@ class CharacterSession:
         intent = validate_face_parameters({name: value})
         if self._project.parts or self._project.animations:
             raise CompatibilityError("Facial editing with attached parts or animations is not validated")
+        return self._set_face_intent(name, intent)
+
+    def set_referenced_face_parameter(self, name: str, value: float) -> CharacterProject:
+        """Save intent for the explicit prepared/reference transaction, not geometry."""
+        from .reference_master_intent import supports_referenced_master_intent
+        intent = validate_face_parameters({name: value})
+        if not supports_referenced_master_intent(self._project):
+            raise CompatibilityError('Reference-aware face intent requires a prepared MPFB character and supported hand')
+        return self._set_face_intent(name, intent)
+
+    def _set_face_intent(self, name: str, intent: dict) -> CharacterProject:
         values = dict(self._project.facial_parameters)
         if values.get(name, FACE_DEFAULTS[name]) == intent[name]:
             return self._project

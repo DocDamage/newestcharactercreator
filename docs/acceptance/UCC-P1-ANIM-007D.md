@@ -1,6 +1,6 @@
 # UCC-P1-ANIM-007D — referenced body and face edits
 
-Status: local API verification complete on `feat/anim-007-reference-edits`, based on PR #66 head `13c2749336aecced3bc5d6fc8334be8b374f9d95`. PR #66 stays frozen and draft. There is no merge approval. Desktop wiring and plain masters without prepared expressions remain unfinished.
+Status: local API verification complete on `feat/anim-007-reference-edits`, based on PR #66 head `13c2749336aecced3bc5d6fc8334be8b374f9d95`. PR #66 stays frozen and draft. There is no merge approval. The existing desktop body/face controls are locally accepted through actual Qt/Blender execution and independent saved-evidence auditing. Plain masters without prepared expressions remain unfinished.
 
 ## Behavior and admission
 
@@ -28,8 +28,22 @@ Original source/master/library/catalog objects remain protected. The no-hand evi
 
 Historical attempt 04 failed safely at a 261-character staged expression target despite an intact host hash. The internal expression scratch name was shortened, preserving every source and geometry assertion. Historical rollback harness 07 independently exceeded the same Windows limitation at 264 characters; its host input hash also matches. Harness 08 uses a shorter private evidence root without changing product sources. Neither failed attempt is accepted evidence. Very long nested project paths remain a compatibility limitation and produce an explicit worker failure without promoting the active master.
 
+## Locally accepted desktop follow-up
+
+The existing Generate, Apply body and Apply face controls now dispatch supported prepared/reference states to the verified API with captured catalog, project, revision and master expectations. A separate metadata-intent route enables the face setting while preserving the general core guard. A precise project-view eligibility flag enables compatible hand/body controls; it grants no geometry admission. The controller adopts exact saved results into history, and refresh keeps Save/Undo/Redo locked during live work. Scoped cancellation and concurrent-save error handling preserve or reload the saved project.
+
+Final required-Qt regression: 1,056 tests, 1,042 passed and fourteen existing Windows skips in 207.913 seconds. Forty-three focused checks include ten new Qt boundaries. Controlled optional-Qt absence passes sixteen API/history checks and skips only the ten Qt checks. Scanner, guardrails and actual three-check source launcher pass. Source manifest `source-under-test-14-reference-master-desktop.json` freezes 52 files.
+
+The actual existing face button passes in 366.265 seconds and the body slider/Apply body button passes in 382.453 seconds. Both use background Qt workers, continuously checked Save/Undo/Redo/New/Open locks, exact history/save/reopen and retained source references, expression strengths, hand variant and original instance. The complete original-only desktop gate takes 957.922 seconds and passes 58 positive workers: four 300-frame/71-bone source inspections, eight neutral inspections, sixteen expression inspections, both actual compatible-hand rebuilds and normal body/face workers.
+
+A coherent NoAI binding rewrite surfaces the real policy-error dialog before source/mutation workers; the active saved state remains intact. The actual Cancel action stops live hand-builder PID 13540 after a genuinely verified private face revision, preserving outer objects, metadata and history. An external save during a live neutral worker survives and is reloaded by the normal desktop conflict handler. Original project/source/master/library/catalog state remains protected. `reference-master-desktop-independent-16.json` independently audits the saved worker coverage, both provenance chains, rollback objects and source policy; it launches no new Blender process.
+
+A separate native Windows Qt rendering check reopens the accepted saved character without editing it and displays readable Segoe UI controls at Height 0.600 / Nose width 0.650. The offscreen capture has missing glyphs and is retained as a platform observation, not font/layout acceptance. Neither control-layout capture approves character visual quality.
+
+The Qt workflow adds only a core-source trigger and an explicit required-Qt command for the ten new tests; all earlier steps, dependencies and budgets remain. YAML parsing and the exact new CI selector pass. Final publication manifest `source-under-test-20-reference-master-desktop.json` contains 53 files: all 52 actually tested source files remain byte-identical and only the workflow selection is added. Actual Generate-button Blender execution remains unrun in this follow-up; its exact dispatch is tested and the underlying API regeneration is separately accepted.
+
 ## Scope still required
 
-Connect supported states to existing desktop body/face controls with real Qt, history, busy-lock, error and cancellation checks. Existing desktop guards remain active until that separate slice is verified. Unprepared masters, expression preview with references, seven usable target actions, root/loop/foot-contact quality, human visual acceptance and actual Godot/Unity/Unreal imports remain unfinished.
+Publish only after parent PR #66 completes its remaining exact-head acceptance, and retain fresh remote/package verification for this slice. Unsupported desktop states remain guarded. Unprepared masters, expression preview with references, seven usable target actions, root/loop/foot-contact quality, human visual acceptance and actual Godot/Unity/Unreal imports remain unfinished.
 
 No dependencies, installs, licensing, NoAI or export permissions changed. Purchased motions, scenes, geometry, poses, caches and renders are not committed or uploaded.

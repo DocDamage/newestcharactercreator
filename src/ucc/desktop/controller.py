@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ucc.core.commands import CharacterSession
+from ucc.core.reference_master_intent import supports_referenced_master_intent
 from ucc.core.errors import ValidationError
 from ucc.core.models import CharacterProject, MORPH_LIMITS
 from ucc.core.storage import PROJECT_FILE, ProjectStore
@@ -32,6 +33,7 @@ class ProjectView:
     facial_parameters: tuple[tuple[str, float], ...] = ()
     expression_parameters: tuple[tuple[str, float], ...] = ()
     expression_library: str | None = None
+    referenced_master_intent: bool = False
 
 
 class DesktopController:
@@ -104,7 +106,10 @@ class DesktopController:
     def set_face_parameter(self, name: str, value: float) -> ProjectView:
         session = self._get_session()
         previous = session.project
-        session.set_face_parameter(name, value)
+        if supports_referenced_master_intent(previous):
+            session.set_referenced_face_parameter(name, value)
+        else:
+            session.set_face_parameter(name, value)
         self._dirty |= previous != session.project
         return self.view()
 
@@ -112,6 +117,13 @@ class DesktopController:
         if self.store is None or self._dirty or self.store.load() != saved:
             raise ValidationError('Saved master cannot replace a changed or unsaved desktop session')
         self._get_session().accept_saved_master(saved)
+        self._saved_revision = saved.revision
+        return self.view()
+
+    def accept_saved_reference_master(self, saved: CharacterProject) -> ProjectView:
+        if self.store is None or self._dirty or self.store.load() != saved:
+            raise ValidationError('Saved reference-aware master cannot replace a changed or unsaved session')
+        self._get_session().accept_saved_reference_master(saved)
         self._saved_revision = saved.revision
         return self.view()
 
@@ -189,6 +201,7 @@ class DesktopController:
             tuple(project.facial_parameters),
             tuple(project.expression.parameters) if project.expression else (),
             project.expression.library_sha256 if project.expression else None,
+            supports_referenced_master_intent(project),
         )
 
     def _get_session(self) -> CharacterSession:

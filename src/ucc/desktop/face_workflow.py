@@ -6,6 +6,7 @@ from threading import Event
 from PySide6.QtWidgets import QFileDialog
 
 from ucc.core.errors import UCCError, ValidationError
+from ucc.core.reference_master_intent import supports_referenced_master_intent
 from ucc.jobs.face_revision import FaceRevisionResult, apply_saved_face_revision
 from ucc.jobs.face_discovery import discover_face_data
 from ucc.jobs.customized_humanoid import CustomizedHumanoidBuild
@@ -20,7 +21,12 @@ def edit_face(window, name, value):
     window._apply(edit)
 
 
-def apply_face_from_desktop(store, *, blender_exe, project_id, revision, master_blend, cancel):
+def apply_face_from_desktop(store, *, blender_exe, project_id, revision, master_blend, cancel, database_path=None):
+    if store.load().animations:
+        from .reference_master_workflow import run_referenced_master
+        return run_referenced_master(store, database_path, operation='face_revision',
+            blender_exe=blender_exe, project_id=project_id, revision=revision,
+            master_blend=master_blend, cancel=cancel)
     from .generation import bundled_worker_path
     script = bundled_worker_path()
     data = discover_face_data(store, blender_exe=blender_exe, worker_script=script, cancel=cancel)
@@ -40,7 +46,7 @@ def start_face(window):
     snapshot = window.controller.require_project()
     if not snapshot.master_blend or not snapshot.facial_parameters:
         window._error('Save a face setting and generate an MPFB master first'); return
-    if snapshot.parts or snapshot.animations:
+    if (snapshot.parts or snapshot.animations) and not supports_referenced_master_intent(snapshot):
         window._error('Face shape with attached parts or animations is not validated'); return
     executable = window._blender_executable
     if executable is None or executable.is_symlink() or not executable.is_file():
@@ -54,14 +60,19 @@ def start_face(window):
             window._error('Choose an existing installed Blender executable'); return
         window._blender_executable = executable
     store = window.controller.store
+    database = window._catalog_path() if snapshot.animations else None
     cancel = Event()
     window._clear_preview()
     window._submit('face_revision', lambda: apply_face_from_desktop(
         store, blender_exe=executable, project_id=snapshot.project_id, revision=snapshot.revision,
-        master_blend=snapshot.master_blend, cancel=cancel), cancel=cancel)
+        master_blend=snapshot.master_blend, cancel=cancel, database_path=database), cancel=cancel)
 
 
 def finish_face_build(window, result) -> bool:
+    from .reference_master_workflow import ReferencedMasterResult, finish_referenced_master
+    if isinstance(result, ReferencedMasterResult):
+        finish_referenced_master(window, result)
+        return True
     if not isinstance(result, (FaceRevisionResult, CustomizedHumanoidBuild)):
         return False
     saved = result.project if isinstance(result, FaceRevisionResult) else result.revision.project

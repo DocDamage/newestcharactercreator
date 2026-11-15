@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'src/ucc/desktop/**'
+      - 'src/ucc/core/**'
       - 'src/ucc/preview/**'
       - 'src/ucc/jobs/**'
       - 'tests/test_*qt.py'
@@ -58,5 +59,7 @@ jobs:
         run: python -m unittest discover -s tests -p test_contact_fit_qt.py -v
       - name: Run body-contact action and annotation publication tests
         run: python -m unittest discover -s tests -p test_body_review_qt.py -v
+      - name: Run prepared reference body and face controls, exact history and busy locks
+        run: python -m unittest discover -s tests -p test_reference_master_qt.py -v
       - name: Run dependency-free controller tests
         run: python -m unittest discover -s tests -p test_desktop_controller.py -v
