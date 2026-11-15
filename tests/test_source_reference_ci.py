@@ -53,7 +53,7 @@ class SourceReferenceCIContracts(unittest.TestCase):
 
     def test_sixth_suite_retains_existing_budgets_and_one_exact_summary(self):
         text = (ROOT/'.github/workflows/mpfb-cloud-smoke.yml').read_text(encoding='utf-8')
-        self.assertIn('suite: [regression, native-fit, body-contacts, symmetric-fit, regional-skin, source-references]', text)
+        self.assertIn('suite: [regression, native-fit, body-contacts, symmetric-fit, regional-skin, source-references, reference-creator]', text)
         for snippet in ("'native-fit' && 180", "'symmetric-fit' && 120", "'body-contacts' && 90",
                         "'regional-skin' && 90", "'source-references' && 90 || 120"):
             self.assertIn(snippet, text)

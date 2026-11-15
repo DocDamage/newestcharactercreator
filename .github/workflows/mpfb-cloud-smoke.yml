@@ -17,6 +17,9 @@ on:
       - 'ci/verify_expressions.py'
       - 'ci/verify_source_references.py'
       - 'ci/source_reference_*.py'
+      - 'ci/verify_reference_creator.py'
+      - 'ci/reference_creator_*.py'
+      - 'tests/test_reference_creator_ci.py'
       - 'tests/fixtures/blender_source_reference_faults.py'
       - 'src/ucc/animations/project_references.py'
       - 'src/ucc/animations/catalog_clip.py'
@@ -120,6 +123,9 @@ on:
       - 'ci/verify_expressions.py'
       - 'ci/verify_source_references.py'
       - 'ci/source_reference_*.py'
+      - 'ci/verify_reference_creator.py'
+      - 'ci/reference_creator_*.py'
+      - 'tests/test_reference_creator_ci.py'
       - 'tests/fixtures/blender_source_reference_faults.py'
       - 'src/ucc/animations/project_references.py'
       - 'src/ucc/animations/catalog_clip.py'
@@ -218,12 +224,12 @@ concurrency:
 
 jobs:
   verify-mpfb-linux:
-    name: ${{ matrix.suite == 'regression' && 'verify-mpfb-linux' || matrix.suite == 'native-fit' && 'verify-native-fit-linux' || matrix.suite == 'symmetric-fit' && 'verify-symmetric-fit-linux' || matrix.suite == 'regional-skin' && 'verify-regional-skin-linux' || matrix.suite == 'source-references' && 'verify-source-references-linux' || 'verify-body-contacts-linux' }}
+    name: ${{ matrix.suite == 'regression' && 'verify-mpfb-linux' || matrix.suite == 'native-fit' && 'verify-native-fit-linux' || matrix.suite == 'symmetric-fit' && 'verify-symmetric-fit-linux' || matrix.suite == 'regional-skin' && 'verify-regional-skin-linux' || matrix.suite == 'source-references' && 'verify-source-references-linux' || matrix.suite == 'reference-creator' && 'verify-reference-creator-linux' || 'verify-body-contacts-linux' }}
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
-        suite: [regression, native-fit, body-contacts, symmetric-fit, regional-skin, source-references]
+        suite: [regression, native-fit, body-contacts, symmetric-fit, regional-skin, source-references, reference-creator]
     # The full 300-frame neutral-reference regression completed at the old
     # 25-minute job boundary (including tool setup), cancelling a passing run.
     # Keep every integration assertion and allow bounded setup/runner headroom.
@@ -257,7 +263,7 @@ jobs:
     # Expression regression adds three prepared bodies, preservation, a registered
     # hand, complete 25-frame previews and thirteen faults. Keep earlier gates
     # and individual subprocess bounds, with explicit regression headroom.
-    timeout-minutes: ${{ matrix.suite == 'native-fit' && 180 || matrix.suite == 'symmetric-fit' && 120 || matrix.suite == 'body-contacts' && 90 || matrix.suite == 'regional-skin' && 90 || matrix.suite == 'source-references' && 90 || 120 }}
+    timeout-minutes: ${{ matrix.suite == 'native-fit' && 180 || matrix.suite == 'symmetric-fit' && 120 || matrix.suite == 'body-contacts' && 90 || matrix.suite == 'regional-skin' && 90 || matrix.suite == 'reference-creator' && 90 || matrix.suite == 'source-references' && 90 || 120 }}
     env:
       PYTHONUNBUFFERED: '1'
     steps:
@@ -394,6 +400,14 @@ jobs:
           python3 ci/verify_source_references.py \
             --blender "$BLENDER_EXE" \
             --outdir "$RUNNER_TEMP/ucc-source-references"
+      - name: Verify original reference-aware body, face, expression and transaction guards
+        if: matrix.suite == 'reference-creator'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ci/verify_reference_creator.py \
+            --blender "$BLENDER_EXE" \
+            --outdir "$RUNNER_TEMP/ucc-reference-creator"
       - name: Verify original full-timeline target fitting and real saved-scene corruptions
         if: matrix.suite == 'native-fit'
         shell: bash
@@ -437,6 +451,7 @@ jobs:
             ${{ runner.temp }}/ucc-expressions/expression_summary.json
             ${{ runner.temp }}/ucc-regional-skin/regional_skin_summary.json
             ${{ runner.temp }}/ucc-source-references/source_reference_summary.json
+            ${{ runner.temp }}/ucc-reference-creator/reference_creator_summary.json
             ${{ runner.temp }}/ucc-native-fit/native_fit_summary.json
             ${{ runner.temp }}/ucc-body-contacts/body_contact_summary.json
             ${{ runner.temp }}/ucc-symmetric-math.json

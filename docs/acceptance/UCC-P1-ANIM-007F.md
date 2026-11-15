@@ -1,0 +1,43 @@
+# UCC-P1-ANIM-007F — original-only reference creator integration
+
+Status: all local positive transactions, both saved expression caches, sixteen guards and independent saved-evidence auditing are accepted. The corrected remaining guards were run in a continuation that explicitly preserves the original entry point's fixture failure; the original command is not claimed to have passed as a whole. Full required-Qt regression and an additional integrated Windows GPU check pass. Remote acceptance and a separately reproduced source-parent watcher hardening follow-up remain pending before publication. Desktop checkpoint `12455191136df47af85645c028134e39de9f740b` remains separately accepted; parent draft PR #66 covers only the earlier source-reference/hand scope. No merge approval is implied.
+
+## Scope and evidence boundaries
+
+The seventh Linux suite exercises the newer reference-aware master and facial-preview APIs through normal application transactions. It reuses the original MPFB target builder and Blender-authored 300-frame / 71-bone FBX fixture. Both hand-equipped and no-hand characters attach the freshly measured source through the real API. The six earlier suites, individual worker limits, official archive/checksum verification and existing job budgets remain intact. The new suite has its own 90-minute budget; the accepted parent's source-reference job took 5 minutes 53 seconds on Linux.
+
+The positive sequence requires face revision, body refit, regeneration and a verified face no-op with a registered hand, plus face revision and body refit without a hand. Each changed transaction must preserve saved intent, source rights, hand instance/selection and strengths, retain all prior immutable objects, and survive native Undo/Save/Redo/Save/independent reopen. Both final characters request private expression previews; all 25 frames must decode with real deformation and exact neutral endpoints while owner metadata/history/master objects remain unchanged.
+
+Fixed worker expectations require 156 positive workers, five changed master transactions, one verified no-op and fifty decoded expression frames. Their sixteen fresh source workers cover 4,800 complete source-frame observations; six setup workers cover another 1,800. These positive counts have now passed and were independently recounted from saved requests/results; the original entry point did not pass as a whole because of the fixture mistake described below.
+
+Sixteen guards are implemented: both APIs reject coherent NoAI rewrites, assigned Actions and unregistered neutral masters; pending body intent rejects before expression staging; real cancellation and external saves occur after a verified private face mutation or during live clip staging; disposable saved-result copies reject changed source bytes, a coherently rehashed unknown receipt field, damaged skin bytes, a substituted reopening worker and a committed NoAI change held only in SQLite WAL. Cancel must terminate the actual child and preserve metadata/history. Concurrent saves must retain the exact external revision and prevent stale publication.
+
+`reference_creator_summary.json` is a closed aggregate record with fixed counts, worker groups, guard names and explicit false visual/engine approval. Missing/unknown fields, partial counts and truthy substitutes reject. CI adds exactly this one artifact path; no source paths, private receipts, worker requests/results, source animations, poses, meshes, scenes, caches or renders are retained. Tests continue to require every previously approved artifact path and reject wildcards. No application, Blender bridge, deformation, provenance or admission code is changed by this slice.
+
+## Executed checks
+
+Private evidence is under `evidence/anim007f`, outside Git. Manifest `source-under-test-07-reference-creator-CI.json` freezes 72 source/test/workflow files. It includes two additive CI expectation updates and the strict no-hand pending-body fixture correction. All product, Blender and positive-case code remains identical to the initial actual run.
+
+| Check | Result |
+| --- | --- |
+| New/existing closed-summary and routing contracts | Thirteen passed in 0.055 seconds |
+| Full required-Qt regression | 1,098 tests in 213.480 seconds: 1,084 passed, fourteen existing Windows symlink skips |
+| Preflight, guardrails, actual source launcher | Three scanner checks, twelve guardrails and three-check SELF_TEST_OK pass |
+| New actual Blender setup | Fresh original target, measured source, normal no-hand reset and both source attachments pass; six complete source workers / 1,800 frame observations |
+| All positive master/history and expression cases | Five changed edits, one verified no-op and both 25-frame caches pass; all 156 positive workers independently recounted |
+| Integrated native Windows Play check | All 25 GPU frames on the body/face-regenerated character with rebuilt hand, in 1.172 seconds; no new Blender work or visual-quality approval |
+| Both APIs' admission guards | Six NoAI, assigned-Action and foreign-neutral guards pass and their saved worker coverage is independently rechecked |
+| Remaining actual guards and final aggregate | All sixteen guards pass; corrected continuation takes 886.860 seconds and produces the closed aggregate |
+| Independent direct-receipt reader | Both new typed results and all fifty frames, exact worker groups/source coverage, pending physical read-back and retained transaction roles pass against all 72 frozen source files; no new Blender |
+
+The first full regression exposed two additive CI expectations: the hand privacy whitelist lacked the new exact summary path, and the regional test expected a six-suite suffix. Only the new summary and seventh suite name were added; all old paths and assertions remain. The failed run is retained separately. The corrected complete suite passes. The healthy Blender run was not cancelled or restarted for these test-only adjustments.
+
+The original entry point later stopped at a fixture mistake identified during code review: its pending-body test used a character with a selected hand, so the API correctly rejected pending hand intent before physical macro inspection. The corrected guard explicitly requires the actual edited no-hand character and still requires the precise Blender phenotype read-back failure. Healthy positive work was allowed to finish. A continuation independently recounts all 156 retained positive workers, reconstructs both complete saved caches and verifies all six retained admission checks, then runs only the corrected pending-body guard and remaining live/saved faults. This continuation passes all remaining cases; the final closed summary and independent audit pass. The failed original run is not relabelled as a passing command. Product code and admission assertions remain intact.
+
+## Remaining acceptance
+
+Private final records are `original-creator-CI-03/reference_creator_summary.json`, `reference-creator-joined-acceptance-09.json` and `reference-creator-independent-04.json`. Their summary SHA-256 is `a733cb864c2a4eb1169fd3e366994d4fd08ce9a311fe5b781bf2ec3fd6e1131e`. Python 3.12.10, Blender 5.3.0 and the executable hash are recorded in `reference-creator-runtime-inventory-06.json`.
+
+Before publication, fix the separately reproduced Windows source-parent redirect watcher gap. A structural Qt probe shows that a moved parent replaced by a junction can preserve source bytes/inode/timestamp and retain publication when its file watch is unavailable; the immediate parent alone does not deliver the required rename notification. Add bounded ancestor entry watches and canonical input/directory identity checks, with real filesystem and GPU invalidation evidence. No external directory enumeration or asset rights change is authorized by this follow-up. Then verify final source/Git identities and publish a coherent stable draft for the reference-aware body/face/expression scope. All five workflows, all seven Linux diagnostic archives / 39 JSON records and the exact-head Windows package require their own acceptance; parent results do not substitute for this head. Do not change a published head while healthy CI jobs run. The seventh archive must retain the four existing shared smoke/production records plus the one new aggregate, so the expected total is 39, not 35. Keep draft and unmerged pending owner approval.
+
+Human visual quality, source-motion application, usable target-action registration, root/loop/foot quality, plain unprepared reference-master editing, Godot/Unity/Unreal imports, sprite output and the wider blueprint remain unfinished. No dependencies, installations, downloads on the owner machine, asset rights, NoAI rules or export permissions changed.
