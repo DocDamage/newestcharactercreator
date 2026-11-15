@@ -6,6 +6,7 @@ from pathlib import Path
 from types import SimpleNamespace
 import json
 import sqlite3
+import subprocess
 import tempfile
 import time
 import unittest
@@ -166,6 +167,64 @@ class ReferencedExpressionQtTests(unittest.TestCase):
               patch('ucc.desktop.reference_expression_binding.QFileSystemWatcher.addPaths', return_value=['unwatched'])):
             with self.assertRaises(ProjectStorageError): bind_referenced_expression(self.window, self.result)
         self.assertIsNone(self.window._expression_preview)
+
+    def _parent_replacement(self, *, catalog=False, hardlink=False):
+        folder = self.root/'external'; folder.mkdir()
+        leaf = folder/('catalog.sqlite3' if catalog else 'source.fbx')
+        leaf.write_bytes((self.f.database if catalog else self.f.source).read_bytes())
+        if catalog:
+            self.result = replace(self.result, database_path=leaf.resolve())
+            self.window._catalog_path = lambda: leaf
+        else:
+            self.result = replace(self.result, source_paths=(leaf.resolve(),))
+        self.bind(); self.drain(); self.assertIs(self.window._expression_preview, self.result)
+        watcher = self.window._reference_expression_watcher; notifications = []
+        watcher.directoryChanged.connect(notifications.append)
+        before = leaf.stat()
+        identity = (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns)
+        # An OS-lost file watch must not defeat the directory fallback.
+        self.assertTrue(watcher.removePath(str(leaf)))
+        self.assertIn(str(folder), watcher.directories())
+        relocated = self.root/'relocated'
+        self.assertTrue(folder.resolve().is_relative_to(self.root.resolve()))
+        self.assertTrue(relocated.resolve().is_relative_to(self.root.resolve()))
+        folder.rename(relocated)
+        try:
+            if hardlink:
+                folder.mkdir(); os.link(relocated/leaf.name, leaf)
+            elif os.name == 'nt':
+                quote = lambda p: "'"+str(p).replace("'", "''")+"'"
+                command = ('New-Item -ItemType Junction -Path '+quote(folder)+' -Target '+quote(relocated)
+                           +' -ErrorAction Stop | Out-Null')
+                subprocess.run(['powershell.exe', '-NoProfile', '-NonInteractive', '-Command', command],
+                    check=True, capture_output=True, text=True, timeout=10,
+                    creationflags=subprocess.CREATE_NO_WINDOW)
+            else:
+                folder.symlink_to(relocated, target_is_directory=True)
+            after = leaf.stat()
+            self.assertEqual(identity, (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns))
+            self.assertEqual(leaf.resolve() == leaf, hardlink)
+            deadline = time.monotonic()+2
+            while self.window._expression_preview is not None and time.monotonic() < deadline:
+                self.app.processEvents(); time.sleep(.01)
+            self.assertTrue(notifications, 'Parent replacement produced no observed ancestor notification')
+            self.assertTrue(self.window._expression_preview is None, 'Parent replacement retained publication')
+            self.window.expression_viewer.clear.assert_called()
+        finally:
+            if hardlink:
+                leaf.unlink(); folder.rmdir()
+            elif folder.exists():
+                if os.name == 'nt': os.rmdir(folder)  # Remove only the junction, never its target.
+                else: folder.unlink()
+
+    def test_source_parent_redirect_revokes_with_unchanged_file_identity(self):
+        self._parent_replacement()
+
+    def test_catalog_parent_redirect_revokes_with_unchanged_database_identity(self):
+        self._parent_replacement(catalog=True)
+
+    def test_replaced_real_parent_with_same_hardlinked_file_revokes(self):
+        self._parent_replacement(hardlink=True)
 
 
 if __name__ == '__main__': unittest.main()

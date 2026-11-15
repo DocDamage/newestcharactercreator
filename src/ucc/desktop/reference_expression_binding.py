@@ -11,14 +11,18 @@ from .expression_binding import clear_expression
 MAX_PATHS = 20000
 
 
-def _stat(path):
+def _stat(path: Path) -> tuple[int, int, int, int]:
     info = path.stat()
-    return info.st_size, info.st_mtime_ns, info.st_ino
+    return info.st_size, info.st_mtime_ns, info.st_dev, info.st_ino
 
 
 def catalog_signature(database: Path):
     """SHM is coordination, and an empty WAL has no committed data pages."""
-    if database.is_symlink() or not database.is_file():
+    try:
+        canonical = database.resolve(strict=True)
+    except (OSError, RuntimeError) as error:
+        raise ProjectStorageError('Expression source catalog disappeared or was redirected') from error
+    if database.is_symlink() or not database.is_file() or canonical != database:
         raise ProjectStorageError('Expression source catalog disappeared or was redirected')
     wal = Path(str(database)+'-wal')
     if wal.is_symlink(): raise ProjectStorageError('Expression catalog WAL is redirected')
@@ -48,6 +52,33 @@ def _files_snapshot(paths):
     return {str(p): _stat(p) for p in paths if p.is_file()}
 
 
+def _ancestors(paths) -> set[Path]:
+    """Watch directory entries along authorized paths; never enumerate them."""
+    parents = set()
+    for path in paths:
+        for parent in path.parents:
+            parents.add(parent)
+            if len(parents) > MAX_PATHS:
+                raise ProjectStorageError('Referenced expression watch set exceeds its safety bound')
+    return parents
+
+
+def _directory_ids(paths) -> dict[str, tuple[int, int]]:
+    identities = {}
+    for value in paths:
+        path = Path(value)
+        if path.is_dir():
+            info = path.stat(); identities[str(path)] = (info.st_dev, info.st_ino)
+    return identities
+
+
+def _canonical_sources(result) -> bool:
+    try:
+        return all(not p.is_symlink() and p.resolve(strict=True) == p for p in result.source_paths)
+    except (OSError, RuntimeError):
+        return False
+
+
 def _arm_wal(window, state):
     wal = Path(str(state['database'])+'-wal')
     if wal.exists():
@@ -68,11 +99,13 @@ def _changed(window, path):
         try:
             _arm_wal(window, state)
             if (catalog_signature(database) == state['catalog']
+                    and _canonical_sources(state['result'])
+                    and _directory_ids(state['directories']) == state['directory_ids']
                     and _owned_paths(window.controller.store, state['result']) == state['owned']
                     and all(Path(p).is_file() and _stat(Path(p)) == signature
                             for p, signature in state['files'].items())):
                 return
-        except (OSError, ProjectStorageError):
+        except (OSError, RuntimeError, ProjectStorageError):
             pass
     clear_expression(window)
 
@@ -85,15 +118,17 @@ def bind_referenced_expression(window, result):
     check_referenced_expression_preview(store, result.database_path, result)
     owned = _owned_paths(store, result)
     external = set(result.source_paths)
-    # Only these exact registered external files and their parents are watched.
-    # External directories are never recursively enumerated.
+    # Exact registered files and ancestor directory entries are watched.
+    # A parent handle alone can follow a renamed directory and miss its alias.
+    # External directories are never enumerated, recursively or otherwise.
     for path in external:
         if path.is_symlink() or not path.is_file() or path.resolve(strict=True) != path:
             raise ProjectStorageError('Registered expression source is missing or redirected')
-    paths = owned | external | {p.parent for p in external} | {result.database_path, result.database_path.parent}
+    paths = owned | external | {result.database_path} | _ancestors((store.root, result.database_path, *external))
     if len(paths) >= MAX_PATHS:
         raise ProjectStorageError('Referenced expression watch set exceeds its safety bound')
     files = _files_snapshot(owned | external); catalog = catalog_signature(result.database_path)
+    directory_ids = _directory_ids(paths)
     watcher = getattr(window, '_reference_expression_watcher', None)
     if watcher is None:
         watcher = QFileSystemWatcher(window)
@@ -102,7 +137,7 @@ def bind_referenced_expression(window, result):
         window._reference_expression_watcher = watcher
     clear_expression(window)
     state = {'database': result.database_path, 'catalog': catalog, 'files': files,
-             'result': result, 'owned': owned, 'directories': {str(p) for p in paths if p.is_dir()},
+             'result': result, 'owned': owned, 'directories': set(directory_ids), 'directory_ids': directory_ids,
              'watched': {str(p) for p in paths}}
     window._reference_expression_state = state; watcher.blockSignals(False)
     try:
@@ -111,7 +146,9 @@ def bind_referenced_expression(window, result):
         _arm_wal(window, state)
         check_referenced_expression_preview(store, result.database_path, result)
         if (window.controller.dirty or window.controller.require_project() != result.project
+                or not _canonical_sources(result)
                 or _owned_paths(store, result) != owned or _files_snapshot(owned | external) != files
+                or _directory_ids(paths) != directory_ids
                 or catalog_signature(result.database_path) != catalog):
             raise ProjectConflict('Referenced expression inputs changed while attaching playback watchers')
         window._expression_preview = result
