@@ -14,6 +14,7 @@ class HandArtifactPrivacyTests(unittest.TestCase):
                   'ucc-project-integration/transaction_summary.json','ucc-custom-face/custom_face_summary.json',
                   'ucc-hand-parts/hand_parts_summary.json','ucc-expressions/expression_summary.json',
                   'ucc-regional-skin/regional_skin_summary.json',
+                  'ucc-source-references/source_reference_summary.json',
                   'ucc-native-fit/native_fit_summary.json',
                   'ucc-body-contacts/body_contact_summary.json','ucc-symmetric-math.json',
                   'ucc-symmetric-fit/symmetric_fit_summary.json'}

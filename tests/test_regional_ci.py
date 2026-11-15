@@ -35,7 +35,7 @@ class RegionalCIContracts(unittest.TestCase):
         text = (ROOT/'.github/workflows/mpfb-cloud-smoke.yml').read_text(encoding='utf-8')
         for path in ('ci/verify_regional_skin.py', 'ci/regional_*.py', 'tests/fixtures/blender_regional*.py'):
             self.assertEqual(text.count("- '"+path+"'"), 2)
-        self.assertIn('symmetric-fit, regional-skin]', text)
+        self.assertIn('symmetric-fit, regional-skin, source-references]', text)
         artifact = text.split('path: |', 1)[1].split('if-no-files-found:', 1)[0]
         self.assertEqual([p.strip() for p in artifact.splitlines() if 'ucc-regional-skin' in p],
                          ['${{ runner.temp }}/ucc-regional-skin/regional_skin_summary.json'])
