@@ -13,7 +13,7 @@ from ucc.library.provenance import AssetPolicyError, LicensePolicy
 
 
 def _saved_reference(database_path, clip_id, source_sha, policy):
-    with AnimationCatalog(database_path) as catalog:
+    with AnimationCatalog(database_path, read_only=True) as catalog:
         row = catalog.db.execute('''SELECT substr(asset_id,1,129),ordinal,
             length(CAST(metadata_json AS BLOB)),typeof(metadata_json) FROM animation_clips WHERE clip_id=?''', (clip_id,)).fetchone()
         if (row is None or not text(row[0], 128) or type(row[1]) is not int or row[1] != 0

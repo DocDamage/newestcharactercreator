@@ -101,10 +101,33 @@ def _sha256(path: Path) -> str:
 
 
 class AssetLibrary:
-    def __init__(self, db_path: str | Path):
+    def __init__(self, db_path: str | Path, *, read_only: bool = False):
+        if type(read_only) is not bool:
+            raise AssetPolicyError("Catalog read_only must be a boolean")
         self.path = Path(db_path).expanduser()
         if self.path.is_symlink():
             raise AssetPolicyError("Catalog path cannot be a symlink")
+        self.read_only = read_only
+        if read_only:
+            if not self.path.is_file():
+                raise AssetPolicyError("Select an existing catalog for read-only verification")
+            try:
+                self.db = sqlite3.connect(self.path.resolve(strict=True).as_uri()+"?mode=ro", uri=True)
+            except sqlite3.Error as error:
+                raise AssetPolicyError("Stored catalog cannot be opened for read-only verification") from error
+            try:
+                self.db.execute("PRAGMA query_only = ON")
+                version = self.db.execute("PRAGMA user_version").fetchone()[0]
+                if version != 1:
+                    raise AssetPolicyError("Read-only catalog requires supported schema version 1; no migration performed")
+                self._require_table("asset_sources", ("asset_id", "source_path", "content_sha256",
+                    "size_bytes", "license_json", "indexed_utc"))
+            except (sqlite3.Error, AssetPolicyError) as error:
+                self.db.close()
+                if isinstance(error, AssetPolicyError):
+                    raise
+                raise AssetPolicyError("Stored catalog is not a readable supported SQLite database") from error
+            return
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.db = sqlite3.connect(self.path)
         self.db.execute("PRAGMA foreign_keys = ON")
@@ -126,6 +149,13 @@ class AssetLibrary:
             PRAGMA user_version=1;
         """)
 
+    def _require_table(self, name: str, columns: tuple[str, ...]) -> None:
+        # Names originate only from fixed schemas, never caller-provided SQL.
+        kind = self.db.execute("SELECT type FROM sqlite_master WHERE name=?", (name,)).fetchone()
+        actual = tuple(row[1] for row in self.db.execute('PRAGMA table_info("'+name+'")'))
+        if kind != ("table",) or actual != columns:
+            raise AssetPolicyError("Stored catalog table is missing or unsupported: "+name)
+
     def __enter__(self) -> "AssetLibrary":
         return self
 
@@ -136,6 +166,8 @@ class AssetLibrary:
         self.db.close()
 
     def register(self, asset_id: str, path: Path, policy: LicensePolicy) -> AssetEntry:
+        if self.read_only:
+            raise AssetPolicyError("Catalog is open read-only; indexing is disabled")
         if not isinstance(asset_id, str) or not asset_id.strip() or len(asset_id) > 128:
             raise ValidationError("asset_id invalid")
         source = Path(path).expanduser()

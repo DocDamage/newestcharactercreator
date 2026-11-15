@@ -8,6 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from hashlib import sha256
 import json
+import sqlite3
 from pathlib import Path
 from typing import Any
 
@@ -56,9 +57,21 @@ def _policy_rights(policy: LicensePolicy) -> dict[str, str]:
 class AnimationCatalog:
     """Optional tables inside a local AssetLibrary database (non-destructive)."""
 
-    def __init__(self, database_path: str | Path):
-        self.library = AssetLibrary(database_path)
+    def __init__(self, database_path: str | Path, *, read_only: bool = False):
+        self.library = AssetLibrary(database_path, read_only=read_only)
         self.db = self.library.db
+        if read_only:
+            try:
+                self.library._require_table('animation_sources',
+                    ('asset_id', 'format', 'status', 'fingerprint', 'bone_names_json', 'warnings_json'))
+                self.library._require_table('animation_clips', ('clip_id', 'asset_id', 'ordinal', 'metadata_json'))
+                self.library._require_table('animation_fbx_intakes', ('asset_id', 'receipt_json'))
+            except (AssetPolicyError, sqlite3.Error) as error:
+                self.library.close()
+                if isinstance(error, AssetPolicyError):
+                    raise
+                raise AnimationMetadataError("Stored animation catalog cannot be read safely") from error
+            return
         # Both tables can be added to a v1 source DB without altering its existing rows.
         self.db.executescript("""
             CREATE TABLE IF NOT EXISTS animation_sources (
