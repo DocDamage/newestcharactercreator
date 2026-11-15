@@ -1,6 +1,6 @@
 # UCC-P1-ANIM-007E — referenced expression playback
 
-Status: the read-only API is locally accepted on top of desktop commit `2616d4061ad2e7b2c2cc00bbb0fcb616c4f55239`. Desktop publication, source-aware watchers and actual GPU playback remain unfinished. PR #66 stays frozen at `13c2749336aecced3bc5d6fc8334be8b374f9d95`; no merge approval is implied.
+Status: the read-only API is locally accepted on top of desktop commit `2616d4061ad2e7b2c2cc00bbb0fcb616c4f55239`. Desktop publication, source-aware watchers and actual GPU playback remain unfinished. Parent PR #66 is fully technically accepted at `13c2749336aecced3bc5d6fc8334be8b374f9d95` across all five workflows, six Linux archives / 34 records and its own Windows package; it remains draft and unmerged. These parent results do not cover this local slice, and no merge approval is implied.
 
 ## Ownership and admission
 
@@ -36,6 +36,8 @@ The first umbrella harness stopped in its final observer when a transient Window
 
 ## Remaining work
 
-Connect this accepted API to the existing expression controls using explicit outer/private ownership and source-aware bounded watchers. Verify the real Qt button, complete GPU playback, busy/history behavior, cancellation/error paths and revocation of CPU/GPU state when bound owner/source/catalog/cache inputs change. Preserve legacy unreferenced behavior and every admission guard. Plain unprepared reference-master editing, usable target actions, root/loop/foot-contact and human quality, actual Godot/Unity/Unreal imports, sprite output and the wider blueprint remain unfinished.
+First make catalog verification strictly read-only. A measured existing-library behavior initializes SQLite schema and rewrites user_version even during lookup; logical rows remain unchanged, but database/directory timestamps and WAL/SHM state change. This would make naive playback watchers invalidate their own verification. Add a true read-only existing-catalog lookup that still observes committed WAL policy updates, preserves all source/receipt bounds and leaves default indexing behavior intact.
+
+Then connect this accepted API to the existing expression controls using explicit outer/private ownership and source-aware bounded watchers. Verify the real Qt button, complete GPU playback, busy/history behavior, cancellation/error paths and revocation of CPU/GPU state when bound owner/source/catalog/cache inputs change. Preserve legacy unreferenced behavior and every admission guard. Plain unprepared reference-master editing, usable target actions, root/loop/foot-contact and human quality, actual Godot/Unity/Unreal imports, sprite output and the wider blueprint remain unfinished.
 
 No dependencies, installation, asset rights, NoAI rules or export permissions changed.
