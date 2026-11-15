@@ -176,6 +176,31 @@ class CharacterSession:
         self._project = saved
         return saved
 
+    def accept_saved_reference_master(self, saved: CharacterProject) -> CharacterProject:
+        """Adopt one independently verified reference/body/hand API result.
+
+        This is only exact metadata/history validation, never master admission.
+        The job layer must verify sources, prepared provenance and geometry.
+        """
+        if saved == self._project:
+            return saved
+        if (not self._project.animations or self._project.expression is None
+                or saved.revision != self._project.revision+1 or saved.master_blend is None
+                or saved.geometry_state != 'generated_unverified' or saved.rig_profile is not None):
+            raise ValidationError('Saved reference-aware master does not extend the current revision')
+        if self._project.parts or saved.parts:
+            validate_expression_part_rebind(self._project.parts, saved.parts)
+        if saved.master_blend == self._project.master_blend and saved.parts == self._project.parts:
+            raise ValidationError('Unchanged reference-aware master must remain a verified no-op')
+        expected = replace(self._project, master_blend=saved.master_blend, parts=saved.parts,
+                           revision=saved.revision, geometry_state='generated_unverified', rig_profile=None)
+        if saved != expected:
+            raise ValidationError('Saved reference-aware master changed unrelated intent or source IDs')
+        self._undo.append(self._project)
+        self._undo = self._undo[-self._history_limit:]
+        self._redo.clear(); self._project = saved
+        return saved
+
     def propose_part(self, asset_id: str) -> CharacterProject:
         asset = self._assets.get(asset_id)
         if asset is None:

@@ -42,7 +42,10 @@ def preserve_expressions(store: ProjectStore, *, operation: str, blender_exe: Pa
     before = verify_saved_expression_master(store, **common, expected_project_id=initial.project_id,
         expected_revision=initial.revision, expected_master_blend=initial.master_blend)
     library, _ = registered_expression_source(store, initial, cancel)
-    root = safe_directory(store, '.ucc-jobs', create=True)/('expression-edit-'+str(uuid4()))
+    # This private project name is not a job/protocol ID. Keep it compact so
+    # nested reference-aware edits and long target filenames fit Blender's
+    # Windows path limit; actual worker requests retain their full UUIDs.
+    root = safe_directory(store, '.ucc-jobs', create=True)/('expression-edit-'+uuid4().hex[:16])
     root.mkdir(exist_ok=False); scratch = ProjectStore(root)
     generate = operation == 'body_generation'
     if not generate:
