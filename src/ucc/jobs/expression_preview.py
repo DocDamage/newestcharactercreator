@@ -13,6 +13,7 @@ from ucc.core.storage import ProjectStore
 from ucc.preview.expression_cache import read_expression_cache, read_json, validate_clip_report
 from ucc.preview.motion_cache import MotionCache
 from .expression_keys import installed_expression_inputs
+from .expression_inspection import CheckedExpressionMaster
 from .expression_storage import check_cancel, safe_directory
 from .expression_verification import verify_saved_expression_master, registered_expression_source
 from .geometry_evidence import EvidenceError
@@ -36,6 +37,7 @@ class ExpressionPreview:
     verify_dir: Path
     stage_job_id: str
     reopen_job_id: str
+    inspection: CheckedExpressionMaster
 
 
 def preview_saved_expressions(store: ProjectStore, *, blender_exe: Path, worker_script: Path,
@@ -98,4 +100,4 @@ def preview_saved_expressions(store: ProjectStore, *, blender_exe: Path, worker_
     registered_expression_source(store, initial, cancel); check_cancel(cancel)
     return ExpressionPreview(cache, initial.project_id, initial.revision, initial.master_blend, checked.sha256,
         initial.expression.library_sha256, options['clip_sha256'], bindings, verified.details,
-        workdir, verify_dir, request.job_id, verification.job_id)
+        workdir, verify_dir, request.job_id, verification.job_id, checked)
