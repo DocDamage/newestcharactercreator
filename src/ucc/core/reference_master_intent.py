@@ -7,7 +7,7 @@ from ucc.animations.project_references import MAX_PROJECT_REFERENCES
 
 def supports_referenced_master_intent(project: CharacterProject) -> bool:
     if (project.family != 'humanoid.v1' or project.base_provider != 'mpfb'
-            or project.expression is None or project.master_blend is None
+            or project.master_blend is None
             or not 0 < len(project.animations) <= MAX_PROJECT_REFERENCES or len(project.parts) > 1):
         return False
     if not project.parts:

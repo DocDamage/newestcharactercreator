@@ -1,4 +1,4 @@
-"""Atomic prepared-body/face edits retaining references and a rebuilt hand."""
+"""Atomic body/face edits retaining source references and a rebuilt hand."""
 from dataclasses import dataclass, replace
 import math
 from pathlib import Path
@@ -46,6 +46,12 @@ def revise_referenced_master(store, database_path: Path, *, operation: str,
         raise ValidationError('Reference-aware master timeout_s is outside the supported range')
     initial, master_sha, metadata_sha, unchanged = _context(store, expected_project_id,
         expected_revision, expected_master_blend, cancel)
+    if initial.expression is None:
+        from .reference_plain_master import revise_plain_reference_master
+        return revise_plain_reference_master(store, database_path, initial=initial,
+            master_sha=master_sha, metadata_sha=metadata_sha, unchanged=unchanged, operation=operation,
+            blender_exe=blender_exe, worker_script=worker_script, mpfb_data_dir=mpfb_data_dir,
+            cancel=cancel, timeout_s=timeout_s)
     if (initial.family != 'humanoid.v1' or initial.base_provider != 'mpfb' or initial.expression is None
             or not 0 < len(initial.animations) <= MAX_PROJECT_REFERENCES):
         raise ValidationError('Reference-aware editing requires a prepared MPFB expression master and source references')

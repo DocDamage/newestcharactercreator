@@ -9,6 +9,7 @@ import unittest
 from unittest.mock import patch
 
 from fixtures.reference_master_contract import ReferenceMasterFixture
+from fixtures.reference_plain_master_contract import PlainReferenceMasterFixture
 from ucc.core.commands import CharacterSession
 from ucc.core.errors import CompatibilityError, ValidationError
 from ucc.core.models import PartInstance
@@ -28,6 +29,7 @@ if legacy.QApplication is not None:
 @unittest.skipIf(legacy.QApplication is None and os.environ.get('UCC_REQUIRE_QT') != '1',
                  'Optional PySide6 unavailable')
 class ReferencedMasterQtTests(unittest.TestCase):
+    fixture_type = ReferenceMasterFixture
     @classmethod
     def setUpClass(cls):
         if legacy.QApplication is None:
@@ -37,7 +39,7 @@ class ReferencedMasterQtTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory(); self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name)
-        self.f = ReferenceMasterFixture(self.root/'fixture')
+        self.f = self.fixture_type(self.root/'fixture')
         self.controller = DesktopController(); self.controller.open(self.f.store.root)
         self.window = MainWindow(self.controller); self.addCleanup(self.window.deleteLater)
         self.exe = self.root/'not-executed.exe'; self.exe.write_bytes(b'NOT_AN_EXECUTABLE')
@@ -66,7 +68,7 @@ class ReferencedMasterQtTests(unittest.TestCase):
         self.assertEqual(dict(self.f.store.load().facial_parameters), {'nose_width': .7})
 
     def test_unsupported_metadata_remains_guarded(self):
-        variants = [replace(self.initial, expression=None, schema_version=2), replace(self.initial, animations=()),
+        variants = [replace(self.initial, animations=()),
             replace(self.initial, parts=(PartInstance('unknown', 'unknown-asset', 'hand.L'),)),
             replace(self.initial, parts=(replace(self.initial.parts[0], visible=False),))]
         for current in variants:
@@ -74,6 +76,15 @@ class ReferencedMasterQtTests(unittest.TestCase):
             with self.assertRaises(CompatibilityError):
                 CharacterSession(current).set_referenced_face_parameter('nose_width', .7)
         self.assertTrue(supports_referenced_master_intent(replace(self.initial, parts=())))
+
+    def test_plain_metadata_allows_saved_face_intent_without_introducing_expressions(self):
+        current = replace(self.initial, expression=None, schema_version=2)
+        self.assertTrue(supports_referenced_master_intent(current))
+        session = CharacterSession(current)
+        changed = session.set_referenced_face_parameter('nose_width', .7)
+        self.assertIsNone(changed.expression)
+        self.assertEqual(changed.animations, current.animations)
+        self.assertEqual(changed.parts, current.parts)
 
     def test_existing_face_button_captures_exact_catalog_and_saved_input(self):
         with patch.object(self.window, '_submit') as submit:
@@ -109,6 +120,36 @@ class ReferencedMasterQtTests(unittest.TestCase):
             self.assertEqual(value, 'unit-result')
             self.assertEqual(run.call_args.kwargs['operation'], operation)
             self.assertEqual(run.call_args.args[1], self.f.database)
+
+    def test_generate_reuses_the_explicitly_selected_existing_blender(self):
+        with (patch('ucc.desktop.window.QMessageBox.question', return_value=QMessageBox.StandardButton.Yes),
+              patch('ucc.desktop.window.QFileDialog.getOpenFileName') as picker,
+              patch.object(self.window, '_submit') as submit):
+            self.window.character.generate.click()
+        picker.assert_not_called()
+        self.assertEqual(submit.call_args.args[0], 'generate_humanoid')
+        with patch('ucc.desktop.window.generate_from_desktop') as run:
+            submit.call_args.args[1]()
+        self.assertEqual(run.call_args.kwargs['blender_exe'], self.exe)
+
+    def test_generate_without_cached_blender_asks_once_and_keeps_the_selection(self):
+        self.window._blender_executable = None
+        with (patch('ucc.desktop.window.QMessageBox.question', return_value=QMessageBox.StandardButton.Yes),
+              patch('ucc.desktop.window.QFileDialog.getOpenFileName', return_value=(str(self.exe), '')) as picker,
+              patch.object(self.window, '_submit') as submit):
+            self.window.character.generate.click()
+        picker.assert_called_once()
+        self.assertEqual(self.window._blender_executable, self.exe)
+        self.assertEqual(submit.call_args.args[0], 'generate_humanoid')
+
+    def test_generate_cancelled_picker_does_not_launch_or_change_the_saved_owner(self):
+        self.window._blender_executable = None; before = self.f.store.file.read_bytes()
+        with (patch('ucc.desktop.window.QMessageBox.question', return_value=QMessageBox.StandardButton.Yes),
+              patch('ucc.desktop.window.QFileDialog.getOpenFileName', return_value=('', '')),
+              patch.object(self.window, '_submit') as submit):
+            self.window.character.generate.click()
+        submit.assert_not_called()
+        self.assertEqual(self.f.store.file.read_bytes(), before)
 
     def test_exact_dispatch_guard_precedes_probe_and_fresh_api_receives_bindings(self):
         args = dict(operation='face_revision', blender_exe=self.exe, project_id=self.initial.project_id,
@@ -172,6 +213,11 @@ class ReferencedMasterQtTests(unittest.TestCase):
             self.window._job_error('WorkerFailure: cancelled')
         self.assertEqual(self.controller.require_project(), external)
         self.assertIn('cancelled', self.window.log.toPlainText())
+
+
+class PlainReferencedMasterQtTests(ReferencedMasterQtTests):
+    """Run the same exact desktop contracts without prepared expression keys."""
+    fixture_type = PlainReferenceMasterFixture
 
 
 if __name__ == '__main__': unittest.main()

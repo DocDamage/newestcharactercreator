@@ -53,5 +53,26 @@ class ReferencedMasterHistoryTests(unittest.TestCase):
         with self.assertRaises(CompatibilityError):
             CharacterSession(before).accept_saved_reference_master(self.saved)
 
+    def test_plain_master_adoption_and_history_preserve_absent_expressions(self):
+        for hand in (False, True):
+            with self.subTest(hand=hand):
+                before = replace(self.before, schema_version=2, expression=None,
+                                 parts=self.before.parts if hand else ())
+                saved = replace(self.saved, schema_version=2, expression=None,
+                                parts=self.saved.parts if hand else ())
+                session = CharacterSession(before)
+                self.assertEqual(session.accept_saved_reference_master(saved), saved)
+                undone = session.undo(); self.assertEqual(undone, replace(before, revision=undone.revision))
+                redone = session.redo(); self.assertEqual(redone, replace(saved, revision=redone.revision))
+                self.assertIsNone(redone.expression)
+
+    def test_plain_adoption_cannot_introduce_expression_controls_or_change_source_ids(self):
+        before = replace(self.before, schema_version=2, expression=None)
+        plain = replace(self.saved, schema_version=2, expression=None)
+        for saved in (self.saved, replace(plain, animations=('other-source#clip-0000',))):
+            session = CharacterSession(before)
+            with self.assertRaises(ValidationError): session.accept_saved_reference_master(saved)
+            self.assertFalse(session.can_undo)
+
 
 if __name__ == '__main__': unittest.main()

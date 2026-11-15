@@ -40,10 +40,10 @@ def refresh_hands(window):
             message=('Source references retained. Apply freshly checks sources, neutral state, and registered hand/expression provenance.'
                      if project.animations else 'Compatible hand assets ready. Applying checks the saved result over 20 poses.')
         elif project.parts:
-            message='This saved attachment has no compatible hand library. Restore a known character revision before rebuilding.'
+            message='No hand library matches the saved settings. Apply supported body/face changes or restore a known revision.'
         elif not clean:
             message='Save settings and generate a character before building compatible hands.'
-        if invalid and not candidates:message+=' Some earlier hand libraries no longer match this character.'
+        if invalid and not candidates:message+=' Some earlier libraries could not be used.'
     except (UCCError,OSError,ValueError) as error:
         message=str(error)
     controls.display_context(key=(str(store.root),project.project_id,project.revision,window.controller.dirty),
@@ -54,7 +54,7 @@ def refresh_hands(window):
 def _executable(window):
     executable=window._blender_executable
     if executable is None or executable.is_symlink() or not executable.is_file():
-        name,_=QFileDialog.getOpenFileName(window,'Choose installed Blender for compatible hands','',
+        name,_=QFileDialog.getOpenFileName(window,'Choose your installed Blender executable','',
                      'Blender executable (*.exe);;All files (*)' if os.name=='nt' else 'All files (*)')
         if not name:return None
         executable=Path(name)

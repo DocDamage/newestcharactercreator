@@ -758,15 +758,13 @@ class MainWindow(QMainWindow):
         )
         if answer != QMessageBox.StandardButton.Yes:
             return
-        file_filter = "Blender executable (*.exe);;All files (*)" if os.name == "nt" else "All files (*)"
-        selected, _ = QFileDialog.getOpenFileName(
-            self, "Choose your installed Blender executable", "", file_filter,
-        )
-        if not selected:
+        from .hand_workflow import _executable
+        try:
+            exe = _executable(self)
+        except (UCCError, OSError, ValueError) as error:
+            self._error(f"{type(error).__name__}: {error}")
             return
-        exe = Path(selected)
-        if exe.is_symlink() or not exe.is_file():
-            self._error("Choose an existing regular Blender executable")
+        if exe is None:
             return
         self._blender_executable = exe
         store = self.controller.store

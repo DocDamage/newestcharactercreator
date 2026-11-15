@@ -8,6 +8,7 @@ from .anatomy import get_slot
 from .errors import CompatibilityError, ValidationError
 from .models import CharacterProject, MORPH_LIMITS, PartAsset, PartInstance, finite_number
 from .facial import FACE_DEFAULTS, validate_face_parameters
+from .reference_master_intent import supports_referenced_master_intent
 from .expressions import (DEFAULTS as EXPRESSION_DEFAULTS, ExpressionState,
                           validate_expression_parameters, validate_expression_part_rebind, is_sha256)
 
@@ -191,11 +192,11 @@ class CharacterSession:
         """Adopt one independently verified reference/body/hand API result.
 
         This is only exact metadata/history validation, never master admission.
-        The job layer must verify sources, prepared provenance and geometry.
+        The job layer must verify sources, applicable provenance and geometry.
         """
         if saved == self._project:
             return saved
-        if (not self._project.animations or self._project.expression is None
+        if (not supports_referenced_master_intent(self._project)
                 or saved.revision != self._project.revision+1 or saved.master_blend is None
                 or saved.geometry_state != 'generated_unverified' or saved.rig_profile is not None):
             raise ValidationError('Saved reference-aware master does not extend the current revision')

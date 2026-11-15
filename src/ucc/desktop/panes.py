@@ -128,9 +128,9 @@ class CharacterPane(QWidget):
         self.generate.setEnabled(False)
         generate_layout.addWidget(self.generate)
         generation_note = QLabel(
-            "Save slider changes first. Generating again creates a new immutable master "
-            "and preserves older revisions; previously edited mesh parts are not carried "
-            "forward. Animation skinning and game-engine export remain unverified."
+            "Save settings first. Generation creates a new master and keeps earlier revisions. "
+            "Compatible hand selections are retained where supported; other attachments remain blocked. "
+            "Animation quality and game-engine export require separate verification."
         )
         generation_note.setWordWrap(True)
         generate_layout.addWidget(generation_note)

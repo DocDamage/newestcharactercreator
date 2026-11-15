@@ -19,6 +19,9 @@ on:
       - 'ci/source_reference_*.py'
       - 'ci/verify_reference_creator.py'
       - 'ci/reference_creator_*.py'
+      - 'ci/verify_plain_reference.py'
+      - 'ci/plain_reference_*.py'
+      - 'tests/test_plain_reference_ci.py'
       - 'tests/test_reference_creator_ci.py'
       - 'tests/fixtures/blender_source_reference_faults.py'
       - 'src/ucc/animations/project_references.py'
@@ -125,6 +128,9 @@ on:
       - 'ci/source_reference_*.py'
       - 'ci/verify_reference_creator.py'
       - 'ci/reference_creator_*.py'
+      - 'ci/verify_plain_reference.py'
+      - 'ci/plain_reference_*.py'
+      - 'tests/test_plain_reference_ci.py'
       - 'tests/test_reference_creator_ci.py'
       - 'tests/fixtures/blender_source_reference_faults.py'
       - 'src/ucc/animations/project_references.py'
@@ -408,6 +414,9 @@ jobs:
           python3 ci/verify_reference_creator.py \
             --blender "$BLENDER_EXE" \
             --outdir "$RUNNER_TEMP/ucc-reference-creator"
+          python3 ci/verify_plain_reference.py \
+            --blender "$BLENDER_EXE" \
+            --outdir "$RUNNER_TEMP/ucc-plain-reference"
       - name: Verify original full-timeline target fitting and real saved-scene corruptions
         if: matrix.suite == 'native-fit'
         shell: bash
@@ -452,6 +461,7 @@ jobs:
             ${{ runner.temp }}/ucc-regional-skin/regional_skin_summary.json
             ${{ runner.temp }}/ucc-source-references/source_reference_summary.json
             ${{ runner.temp }}/ucc-reference-creator/reference_creator_summary.json
+            ${{ runner.temp }}/ucc-plain-reference/plain_reference_summary.json
             ${{ runner.temp }}/ucc-native-fit/native_fit_summary.json
             ${{ runner.temp }}/ucc-body-contacts/body_contact_summary.json
             ${{ runner.temp }}/ucc-symmetric-math.json

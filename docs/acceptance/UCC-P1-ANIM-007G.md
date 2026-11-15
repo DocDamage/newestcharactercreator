@@ -1,6 +1,6 @@
 # UCC-P1-ANIM-007G — canonical playback inputs and ancestor watches
 
-Status: locally accepted on top of creator-CI commit `25c76cda4c8eccb4e914f596cfe3b1a8c91a6826`. Required-Qt regression, native filesystem faults, actual GPU invalidation and independent saved-evidence auditing pass. Draft PR #67 is published; exact-head remote acceptance and a fixture-only Windows CI follow-up remain pending. No merge approval is implied.
+Status: locally accepted on top of creator-CI commit `25c76cda4c8eccb4e914f596cfe3b1a8c91a6826`. Required-Qt regression, native filesystem faults, actual GPU invalidation and independent saved-evidence auditing pass. Draft PR #67 now contains the tested fixture-only canonical-root follow-up at `43529a43ea17fc4e702cd1f6c2fd7d633a129103`. All four non-Linux workflows and the actual exact-head Windows package pass. Five Linux archives / 29 JSON records are independently accepted; the healthy native job remains live, and a proven source setup-only HTTP 403 must wait for terminal-only failed-job retry. Complete exact-head remote acceptance remains pending. No merge approval is implied.
 
 ## Problem and resulting behavior
 

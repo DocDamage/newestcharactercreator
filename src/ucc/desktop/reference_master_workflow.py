@@ -1,4 +1,4 @@
-"""Existing desktop actions for prepared characters with bound source IDs."""
+"""Existing desktop actions for admitted characters with bound source IDs."""
 from pathlib import Path
 from threading import Event
 
@@ -15,7 +15,7 @@ def run_referenced_master(store, database: Path | None, *, operation: str,
     if (database is None or not supports_referenced_master_intent(snapshot)
             or snapshot.project_id != project_id or snapshot.revision != revision
             or snapshot.master_blend != master_blend):
-        raise ValidationError('Reference-aware editing requires the exact saved prepared character and source catalog')
+        raise ValidationError('Reference-aware editing requires the exact saved MPFB character and source catalog')
     from .generation import bundled_worker_path
     script = bundled_worker_path()
     data = discover_face_data(store, blender_exe=blender_exe, worker_script=script, cancel=cancel)
@@ -33,7 +33,9 @@ def finish_referenced_master(window, result: ReferencedMasterResult) -> None:
         window._error('Saved character could not be adopted into this session: '+str(error)); return
     action = ('Saved settings already match; no new master revision.' if result.revision is None
               else 'Saved character changes applied and independently reopened.')
-    window.log.setPlainText(action+'\nSource references and expression strengths retained. '
+    retained = ('Source references and expression strengths retained. ' if result.project.expression is not None
+                else 'Source references and saved body/face settings retained. ')
+    window.log.setPlainText(action+'\n'+retained+
         'The registered hand keeps its selection. Undo/redo restores the master and hand together.\n'
         'Use View saved character to inspect the result. Visual quality and engine imports remain unapproved.')
 
