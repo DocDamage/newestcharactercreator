@@ -660,3 +660,30 @@ for the transaction PR until healthy integration jobs finish, avoiding workflow
 concurrency cancellation. Desktop/frozen evidence is ready for its separate
 reviewed slice; final-head remote checks, integration merges and later complete
 Unity/blueprint gates remain open.
+
+
+## Receipt cutoff correction and package interval C — in progress
+
+Transaction PR #69 merged at `42b0a3d` and desktop PR #70 at `67acf003`.
+All final-head checks and inspected artifacts pass; integration trees match
+their accepted heads. Earlier actual frozen589 positive, collision and live
+prepublication cancellation evidence retains its finite scope.
+
+Independent follow-up fault tests reproduced a late ownership gap: a receipt
+flush failure or deadline before its first hash could roll the owned folder back
+while leaving its receipt successful. A journal flush failure could also strand
+the temporary status file before the FAILED update. The correction captures
+created file ownership before writing, invalidates only the owned expected
+receipt with an invalid opening byte until its false body is complete, and
+cleans only the owned journal temporary. Replaced or externally changed files
+remain untouched. No source, render or numerical algorithm changes.
+
+All three new fault cases pass after reproducing their pre-fix failures; all
+41 existing transaction/publication/traversal checks pass. These are real local
+filesystem fault tests with patched engine calls, not fresh engine-quality
+evidence. Original failures and independent proof remain private.
+
+Package interval C remains OPEN pending current fixed-source frozen executable
+acceptance, exact artifact/source audit and final-head checks. The owner launcher
+and older packages remain preserved. No public release, distribution licence
+approval, usable clip library or complete-project acceptance is implied.
