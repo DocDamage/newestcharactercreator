@@ -226,7 +226,8 @@ permissions:
 
 concurrency:
   group: mpfb-cloud-smoke-${{ github.ref }}
-  cancel-in-progress: true
+  # Preserve healthy integration work when a new reviewed checkpoint is pushed.
+  cancel-in-progress: false
 
 jobs:
   verify-mpfb-linux:

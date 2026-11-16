@@ -127,6 +127,10 @@ class MainWindow(QMainWindow):
             self.cancel_generation,
         )
         self.cancel_generation_action.setEnabled(False)
+        from .target_action_workflow import start_target_action
+        self.target_action_action = self._action(
+            character_menu, 'Prepare registered clip preview...', '', lambda: start_target_action(self))
+        self.target_action_action.setEnabled(False)
         view_menu = self.menuBar().addMenu("&View")
         self.mesh_action = self._action(view_menu, "&Preview local GLB model...", "Ctrl+Shift+M", self.open_mesh_preview)
         self.preview_master_action = self._action(
@@ -222,6 +226,8 @@ class MainWindow(QMainWindow):
         from .skin_material_workflow import refresh_skin_material
         refresh_skin_material(self)
         self.animations.display_reference_ids(self.controller.require_project().animations)
+        from .target_action_workflow import refresh_target_action
+        refresh_target_action(self)
         from .animation_references import refresh_reference_controls
         refresh_reference_controls(self)
         from .hand_workflow import refresh_hands
@@ -246,6 +252,8 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Universal Character Creator — " + state.name + (" *" if state.dirty else ""))
 
     def _clear_preview(self) -> None:
+        from .target_action_preview import clear_target_action_preview
+        clear_target_action_preview(self)
         from .expression_binding import clear_expression
         clear_expression(self)
         from .static_preview_binding import clear_binding
@@ -438,6 +446,19 @@ class MainWindow(QMainWindow):
         from .animation_references import refresh_reference_controls
         refresh_reference_controls(self)
 
+        from .target_action_workflow import KINDS, refresh_target_action, resume_target_action
+        refresh_target_action(self)
+        if busy and self._work_kind in KINDS:
+            self.cancel_generation_action.setEnabled(True)
+            self.statusBar().showMessage({
+                'target_action_review': 'Reviewing the exact registered source and saved bindings...',
+                'target_action_mapping': 'Checking the explicitly selected target mapping...',
+                'target_action_prepare': 'Preparing and independently reopening a private target Action...',
+                'target_action_load': 'Validating the explicitly selected saved target preview...',
+            }[self._work_kind])
+        if not busy:
+            resume_target_action(self)
+
         from .godot_export_workflow import refresh_export
         refresh_export(self)
         from .unity_export_workflow import refresh_unity_export
@@ -451,6 +472,10 @@ class MainWindow(QMainWindow):
             resume_unity_source_review(self)
 
     def _job_success(self, result: object) -> None:
+        from .target_action_workflow import KINDS, finish_target_action
+        if self._work_kind in KINDS:
+            finish_target_action(self, result)
+            return
         if self._work_kind=='unity_export_review':
             from .unity_export_workflow import finish_unity_source_review
             finish_unity_source_review(self,result);return
@@ -759,6 +784,10 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Local operation completed; review results above")
 
     def _job_error(self, error: str) -> None:
+        from .target_action_workflow import KINDS, target_action_error
+        if self._work_kind in KINDS:
+            target_action_error(self, error)
+            return
         if self._work_kind in {'unity_export','unity_export_review'}:
             from .unity_export_workflow import unity_export_error
             unity_export_error(self,error);return
@@ -1053,6 +1082,10 @@ class MainWindow(QMainWindow):
 
     def cancel_generation(self) -> None:
         if self.jobs.cancel():
+            from .target_action_workflow import KINDS
+            if self._work_kind in KINDS:
+                self.statusBar().showMessage('Cancellation requested; waiting for target-preview work to stop. Saved records may remain retained.')
+                return
             self.statusBar().showMessage(
                 "Cancellation requested. Waiting for Blender worker shutdown..."
             )

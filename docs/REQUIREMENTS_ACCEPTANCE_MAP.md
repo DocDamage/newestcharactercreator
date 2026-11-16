@@ -11,6 +11,23 @@ where source code, diagnostics or a partial implementation exists. Historical
 blueprint checkboxes are not current evidence. Every scope extension needs its
 own actual application evidence; unit tests and CI status alone are insufficient.
 
+## Current target-action batch
+
+Unity transaction, desktop and current private package slices were merged through
+PRs #69, #70 and #72 into verified integration `e7d1f2d3`. The separate Unreal
+candidate PR #71 has local API/frozen acceptance and four successful workflows;
+final Linux acceptance remains open. These are finite export profiles and do
+not close engine animation, player, visual or distribution requirements.
+
+The current dependency-ready batch is
+[registered private target actions](acceptance/UCC-P1-TARGET-ACTION-001.md),
+draft PR #73. Transaction owns preparation/storage/context and narrow existing
+worker guard seams; desktop owns explicit prepare/load and preview lifecycle;
+verification owns independent retained-proof admission and private actual audits.
+Primary owns contracts, integration, evidence review and Git. No worker commits.
+Actual new target-action workflow acceptance remains open. Earlier batch details
+below are retained as historical context and superseded by these current states.
+
 ## Current batch and shared contracts
 
 | Task | Dependencies | Owner/files | Measurable exit |

@@ -34,7 +34,7 @@ class NativePlayback:
 
 def prepare_native_playback(store: ProjectStore, preview: NativeBodyPreview, *, source_fbx: Path,
                             permission: LicensePolicy, blender_exe: Path, worker_script: Path,
-                            cancel: Event | None=None, timeout_s: float=300) -> NativePlayback:
+                            cancel: Event | None=None, timeout_s: float=300, source_guard=None) -> NativePlayback:
     allowed,reason=permission.allow("local_preview")
     if not allowed:raise AssetPolicyError(reason)
     def check_cancel():
@@ -81,6 +81,7 @@ def prepare_native_playback(store: ProjectStore, preview: NativeBodyPreview, *, 
                 raise ProjectStorageError("Original animation/master/evidence changed while preparing playback")
     unchanged()
     request=JobRequest.new("cache_native_fbx_body",input_project="candidate.blend",options=options)
+    if source_guard is not None: source_guard()
     result,output=BlenderJobRunner(blender_exe,jobs_root,worker_script).run(request,timeout_s=timeout_s,cancel=cancel,staged_inputs=staged)
     unchanged()
     if output.is_symlink() or output.resolve().parent!=jobs_root.resolve():raise ValidationError("Playback worker folder is redirected")
@@ -94,6 +95,7 @@ def prepare_native_playback(store: ProjectStore, preview: NativeBodyPreview, *, 
         contact=bound_file(output,record,"motion_contacts.json",16*1024*1024,cancel_check=check_cancel)
         check=JobRequest.new("verify_native_surface_review",input_project="candidate.blend",
             options={**options,"surface_review_sha256":record["sha256"]})
+        if source_guard is not None: source_guard()
         verified,verify_folder=BlenderJobRunner(blender_exe,jobs_root,worker_script).run(check,timeout_s=timeout_s,cancel=cancel,
             staged_inputs={**staged,"motion_contacts.json":contact})
         unchanged()

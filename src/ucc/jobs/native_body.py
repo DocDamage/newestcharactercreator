@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 from threading import Event
+from typing import Callable
 import json
 
 from ucc.animations.fbx_snapshot import read_snapshot
@@ -35,6 +36,7 @@ class NativeBodyPreview:
     worker_report: dict | None = None
     private_reopen_job_id: str = ""
     reopen_evidence: dict | None = None
+    source_intake_worker_job_ids: tuple[str, ...] = ()
 
     @property
     def retargeting_verified(self): return False
@@ -43,7 +45,10 @@ class NativeBodyPreview:
 def preview_native_body(store: ProjectStore, *, source_fbx: Path, mapping_profile: Path | None=None,
                         blender_exe: Path, worker_script: Path, permission: LicensePolicy,
                         expected_project_id: str, expected_revision: int, expected_master_blend: str,
-                        cancel: Event | None=None, timeout_s: float=300, include_hands: bool=False, skin_policy: str | None=None) -> NativeBodyPreview:
+                        cancel: Event | None=None, timeout_s: float=300, include_hands: bool=False, skin_policy: str | None=None,
+                        source_intake_observer: Callable | None=None, source_guard=None) -> NativeBodyPreview:
+    if source_intake_observer is not None and not callable(source_intake_observer):
+        raise ValidationError('Native source intake observer must be callable')
     allowed,reason=permission.allow("local_preview")
     if not allowed: raise AssetPolicyError(reason)
     if type(include_hands) is not bool or (include_hands and mapping_profile is not None):
@@ -63,8 +68,20 @@ def preview_native_body(store: ProjectStore, *, source_fbx: Path, mapping_profil
     if _digest(master,cancel)!=master_sha: raise ProjectStorageError("Native target master hash differs")
     metadata=store.root/"project.ucc.json"
     metadata_sha=_digest(metadata,cancel)
+    intake_ids=[]
+    def observe(request, result, folder):
+        expected=store.root/'.ucc-jobs'/request.job_id
+        if (folder != expected or folder.resolve() != folder or folder.is_symlink()
+                or getattr(folder, 'is_junction', lambda:False)()):
+            raise ProjectStorageError('Observed native intake escaped its actual worker folder')
+        intake_ids.append(request.job_id)
+        source_intake_observer(request,result,folder)
+    observer_options={} if source_intake_observer is None else {'observer':observe}
+    if source_guard is not None: observer_options['source_guard']=source_guard
     intake=inspect_selected_fbx(source_fbx,blender_exe=blender_exe,worker_script=worker_script,
-        jobs_root=store.root/".ucc-jobs",permission=permission,cancel=cancel,timeout_s=timeout_s)
+        jobs_root=store.root/".ucc-jobs",permission=permission,cancel=cancel,timeout_s=timeout_s,**observer_options)
+    if source_intake_observer is not None and (len(intake_ids)!=2 or len(set(intake_ids))!=2):
+        raise ValidationError('Native source observer did not capture two distinct actual workers')
     snapshot_path=Path(intake["private_snapshot"])
     source,_=read_snapshot(snapshot_path.parent,intake,intake["source_sha256"],cancel_check=check_cancel)
     snapshot_sha=intake["snapshot"]["sha256"]
@@ -90,6 +107,7 @@ def preview_native_body(store: ProjectStore, *, source_fbx: Path, mapping_profil
         unchanged()
         request=JobRequest.new("verify_native_fbx_body",input_project="candidate.blend",
             options={**bindings,"render_private_frames":run==0})
+        if source_guard is not None: source_guard()
         result,folder=runner.run(request,timeout_s=timeout_s,cancel=cancel,
             staged_inputs={"candidate.blend":master,"source_snapshot.json":snapshot_path,"native_mapping.json":mapping_profile})
         unchanged()
@@ -122,6 +140,7 @@ def preview_native_body(store: ProjectStore, *, source_fbx: Path, mapping_profil
         request=JobRequest.new("reopen_native_fbx_body",input_project="candidate.blend",options=reopen_bindings)
         staged={"candidate.blend":master,"review_motion.blend":action,"target_timeline.json":first_path,
                 "source_snapshot.json":snapshot_path,"native_mapping.json":mapping_profile}
+        if source_guard is not None: source_guard()
         result,reopen_folder=runner.run(request,timeout_s=timeout_s,cancel=cancel,staged_inputs=staged)
         unchanged()
         if reopen_folder.is_symlink() or reopen_folder.resolve().parent!=(store.root/".ucc-jobs").resolve():
@@ -138,4 +157,4 @@ def preview_native_body(store: ProjectStore, *, source_fbx: Path, mapping_profil
         review=verify_native_renders(first_folder,first_report,first_data)
     unchanged()
     return NativeBodyPreview(project.project_id,project.revision,master_sha,intake["source_sha256"],first_data,
-                             str(action),review,str(first_path),tuple(ids),str(mapping_profile),first_report,reopen_id,reopened)
+                             str(action),review,str(first_path),tuple(ids),str(mapping_profile),first_report,reopen_id,reopened,tuple(intake_ids))

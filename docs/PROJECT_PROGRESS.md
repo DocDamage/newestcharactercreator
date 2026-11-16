@@ -1,5 +1,20 @@
 # Project progress — November 16, 2026
 
+Current integration: Unity transaction, desktop and private frozen-package slices
+are merged through PRs #69, #70 and #72 into `e7d1f2d3`. Their acceptance remains
+limited to the recorded human/static diagnostic profile. The separate Unreal
+PR #71 has local API/frozen evidence and four successful workflows; final Linux
+acceptance and integration remain open.
+
+The current independent batch is
+[registered private target actions](acceptance/UCC-P1-TARGET-ACTION-001.md),
+draft PR #73. Core contracts and focused implementation checks are present;
+actual new action preparation, saved reload and normal frozen-app gates remain
+open. This batch grants no engine, AI, redistribution or usable-clip status.
+The complete locked blueprint remains active. Earlier progress entries below
+are historical and do not supersede these current integration states.
+
+
 The [complete requirements and acceptance map](REQUIREMENTS_ACCEPTANCE_MAP.md)
 tracks the locked blueprint, scoped evidence and every remaining feature area.
 The current coordinated batch connects Unity publication, its normal desktop

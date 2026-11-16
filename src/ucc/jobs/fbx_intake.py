@@ -4,17 +4,22 @@ from __future__ import annotations
 from hashlib import sha256
 from pathlib import Path
 from threading import Event
+from typing import Callable
 
 from ucc.animations.fbx_snapshot import MAX_SOURCE_BYTES, read_snapshot
 from ucc.core.errors import ValidationError
 from ucc.library.provenance import LicensePolicy, AssetPolicyError
-from .protocol import JobRequest
+from .protocol import JobRequest, JobResult
 from .runner import BlenderJobRunner, WorkerFailure
 
 
 def inspect_selected_fbx(source: Path, *, blender_exe: Path, worker_script: Path,
                          jobs_root: Path, permission: LicensePolicy,
-                         cancel: Event | None=None, timeout_s: float=300) -> dict:
+                         cancel: Event | None=None, timeout_s: float=300,
+                         observer: Callable[[JobRequest, JobResult, Path], None] | None=None,
+                         source_guard=None) -> dict:
+    if observer is not None and not callable(observer):
+        raise ValidationError('FBX intake observer must be callable')
     allowed,reason=permission.allow("local_preview")
     if not allowed:
         raise AssetPolicyError(reason)
@@ -39,6 +44,7 @@ def inspect_selected_fbx(source: Path, *, blender_exe: Path, worker_script: Path
     for _ in range(2):
         check_cancel()
         request=JobRequest.new("inspect_fbx_animation",options={"source_sha256":before})
+        if source_guard is not None: source_guard()
         result,folder=runner.run(request,timeout_s=timeout_s,cancel=cancel,staged_inputs={"source.fbx":source})
         staged=folder/"source.fbx"
         if (source.is_symlink() or staged.is_symlink() or not source.is_file() or not staged.is_file() or
@@ -49,6 +55,8 @@ def inspect_selected_fbx(source: Path, *, blender_exe: Path, worker_script: Path
             first_report,first_data,first_path=result.details,data,path
         elif first_report != result.details or first_data != data:
             raise ValidationError("Independent Blender workers disagree on FBX rest/pose transforms")
+        if observer is not None:
+            observer(request, result, folder)
     check_cancel()
     if source.is_symlink() or not source.is_file() or digest(source) != before:
         raise ValidationError("FBX original changed before intake completion")

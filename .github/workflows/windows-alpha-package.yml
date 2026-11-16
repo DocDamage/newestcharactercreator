@@ -18,6 +18,8 @@ on:
       - 'src/ucc/library/**'
       - 'src/ucc/sprites/**'
       - 'tests/test_desktop_entrypoint.py'
+      - 'tests/test_target_action_dialog.py'
+      - 'tests/test_target_action_desktop.py'
       - 'pyproject.toml'
       - '.github/workflows/windows-alpha-package.yml'
   push:
@@ -68,6 +70,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Unity per-use review dialog tests failed' }
           python -m unittest discover -s tests -p 'test_unity_export_desktop.py' -v
           if ($LASTEXITCODE -ne 0) { throw 'Unity desktop export workflow tests failed' }
+          python -m unittest discover -s tests -p 'test_target_action_dialog.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Target private-preview review tests failed' }
+          python -m unittest discover -s tests -p 'test_target_action_desktop.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Target saved-load and preview lifetime tests failed' }
       - name: Freeze windowed desktop application
         shell: pwsh
         run: |

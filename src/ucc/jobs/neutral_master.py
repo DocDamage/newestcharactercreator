@@ -44,7 +44,8 @@ def checked_observation(raw, master_sha: str, expression_count: int) -> dict:
 
 def inspect_saved_neutral_master(store: ProjectStore, *, blender_exe: Path, worker_script: Path,
                                  expected_project_id: str, expected_revision: int, expected_master_blend: str,
-                                 cancel: Event | None = None, timeout_s: float = 300) -> NeutralMasterInspection:
+                                 cancel: Event | None = None, timeout_s: float = 300,
+                                 source_guard=None) -> NeutralMasterInspection:
     """Inspect actual neutrality even when metadata contains external clip IDs.
 
     This does not admit an arbitrary rehashed master, validate clip references,
@@ -85,6 +86,7 @@ def inspect_saved_neutral_master(store: ProjectStore, *, blender_exe: Path, work
         unchanged()
         request = JobRequest.new('inspect_mpfb_neutral_master', input_project='candidate.blend',
                                  options={'master_sha256': master_sha})
+        if source_guard is not None: source_guard()
         result, folder = runner.run(request, staged_inputs={'candidate.blend': master}, cancel=cancel, timeout_s=timeout_s)
         unchanged()
         staged = folder/'candidate.blend'
