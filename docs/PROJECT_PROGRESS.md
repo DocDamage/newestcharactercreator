@@ -2,31 +2,26 @@
 
 The [complete requirements and acceptance map](REQUIREMENTS_ACCEPTANCE_MAP.md)
 tracks the locked blueprint, scoped evidence and every remaining feature area.
-The Unity publication, normal desktop action and frozen-app acceptance are
-independently verified within their finite profile; A/B merged through PRs
-#69 and #70. The separate receipt-ownership correction and current package interval C also
-pass and merge through PR #72 after native failure checks and archive audits. The current implementation batch builds the normal portable
-Unreal workflow on the accepted actual static native baseline.
+Unity's transaction, normal desktop and current fixed-source frozen package pass
+within their finite profile. A/B/C integrate through PRs #69, #70 and #72; their
+accepted trees and safe pruning are independently recorded. Owner launchers and
+earlier packages remain preserved.
 
-Unreal baseline 006 passes all thirteen source-derived native field gates in
-installed Unreal 5.9, including exact fresh readback and four saved assets.
-Independent preservation and fourteen host observation faults pass; live engine
-faults were not injected. Production 007 now has closed source/toolchain/rights
-contracts and separately owned source, engine/interface and verification work.
-See [Unreal acceptance](acceptance/UCC-P1-UNREAL-001.md) for exact scope and open
-shader/GPU/animation/player/visual/distribution gates. Private proof assets are
-not copied wholesale as deliverables.
+Unreal's production static API and matching frozen601 normal desktop export now
+pass source preparation, compilation, import, saved reopen, sealed publication
+and final delivered-copy verification. Independent audits accept both thirteen-
+gate native pairs, exact eleven-file delivery and preservation. Native existing-
+destination rejection and actual live Unreal cancellation pass, as do private
+archive/extraction/startup checks. The exact collision-time process snapshot is
+unavailable and explicitly qualified; direct rejection, retained transaction
+inventory and unchanged bytes remain verified.
 
-Current Unity transaction evidence retains its finite scope. The isolated
-fixed-source C600 package passes normal native export, collision and live Cancel,
-independent positive/negative audits and private archive/extraction/startup checks. Current Unreal regression 599 passes 1,582 tests
-with fourteen existing Windows skips (1,596 total). Actual production attempt 02
-compiled the first-party observer and captured the real static mesh, then failed
-at fresh-editor startup on a private cache path limit. A scoped path correction
-passes focused engine tests. Coherent attempt 04 completes the whole API and
-final delivered-project verification; both native reopen pairs, exact eleven-file
-delivery and preservation pass independent audit. Normal Unreal desktop and
-matching frozen acceptance remain open.
+Final local required-Qt regression 603 passes 1,587 tests with fourteen existing
+Windows skips (1,601 total), with all 454 accepted product resources unchanged.
+Final PR-head CI/artifact review and integration remain open. See the
+[Unreal acceptance record](acceptance/UCC-P1-UNREAL-001.md) for source/tool profile,
+retained failures and exact scope. Shader/GPU rendering, shipping clips, player,
+artist, distribution and broader compatibility requirements remain separate.
 
 The Universal Character Creator is a functional Windows alpha under active
 development. The locked blueprint remains the full target. A customizable
@@ -75,14 +70,15 @@ normal frozen desktop acceptance, and A/B integration has merged. Its separate
 receipt-ownership correction and current package interval C also pass and merge
 through PR #72; the three merged inactive Unity task branches are safely pruned. Unreal's production
 static API now passes import, fresh reopen, publication and actual delivered-copy
-verification with independent native admission. Its normal frozen desktop action
-and final-head integration gates remain open. Owner launchers and earlier
+verification with independent native admission. The normal frozen desktop
+positive/collision/live-engine-cancel and private archive gates also pass;
+final-head integration gates remain open. Owner launchers and earlier
 packages are preserved.
 
 ## What remains to finish the locked blueprint
 
-1. Finish the first complete human workflow: close actual Unreal frozen
-   desktop/failure gates while preserving accepted Unity integration; expand
+1. Finish the first complete human workflow: close final-head Unreal integration
+   while preserving accepted Unity integration; expand
    Godot/engine body-motion acceptance; resolve remaining
    contact/grasp/visual quality and recovery cases across the normal user flows.
 2. Complete character customization and output breadth: clothing, hair,
@@ -102,8 +98,8 @@ packages are preserved.
    and the intended private/public distribution decision.
 
 The immediate integration tasks are final-head checks and artifact audits,
-preserving healthy jobs. The next complete workflow is normal private Unreal
-export through the matching frozen desktop, including collision and live cancel.
+preserving healthy jobs. The current normal frozen Unreal workflow is locally accepted. Its final-head
+CI/artifact gates remain before integration; preserve healthy running jobs.
 The project has not reached a finished or generally engine-compatible release.
 
 Key evidence and limits:
@@ -139,7 +135,7 @@ Key evidence and limits:
    recovery acceptance, target-engine player builds, documentation and final
    dependency/source/distribution license review.
 
-The next task is the matching Unreal frozen desktop export and failure checks,
+The next task is final-head Unreal CI/artifact acceptance and verified integration,
 with the accepted Unity transaction and current package retained.
 The full blueprint remains active; this checkpoint does not claim project
 completion or public release readiness.
@@ -151,3 +147,7 @@ Windows symlink-privilege skips (1,405 total, 212.991 seconds). All 15 earlier
 preflight and gate/license-policy tests passed. Actual Blender/MPFB and Unity
 runtime evidence is recorded in the acceptance documents; a passing Python
 suite alone is not engine integration proof.
+
+Current integrated regression 603: 1,601 total, 1,587 passed and fourteen existing
+Windows skips in 360.561 seconds. All 454 accepted product resources remain
+unchanged; no additional engine or baseline jobs were run by this suite.

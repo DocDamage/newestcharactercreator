@@ -65,11 +65,15 @@ jobs, observer compilation and separate native stage/fresh captures now run.
 Attempt 03 stopped on an incorrect cross-clone FBX-path equality check; after
 the narrow comparator correction, unchanged captures pass all thirteen finite
 gates under the existing caps. That host-only re-admission does not establish a
-published export. Coherent attempt 04 then completes the whole API transaction and final delivered
-project verification. Independent audits accept both thirteen-gate native pairs,
-exact eleven-file delivery and all preservation groups. Ordinary UI and matching
-frozen-app acceptance remain open. Local regression 599 passes 1,582 tests with fourteen
-existing skips; the subsequent native/path fixes have focused regressions.
+published export. Coherent attempt 04 then completes the whole API transaction
+and final delivered-project verification. Independent audits accept both thirteen-gate native pairs,
+exact eleven-file delivery and all preservation groups. Ordinary frozen601 UI
+positive, collision and actual live Unreal cancellation
+also pass independent audits, exact private archive/extraction and startup checks.
+The unavailable exact collision-time process snapshot is explicitly qualified;
+GUI rejection, retained transaction inventory and preservation remain verified.
+Final-head CI/artifacts and integration remain open. Final regression 603 passes
+1,587 tests with fourteen existing skips (1,601 total).
 
 ## Requirement-to-evidence and remaining tasks
 
@@ -104,7 +108,7 @@ direct evidence. Requirements not fully evidenced are deliberately conservative.
 | MOTION-06 / 1, 7, 15.7 | Skeletal/physics/baked/AI-assisted secondary motion for hair/cape/wings/tail | Open: family-specific rigs, collision/interaction tests and reusable baked output. |
 | EXPORT-01 / 11.1, 11.6 | Source-bound profiles; geometry/rig/morph/material/texture/scale/axis/root tests; truthful generated/offline/engine states | Scoped: Godot static, complete Unity diagnostic export and Unreal static API publication. Open: complete representative animation and target-engine validation through final user outputs. |
 | EXPORT-02 / 11.2 | Godot GLB, skeleton/rest/skin/morph/material scene and idle/walk/attack playback | Scoped: [static Godot](acceptance/UCC-P1-EXPORT-002.md), actual app/package. Open: body motion/representative clips/root/scale and broader version coverage. |
-| EXPORT-03 / 11.3 | Unreal skeletal FBX, per-clip AnimSequences, morph/material/bounds, Preview/PIE; later Manny/IK mapping | Scoped: [actual private Unreal 5.9 static bind import/reopen](acceptance/UCC-P1-UNREAL-001.md), thirteen independent field gates, complete portable API publication and exact delivered-copy native data. Open: normal frozen desktop/failure acceptance, final-head integration, live engine faults, shader/GPU/usable clips/PIE/player, Manny/IK and wider compatibility. |
+| EXPORT-03 / 11.3 | Unreal skeletal FBX, per-clip AnimSequences, morph/material/bounds, Preview/PIE; later Manny/IK mapping | Scoped: [actual private Unreal 5.9 static bind import/reopen](acceptance/UCC-P1-UNREAL-001.md), thirteen independent field gates, complete portable API publication and exact delivered-copy native data. Normal frozen601 export/collision/live-engine-cancel and private archive gates also pass. Open: final-head integration, broader live asset faults, shader/GPU/usable clips/PIE/player, Manny/IK and wider compatibility. |
 | EXPORT-04 / 11.4 | Unity FBX, explicit Generic/Humanoid/Avatar choice, root/scale/morphs/clip playback | Scoped: [Unity](acceptance/UCC-P1-UNITY-001.md) source/bind/diagnostics, complete API, corrected frozen600 private export/failure/archive gates and verified A/B/C integration. Open: Avatar/usable clips, player builds and full engine gate. |
 | EXPORT-05 / 11.4 | URP reference materials, Built-in fallback; explicit pipeline/version compatibility | Scoped: pinned Built-in Forward/D3D11 diagnostics only. Open: URP, lighting/material breadth, performance and supported release matrix; HDRP remains later explicit target. |
 | EXPORT-06 / 11.5 | Engine-neutral GLB/JSON/sprites; RPG Maker MZ layout preset; future Lumina adapter | Open: documented neutral handoff and MZ usage; Lumina deferred until schema supplied. Native Spine project writer is not promised; ordered layers/transforms/pivots are required. |

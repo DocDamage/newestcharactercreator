@@ -28,9 +28,14 @@ saved reopen, sealed publication and final delivered-project verification pass.
 Independent admission accepts all thirteen finite gates for both native reopen
 pairs; exact eleven-file delivery and all original/source/package/launcher
 preservation checks pass. The failed path-limit and clone-path attempts remain
-retained privately. Ordinary Unreal desktop and matching frozen-app workflows,
-final-head CI/artifact review and integration remain open. Shader/GPU, animation,
-player, artist and distribution gates remain separate.
+retained privately. The matching frozen601 normal desktop positive, collision
+and live Unreal cancellation also pass independent native/GUI/preservation
+audits and private archive inspection. Final-head CI/artifact review and
+integration remain open. Shader/GPU, animation,
+player, artist and distribution gates remain separate. Final local regression
+603 passes 1,587 tests with fourteen existing Windows skips. The collision-time
+process snapshot is explicitly qualified; direct rejection, retained inventory
+and preservation are verified.
 
 **Unity package correction accepted:** The current fixed C600 executable passes
 normal native export, existing-destination rejection and live Blender Cancel.
