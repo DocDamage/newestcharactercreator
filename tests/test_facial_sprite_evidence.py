@@ -18,7 +18,7 @@ class FacialSpriteEvidenceTests(unittest.TestCase):
             'source_state_sha256':'e'*64,'shader_sha256':'f'*64,'reference_frames':100,'saved_frames':100,'exact_neutral_endpoints':True,
             'exact_rerender_pixels':True,'visual_quality_approved':False}
         with tempfile.TemporaryDirectory() as name:
-            folder=Path(name);path=folder/'facial_sprite_stage.json';path.write_text(json.dumps(report));bindings['stage_sha256']=sha256(path.read_bytes()).hexdigest()
+            folder=Path(name).resolve();path=folder/'facial_sprite_stage.json';path.write_text(json.dumps(report));bindings['stage_sha256']=sha256(path.read_bytes()).hexdigest()
             for key,value in (('schema_version',True),('saved_frames',25),('saved_scene_rebuilt_or_repaired',True),('exact_neutral_endpoints',False)):
                 raw={**proof,key:value};(folder/'facial_sprite_verification.json').write_text(json.dumps(raw))
                 with self.subTest(key=key),self.assertRaisesRegex(ValidationError,'proof lacks'):checked_facial_evidence(folder,r,bindings)

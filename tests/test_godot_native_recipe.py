@@ -127,7 +127,7 @@ class NativeRecipeTests(unittest.TestCase):
 
     def test_source_report_rejects_omissions_nonfinite_errors_and_new_approvals(self):
         with tempfile.TemporaryDirectory() as tmp:
-            root=Path(tmp);path=root/'native_stage.json'
+            root=Path(tmp).resolve();path=root/'native_stage.json'
             raw=stage_report('a'*64);path.write_bytes(canonical_bytes(raw))
             _report(root,path.name,sha256(path.read_bytes()).hexdigest(),'a'*64,raw['status'],lambda:None)
             mutations=[lambda x:x.update(extra=True),lambda x:x.update(schema_version=True),
