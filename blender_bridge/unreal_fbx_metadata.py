@@ -240,4 +240,3 @@ def fbx_metadata(path,reference):
         'expected_unreal_morph_names':sorted(target_morphs),
         'expected_unreal_bone_order_sha256':sha256(canonical(expected_order)).hexdigest()}
     return metadata,expected_order
-

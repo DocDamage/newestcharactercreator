@@ -115,4 +115,3 @@ def export_character(bpy,root,human,rig):
         for obj in selected:
             if obj.name in bpy.data.objects:obj.select_set(True)
         bpy.context.view_layer.objects.active=active
-

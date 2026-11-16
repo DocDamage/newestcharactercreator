@@ -53,4 +53,3 @@ def invalidate_owned_receipt(path: Path, expected: bytes, owner: tuple[int, int]
         stream.flush()
         os.fsync(stream.fileno())
     return True
-

@@ -66,4 +66,3 @@ LOD_BUILD = {'bone_influence_limit': 0,
 MESH_SETTINGS = {'nanite_settings.enabled': False,
  'negative_bounds_extension': [0, 0, 0],
  'positive_bounds_extension': [0, 0, 0]}
-
