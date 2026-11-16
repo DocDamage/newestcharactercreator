@@ -26,6 +26,7 @@ from .unity_runtime_verification import verify_unity_runtime
 from .unity_export_payload import (POLICY, RECEIPT, stage_payload, check_snapshot,
     snapshot, verify_unity_export_result, bounded_paths)
 from .worker_resources import bundled_unity_adapter_paths, worker_dependency_files
+from .receipt_ownership import invalidate_owned_receipt
 
 
 def _protected_file(path: Path) -> None:
@@ -213,18 +214,23 @@ def _export_unity(store: ProjectStore, *, request: UnityExportRequest, destinati
             raise ProjectStorageError('Unity export journal path was redirected')
         data = {'schema_version':1, 'policy':POLICY, 'request_sha256':request.sha256,
             'state':state, 'destination':str(destination.path), 'export_published':False, **extra}
-        temporary_identity = None
+        temporary_owner = None
         try:
             with temporary.open('xb') as stream:
+                opened = os.fstat(stream.fileno())
+                temporary_owner = (opened.st_dev, opened.st_ino)
                 stream.write(canonical_bytes(data)); stream.flush(); os.fsync(stream.fileno())
-            temporary_identity = identity(temporary)
             os.replace(temporary, path)
-        except BaseException:
+        except BaseException as error:
             # A failed replacement must not strand a COMPLETE temporary record
             # that prevents the subsequent FAILED journal update.
-            if (temporary_identity is not None and temporary.is_file() and not temporary.is_symlink()
-                    and temporary.resolve() == temporary and identity(temporary) == temporary_identity):
-                temporary.unlink()
+            try:
+                if (temporary_owner is not None and temporary.is_file() and not temporary.is_symlink()
+                        and temporary.resolve() == temporary
+                        and (temporary.stat().st_dev, temporary.stat().st_ino) == temporary_owner):
+                    temporary.unlink()
+            except OSError as cleanup:
+                error.add_note('Owned Unity journal temporary cleanup failed: '+str(cleanup))
             raise
 
     def phase(state: str) -> None:
@@ -274,8 +280,12 @@ def _export_unity(store: ProjectStore, *, request: UnityExportRequest, destinati
             'animation_clips_verified':False, 'visual_quality_approved':False,
             'distribution_license_review_complete':False}
         receipt_file = destination.path/RECEIPT
+        receipt_bytes = canonical_bytes(receipt)
+        receipt_owner = None
         with receipt_file.open('xb') as stream:
-            stream.write(canonical_bytes(receipt)); stream.flush(); os.fsync(stream.fileno())
+            opened = os.fstat(stream.fileno())
+            receipt_owner = (opened.st_dev, opened.st_ino)
+            stream.write(receipt_bytes); stream.flush(); os.fsync(stream.fileno())
         receipt_sha = _digest(receipt_file, budget)
         sealed = sealed | {RECEIPT:receipt_sha}
         result = UnityExport(destination.path, request.sha256, receipt_sha, dict(request.source_bindings)['master'],
@@ -304,15 +314,8 @@ def _export_unity(store: ProjectStore, *, request: UnityExportRequest, destinati
                     # Never leave a withdrawn export carrying a current success receipt.
                     withdrawn = stage/RECEIPT
                     if withdrawn.is_file() and not withdrawn.is_symlink():
-                        if 'receipt_sha' in locals() and _digest(withdrawn) == receipt_sha:
-                            from .godot_candidate_inputs import read_json
-                            record = read_json(withdrawn, 2*1024*1024)
-                            record.update(export_published=False, final_payload_verified=False, publication_rolled_back=True)
-                            pending = stage/'withdrawn_receipt.tmp'
-                            with pending.open('xb') as stream:
-                                stream.write(canonical_bytes(record)); stream.flush(); os.fsync(stream.fileno())
-                            os.replace(pending, withdrawn)
-                        else:
+                        if ('receipt_owner' not in locals() or receipt_owner is None
+                                or not invalidate_owned_receipt(withdrawn, receipt_bytes, receipt_owner)):
                             error.add_note('Retained receipt was changed externally; do not treat the rolled-back stage as a published export')
                 else:
                     error.add_note('Unity rollback could not establish exclusive ownership; retained destination: '+str(destination.path))
