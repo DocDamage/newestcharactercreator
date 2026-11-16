@@ -9,12 +9,18 @@ on:
       - 'src/ucc/core/**'
       - 'src/ucc/jobs/**'
       - 'blender_bridge/**'
+      - 'engine_adapters/godot/**'
+      - 'engine_adapters/unity/**'
+      - 'engine_adapters/unreal/**'
+      - 'ci/build_worker_payload.py'
       - 'src/ucc/animations/**'
       - 'src/ucc/ai/**'
       - 'src/ucc/export/**'
       - 'src/ucc/library/**'
       - 'src/ucc/sprites/**'
       - 'tests/test_desktop_entrypoint.py'
+      - 'tests/test_target_action_dialog.py'
+      - 'tests/test_target_action_desktop.py'
       - 'pyproject.toml'
       - '.github/workflows/windows-alpha-package.yml'
   push:
@@ -61,12 +67,31 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Qt diagnostic tests failed' }
           python -m unittest discover -s tests -p 'test_motion_qt.py' -v
           if ($LASTEXITCODE -ne 0) { throw 'Cached motion transport tests failed' }
+          python -m unittest discover -s tests -p 'test_unity_export_dialog.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Unity per-use review dialog tests failed' }
+          python -m unittest discover -s tests -p 'test_unity_export_desktop.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Unity desktop export workflow tests failed' }
+          python -m unittest discover -s tests -p 'test_target_action_dialog.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Target private-preview review tests failed' }
+          python -m unittest discover -s tests -p 'test_target_action_desktop.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Target saved-load and preview lifetime tests failed' }
+          python -m unittest discover -s tests -p 'test_unreal_export_dialog.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Unreal per-use review dialog tests failed' }
+          python -m unittest discover -s tests -p 'test_unreal_export_desktop.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Unreal desktop static export workflow tests failed' }
       - name: Freeze windowed desktop application
         shell: pwsh
         run: |
-          python -m PyInstaller --clean --noconfirm --onedir --windowed `
+          New-Item -ItemType Directory -Path build -Force | Out-Null
+          python ci/build_worker_payload.py --repo "$PWD" --destination "$PWD/build/ucc-worker-payload"
+          if ($LASTEXITCODE -ne 0) { throw 'Isolated worker payload build failed' }
+          # Qt must use Windows' ICU, not an unrelated SDK's same-name DLL.
+          $taskPython = (Get-Command python).Source
+          $env:PATH = @((Split-Path $taskPython), "$env:SystemRoot\System32", $env:SystemRoot) -join ';'
+          & $taskPython -m PyInstaller --clean --noconfirm --onedir --windowed `
             --name UCC-Desktop-Alpha --paths src `
-            --add-data 'blender_bridge;blender_bridge' `
+            --add-data 'build/ucc-worker-payload/blender_bridge;blender_bridge' `
+            --add-data 'build/ucc-worker-payload/worker_support;worker_support' `
             src/ucc/desktop/__main__.py
           if ($LASTEXITCODE -ne 0) { throw 'PyInstaller failed' }
       - name: Test the frozen executable and confirm JSON evidence

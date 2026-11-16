@@ -17,6 +17,18 @@ def validate_fit_verification(report,options,data):
 
 def fit_render_frames(plan):
     if plan.render_frames:return list(plan.render_frames)
+    if hasattr(plan,'active_frames'):
+        active=[i for i,v in enumerate(plan.active_frames,1) if v]
+        def magnitude(frame):
+            return sum(math.hypot(*s.arm.offsets[frame-1])+math.hypot(*s.rotations[frame-1])+
+                       (math.hypot(*s.arm.hand_rotations[frame-1]) if s.arm.hand_rotations else 0.)
+                       for s in (plan.left,plan.right))
+        peak=max(active,key=magnitude);count=len(plan.active_frames)
+        chosen={1,count,active[0],active[-1],peak}
+        for frame in range(1,count+1):
+            if len(chosen)==5:break
+            chosen.add(frame)
+        return sorted(chosen)
     if len(plan.offsets)<5:raise ValidationError('Fitted private review requires five source frames')
     active=[i for i,v in enumerate(plan.offsets,1) if math.hypot(*v)>1e-7]
     peak=max(active,key=lambda i:math.hypot(*plan.offsets[i-1]))

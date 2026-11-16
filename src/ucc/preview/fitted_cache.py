@@ -1,6 +1,7 @@
 """Distinct fitted-cache contract; never presented as original source FK."""
 from pathlib import Path
 from ucc.animations.source_rest_frames import is_sha256
+from ucc.animations.symmetric_fit import fitted_hash_fields
 from ucc.core.errors import ValidationError
 from ucc.jobs.native_fit_evidence import FLAGS,read_json_record
 from .motion_cache import decode_skin_buffers,HASHES,MotionCache
@@ -13,7 +14,7 @@ def read_fitted_cache(folder: Path,report: dict,bindings: dict,fitted: dict,base
                       surface: SurfaceReview,*,cancel_check=lambda:None) -> MotionCache:
     fields={'status','bindings','frames_verified','manifest','originals_unchanged'}|FLAGS
     if (type(report) is not dict or set(report)!=fields or report['status']!='REAL_NATIVE_FIT_CACHE_EXPORTED' or
-        type(bindings) is not dict or set(bindings)!=FIT_HASHES or any(not is_sha256(v) for v in bindings.values()) or
+        type(bindings) is not dict or set(bindings)!=fitted_hash_fields(bindings) or any(not is_sha256(v) for v in bindings.values()) or
         report['bindings']!=bindings or type(report['frames_verified']) is not int or report['frames_verified']!=fitted['frame_count'] or
         report['originals_unchanged'] is not True or any(report[k] is not False for k in FLAGS)):
         raise ValidationError('Fitted playback lacks a complete independent saved-scene verification')

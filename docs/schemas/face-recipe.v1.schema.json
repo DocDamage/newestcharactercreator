@@ -1,0 +1,159 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/DocDamage/newestcharactercreator/tree/main/docs/schemas/face-recipe.v1.schema.json",
+  "title": "Bounded MPFB bundled nose-width recipe v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "policy",
+    "family",
+    "mpfb_version",
+    "bindings",
+    "parameters",
+    "targets"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "policy": {
+      "const": "BOUNDED_MPFB_NOSE_WIDTH_V1"
+    },
+    "family": {
+      "const": "humanoid.v1"
+    },
+    "mpfb_version": {
+      "const": "2.0.18"
+    },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "master_sha256",
+        "narrow_target_sha256",
+        "wide_target_sha256",
+        "base_sha256",
+        "rig_sha256"
+      ],
+      "properties": {
+        "master_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "narrow_target_sha256": {
+          "const": "95d8dc4a3589bbb6105191abc6e3cae47c3c424ce189b5f0a611dc098806060d"
+        },
+        "wide_target_sha256": {
+          "const": "ba550cc15c894a4412bb368acc92bd6ad94bbb63d0135c561fe30230ef6344bd"
+        },
+        "base_sha256": {
+          "const": "8e761e6624b8f54536409135d1636da63b32486a90d4897f84e121d144f6fb4c"
+        },
+        "rig_sha256": {
+          "const": "8b949de35c2dd70dbb5094e57a8586c3b9a9f650775a293212581a8f67be6797"
+        }
+      }
+    },
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "nose_width"
+      ],
+      "properties": {
+        "nose_width": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "targets": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": false,
+      "prefixItems": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "name",
+            "file",
+            "weight"
+          ],
+          "properties": {
+            "name": {
+              "const": "nose-scale-horiz-decr"
+            },
+            "file": {
+              "const": "nose-scale-horiz-decr.target.gz"
+            },
+            "weight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 0.5
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "name",
+            "file",
+            "weight"
+          ],
+          "properties": {
+            "name": {
+              "const": "nose-scale-horiz-incr"
+            },
+            "file": {
+              "const": "nose-scale-horiz-incr.target.gz"
+            },
+            "weight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 0.5
+            }
+          }
+        }
+      ]
+    }
+  },
+  "anyOf": [
+    {
+      "properties": {
+        "targets": {
+          "prefixItems": [
+            {
+              "properties": {
+                "weight": {
+                  "const": 0
+                }
+              }
+            },
+            {}
+          ]
+        }
+      }
+    },
+    {
+      "properties": {
+        "targets": {
+          "prefixItems": [
+            {},
+            {
+              "properties": {
+                "weight": {
+                  "const": 0
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

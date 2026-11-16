@@ -1,4 +1,4 @@
-"""Fixed local clay shader for validated cached skin; no asset shader execution."""
+"""Fixed local clay or owned dielectric PBR shader; no asset shader execution."""
 from __future__ import annotations
 import ctypes
 import math
@@ -29,7 +29,8 @@ void main(){
 
 class SkinRenderer:
     """Owned GL resources. Construct/draw/close only with this context current."""
-    def __init__(self,context):
+    def __init__(self,context,*,material=None):
+        self.material=material
         self.gl=QOpenGLFunctions_3_3_Core()
         if not self.gl.initializeOpenGLFunctions():raise RuntimeError("Animation playback needs desktop OpenGL 3.3")
         address=int(context.getProcAddress(b"glDrawElements"))
@@ -40,14 +41,18 @@ class SkinRenderer:
         convention=ctypes.WINFUNCTYPE if os.name=="nt" else ctypes.CFUNCTYPE
         self._draw=convention(None,ctypes.c_uint,ctypes.c_int,ctypes.c_uint,ctypes.c_void_p)(address)
         self.program=QOpenGLShaderProgram()
-        if (not self.program.addShaderFromSourceCode(QOpenGLShader.Vertex,VERTEX) or
-                not self.program.addShaderFromSourceCode(QOpenGLShader.Fragment,FRAGMENT) or not self.program.link()):
+        vertex,fragment=VERTEX,FRAGMENT
+        if material is not None:
+            from .material_shader import VERTEX as vertex,FRAGMENT as fragment
+        if (not self.program.addShaderFromSourceCode(QOpenGLShader.Vertex,vertex) or
+                not self.program.addShaderFromSourceCode(QOpenGLShader.Fragment,fragment) or not self.program.link()):
             raise RuntimeError("Animation shader could not initialize: "+self.program.log())
         self.vao=QOpenGLVertexArrayObject()
         self.vertices=QOpenGLBuffer(QOpenGLBuffer.VertexBuffer)
         self.indices=QOpenGLBuffer(QOpenGLBuffer.IndexBuffer)
         self.highlights=QOpenGLBuffer(QOpenGLBuffer.IndexBuffer)
-        if not all(o.create() for o in (self.vao,self.vertices,self.indices,self.highlights)):
+        self.normals=QOpenGLBuffer(QOpenGLBuffer.VertexBuffer)
+        if not all(o.create() for o in (self.vao,self.vertices,self.indices,self.highlights,self.normals)):
             raise RuntimeError("Animation GPU buffers could not initialize")
         self.vertices.setUsagePattern(QOpenGLBuffer.DynamicDraw)
         self.indices.setUsagePattern(QOpenGLBuffer.DynamicDraw)
@@ -57,7 +62,11 @@ class SkinRenderer:
     def draw(self,cache: MotionCache,index: int,width: int,height: int,*,yaw=-.45,pitch=.15,zoom=1.,pan=(0.,0.),
              highlight_intersections=False,focus_intersections=False):
         gl=self.gl
+        if getattr(cache,'material',None)!=self.material:raise RuntimeError('Preview shader does not match the current surface material')
+        if self.material is not None:
+            gl.glDisable(0x8DB9)  # Shader performs the linear -> sRGB conversion.
         gl.glViewport(0,0,max(1,width),max(1,height));gl.glEnable(0x0b71);gl.glDisable(0x0b44)
+        if self.material is not None:gl.glEnable(0x0b44)
         gl.glClearColor(.07,.09,.13,1.);gl.glClear(0x4000|0x100)
         self.vao.bind()
         if not self.program.bind():raise RuntimeError("Animation GPU shader binding failed")
@@ -66,6 +75,11 @@ class SkinRenderer:
             vertices,indices=cache.frame(index)
             self.vertices.bind();self.vertices.allocate(vertices,len(vertices))
             self.program.enableAttributeArray(0);self.program.setAttributeBuffer(0,0x1406,0,3,12)
+            if self.material is not None:
+                normals=cache.frame_normals(index) if hasattr(cache,'frame_normals') else cache.normals
+                if len(normals)!=len(vertices):raise RuntimeError('Material preview lacks complete smooth normals')
+                self.normals.bind();self.normals.allocate(normals,len(normals))
+                self.program.enableAttributeArray(1);self.program.setAttributeBuffer(1,0x1406,0,3,12)
             self.indices.bind();self.indices.allocate(indices,len(indices))
             self.coordinates=vertices;self.triangles=indices
             self.loaded=identity
@@ -85,11 +99,19 @@ class SkinRenderer:
         right=QVector3D(math.cos(yaw),math.sin(yaw),0)
         center+=right*pan[0]*radius+QVector3D(0,0,pan[1]*radius)
         direction=QVector3D(math.sin(yaw)*math.cos(pitch),-math.cos(yaw)*math.cos(pitch),math.sin(pitch))
-        view=QMatrix4x4();view.lookAt(center+direction*(radius*3.5*zoom),center,QVector3D(0,0,1))
+        camera=center+direction*(radius*3.5*zoom)
+        view=QMatrix4x4();view.lookAt(camera,center,QVector3D(0,0,1))
         projection=QMatrix4x4();projection.perspective(45.,max(1,width)/max(1,height),radius*.01,cache.radius*100)
         self.program.setUniformValue("mvp",projection*view)
         self.program.setUniformValue("model",QMatrix4x4(*cache.world_matrix))
-        self.program.setUniformValue("tint",QVector3D(.56,.60,.67));self.indices.bind()
+        if self.material is None:self.program.setUniformValue("tint",QVector3D(.56,.60,.67))
+        else:
+            self.program.setUniformValue('base_color_linear',QVector3D(*self.material.linear_rgba[:3]))
+            # PySide6 6.11 resolves the scalar overload to glUniform1i even
+            # for Python float. Use the typed core entry point for GLSL float.
+            gl.glUniform1f(self.program.uniformLocation('roughness'),float(self.material.roughness))
+            self.program.setUniformValue('camera_world',camera)
+        self.indices.bind()
         self._draw(0x0004,cache.triangle_count*3,0x1405,None)
         if overlay:
             self.highlights.bind();self.highlights.allocate(overlay,len(overlay))
@@ -102,5 +124,5 @@ class SkinRenderer:
         self.program.release();self.vao.release()
 
     def close(self):
-        self.highlights.destroy();self.indices.destroy();self.vertices.destroy();self.vao.destroy()
+        self.normals.destroy();self.highlights.destroy();self.indices.destroy();self.vertices.destroy();self.vao.destroy()
         self.program.removeAllShaders();self.loaded=None

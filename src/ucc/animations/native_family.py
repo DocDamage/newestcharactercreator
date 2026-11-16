@@ -5,6 +5,7 @@ import json
 from ucc.core.errors import ValidationError
 from .native_profile import CONVENTION, validate_native_profile
 from .native_hands import hand_pairs, with_hand_planes
+from .native_skin_policy import BOUND_V1, CORRECTIVE_POLICIES
 
 # Metadata fingerprint only: no purchased rest/pose data or assets are bundled.
 # Measured on all 30 authorized local sources; positions/axes/skin compatibility
@@ -12,9 +13,11 @@ from .native_hands import hand_pairs, with_hand_planes
 HIPS_OBJECT_TOPOLOGY = "37e1bed9064939b9e60010c88f3499efefd22dcfbbbacb2f2b3ece9de7f32405"
 
 
-def measured_body_profile(source,source_sha,snapshot_sha,master_sha,*,include_hands=False):
+def measured_body_profile(source,source_sha,snapshot_sha,master_sha,*,include_hands=False,skin_policy=BOUND_V1):
     if type(include_hands) is not bool:
         raise ValidationError("Hand mapping selection must be a boolean")
+    if type(skin_policy) is not str or skin_policy not in CORRECTIVE_POLICIES:
+        raise ValidationError("Choose a supported explicit native corrective skin policy")
     bones=source.get("bones")
     if (type(bones) is not list or len(bones)!=76 or any(type(b) is not dict or type(b.get("name")) is not str or
             (b.get("parent") is not None and type(b["parent"]) is not str) or "parent" not in b for b in bones) or
@@ -45,7 +48,7 @@ def measured_body_profile(source,source_sha,snapshot_sha,master_sha,*,include_ha
         ("head","Head","head"),("left_hand","LeftHand","wrist.L"),("right_hand","RightHand","wrist.R"),
         ("left_foot","LeftFoot","foot.L"),("right_foot","RightFoot","foot.R"))}
     profile={"schema_version":1,"convention":CONVENTION,"source_sha256":source_sha,"root_motion_policy":"SOURCE_HIP_MIDPOINT_V1",
-             "skin_deformation_policy":"BOUND_CORRECTIVE_SMOOTH_V1",
+             "skin_deformation_policy":skin_policy,
              "mesh_strain_reference":"TRUE_NEUTRAL_BIND_V2",
              "snapshot_sha256":snapshot_sha,"master_sha256":master_sha,"landmarks":landmarks,
              "pairs":[dict(zip(("source","target","source_tip","target_tip","secondary"),row)) for row in pairs]}

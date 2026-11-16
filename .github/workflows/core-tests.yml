@@ -20,12 +20,18 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install free optional sprite library for real PNG atlas tests
-        run: python -m pip install "Pillow>=11,<13"
+      - name: Install declared schema-test and sprite dependencies
+        run: python -m pip install -e ".[test,sprites]"
       - name: Compile pure Python and bundled bridge
         run: python -m compileall -q src blender_bridge
       - name: Core/worker/library tests (no Blender)
-        run: python -m unittest discover -s tests -v
+        # setup-python can expose a symlink; resource guards require the actual
+        # canonical interpreter. Keep the guards and propagate the child status.
+        run: >-
+          python -c "import pathlib,subprocess,sys;
+          executable=str(pathlib.Path(sys.executable).resolve(strict=True));
+          print('Core test interpreter: '+executable,flush=True);
+          raise SystemExit(subprocess.call([executable,'-m','unittest','discover','-s','tests','-v']))"
       - name: Earlier preflight tests
         run: python -m unittest discover -s Stage0_Starter/tests -v
       - name: Earlier evidence and license tests

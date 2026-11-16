@@ -19,8 +19,11 @@ OPERATIONS={kind+'_'+variant+'_complete_anatomical_safety':(FIT_FIELDS if varian
 
 
 def checked_complete_job(job):
-    options=job['options']
-    if (job['input_project']!='candidate.blend' or type(options) is not dict or set(options)!=OPERATIONS[job['operation']] or
+    options=job['options'];fields=OPERATIONS[job['operation']]
+    if 'fitted_sha256' in fields:
+        from blender_bridge.native_symmetric_policy import layer_fields
+        fields=layer_fields(fields,options)
+    if (job['input_project']!='candidate.blend' or type(options) is not dict or set(options)!=fields or
         any(type(v) is not str or len(v)!=64 or any(c not in '0123456789abcdef' for c in v) for v in options.values())):
         raise ValueError('Complete anatomical review requires exact hashes and fixed staged inputs')
     return options

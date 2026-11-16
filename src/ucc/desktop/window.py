@@ -102,6 +102,21 @@ class MainWindow(QMainWindow):
         self.open_action = self._action(menu, "&Open character...", "Ctrl+O", self.open_project)
         self.save_action = self._action(menu, "&Save metadata", "Ctrl+S", self.save_project)
         self.save_action.setEnabled(False)
+        from .godot_export_workflow import start_export
+        self.godot_export_action=self._action(menu,'Export private Godot character…','',lambda:start_export(self))
+        self.godot_export_action.setEnabled(False)
+        from .unity_export_workflow import start_unity_export
+        self.unity_export_action=self._action(menu,'Export private Unity character…','',lambda:start_unity_export(self))
+        self.unity_export_action.setEnabled(False)
+        from .unreal_export_workflow import start_unreal_export
+        self.unreal_export_action=self._action(menu,'Export private Unreal character…','',lambda:start_unreal_export(self))
+        self.unreal_export_action.setEnabled(False)
+        from .sprite_workflow import start_sprite
+        self.sprite_export_action=self._action(menu,'Render character sprite sample…','',lambda:start_sprite(self))
+        self.sprite_export_action.setEnabled(False)
+        from .facial_sprite_workflow import start_facial_sprite
+        self.facial_sprite_action=self._action(menu,'Render animated facial sprites…','',lambda:start_facial_sprite(self))
+        self.facial_sprite_action.setEnabled(False)
         menu.addSeparator()
         self.quit_action = self._action(menu, "E&xit", "Ctrl+Q", self.close)
         edit = self.menuBar().addMenu("&Edit")
@@ -111,10 +126,14 @@ class MainWindow(QMainWindow):
         self.redo_action.setEnabled(False)
         character_menu = self.menuBar().addMenu("&Character")
         self.cancel_generation_action = self._action(
-            character_menu, "&Cancel current Blender operation", "",
+            character_menu, "&Cancel current operation", "",
             self.cancel_generation,
         )
         self.cancel_generation_action.setEnabled(False)
+        from .target_action_workflow import start_target_action
+        self.target_action_action = self._action(
+            character_menu, 'Prepare registered clip preview...', '', lambda: start_target_action(self))
+        self.target_action_action.setEnabled(False)
         view_menu = self.menuBar().addMenu("&View")
         self.mesh_action = self._action(view_menu, "&Preview local GLB model...", "Ctrl+Shift+M", self.open_mesh_preview)
         self.preview_master_action = self._action(
@@ -139,6 +158,20 @@ class MainWindow(QMainWindow):
     def _connect(self) -> None:
         self.character.name_requested.connect(self.rename)
         self.character.morph_requested.connect(self.set_morph)
+        from .face_workflow import edit_face, start_face
+        self.character.face.parameter_changed.connect(lambda name, value: edit_face(self, name, value))
+        self.character.face.apply_requested.connect(lambda: start_face(self))
+        from .skin_material_workflow import start_skin_material
+        self.character.material.apply_requested.connect(lambda spec:start_skin_material(self,spec))
+        from .hand_workflow import start_hands,start_hand_preview
+        self.character.hands.build_requested.connect(lambda:start_hands(self,build=True))
+        self.character.hands.apply_requested.connect(lambda:start_hands(self))
+        self.character.hands.preview_requested.connect(lambda:start_hand_preview(self))
+        from .expression_workflow import edit_expression, start_expression
+        self.character.expressions.parameter_changed.connect(lambda name, value: edit_expression(self, name, value))
+        self.character.expressions.reset_requested.connect(lambda: edit_expression(self))
+        self.character.expressions.prepare_requested.connect(lambda: start_expression(self, prepare=True))
+        self.character.expressions.preview_requested.connect(lambda: start_expression(self))
         self.character.open_master_requested.connect(self.open_master_in_blender)
         self.character.generate_human_requested.connect(self.generate_humanoid)
         self.character.refit_human_requested.connect(self.apply_saved_body)
@@ -161,6 +194,8 @@ class MainWindow(QMainWindow):
         self.animations.inspect_requested.connect(self.inspect_animation)
         self.animations.index_requested.connect(self.index_animation)
         self.animations.refresh_requested.connect(self.refresh_catalog)
+        self.animations.reference_attach_requested.connect(self.attach_animation_reference)
+        self.animations.reference_detach_requested.connect(self.detach_animation_reference)
         self.tools.glb_requested.connect(self.inspect_glb_file)
         self.tools.ai_requested.connect(self.probe_ai)
         self.tools.atlas_requested.connect(self.pack_atlas)
@@ -180,14 +215,40 @@ class MainWindow(QMainWindow):
 
     def refresh_project(self) -> None:
         state = self.controller.view()
+        expression = getattr(self, '_expression_preview', None)
+        from ucc.jobs.reference_expression_preview import ReferenceExpressionPreview
+        expression_owner = expression.project if isinstance(expression, ReferenceExpressionPreview) else expression
+        if expression_owner is not None and (state.dirty or state.revision != expression_owner.revision or
+                self.controller.require_project().project_id != expression_owner.project_id):
+            from .expression_binding import clear_expression
+            clear_expression(self)
         if self._native_review is not None and (state.dirty or state.revision!=self._native_review.revision or
                 self.controller.require_project().project_id!=self._native_review.project_id):
             self._clear_native_review()
         self.character.display(state)
+        from .skin_material_workflow import refresh_skin_material
+        refresh_skin_material(self)
+        self.animations.display_reference_ids(self.controller.require_project().animations)
+        from .target_action_workflow import refresh_target_action
+        refresh_target_action(self)
+        from .animation_references import refresh_reference_controls
+        refresh_reference_controls(self)
+        from .hand_workflow import refresh_hands
+        refresh_hands(self)
         self.preview_master_action.setEnabled(state.master_blend is not None and not self.jobs.busy)
-        self.save_action.setEnabled(state.dirty)
-        self.undo_action.setEnabled(state.can_undo)
-        self.redo_action.setEnabled(state.can_redo)
+        from .godot_export_workflow import refresh_export
+        refresh_export(self)
+        from .unity_export_workflow import refresh_unity_export
+        refresh_unity_export(self)
+        from .unreal_export_workflow import refresh_unreal_export
+        refresh_unreal_export(self)
+        from .sprite_workflow import refresh_sprite
+        refresh_sprite(self)
+        from .facial_sprite_workflow import refresh_facial_sprite
+        refresh_facial_sprite(self)
+        self.save_action.setEnabled(state.dirty and not self.jobs.busy)
+        self.undo_action.setEnabled(state.can_undo and not self.jobs.busy)
+        self.redo_action.setEnabled(state.can_redo and not self.jobs.busy)
         self.statusBar().showMessage(
             f"{state.name} — revision {state.revision} — "
             + ("unsaved metadata" if state.dirty else "saved")
@@ -196,6 +257,12 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Universal Character Creator — " + state.name + (" *" if state.dirty else ""))
 
     def _clear_preview(self) -> None:
+        from .target_action_preview import clear_target_action_preview
+        clear_target_action_preview(self)
+        from .expression_binding import clear_expression
+        clear_expression(self)
+        from .static_preview_binding import clear_binding
+        clear_binding(self)
         self._clear_native_review()
         self.mesh_viewer.clear_model()
         self.mesh_dock.hide()
@@ -261,9 +328,11 @@ class MainWindow(QMainWindow):
             self._apply(lambda: self.controller.set_morph(key, value))
 
     def undo(self) -> None:
+        self._clear_preview()
         self._apply(self.controller.undo)
 
     def redo(self) -> None:
+        self._clear_preview()
         self._apply(self.controller.redo)
 
     def open_master_in_blender(self) -> None:
@@ -326,10 +395,29 @@ class MainWindow(QMainWindow):
             self.undo_action.setEnabled(not busy and state.can_undo)
             self.redo_action.setEnabled(not busy and state.can_redo)
         self.cancel_generation_action.setEnabled(
-            busy and self._work_kind in {"generate_humanoid", "saved_master_preview", "body_refit", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain", "native_body", "native_playback", "fbx_intake", "fitted_comparison", "body_contacts"}
+            busy and self._work_kind in {"facial_sprite_export", "sprite_export", "godot_export", "unity_export", "unity_export_review", "unreal_export", "unreal_export_review", "skin_material", "expression_prepare", "expression_preview", "generate_humanoid", "saved_master_preview", "body_refit", "face_revision", "hand_library", "hand_revision", "hand_preview", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain", "native_body", "native_playback", "fbx_intake", "fbx_catalog", "animation_reference_attach", "animation_reference_detach", "fitted_comparison", "body_contacts"}
         )
         self.statusBar().showMessage(
-            ("Generating real MPFB humanoid in Blender..."
+            ("Rendering and independently reopening the character sprite sample..." if self._work_kind in {'sprite_export','facial_sprite_export'} else
+             "Reviewing saved Unreal source identities..." if self._work_kind=='unreal_export_review' else
+             "Exporting and checking the published static Unreal project..." if self._work_kind=='unreal_export' else
+             "Reviewing saved Unity source identities..." if self._work_kind=='unity_export_review' else
+             "Exporting and checking the published Unity project..." if self._work_kind=='unity_export' else
+             "Exporting and independently checking the Godot character package..." if self._work_kind=='godot_export' else
+             "Applying and checking skin color and roughness..." if self._work_kind=='skin_material' else
+             "Preparing and independently checking neutral facial controls..."
+             if self._work_kind == "expression_prepare" else
+             "Verifying all 25 saved expression frames and complete playback buffers..."
+             if self._work_kind == "expression_preview" else
+             "Building and independently checking compatible hands..."
+             if self._work_kind == "hand_library" else
+             "Applying the selected hand and checking saved skin..."
+             if self._work_kind == "hand_revision" else
+             "Reading saved hand bounds and preparing complete geometry..."
+             if self._work_kind == "hand_preview" else
+             "Applying saved face shape on a private Blender copy..."
+             if self._work_kind == "face_revision" else
+             "Generating real MPFB humanoid in Blender..."
              if self._work_kind == "generate_humanoid" else
              "Refitting existing MPFB human on a private Blender copy..."
              if self._work_kind == "body_refit" else
@@ -353,14 +441,92 @@ class MainWindow(QMainWindow):
              if self._work_kind == "fitted_comparison" else
              "Reviewing hand/body contacts on private animation copies..."
              if self._work_kind == "body_contacts" else
+             "Checking source references and the saved character..."
+             if self._work_kind in {"animation_reference_attach", "animation_reference_detach"} else
              "Measuring native FBX source skeleton and complete timeline..."
-             if self._work_kind == "fbx_intake" else
+             if self._work_kind in {"fbx_intake", "fbx_catalog"} else
              "Converting saved Blender master to a static GLB preview...")
-            if busy and self._work_kind in {"generate_humanoid", "saved_master_preview", "body_refit", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain", "native_body", "native_playback", "fbx_intake", "fitted_comparison", "body_contacts"}
+            if busy and self._work_kind in {"facial_sprite_export", "sprite_export", "godot_export", "unity_export", "unity_export_review", "unreal_export", "unreal_export_review", "skin_material", "expression_prepare", "expression_preview", "generate_humanoid", "saved_master_preview", "body_refit", "face_revision", "hand_library", "hand_revision", "hand_preview", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain", "native_body", "native_playback", "fbx_intake", "fbx_catalog", "animation_reference_attach", "animation_reference_detach", "fitted_comparison", "body_contacts"}
             else ("Working on local files..." if busy else "Local task finished")
         )
 
+        from .animation_references import refresh_reference_controls
+        refresh_reference_controls(self)
+
+        from .target_action_workflow import KINDS, refresh_target_action, resume_target_action
+        refresh_target_action(self)
+        if busy and self._work_kind in KINDS:
+            self.cancel_generation_action.setEnabled(True)
+            self.statusBar().showMessage({
+                'target_action_review': 'Reviewing the exact registered source and saved bindings...',
+                'target_action_mapping': 'Checking the explicitly selected target mapping...',
+                'target_action_prepare': 'Preparing and independently reopening a private target Action...',
+                'target_action_load': 'Validating the explicitly selected saved target preview...',
+            }[self._work_kind])
+        if not busy:
+            resume_target_action(self)
+
+        from .godot_export_workflow import refresh_export
+        refresh_export(self)
+        from .unity_export_workflow import refresh_unity_export
+        refresh_unity_export(self)
+        from .unreal_export_workflow import refresh_unreal_export
+        refresh_unreal_export(self)
+        from .sprite_workflow import refresh_sprite
+        refresh_sprite(self)
+        from .facial_sprite_workflow import refresh_facial_sprite
+        refresh_facial_sprite(self)
+        if not busy:
+            from .unity_export_workflow import resume_unity_source_review
+            resume_unity_source_review(self)
+            from .unreal_export_workflow import resume_unreal_source_review
+            resume_unreal_source_review(self)
+
     def _job_success(self, result: object) -> None:
+        from .target_action_workflow import KINDS, finish_target_action
+        if self._work_kind in KINDS:
+            finish_target_action(self, result)
+            return
+        if self._work_kind=='unreal_export_review':
+            from .unreal_export_workflow import finish_unreal_source_review
+            finish_unreal_source_review(self,result);return
+        if self._work_kind=='unreal_export':
+            from .unreal_export_workflow import finish_unreal_export
+            finish_unreal_export(self,result);return
+        if self._work_kind=='unity_export_review':
+            from .unity_export_workflow import finish_unity_source_review
+            finish_unity_source_review(self,result);return
+        if self._work_kind=='unity_export':
+            from .unity_export_workflow import finish_unity_export
+            finish_unity_export(self,result);return
+        if self._work_kind=='facial_sprite_export':
+            from .facial_sprite_workflow import finish_facial_sprite
+            finish_facial_sprite(self,result);return
+        if self._work_kind=='sprite_export':
+            from .sprite_workflow import finish_sprite
+            finish_sprite(self,result);return
+        if self._work_kind=='godot_export':
+            from .godot_export_workflow import finish_export
+            finish_export(self,result);return
+        if self._work_kind=='skin_material':
+            from .skin_material_workflow import finish_skin_material
+            finish_skin_material(self,result)
+            return
+        if self._work_kind in {'animation_reference_attach', 'animation_reference_detach'}:
+            from .animation_references import finish_reference
+            finish_reference(self, result)
+            return
+        if self._work_kind in {'expression_prepare', 'expression_preview'}:
+            from .expression_workflow import finish_expression
+            finish_expression(self, result)
+            return
+        if self._work_kind in {'hand_library','hand_revision','hand_preview'}:
+            from .hand_workflow import finish_hands
+            if finish_hands(self,result):return
+        if self._work_kind in {'face_revision', 'generate_humanoid', 'body_refit'}:
+            from .face_workflow import finish_face_build
+            if finish_face_build(self, result):
+                return
         if self._work_kind == "catalog":
             assert isinstance(result, list)
             self.animations.display_catalog(result)
@@ -562,7 +728,17 @@ class MainWindow(QMainWindow):
                     on_disk.master_blend != result.master_blend):
                 self._error("Project changed while previewing; preview was discarded")
                 return
-            self.mesh_viewer.show_model(result.mesh)
+            if result.full_surface:
+                self.mesh_viewer.show_full_model(result.mesh)
+                try:
+                    from .static_preview_binding import bind_preview
+                    bind_preview(self, result)
+                except (UCCError, OSError, ValueError) as exc:
+                    self._clear_preview()
+                    self._error(str(exc))
+                    return
+            else:
+                self.mesh_viewer.show_model(result.mesh)
             self.mesh_dock.show()
             self.log.setPlainText(
                 f"STATIC PREVIEW OF SAVED UCC MASTER — revision {result.revision}\n"
@@ -573,6 +749,8 @@ class MainWindow(QMainWindow):
                 f"{result.mesh.source_face_count}.\n"
                 "No animations, textures, live skinning, editable morphs or "
                 "Godot/Unity/Unreal import have been validated."
+                + ("\nSaved owned material and smooth normals loaded for local dielectric PBR preview. Visual quality and Blender render parity remain unapproved."
+                   if result.mesh.material is not None else "")
             )
         elif self._work_kind == "mesh_preview":
             assert isinstance(result, PreviewMesh)
@@ -580,6 +758,9 @@ class MainWindow(QMainWindow):
             self.mesh_dock.show()
             self.log.setPlainText(f"Read-only GLB preview loaded: {result.sample_count} sampled of "
                                   f"{result.source_face_count} triangles. No rig/animation/export validation.")
+        elif self._work_kind == "fbx_catalog":
+            from .animation_catalog import finish_index
+            finish_index(self, result)
         elif self._work_kind == "fbx_intake":
             self.log.setPlainText(
                 "FBX SOURCE SKELETON AND COMPLETE TIMELINE MEASURED\n"
@@ -598,7 +779,7 @@ class MainWindow(QMainWindow):
             self._native_review=result
             self.animations.open_native_animation.setEnabled(True)
             self.animations.open_native_renders.setEnabled(True)
-            self.animations.load_native_motion.setEnabled(result.evidence.get("skin_deformation_policy")=="BOUND_CORRECTIVE_SMOOTH_V1")
+            self.animations.load_native_motion.setEnabled(result.evidence.get("skin_deformation_policy") in {"BOUND_CORRECTIVE_SMOOTH_V1", "BOUND_REGIONAL_CORRECTIVE_SMOOTH_V2"})
             self.log.setPlainText(native_result_text(result))
         elif self._work_kind == "native_playback":
             from .native_playback import publish_playback
@@ -620,6 +801,51 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Local operation completed; review results above")
 
     def _job_error(self, error: str) -> None:
+        from .target_action_workflow import KINDS, target_action_error
+        if self._work_kind in KINDS:
+            target_action_error(self, error)
+            return
+        if self._work_kind in {'unreal_export','unreal_export_review'}:
+            from .unreal_export_workflow import unreal_export_error
+            unreal_export_error(self,error);return
+        if self._work_kind in {'unity_export','unity_export_review'}:
+            from .unity_export_workflow import unity_export_error
+            unity_export_error(self,error);return
+        if self._work_kind=='facial_sprite_export':
+            from .facial_sprite_workflow import facial_sprite_error
+            facial_sprite_error(self,error);return
+        if self._work_kind=='sprite_export':
+            from .sprite_workflow import sprite_error
+            sprite_error(self,error);return
+        if self._work_kind=='godot_export':
+            from .godot_export_workflow import export_error
+            export_error(self,error);return
+        if self._work_kind=='skin_material':
+            from .material_master_workflow import show_material_master_error
+            show_material_master_error(self,error)
+            return
+        from ucc.core.skin_material import APPEARANCE_KEY
+        if (self._work_kind in {'face_revision','generate_humanoid','body_refit'} and self.controller.has_project
+                and APPEARANCE_KEY in dict(self.controller.require_project().appearance)):
+            from .material_master_workflow import show_material_master_error
+            show_material_master_error(self,error)
+            return
+        if (self._work_kind in {'face_revision', 'generate_humanoid', 'body_refit'}
+                and self.controller.has_project and self.controller.require_project().animations):
+            from .reference_master_workflow import show_referenced_master_error
+            show_referenced_master_error(self, error)
+            return
+        if self._work_kind in {'animation_reference_attach', 'animation_reference_detach'}:
+            from .animation_references import show_reference_error
+            show_reference_error(self, error)
+            return
+        if self._work_kind in {'expression_prepare', 'expression_preview'}:
+            from .expression_workflow import expression_error
+            expression_error(self, error)
+            return
+        if self._work_kind in {'hand_library','hand_revision','hand_preview'}:
+            from .hand_workflow import show_hand_error
+            show_hand_error(self,error);return
         if self._work_kind=='body_contacts':
             from .body_contact_review import show_body_contact_error
             show_body_contact_error(self,error);return
@@ -640,7 +866,9 @@ class MainWindow(QMainWindow):
             self._error("Save all metadata edits before generating a new humanoid master")
             return
         snapshot = self.controller.require_project()
-        if snapshot.parts or snapshot.animations:
+        from ucc.core.reference_master_intent import supports_referenced_master_intent
+        from ucc.core.material_master_intent import supports_material_master_intent
+        if (snapshot.parts or snapshot.animations) and not (supports_referenced_master_intent(snapshot) or supports_material_master_intent(snapshot)):
             self._error(
                 "New base generation is blocked while part or animation references "
                 "are attached. Create a clean project until compatibility is validated."
@@ -664,25 +892,26 @@ class MainWindow(QMainWindow):
         )
         if answer != QMessageBox.StandardButton.Yes:
             return
-        file_filter = "Blender executable (*.exe);;All files (*)" if os.name == "nt" else "All files (*)"
-        selected, _ = QFileDialog.getOpenFileName(
-            self, "Choose your installed Blender executable", "", file_filter,
-        )
-        if not selected:
+        from .hand_workflow import _executable
+        try:
+            exe = _executable(self)
+        except (UCCError, OSError, ValueError) as error:
+            self._error(f"{type(error).__name__}: {error}")
             return
-        exe = Path(selected)
-        if exe.is_symlink() or not exe.is_file():
-            self._error("Choose an existing regular Blender executable")
+        if exe is None:
             return
         self._blender_executable = exe
         store = self.controller.store
         snapshot = self.controller.require_project()
         cancel = Event()
+        database = self._catalog_path() if snapshot.animations else None
+        if snapshot.animations: self._clear_preview()
         self._submit(
             "generate_humanoid",
             lambda: generate_from_desktop(
                 store, blender_exe=exe, project_id=snapshot.project_id,
-                revision=snapshot.revision, cancel=cancel,
+                revision=snapshot.revision, cancel=cancel, database_path=database,
+                master_blend=snapshot.master_blend,
             ),
             cancel=cancel,
         )
@@ -702,7 +931,9 @@ class MainWindow(QMainWindow):
         if snapshot.master_blend is None:
             self._error("Generate a real MPFB humanoid master before applying changes")
             return
-        if snapshot.parts or snapshot.animations:
+        from ucc.core.reference_master_intent import supports_referenced_master_intent
+        from ucc.core.material_master_intent import supports_material_master_intent
+        if (snapshot.parts or snapshot.animations) and not (supports_referenced_master_intent(snapshot) or supports_material_master_intent(snapshot)):
             self._error("Existing-master refit with attached parts or animations is not validated")
             return
         parameters = dict(snapshot.parameters)
@@ -737,12 +968,14 @@ class MainWindow(QMainWindow):
             self._blender_executable = executable
         cancel = Event()
         store = self.controller.store
+        database = self._catalog_path() if snapshot.animations else None
+        if snapshot.animations: self._clear_preview()
         self._submit(
             "body_refit",
             lambda: refit_from_desktop(
                 store, blender_exe=executable, project_id=snapshot.project_id,
                 revision=snapshot.revision, master_blend=snapshot.master_blend,
-                cancel=cancel,
+                cancel=cancel, database_path=database,
             ),
             cancel=cancel,
         )
@@ -869,6 +1102,10 @@ class MainWindow(QMainWindow):
 
     def cancel_generation(self) -> None:
         if self.jobs.cancel():
+            from .target_action_workflow import KINDS
+            if self._work_kind in KINDS:
+                self.statusBar().showMessage('Cancellation requested; waiting for target-preview work to stop. Saved records may remain retained.')
+                return
             self.statusBar().showMessage(
                 "Cancellation requested. Waiting for Blender worker shutdown..."
             )
@@ -1054,15 +1291,16 @@ class MainWindow(QMainWindow):
 
     def index_animation(self, file: str, asset_id: str, provider: str,
                         license_name: str, uri: str) -> None:
-        if not file or not asset_id.strip() or not provider.strip() or not uri.strip():
-            self._error("Choose a source and enter an asset ID, provider and actual source URI")
-            return
-        def job() -> dict:
-            # Always unreviewed; GUI cannot grant cross-engine/NoAI permissions.
-            policy = LicensePolicy(provider, license_name, uri, reviewed=False)
-            with AnimationCatalog(self._catalog_path()) as catalog:
-                return catalog.index_file(asset_id, Path(file), policy).to_dict()
-        self._submit("index", job)
+        from .animation_catalog import start_index
+        start_index(self, file, asset_id, provider, license_name, uri)
+
+    def attach_animation_reference(self) -> None:
+        from .animation_references import start_reference
+        start_reference(self)
+
+    def detach_animation_reference(self) -> None:
+        from .animation_references import start_reference
+        start_reference(self, remove=True)
 
     def refresh_catalog(self) -> None:
         def job() -> list[dict]:
@@ -1114,5 +1352,5 @@ class MainWindow(QMainWindow):
         if not self._confirm_discard():
             event.ignore()
             return
-        self._clear_native_review()
+        self._clear_preview()
         event.accept()

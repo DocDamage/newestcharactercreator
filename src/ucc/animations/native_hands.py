@@ -24,7 +24,7 @@ HAND_TARGETS = frozenset(row[1] for row in hand_pairs())
 
 
 def with_hand_planes(profile: dict) -> dict:
-    """Declare the measured MPFB knuckles; preserve the caller's legacy map."""
+    """Declare V2 snapshot-precision palms without changing the caller's map."""
     pairs=[dict(row) for row in profile["pairs"]]
     mapped={row["target"]:row for row in pairs}
     if not HAND_TARGETS.issubset(mapped):raise ValueError("Palm family map needs every explicit hand role")
@@ -34,4 +34,4 @@ def with_hand_planes(profile: dict) -> dict:
                       for key,target in (("index","finger2-1"),("pinky","finger5-1"))}
         for row in pairs:
             if row["target"] in HAND_TARGETS and row["target"].endswith(suffix):row["secondary"]="PALM_"+side.upper()+"_V1"
-    return {**profile,"pairs":pairs,"hand_reference_planes":{"schema_version":1,"planes":planes}}
+    return {**profile,"pairs":pairs,"hand_reference_planes":{"schema_version":2,"planes":planes}}

@@ -63,7 +63,7 @@ def native_result_text(result):
     anchor=(f"Hip movement matches the measured source through every frame; maximum error {data['hip_anchor']['max_residual_world']*1000:.4f} mm.\n"
             if data.get("root_motion_policy")=="SOURCE_HIP_MIDPOINT_V1" else "")
     skin=("Bound joint smoothing applied to the private preview; original skin and weights unchanged.\n"
-          if data.get("skin_deformation_policy")=="BOUND_CORRECTIVE_SMOOTH_V1" else "")
+          if data.get("skin_deformation_policy") in {"BOUND_CORRECTIVE_SMOOTH_V1", "BOUND_REGIONAL_CORRECTIVE_SMOOTH_V2"} else "")
     reopened=("A third Blender process reopened the saved preview and reproduced every corrected and uncorrected skin frame.\n"
               if getattr(result,"private_reopen_job_id","") else "")
     neutral=("Every frame meets the saved character's neutral-shape deformation limits; first-pose comparisons remain recorded.\n"

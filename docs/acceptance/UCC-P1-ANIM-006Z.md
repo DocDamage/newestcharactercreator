@@ -1,5 +1,9 @@
 # UCC-P1-ANIM-006Z — exact process-local anatomical reuse
 
+Current status: PR #60 is merged into main with owner authorization. All five workflows passed at exact head `68d3c3a35a61ea4a6bebe5e4471202bbfadd4d3f`; all three Linux archives and fifteen diagnostic records were independently accepted. Exact-head Windows archive/source checks and the local extracted executable self-test passed. The integrated normal paired API passed all three 300-frame guards in 1119.875 seconds with originals unchanged. Final main `2c03434c75034b8cfb810b0d38daeb00122f004e` has the same file tree as that accepted head; its separate post-merge five-workflow checks and all fifteen Linux diagnostic records are now independently accepted. These results supersede the pending acceptance checkpoints below. Remaining contacts and visual/engine quality are unapproved.
+
+Historical implementation checkpoints follow.
+
 Dependency: PR #59's three-report complete anatomical guard. This slice makes
 required full-sequence body-adaptation QA more practical; remaining animation
 contacts and realistic retargeting quality are still separate unfinished work.

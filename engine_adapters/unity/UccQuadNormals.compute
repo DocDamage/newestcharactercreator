@@ -1,0 +1,62 @@
+// UCC first-party native-position geometric normals, profile V1.
+// Native root-space geometry avoids world-translation cancellation. The admitted
+// source-to-Unity mapping reverses handedness, so quad normals are flipped once.
+// No source normals or per-pose source positions are supplied to this kernel.
+#pragma kernel Copy
+#pragma kernel Faces
+#pragma kernel Points
+RWByteAddressBuffer _Vertices;
+ByteAddressBuffer _Input;
+StructuredBuffer<int> _FirstNative;
+StructuredBuffer<int> _NativeSource;
+StructuredBuffer<int4> _Faces;
+StructuredBuffer<int> _Offsets;
+StructuredBuffer<int2> _Adjacency;
+RWStructuredBuffer<float3> _FaceNormals;
+int _Stride;
+int _PositionOffset;
+int _NormalOffset;
+int _FaceCount;
+int _VertexCount;
+float3 Position(int id) {
+    float3 p=asfloat(_Vertices.Load3(_FirstNative[id]*_Stride+_PositionOffset));
+    return p;
+}
+float3 Unit(float3 v) {
+    float length2=dot(v,v);
+    return length2>1e-30?v*rsqrt(length2):float3(0,0,0);
+}
+[numthreads(64,1,1)]
+void Faces(uint id:SV_DispatchThreadID) {
+    if(id>=(uint)_FaceCount)return;
+    int4 f=_Faces[id];float3 p[4];
+    [unroll]for(int k=0;k<4;k++)p[k]=Position(f[k]);
+    float3 n=0;
+    [unroll]for(int j=0;j<4;j++) {
+        float3 a=p[(j+3)%4],b=p[j];
+        n+=float3((a.y-b.y)*(a.z+b.z),(a.z-b.z)*(a.x+b.x),(a.x-b.x)*(a.y+b.y));
+    }
+    _FaceNormals[id]=Unit(n);
+}
+[numthreads(64,1,1)]
+void Points(uint id:SV_DispatchThreadID) {
+    if(id>=(uint)_VertexCount)return;
+    int source=_NativeSource[id];float3 n=0;float3 p=Position(source);
+    for(int a=_Offsets[source];a<_Offsets[source+1];a++) {
+        int2 entry=_Adjacency[a];int4 face=_Faces[entry.x];int corner=entry.y;
+        float3 prev=Unit(Position(face[(corner+3)%4])-p);
+        float3 next=Unit(Position(face[(corner+1)%4])-p);
+        float angle=acos(clamp(dot(prev,next),-1,1));
+        n+=_FaceNormals[entry.x]*angle;
+    }
+    n=-Unit(n);
+    _Vertices.Store3(id*_Stride+_NormalOffset,asuint(n));
+}
+
+[numthreads(64,1,1)]
+void Copy(uint id:SV_DispatchThreadID) {
+ if(id>=(uint)_VertexCount)return;
+ [unroll]for(uint word=0;word<10;word++) {
+  uint offset=id*40+word*4;_Vertices.Store(offset,_Input.Load(offset));
+ }
+}

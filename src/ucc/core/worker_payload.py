@@ -1,0 +1,129 @@
+"""Versioned source-data payload validation; stdlib only, no worker execution.
+
+The builder also copies this exact module to the isolated Blender bridge. The
+manifest detects damage and binds job dependencies; it is not a code signature
+or a distribution/license approval.
+"""
+from hashlib import sha256
+import json
+from pathlib import Path, PurePosixPath
+import re
+import sys
+
+POLICY = 'UCC_WORKER_PAYLOAD_V1'
+ADAPTER_FILES = frozenset({'validate.gd', 'configure.gd', 'clay.gdshader', 'project.godot'})
+SUPPORT = 'worker_support'
+MANIFEST = 'payload.v1.json'
+ADAPTER = SUPPORT + '/adapters/godot/native_runtime'
+STATIC_ADAPTER = SUPPORT + '/adapters/godot/static_export'
+STATIC_ADAPTER_FILES = frozenset({'configure.gd', 'inspect.gd', 'export.gd', 'ucc_skin_adapter.gd'})
+UNITY_ADAPTER = SUPPORT + '/adapters/unity'
+UNITY_ADAPTER_FILES = frozenset({'UccNativeNormals.cs','UccNativeMeshIdentity.cs','UccQuadSourceData.cs',
+    'UccQuadNormals.compute','UccNativeSkinWarmup.shader','Editor/UccSourceWeights.cs','Editor/UccUnityImport.cs',
+    'Editor/UccUnityObservation.cs','Editor/UccUnityExportJobs.cs','UccUnityRuntimeObserver.cs','Editor/UccUnityRuntimeJob.cs'})
+UNREAL_ADAPTER = SUPPORT + '/adapters/unreal'
+UNREAL_ADAPTER_FILES = frozenset({'README.md', 'project.uproject', 'DefaultEngine.ini',
+    'capture_common.py', 'stage.py', 'reopen.py', 'UccNativeObservation.uplugin',
+    'Source/UccNativeObservation/UccNativeObservation.Build.cs',
+    'Source/UccNativeObservation/Public/UccNativeObservationLibrary.h',
+    'Source/UccNativeObservation/Private/UccNativeObservationLibrary.cpp',
+    'Source/UccNativeObservation/Private/UccNativeObservationModule.cpp'})
+
+
+class WorkerPayloadError(ValueError):
+    """Incomplete, redirected or changed isolated worker resources."""
+
+
+def _unique(pairs: list[tuple]) -> dict:
+    value = {}
+    for key, item in pairs:
+        if key in value:
+            raise WorkerPayloadError('Duplicate worker payload field')
+        value[key] = item
+    return value
+
+
+def _file(base: Path, relative: str, maximum: int) -> Path:
+    path = base.joinpath(*PurePosixPath(relative).parts)
+    if (path.is_symlink() or not path.is_file() or path.resolve() != path
+            or not 0 <= path.stat().st_size <= maximum):
+        raise WorkerPayloadError('Worker payload file is missing, redirected or oversized: ' + relative)
+    return path
+
+
+def validate_worker_payload(base: Path) -> tuple[Path, ...]:
+    """Validate the closed payload, including all bridge scripts and import data."""
+    base = Path(base)
+    if base.is_symlink() or not base.is_dir() or base.resolve() != base:
+        raise WorkerPayloadError('Worker payload base must be a canonical directory')
+    manifest = _file(base, SUPPORT + '/' + MANIFEST, 256 * 1024)
+    try:
+        raw = json.loads(manifest.read_bytes(), object_pairs_hook=_unique)
+    except (ValueError, UnicodeError, RecursionError) as error:
+        raise WorkerPayloadError('Invalid worker payload manifest') from error
+    if (type(raw) is not dict or set(raw) != {'schema_version', 'policy', 'files', 'modules',
+            'engine_import_verified', 'distribution_license_review_complete'}
+            or type(raw['schema_version']) is not int or raw['schema_version'] != 1
+            or raw['policy'] != POLICY or raw['engine_import_verified'] is not False
+            or raw['distribution_license_review_complete'] is not False
+            or type(raw['files']) is not dict or not 10 <= len(raw['files']) <= 512
+            or type(raw['modules']) is not list or not raw['modules']
+            or any(type(name) is not str or not re.fullmatch(r'ucc(?:\.[a-z_][a-z_0-9]*)*', name) for name in raw['modules'])
+            or raw['modules'] != sorted(set(raw['modules']))):
+        raise WorkerPayloadError('Unsupported worker payload contract')
+    paths = []
+    for relative, record in raw['files'].items():
+        if (type(relative) is not str or '\\' in relative or ':' in relative
+                or str(PurePosixPath(relative)) != relative or '..' in PurePosixPath(relative).parts
+                or not (re.fullmatch(r'blender_bridge/[a-z_][a-z_0-9]*\.py', relative)
+                    or re.fullmatch(r'worker_support/ucc/(?:[a-z_][a-z_0-9]*/)*[a-z_][a-z_0-9]*\.py', relative)
+                    or relative in {ADAPTER + '/' + name for name in ADAPTER_FILES}
+                    or relative in {STATIC_ADAPTER + '/' + name for name in STATIC_ADAPTER_FILES}
+                    or relative in {UNITY_ADAPTER + '/' + name for name in UNITY_ADAPTER_FILES}
+                    or relative in {UNREAL_ADAPTER + '/' + name for name in UNREAL_ADAPTER_FILES})
+                or type(record) is not dict or set(record) != {'bytes', 'sha256'}
+                or type(record['bytes']) is not int or not 0 <= record['bytes'] <= 2 * 1024 * 1024
+                or type(record['sha256']) is not str or not re.fullmatch(r'[0-9a-f]{64}', record['sha256'])):
+            raise WorkerPayloadError('Invalid worker payload path or byte binding')
+        path = _file(base, relative, 2 * 1024 * 1024)
+        data = path.read_bytes()
+        if len(data) != record['bytes'] or sha256(data).hexdigest() != record['sha256']:
+            raise WorkerPayloadError('Worker payload content changed: ' + relative)
+        paths.append(path)
+    names = set(raw['files'])
+    required = {'blender_bridge/entrypoint.py', 'blender_bridge/payload_contract.py',
+        SUPPORT + '/ucc/__init__.py', SUPPORT + '/ucc/core/worker_payload.py'}
+    required.update(ADAPTER + '/' + name for name in ADAPTER_FILES)
+    required.update(STATIC_ADAPTER + '/' + name for name in STATIC_ADAPTER_FILES)
+    required.update(UNITY_ADAPTER + '/' + name for name in UNITY_ADAPTER_FILES)
+    required.update(UNREAL_ADAPTER + '/' + name for name in UNREAL_ADAPTER_FILES)
+    if not required <= names:
+        raise WorkerPayloadError('Worker payload is incomplete')
+    for name in raw['modules']:
+        module = SUPPORT + '/' + name.replace('.', '/')
+        if not {module + '.py', module + '/__init__.py'} & names:
+            raise WorkerPayloadError('Worker payload module is absent')
+    if raw['files']['blender_bridge/payload_contract.py'] != raw['files'][SUPPORT + '/ucc/core/worker_payload.py']:
+        raise WorkerPayloadError('Worker payload validator copies differ')
+    # A bytecode cache can bypass the checked Python source. The worker disables
+    # cache writes before loading this module. Never accept unlisted import data.
+    observed = {str(p.relative_to(base)).replace('\\', '/')
+        for directory in (base / 'blender_bridge', base / SUPPORT)
+        for p in directory.rglob('*') if p.is_file() or p.is_symlink()}
+    if observed != names | {SUPPORT + '/' + MANIFEST}:
+        raise WorkerPayloadError('Worker payload contains unlisted files or bytecode')
+    return (manifest, *paths)
+
+
+def activate_worker_payload(base: Path) -> Path:
+    """Activate only checked sources in a fresh Blender process."""
+    validate_worker_payload(base)
+    support = Path(base) / SUPPORT
+    for name, module in tuple(sys.modules.items()):
+        if name == 'ucc' or name.startswith('ucc.'):
+            origin = getattr(module, '__file__', None)
+            if origin is None or not Path(origin).resolve().is_relative_to(support):
+                raise WorkerPayloadError('An unrelated UCC package was already imported')
+    sys.dont_write_bytecode = True
+    sys.path.insert(0, str(support))
+    return support

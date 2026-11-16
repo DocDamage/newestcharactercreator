@@ -1,15 +1,75 @@
 """Independent parser, branch and rest-plane evidence negatives."""
 from copy import deepcopy
 import unittest
-from fixtures.native_palm_contract import palm_contract
+from fixtures.native_palm_contract import palm_contract, transformed_palm_contract
 from ucc.animations.native_profile import validate_native_profile
 from ucc.animations.native_palms import palm_normal, palm_evidence, validate_palm_hierarchy
 from ucc.core.errors import ValidationError
 from blender_bridge.native_inputs import validate_profile
-from blender_bridge.native_palms import measure_planes, check_branches, normal
+from blender_bridge.native_palms import measure_planes, check_branches, normal, source_rest_points
 
 
 class NativePalmTests(unittest.TestCase):
+    def test_declared_source_planes_preserve_analytic_rotation_across_origins_and_scales(self):
+        from struct import pack, unpack
+        from ucc.animations import native_math
+        for translation in ((0., 0., 0.), (123.456789, -234.567891, 345.678912),
+                            (1000.123456, -900.654321, 25.3654)):
+            for scale in (.25, .5, 2.):
+                with self.subTest(translation=translation, scale=scale):
+                    profile, source, targets, parents, target_parents, landmarks = transformed_palm_contract(translation, scale)
+                    points = source_rest_points(source)
+                    rounded = {name: [unpack('<f', pack('<f', v))[0] for v in point]
+                               for name, point in points.items()}
+                    measured = measure_planes(profile, rounded, targets, parents, target_parents, scale, 1., source_snapshot=source)
+                    independent_points = {
+                        bone["name"]: native_math.point(native_math.rows(source["armature_rest_world"]), bone["head"])
+                        for bone in source["bones"]
+                    }
+                    self.assertEqual(measured["schema_version"], 2)
+                    evidence = {"hand_plane_proofs": measured}
+                    palm_evidence(evidence, profile, independent_points, parents, landmarks, scale, 1.)
+                    for row in measured["planes"].values():
+                        for actual, wanted in zip(row["source_normal"], (0., .6, -.8)):
+                            self.assertAlmostEqual(actual, wanted, places=9)
+
+    def test_near_boundary_forged_source_normal_still_rejects(self):
+        profile, source, targets, parents, target_parents, landmarks = transformed_palm_contract((123.456789, -234.567891, 345.678912), .5)
+        points = source_rest_points(source)
+        measured = measure_planes(profile, points, targets, parents, target_parents, .5, 1., source_snapshot=source)
+        measured["planes"]["left"]["source_normal"][0] += 2e-6
+        evidence = {"hand_plane_proofs": measured}
+        with self.assertRaises(ValidationError):
+            palm_evidence(evidence, profile, points, parents, landmarks, .5, 1.)
+
+    def test_v2_measurement_requires_declared_source_snapshot(self):
+        profile, source, targets, parents, target_parents, _ = transformed_palm_contract((123., -234., 345.), .5)
+        with self.assertRaisesRegex(ValueError, 'validated source snapshot'):
+            measure_planes(profile, source_rest_points(source), targets, parents, target_parents, .5, 1.)
+
+    def test_reference_version_is_closed_and_saved_proof_cannot_be_relabelled(self):
+        for version in (1, 2):
+            p, d, sp, tp, parents, target_parents, landmarks = palm_contract()
+            p["hand_reference_planes"]["schema_version"] = version
+            validate_native_profile(p, "a"*64, "b"*64, "c"*64)
+            validate_profile(p, "a"*64, "b"*64, "c"*64)
+            source = {"armature_rest_world": [int(i % 5 == 0) for i in range(16)],
+                      "bones": [{"name": name, "head": point} for name, point in sp.items()]}
+            actual = measure_planes(p, sp, tp, parents, target_parents, 1., 1., source_snapshot=source)
+            self.assertEqual(actual["schema_version"], version)
+            d["hand_plane_proofs"] = actual
+            palm_evidence(d, p, sp, parents, landmarks, 1., 1.)
+            actual["schema_version"] = 3 - version
+            with self.assertRaises(ValidationError):
+                palm_evidence(d, p, sp, parents, landmarks, 1., 1.)
+        for version in (0, 3, -1, "2", True):
+            p = palm_contract()[0]
+            p["hand_reference_planes"]["schema_version"] = version
+            with self.subTest(version=version), self.assertRaises(ValidationError):
+                validate_native_profile(p, "a"*64, "b"*64, "c"*64)
+            with self.assertRaises(ValueError):
+                validate_profile(p, "a"*64, "b"*64, "c"*64)
+
     def test_closed_profile_passes_both_parsers_and_independent_normals_agree(self):
         p,d,sp,tp,parents,tparents,landmarks=palm_contract()
         validate_native_profile(p,"a"*64,"b"*64,"c"*64);validate_profile(p,"a"*64,"b"*64,"c"*64)

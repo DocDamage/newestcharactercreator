@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 
 from ucc.animations.contact_fit import HASHES
+from ucc.animations.symmetric_fit import fitted_hash_fields
 from ucc.animations.source_rest_frames import is_sha256
 from ucc.core.errors import ValidationError
 from ucc.preview.central_enclosure import CentralEnclosure,validate_anatomical_measurement,read_central_enclosure
@@ -23,7 +24,7 @@ class CompleteAnatomicalEvidence:
 
 def validate_complete_measurement(report,bindings,baseline,paired):
     fields={'status','bindings','frames','report','enclosure_report','full_trunk_report','originals_unchanged'}|FLAGS
-    expected=HASHES|({'fit_sha256','fitted_sha256','fit_report_sha256'} if paired else set())
+    expected=fitted_hash_fields(bindings) if paired else HASHES
     if (type(bindings) is not dict or set(bindings)!=expected or any(not is_sha256(v) for v in bindings.values()) or
         type(report) is not dict or set(report)!=fields or report['status']!='REAL_COMPLETE_ANATOMICAL_SAFETY_MEASURED'):
         raise ValidationError('Complete anatomical measurement lacks exact source/report identities')

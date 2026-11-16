@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from hashlib import sha256
 
 from ucc.animations.source_rest_frames import is_sha256
+from ucc.animations.symmetric_fit import fitted_hash_fields
 from ucc.core.errors import ValidationError
 from ucc.jobs.native_fit_evidence import FLAGS,read_json_record
 from ucc.jobs.native_skin_evidence import validate_reopen_report
@@ -108,7 +109,7 @@ def parse_body_variant(data,cache: MotionCache,skin_hashes,triangle_hashes,basel
 
 def validate_body_measurement(report,bindings,baseline,paired,*,expected_status='REAL_NATIVE_BODY_CONTACTS_MEASURED'):
     fields={'status','bindings','frames','report','originals_unchanged'}|FLAGS
-    if (type(bindings) is not dict or set(bindings)!=(FIT_HASHES if paired else HASHES) or any(not is_sha256(v) for v in bindings.values()) or
+    if (type(bindings) is not dict or set(bindings)!=(fitted_hash_fields(bindings) if paired else HASHES) or any(not is_sha256(v) for v in bindings.values()) or
         type(report) is not dict or set(report)!=fields or report['status']!=expected_status or
         report['bindings']!=bindings or type(report['frames']) is not int or report['frames']!=baseline['source_frame_count'] or
         report['originals_unchanged'] is not True or any(report[k] is not False for k in FLAGS)):

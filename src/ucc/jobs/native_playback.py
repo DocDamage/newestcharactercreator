@@ -7,6 +7,7 @@ from threading import Event
 
 from ucc.animations.fbx_snapshot import validate_snapshot
 from ucc.animations.native_profile import read_native_profile
+from ucc.animations.native_skin_policy import CORRECTIVE_POLICIES
 from ucc.core.errors import ProjectConflict, ProjectStorageError, ValidationError
 from ucc.core.storage import ProjectStore
 from ucc.library.provenance import AssetPolicyError, LicensePolicy
@@ -33,7 +34,7 @@ class NativePlayback:
 
 def prepare_native_playback(store: ProjectStore, preview: NativeBodyPreview, *, source_fbx: Path,
                             permission: LicensePolicy, blender_exe: Path, worker_script: Path,
-                            cancel: Event | None=None, timeout_s: float=300) -> NativePlayback:
+                            cancel: Event | None=None, timeout_s: float=300, source_guard=None) -> NativePlayback:
     allowed,reason=permission.allow("local_preview")
     if not allowed:raise AssetPolicyError(reason)
     def check_cancel():
@@ -55,7 +56,7 @@ def prepare_native_playback(store: ProjectStore, preview: NativeBodyPreview, *, 
     review=bound_file(folder,report["visual_review_blend"],"review_motion.blend",512*1024*1024,cancel_check=check_cancel)
     snapshot=folder/"source_snapshot.json";profile_path=Path(preview.mapping_profile_used)
     profile,map_sha=read_native_profile(profile_path,preview.source_sha256,bindings["snapshot_sha256"],master_sha)
-    if profile.get("skin_deformation_policy")!="BOUND_CORRECTIVE_SMOOTH_V1" or map_sha!=bindings["mapping_sha256"]:
+    if profile.get("skin_deformation_policy") not in CORRECTIVE_POLICIES or map_sha!=bindings["mapping_sha256"]:
         raise ValidationError("In-UCC playback currently requires the audited bound-skin preview policy")
     if snapshot.is_symlink() or not snapshot.is_file() or not 0<snapshot.stat().st_size<=64*1024*1024:
         raise ValidationError("Missing or oversized animation source snapshot")
@@ -80,6 +81,7 @@ def prepare_native_playback(store: ProjectStore, preview: NativeBodyPreview, *, 
                 raise ProjectStorageError("Original animation/master/evidence changed while preparing playback")
     unchanged()
     request=JobRequest.new("cache_native_fbx_body",input_project="candidate.blend",options=options)
+    if source_guard is not None: source_guard()
     result,output=BlenderJobRunner(blender_exe,jobs_root,worker_script).run(request,timeout_s=timeout_s,cancel=cancel,staged_inputs=staged)
     unchanged()
     if output.is_symlink() or output.resolve().parent!=jobs_root.resolve():raise ValidationError("Playback worker folder is redirected")
@@ -93,6 +95,7 @@ def prepare_native_playback(store: ProjectStore, preview: NativeBodyPreview, *, 
         contact=bound_file(output,record,"motion_contacts.json",16*1024*1024,cancel_check=check_cancel)
         check=JobRequest.new("verify_native_surface_review",input_project="candidate.blend",
             options={**options,"surface_review_sha256":record["sha256"]})
+        if source_guard is not None: source_guard()
         verified,verify_folder=BlenderJobRunner(blender_exe,jobs_root,worker_script).run(check,timeout_s=timeout_s,cancel=cancel,
             staged_inputs={**staged,"motion_contacts.json":contact})
         unchanged()

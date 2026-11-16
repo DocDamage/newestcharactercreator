@@ -2,6 +2,66 @@
 
 **Status:** Early, unsigned development build for the repository owner's private testing. This is **not** a finished 3D character creator, an installer, or a public release. No license to redistribute project code or source assets has been selected.
 
+## Local native-worker packaging checkpoint — November 15, 2026
+
+The latest private build 430 adds **File → Render animated facial sprites…**.
+Save supported expression strengths first, review every source for this animated
+use and choose a new output folder. The fixed 25-frame, 24 FPS sequence returns
+to neutral and retains the saved material/hand. Four/eight directions at 128/256
+pixels produce one 5×5 sheet per direction; both neutral endpoints are included.
+Every frame must match independent original-source and saved-Action geometry,
+normals and pixels before publication. Actual source tests deliver 100/200 frames;
+the unmodified native standalone workflow delivers 100 at 256 pixels. All 204
+UCC modules/main and 186 worker payload files match source. Regression: 1,355
+passed, 14 existing skips. Real cancellation, collision and coherent faults pass.
+These are private whole-character samples; facial changes can be subtle at 128
+pixels. Close-ups, separated layers, lip-sync, body motion, artist/pixel-art
+approval and Unity/Unreal require further work. No owner shortcut was changed.
+See [animated sprite acceptance](../acceptance/UCC-P1-SPRITE-003.md).
+
+The earlier private build 414 adds **File → Render character sprite sample…**.
+Open a saved prepared human with its owned material, review every source for this
+specific use, select a new destination and choose the installed Blender executable.
+It renders four/eight transparent neutral directions at 128/256 pixels with
+explicit yaw/pitch, then independently checks original-source and saved-scene
+pixels before packing an exact atlas. Direction samples are not animation clips.
+Actual unmodified Windows UI 416/418 passes four 256² views; source UI tests also
+pass four 128² and eight 256² views. All 199 bundled UCC modules/main and 183 worker
+payload files match current source. Regression: 1,344 passed and 14 existing skips.
+No Blender, MPFB, character assets or models are bundled. Artist/pixel-art quality,
+owner assets, public distribution and Unity/Unreal remain unapproved. See
+[sprite acceptance](../acceptance/UCC-P1-SPRITE-002.md). The owner launcher remains
+unchanged. The previous checkpoint below describes build 382 specifically.
+
+The later private Windows build 382 includes current body/face/material controls,
+material preview, frame-specific facial normals and the desktop Godot export
+workflow. Actual frozen startup 383 and normal Windows UI export 384/386 pass:
+fresh bundled Blender workers, actual Godot checks and saved-scene reopening.
+Archive audit 385 matches all 194 UCC modules and the main entry point to source.
+This remains original authored private test evidence, without public distribution
+approval, animation-clip export or an owner-shortcut update.
+See [current package acceptance](../acceptance/UCC-P1-PKG-002.md) for exact scope.
+
+The private archive recorded at checkpoint 198 covers the packaging gate before
+the subsequent source-corner UV extension. A frozen build of that later source
+is covered only by the later private checkpoint above; it is not in archive 198
+or the owner launcher.
+
+The current local QA payload includes SHA-bound bridge scripts, pure Python
+contract sources and eight Godot adapter resources. Blender loads those sources
+with its own interpreter; it does not import the frozen application's Python
+extension modules. Building uses a controlled DLL search path so unrelated SDK
+DLLs cannot replace Qt's Windows dependencies. No Blender, MPFB, character,
+animation, AI model or private runtime-kernel asset is included.
+
+The local frozen startup check and actual external Blender saved-scene and
+Godot import checks are documented in [UCC-P1-007](../acceptance/UCC-P1-007.md).
+Separate actual frozen-parent diagnostics also verify the Blender runner;
+these are private tests rather than a new desktop export control.
+Those checks do not expose an export control, approve materials/animation quality
+or grant redistribution rights. This work is not yet the owner launcher's build
+or a newly accepted GitHub artifact. Keep the entire private QA folder intact.
+
 ## Run without an IDE or Python installation
 
 1. On the repository's GitHub **Actions** tab, open the most recent successful **Windows desktop alpha build (internal testing)** run.

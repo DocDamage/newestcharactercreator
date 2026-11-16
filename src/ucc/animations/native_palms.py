@@ -11,9 +11,9 @@ def validate_palm_profile(profile: dict) -> None:
         if "hand_reference_planes" in profile:raise ValidationError("Unused palm reference declaration")
         return
     planes=profile.get("hand_reference_planes")
-    if (profile.get("skin_deformation_policy")!="BOUND_CORRECTIVE_SMOOTH_V1" or
+    if (profile.get("skin_deformation_policy") not in {"BOUND_CORRECTIVE_SMOOTH_V1", "BOUND_REGIONAL_CORRECTIVE_SMOOTH_V2"} or
             type(planes) is not dict or set(planes)!={"schema_version","planes"} or
-            type(planes["schema_version"]) is not int or planes["schema_version"]!=1 or
+            type(planes["schema_version"]) is not int or planes["schema_version"] not in (1,2) or
             type(planes["planes"]) is not dict or set(planes["planes"])!=used):
         raise ValidationError("Palm references need an exact versioned declaration and saved-skin reopening")
     mapped={r["source"]:r["target"] for r in profile["pairs"]}
@@ -81,7 +81,7 @@ def palm_evidence(data: dict, profile: dict, source_points: dict, source_parents
     validate_palm_hierarchy(profile,source_parents,"source")
     proof=data.get("hand_plane_proofs")
     if (type(proof) is not dict or set(proof)!={"schema_version","planes"} or
-            type(proof["schema_version"]) is not int or proof["schema_version"]!=1 or
+            type(proof["schema_version"]) is not int or proof["schema_version"]!=declaration["schema_version"] or
             type(proof["planes"]) is not dict or set(proof["planes"])!=set(declaration["planes"])):
         raise ValidationError("Missing closed palm-plane proof")
     result={}

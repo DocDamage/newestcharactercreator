@@ -79,6 +79,8 @@ def apply_saved_body_revision(
 ) -> BodyRevisionResult:
     """Refit existing master; re-open copy; atomically save a *new* master pointer."""
     initial = store.load()
+    from ucc.core.skin_material import require_material_preservation
+    require_material_preservation(initial)
     if (initial.project_id != expected_project_id or
             initial.revision != expected_revision or
             initial.master_blend != expected_master_blend):
@@ -87,6 +89,10 @@ def apply_saved_body_revision(
         raise ValidationError("Body refit supports only saved MPFB humanoid projects")
     if initial.parts or initial.animations:
         raise ValidationError("Body refit with external parts/animations is not validated yet")
+    if initial.expression is not None:
+        raise ValidationError('Prepared facial controls require expression-aware body refit; the saved master is unchanged')
+    if initial.facial_parameters:
+        raise ValidationError("Saved facial intent requires face-aware refit; body-only refit cannot discard it")
     if type(timeout_s) not in (int, float) or not 0.05 <= timeout_s <= 3600:
         raise ValidationError("timeout_s outside supported range")
     macro = from_saved_parameters(initial.parameters)

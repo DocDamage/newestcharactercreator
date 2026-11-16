@@ -9,6 +9,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ucc.core.commands import CharacterSession
+from ucc.core.reference_master_intent import supports_referenced_master_intent
+from ucc.core.material_master_intent import supports_material_master_intent
 from ucc.core.errors import ValidationError
 from ucc.core.models import CharacterProject, MORPH_LIMITS
 from ucc.core.storage import PROJECT_FILE, ProjectStore
@@ -29,6 +31,11 @@ class ProjectView:
     blockers: tuple[str, ...]
     can_undo: bool
     can_redo: bool
+    facial_parameters: tuple[tuple[str, float], ...] = ()
+    expression_parameters: tuple[tuple[str, float], ...] = ()
+    expression_library: str | None = None
+    referenced_master_intent: bool = False
+    material_master_intent: bool = False
 
 
 class DesktopController:
@@ -98,6 +105,84 @@ class DesktopController:
         self._dirty = True
         return self.view()
 
+    def set_face_parameter(self, name: str, value: float) -> ProjectView:
+        session = self._get_session()
+        previous = session.project
+        if supports_referenced_master_intent(previous):
+            session.set_referenced_face_parameter(name, value)
+        elif supports_material_master_intent(previous):
+            session.set_material_face_parameter(name,value)
+        else:
+            session.set_face_parameter(name, value)
+        self._dirty |= previous != session.project
+        return self.view()
+
+    def accept_saved_master(self, saved: CharacterProject) -> ProjectView:
+        if self.store is None or self._dirty or self.store.load() != saved:
+            raise ValidationError('Saved master cannot replace a changed or unsaved desktop session')
+        self._get_session().accept_saved_master(saved)
+        self._saved_revision = saved.revision
+        return self.view()
+
+    def accept_saved_reference_master(self, saved: CharacterProject) -> ProjectView:
+        if self.store is None or self._dirty or self.store.load() != saved:
+            raise ValidationError('Saved reference-aware master cannot replace a changed or unsaved session')
+        self._get_session().accept_saved_reference_master(saved)
+        self._saved_revision = saved.revision
+        return self.view()
+
+    def accept_saved_material_master(self,saved: CharacterProject) -> ProjectView:
+        if self.store is None or self._dirty or self.store.load()!=saved:
+            raise ValidationError('Saved material-aware master cannot replace a changed or unsaved session')
+        self._get_session().accept_saved_material_master(saved)
+        self._saved_revision=saved.revision
+        return self.view()
+
+    def accept_saved_skin_material(self,saved: CharacterProject) -> ProjectView:
+        """Only the explicit material selection workflow admits first assignment."""
+        if self.store is None or self._dirty or self.store.load()!=saved:
+            raise ValidationError('Saved skin material cannot replace a changed or unsaved session')
+        from ucc.core.skin_material import APPEARANCE_KEY
+        initial=APPEARANCE_KEY not in dict(self.require_project().appearance)
+        self._get_session().accept_saved_material_master(saved,initial_assignment=initial)
+        self._saved_revision=saved.revision
+        return self.view()
+
+    def set_expression_parameter(self, name: str, value: float) -> ProjectView:
+        session = self._get_session()
+        previous = session.project
+        session.set_expression_parameter(name, value)
+        self._dirty |= previous != session.project
+        return self.view()
+
+    def accept_saved_animation_references(self, saved: CharacterProject) -> ProjectView:
+        if self.store is None or self._dirty or self.store.load() != saved:
+            raise ValidationError('Saved references cannot replace a changed or unsaved desktop session')
+        self._get_session().accept_saved_animation_references(saved)
+        self._saved_revision = saved.revision
+        return self.view()
+
+    def reset_expression(self) -> ProjectView:
+        session = self._get_session()
+        previous = session.project
+        session.reset_expression()
+        self._dirty |= previous != session.project
+        return self.view()
+
+    def accept_saved_expression_master(self, saved: CharacterProject, *, library_sha256: str) -> ProjectView:
+        if self.store is None or self._dirty or self.store.load() != saved:
+            raise ValidationError('Prepared expressions cannot replace a changed or unsaved desktop session')
+        self._get_session().accept_saved_expression_master(saved, library_sha256=library_sha256)
+        self._saved_revision = saved.revision
+        return self.view()
+
+    def accept_saved_part_master(self,saved: CharacterProject,*,manifest_sha256: str) -> ProjectView:
+        if self.store is None or self._dirty or self.store.load() != saved:
+            raise ValidationError('Saved hand cannot replace a changed or unsaved desktop session')
+        self._get_session().accept_saved_part_master(saved,manifest_sha256=manifest_sha256)
+        self._saved_revision=saved.revision
+        return self.view()
+
     def redo(self) -> ProjectView:
         self._get_session().redo()
         self._dirty = True
@@ -134,6 +219,11 @@ class DesktopController:
             project.geometry_state, project.rig_profile, project.master_blend,
             tuple(sorted(project.parameters)), len(project.parts), len(project.animations),
             project.export_readiness(), self.session.can_undo, self.session.can_redo,
+            tuple(project.facial_parameters),
+            tuple(project.expression.parameters) if project.expression else (),
+            project.expression.library_sha256 if project.expression else None,
+            supports_referenced_master_intent(project),
+            supports_material_master_intent(project),
         )
 
     def _get_session(self) -> CharacterSession:

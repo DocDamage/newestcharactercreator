@@ -68,6 +68,8 @@ def generate_humanoid(
     it is never included in published artifacts.
     """
     initial = store.load()
+    from ucc.core.skin_material import require_material_preservation
+    require_material_preservation(initial)
     if not isinstance(expected_project_id, str) or initial.project_id != expected_project_id:
         raise ProjectConflict("Selected character project is not the saved project")
     if type(expected_revision) is not int or initial.revision != expected_revision:
@@ -79,6 +81,10 @@ def generate_humanoid(
             "Cannot regenerate a new base while character parts or animation "
             "references are attached; create a clean project for this operation"
         )
+    if initial.expression is not None:
+        raise ValidationError('Prepared facial controls require expression-aware generation; the saved master is unchanged')
+    if initial.facial_parameters:
+        raise ValidationError("Saved facial intent requires face-aware generation; body-only generation cannot discard it")
     macros = from_saved_parameters(initial.parameters)
     if type(timeout_s) not in (int, float) or not 0.05 <= timeout_s <= 3600:
         raise ValidationError("timeout_s must be between 0.05 and 3600 seconds")

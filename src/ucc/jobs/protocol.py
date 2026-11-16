@@ -15,6 +15,25 @@ SUPPORTED_OPERATIONS = {"inspect_environment", "inspect_character", "create_huma
 SUPPORTED_OPERATIONS |= {"propose_native_contact_fit", "fit_native_fbx_body", "measure_native_fit", "verify_native_fit", "cache_native_fit"}
 SUPPORTED_OPERATIONS.add('propose_native_area_contact_fit')
 SUPPORTED_OPERATIONS.add('propose_native_hand_contact_fit')
+SUPPORTED_OPERATIONS |= {'stage_mpfb_face', 'verify_mpfb_face'}
+SUPPORTED_OPERATIONS.add('inspect_mpfb_face_assets')
+SUPPORTED_OPERATIONS |= {'build_mpfb_hand_assets', 'verify_mpfb_hand_assets'}
+SUPPORTED_OPERATIONS |= {'stage_mpfb_hand_revision','verify_mpfb_hand_revision'}
+SUPPORTED_OPERATIONS.add('inspect_mpfb_hand_bounds')
+SUPPORTED_OPERATIONS |= {'stage_mpfb_expression_keys', 'verify_mpfb_expression_keys'}
+SUPPORTED_OPERATIONS.add('inspect_mpfb_expression_keys')
+SUPPORTED_OPERATIONS |= {'stage_mpfb_expression_clip', 'verify_mpfb_expression_clip'}
+SUPPORTED_OPERATIONS.add('inspect_mpfb_neutral_master')
+SUPPORTED_OPERATIONS |= {'stage_mpfb_godot_candidate', 'verify_mpfb_godot_candidate'}
+SUPPORTED_OPERATIONS |= {'stage_native_godot_runtime', 'verify_native_godot_runtime'}
+SUPPORTED_OPERATIONS.add('sample_native_godot_runtime')
+SUPPORTED_OPERATIONS|={'stage_mpfb_skin_material','verify_mpfb_skin_material'}
+SUPPORTED_OPERATIONS|={'stage_mpfb_expression_normals','verify_mpfb_expression_normals'}
+SUPPORTED_OPERATIONS|={'stage_mpfb_sprite_sample','verify_mpfb_sprite_sample'}
+SUPPORTED_OPERATIONS|={'stage_mpfb_facial_sprites','verify_mpfb_facial_sprites'}
+SUPPORTED_OPERATIONS|={'stage_mpfb_unity_source','verify_mpfb_unity_source'}
+SUPPORTED_OPERATIONS|={'stage_mpfb_unity_runtime_source','verify_mpfb_unity_runtime_source'}
+SUPPORTED_OPERATIONS|={'stage_mpfb_unreal_source','verify_mpfb_unreal_source'}
 BODY_CONTACT_OPERATIONS = {'verify_fitted_body_contacts', 'verify_native_body_contacts', 'inspect_fitted_body_contacts', 'inspect_native_body_contacts'}
 BODY_CONTACT_OPERATIONS |= {'inspect_native_body_areas','verify_native_body_areas','inspect_fitted_body_areas','verify_fitted_body_areas'}
 BODY_CONTACT_OPERATIONS |= {'inspect_native_skin_inclusion','verify_native_skin_inclusion','inspect_fitted_skin_inclusion','verify_fitted_skin_inclusion'}
@@ -42,6 +61,24 @@ class JobRequest:
     protocol_version: int = PROTOCOL_VERSION
 
     def __post_init__(self) -> None:
+        if self.operation in {'stage_mpfb_unreal_source','verify_mpfb_unreal_source'}:
+            from ucc.export.unreal_blender_recipe import validate_job
+            validate_job(self.operation,self.input_project,self.options)
+        if self.operation in {'stage_mpfb_unity_runtime_source','verify_mpfb_unity_runtime_source'}:
+            from ucc.export.unity_runtime_source import validate_job
+            validate_job(self.operation,self.input_project,self.options)
+        if self.operation in {'stage_mpfb_unity_source','verify_mpfb_unity_source'}:
+            from ucc.export.unity_blender_recipe import validate_job
+            validate_job(self.operation,self.input_project,self.options)
+        if self.operation in {'stage_mpfb_facial_sprites','verify_mpfb_facial_sprites'}:
+            from ucc.core.facial_sprites import validate_job
+            validate_job(self.operation,self.input_project,self.options)
+        if self.operation in {'stage_mpfb_sprite_sample','verify_mpfb_sprite_sample'}:
+            from ucc.core.sprite_render import validate_job
+            validate_job(self.operation,self.input_project,self.options)
+        if self.operation in {'stage_mpfb_expression_normals','verify_mpfb_expression_normals'}:
+            from ucc.core.expression_material import validate_normal_job
+            validate_normal_job(self.operation,self.input_project,self.options)
         if type(self.protocol_version) is not int or self.protocol_version != PROTOCOL_VERSION:
             raise ValidationError("Unsupported worker protocol version")
         try:
@@ -55,12 +92,93 @@ class JobRequest:
         if type(self.options) is not dict:
             raise ValidationError("options must be JSON object")
         _check_json(self.as_dict())
+        if self.operation in {'stage_mpfb_skin_material','verify_mpfb_skin_material'}:
+            from ucc.core.skin_material import validate_material_job
+            validate_material_job(self.operation,self.input_project,self.options)
+        if self.operation in {'stage_native_godot_runtime','verify_native_godot_runtime','sample_native_godot_runtime'}:
+            from ucc.export.godot_native_recipe import validate_native_job
+            validate_native_job(self.operation,self.input_project,self.options)
+        if self.operation in {'stage_mpfb_godot_candidate', 'verify_mpfb_godot_candidate'}:
+            from ucc.export.godot_blender_recipe import validate_job
+            validate_job(self.operation, self.input_project, self.options)
+        if self.operation == 'inspect_mpfb_neutral_master':
+            from ucc.animations.source_rest_frames import is_sha256
+            if (self.input_project != 'candidate.blend' or set(self.options) != {'master_sha256'}
+                    or not is_sha256(self.options['master_sha256'])):
+                raise ValidationError('Neutral inspection requires fixed candidate.blend and its exact SHA-256 only')
+        if self.operation == 'inspect_mpfb_face_assets' and (self.input_project is not None or self.options):
+            raise ValidationError('Facial asset inspection has no selectable paths or options')
+        if self.operation in {'build_mpfb_hand_assets', 'verify_mpfb_hand_assets'}:
+            from ucc.core.hand_parts import TARGETS as HAND_TARGETS, METADATA_SHA256, is_sha256
+            fields = {'master_sha256', 'recipe_sha256', 'metadata_sha256',
+                      'shorter_target_sha256', 'longer_target_sha256'}
+            if self.operation == 'verify_mpfb_hand_assets':
+                fields |= {'shorter_asset_sha256', 'longer_asset_sha256', 'assets_report_sha256'}
+            if (self.input_project != 'candidate.blend' or set(self.options) != fields
+                    or not all(is_sha256(v) for v in self.options.values())
+                    or self.options['metadata_sha256'] != METADATA_SHA256
+                    or any(self.options[t.variant+'_target_sha256'] != t.sha256 for t in HAND_TARGETS)):
+                raise ValidationError('Hand asset worker requires exact pinned hashes and fixed staged filenames')
+        if self.operation in {'stage_mpfb_hand_revision','verify_mpfb_hand_revision'}:
+            from ucc.core.hand_parts import TARGETS as HAND_TARGETS, METADATA_SHA256, is_sha256
+            for name in ('current_selection','selection'):
+                if type(self.options.get(name)) is not str or self.options[name] not in {'neutral','shorter','longer'}:
+                    raise ValidationError('Hand revision requires explicit supported selections')
+            fields={'master_sha256','original_master_sha256','manifest_sha256','metadata_sha256',
+                    'shorter_target_sha256','longer_target_sha256','shorter_asset_sha256','longer_asset_sha256',
+                    'current_selection','selection'}
+            if self.options['current_selection'] != 'neutral':fields.add('current_observation_sha256')
+            if self.operation == 'verify_mpfb_hand_revision':fields|={'revised_sha256','revision_report_sha256'}
+            if (self.input_project != 'candidate.blend' or set(self.options) != fields
+                    or any(not is_sha256(v) for k,v in self.options.items() if k not in {'current_selection','selection'})
+                    or self.options['metadata_sha256'] != METADATA_SHA256
+                    or any(self.options[t.variant+'_target_sha256'] != t.sha256 for t in HAND_TARGETS)):
+                raise ValidationError('Hand revision requires complete immutable source/library/asset bindings')
+        if self.operation == 'inspect_mpfb_hand_bounds':
+            from ucc.core.hand_parts import TARGETS as HAND_TARGETS,METADATA_SHA256,is_sha256
+            fields={'master_sha256','metadata_sha256','shorter_target_sha256','longer_target_sha256'}
+            if (self.input_project!='candidate.blend' or set(self.options)!=fields
+                    or not all(is_sha256(v) for v in self.options.values())
+                    or self.options['metadata_sha256']!=METADATA_SHA256
+                    or any(self.options[t.variant+'_target_sha256']!=t.sha256 for t in HAND_TARGETS)):
+                raise ValidationError('Hand camera bounds require exact pinned source identities')
+        if self.operation in {'stage_mpfb_expression_clip', 'verify_mpfb_expression_clip'}:
+            from ucc.core.expressions import TARGETS as EXPRESSION_TARGETS, is_sha256
+            fields = {'master_sha256', 'clip_sha256'} | {t.role+'_'+t.family+'_sha256' for t in EXPRESSION_TARGETS}
+            if self.operation == 'verify_mpfb_expression_clip':
+                fields |= {'motion_sha256', 'motion_report_sha256', 'cache_sha256', 'cache_manifest_sha256'}
+            if (self.input_project != 'candidate.blend' or set(self.options) != fields
+                    or not all(is_sha256(v) for v in self.options.values())
+                    or any(self.options[t.role+'_'+t.family+'_sha256'] != t.sha256 for t in EXPRESSION_TARGETS)):
+                raise ValidationError('Expression clip requires all pinned hashes and fixed staged filenames')
+        if self.operation in {'stage_mpfb_expression_keys', 'verify_mpfb_expression_keys', 'inspect_mpfb_expression_keys'}:
+            from ucc.core.expressions import TARGETS as EXPRESSION_TARGETS, is_sha256
+            fields = {'master_sha256', 'recipe_sha256'} | {
+                t.role+'_'+t.family+'_sha256' for t in EXPRESSION_TARGETS}
+            if self.operation == 'verify_mpfb_expression_keys':
+                fields |= {'prepared_sha256', 'report_sha256'}
+            if (self.input_project != 'candidate.blend' or set(self.options) != fields
+                    or not all(is_sha256(v) for v in self.options.values())
+                    or any(self.options[t.role+'_'+t.family+'_sha256'] != t.sha256 for t in EXPRESSION_TARGETS)):
+                raise ValidationError('Expression worker requires all pinned hashes and fixed staged filenames')
+        if self.operation in {'stage_mpfb_face', 'verify_mpfb_face'}:
+            from ucc.core.facial import NOSE_TARGETS
+            from ucc.animations.source_rest_frames import is_sha256
+            fields = {'master_sha256', 'recipe_sha256', 'narrow_target_sha256', 'wide_target_sha256'}
+            if self.operation == 'verify_mpfb_face':
+                fields |= {'face_sha256', 'report_sha256'}
+            if (self.input_project != 'candidate.blend' or set(self.options) != fields
+                    or any(not is_sha256(v) for v in self.options.values())
+                    or any(self.options[t.role+'_target_sha256'] != t.sha256 for t in NOSE_TARGETS)):
+                raise ValidationError('Facial worker requires exact pinned hashes and fixed staged filenames')
         if self.operation in {"fit_native_fbx_body", "measure_native_fit", "verify_native_fit", "cache_native_fit"}:
             from ucc.animations.source_rest_frames import is_sha256
             from ucc.animations.contact_fit import HASHES
             hashes=HASHES|{"fit_sha256"}
             if self.operation!="fit_native_fbx_body":hashes.add("fitted_sha256")
             if self.operation in {"verify_native_fit","cache_native_fit"}:hashes.add("fit_report_sha256")
+            from ucc.animations.symmetric_fit import BASE_HASHES as SYMMETRIC_BASE_HASHES
+            if SYMMETRIC_BASE_HASHES & set(self.options):hashes |= SYMMETRIC_BASE_HASHES
             if self.input_project!="candidate.blend" or set(self.options)!=hashes or any(not is_sha256(v) for v in self.options.values()):
                 raise ValidationError("Native fitting requires exact hashes and fixed staged filenames")
         if self.operation in BODY_CONTACT_OPERATIONS:
@@ -68,6 +186,9 @@ class JobRequest:
             from ucc.animations.contact_fit import HASHES
             fields=set(HASHES)
             if 'fitted' in self.operation:fields|={'fit_sha256','fitted_sha256','fit_report_sha256'}
+            if 'fitted' in self.operation:
+                from ucc.animations.symmetric_fit import BASE_HASHES as SYMMETRIC_BASE_HASHES
+                if SYMMETRIC_BASE_HASHES & set(self.options):fields |= SYMMETRIC_BASE_HASHES
             if self.operation.startswith('verify_'):
                 fields.add('body_review_sha256')
                 if self.operation.endswith('_anatomical_safety'):fields.add('enclosure_review_sha256')
@@ -150,7 +271,10 @@ class JobRequest:
         if self.operation in {"inspect_character", "export_preview_glb", "refit_human", "verify_skin_deformation", "verify_keyframed_timeline", "verify_local_bvh_motion", "verify_multi_bvh_chain", "verify_calibrated_bvh_chain", "verify_reviewed_bvh_chain"} and not self.input_project:
             raise ValidationError(f"{self.operation} needs input_project")
         if self.operation == "export_preview_glb" and self.options:
-            raise ValidationError("Preview export uses fixed, offline safe settings")
+            from ucc.core.skin_material import SkinMaterialSpec
+            if set(self.options)!={'owned_material_spec'}:
+                raise ValidationError("Preview export uses fixed, offline safe settings")
+            SkinMaterialSpec.from_dict(self.options['owned_material_spec'])
 
     @classmethod
     def new(cls, operation: str, **kwargs: Any) -> "JobRequest":

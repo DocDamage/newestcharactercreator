@@ -93,7 +93,13 @@ class CentralEnclosureTests(unittest.TestCase):
         for operation,fields in OPERATIONS.items():
             self.assertIn(operation,schema['properties']['operation']['enum'])
             contract=clauses[operation]['then']['properties']['options']
-            self.assertEqual(set(contract['required']),fields);self.assertEqual(set(contract['properties']),fields)
+            from ucc.animations.symmetric_fit import BASE_HASHES as LAYER_HASHES
+            optional=LAYER_HASHES if 'fitted_sha256' in fields else set()
+            self.assertEqual(set(contract['required']),fields)
+            self.assertEqual(set(contract['properties']),fields|optional)
+            if optional:
+                self.assertEqual({k:set(v) for k,v in contract['dependentRequired'].items()},
+                                 {k:optional-{k} for k in optional})
             self.assertIs(contract['additionalProperties'],False)
             options={k:'a'*64 for k in fields}
             job=JobRequest.new(operation,input_project='candidate.blend',options=options)

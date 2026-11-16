@@ -1,0 +1,173 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "UCC complete expression skin cache v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "bindings",
+    "coordinate_space",
+    "world_matrix",
+    "fps",
+    "source_first_frame",
+    "frame_count",
+    "vertex_count",
+    "triangle_count",
+    "frames",
+    "geometry",
+    "animation_visual_quality_verified",
+    "engine_import_verified"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "status": {
+      "const": "VERIFIED_EXPRESSION_SKIN_CACHE_V1"
+    },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "master_sha256",
+        "clip_sha256",
+        "motion_sha256",
+        "motion_report_sha256"
+      ],
+      "properties": {
+        "master_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "clip_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "motion_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "motion_report_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "coordinate_space": {
+      "const": "BLENDER_LOCAL_Z_UP"
+    },
+    "world_matrix": {
+      "type": "array",
+      "minItems": 16,
+      "maxItems": 16,
+      "items": {
+        "type": "number",
+        "minimum": -10000,
+        "maximum": 10000
+      }
+    },
+    "fps": {
+      "type": "integer",
+      "const": 24
+    },
+    "source_first_frame": {
+      "type": "integer",
+      "const": 1
+    },
+    "frame_count": {
+      "type": "integer",
+      "const": 25
+    },
+    "vertex_count": {
+      "type": "integer",
+      "const": 13380
+    },
+    "triangle_count": {
+      "type": "integer",
+      "const": 26756
+    },
+    "frames": {
+      "type": "array",
+      "minItems": 25,
+      "maxItems": 25,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "frame",
+          "offset",
+          "compressed_bytes",
+          "raw_sha256",
+          "skin_sha256",
+          "hip_world"
+        ],
+        "properties": {
+          "frame": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 25
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 8,
+            "maximum": 16777216
+          },
+          "compressed_bytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 16777216
+          },
+          "raw_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "skin_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "hip_world": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 3,
+            "items": {
+              "type": "number",
+              "minimum": -10000,
+              "maximum": 10000
+            }
+          }
+        }
+      }
+    },
+    "geometry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "bytes",
+        "sha256"
+      ],
+      "properties": {
+        "name": {
+          "const": "expression_skin.bin"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 9,
+          "maximum": 16777216
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "animation_visual_quality_verified": {
+      "const": false
+    },
+    "engine_import_verified": {
+      "const": false
+    }
+  }
+}

@@ -1,0 +1,295 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/DocDamage/newestcharactercreator/tree/main/docs/schemas/hand-library-manifest.v1.schema.json",
+  "title": "Immutable project-local compatible hand manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "policy",
+    "recipe",
+    "assets",
+    "rights"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "policy": {
+      "const": "SOURCE_BOUND_MPFB_JOINED_HAND_ASSETS_V1"
+    },
+    "recipe": {
+      "$ref": "#/$defs/recipe"
+    },
+    "assets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "shorter",
+        "longer"
+      ],
+      "properties": {
+        "shorter": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sha256",
+            "observation_sha256"
+          ],
+          "properties": {
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "observation_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          }
+        },
+        "longer": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sha256",
+            "observation_sha256"
+          ],
+          "properties": {
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "observation_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          }
+        }
+      }
+    },
+    "rights": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "local_project_preview",
+        "source_rights_retained",
+        "no_ai",
+        "ai_input_allowed",
+        "engine_export_authorized",
+        "source_redistribution_authorized"
+      ],
+      "properties": {
+        "local_project_preview": {
+          "const": true
+        },
+        "source_rights_retained": {
+          "const": true
+        },
+        "no_ai": {
+          "const": true
+        },
+        "ai_input_allowed": {
+          "const": false
+        },
+        "engine_export_authorized": {
+          "const": false
+        },
+        "source_redistribution_authorized": {
+          "const": false
+        }
+      }
+    }
+  },
+  "$defs": {
+    "recipe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "policy",
+        "family",
+        "mpfb_version",
+        "slot",
+        "root_bone",
+        "source",
+        "strength",
+        "bindings",
+        "variants"
+      ],
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 1
+        },
+        "policy": {
+          "const": "SOURCE_BOUND_MPFB_JOINED_HAND_ASSETS_V1"
+        },
+        "family": {
+          "const": "humanoid.v1"
+        },
+        "mpfb_version": {
+          "const": "2.0.18"
+        },
+        "slot": {
+          "const": "hand.L"
+        },
+        "root_bone": {
+          "const": "wrist.L"
+        },
+        "source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "project_id",
+            "body_parameters",
+            "facial_parameters",
+            "height_m"
+          ],
+          "properties": {
+            "project_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160,
+              "pattern": "^(?!\\s*$)[^\\x00-\\x1f]+$"
+            },
+            "body_parameters": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "height",
+                "muscle",
+                "weight"
+              ],
+              "properties": {
+                "height": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "muscle": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "weight": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "facial_parameters": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "nose_width": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "height_m": {
+              "type": "number",
+              "minimum": 0.2,
+              "maximum": 5
+            }
+          }
+        },
+        "strength": {
+          "const": 0.25
+        },
+        "bindings": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "master_sha256",
+            "base_sha256",
+            "rig_sha256",
+            "metadata_sha256",
+            "border_sha256",
+            "polygons_sha256"
+          ],
+          "properties": {
+            "master_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "base_sha256": {
+              "const": "8e761e6624b8f54536409135d1636da63b32486a90d4897f84e121d144f6fb4c"
+            },
+            "rig_sha256": {
+              "const": "8b949de35c2dd70dbb5094e57a8586c3b9a9f650775a293212581a8f67be6797"
+            },
+            "metadata_sha256": {
+              "const": "8cb1417bc55ae5ec8aa99f90734e81ed5fbb556511ff6a2c00e0534b70911444"
+            },
+            "border_sha256": {
+              "const": "12c0267fc1336bf86c18812647072b2b186f48a2f2f1ca574ff7025c141cbcd6"
+            },
+            "polygons_sha256": {
+              "const": "0c56e582decee01bf98509eb36b06a1b7ed80a6a9bcbc8605722b02304026a63"
+            }
+          }
+        },
+        "variants": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "prefixItems": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "variant",
+                "target_file",
+                "target_sha256",
+                "asset_file"
+              ],
+              "properties": {
+                "variant": {
+                  "const": "shorter"
+                },
+                "target_file": {
+                  "const": "l-hand-fingers-length-decr.target.gz"
+                },
+                "target_sha256": {
+                  "const": "77e720f2da2d446262bb698f453177abbf94b3e7aec37594ddd518c893721acf"
+                },
+                "asset_file": {
+                  "const": "hand-shorter.blend"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "variant",
+                "target_file",
+                "target_sha256",
+                "asset_file"
+              ],
+              "properties": {
+                "variant": {
+                  "const": "longer"
+                },
+                "target_file": {
+                  "const": "l-hand-fingers-length-incr.target.gz"
+                },
+                "target_sha256": {
+                  "const": "37620de4a7d2f3c8f1b233fc42ebf6c6c6b100ce1aecfe4ed4ada2f0e4006637"
+                },
+                "asset_file": {
+                  "const": "hand-longer.blend"
+                }
+              }
+            }
+          ],
+          "items": false
+        }
+      }
+    }
+  }
+}

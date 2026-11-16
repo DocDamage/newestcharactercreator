@@ -42,6 +42,7 @@ class NativeHandMappingTests(unittest.TestCase):
         self.assertEqual(body["pairs"][10]["source_tip"],"LeftHandMiddle1")
         self.assertNotIn("hand_reference_planes",body)
         self.assertEqual(set(hands["hand_reference_planes"]["planes"]),{"left","right"})
+        self.assertEqual(hands["hand_reference_planes"]["schema_version"],2)
         self.assertEqual(sum(r["secondary"].startswith("PALM_") for r in hands["pairs"]),38)
 
     def test_declaring_palms_preserves_the_explicit_legacy_input(self):

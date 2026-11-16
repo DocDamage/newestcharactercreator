@@ -18,7 +18,8 @@ from threading import Event
 from typing import Callable
 
 from .errors import ProjectConflict, ProjectStorageError, ValidationError
-from .models import CharacterProject
+from .models import CharacterProject, PartInstance
+from .expressions import ExpressionState, validate_expression_part_rebind
 from .storage import ProjectStore
 
 MAX_BLEND_BYTES = 2 * 1024 * 1024 * 1024
@@ -98,6 +99,10 @@ def stage_unverified_master(
     expected_revision: int | None = None,
     expected_project_id: str | None = None,
     expected_sha256: str | None = None,
+    expected_project: CharacterProject | None = None,
+    proposed_parts: tuple[PartInstance, ...] | None = None,
+    proposed_expression: ExpressionState | None = None,
+    proposed_appearance: tuple[tuple[str, str], ...] | None = None,
     cancel: Event | None = None,
     before_project_save: Callable[[], None] | None = None,
 ) -> MasterRevision:
@@ -110,6 +115,18 @@ def stage_unverified_master(
     """
     if type(max_bytes) is not int or max_bytes < 16:
         raise ValidationError("max_bytes must be an integer >= 16")
+    if expected_project is not None and not isinstance(expected_project,CharacterProject):
+        raise ValidationError('Expected master project snapshot must be character metadata')
+    if proposed_appearance is not None and (type(proposed_appearance) is not tuple
+            or any(type(row) is not tuple or len(row)!=2 or any(type(v) is not str for v in row) for row in proposed_appearance)
+            or len(dict(proposed_appearance))!=len(proposed_appearance)):
+        raise ValidationError('Master appearance must contain unique explicit text pairs')
+    if proposed_parts is not None and (type(proposed_parts) is not tuple or any(
+            not isinstance(part, PartInstance) or part.status != 'proposed' for part in proposed_parts)):
+        raise ValidationError('Master staging accepts only explicit proposed part instances')
+    if proposed_expression is not None and (
+            not isinstance(proposed_expression, ExpressionState) or not proposed_expression.neutral):
+        raise ValidationError('Expression preparation stages a neutral prepared-library reference only')
     if expected_revision is not None and (
         type(expected_revision) is not int or expected_revision < 0
     ):
@@ -136,6 +153,20 @@ def stage_unverified_master(
     if not source_resolved.is_relative_to(allowed):
         raise ProjectStorageError("Source file must be in the authorized worker output directory")
     original = store.load()  # Never create a project as an accidental side effect.
+    if expected_project is not None and original != expected_project:
+        raise ProjectConflict('Project changed from the verified master source snapshot')
+    if proposed_parts is not None:
+        # Validate the entire replacement before installing any immutable file.
+        # This is intent staging, never a claim that a part passed geometry QA.
+        replace(original, parts=proposed_parts)
+    if proposed_appearance is not None:
+        replace(original, appearance=proposed_appearance)
+    if proposed_expression is not None:
+        if original.expression is not None:
+            raise ValidationError('Existing facial controls must be verified as a no-op, not re-registered')
+        validate_expression_part_rebind(original.parts, original.parts if proposed_parts is None else proposed_parts)
+        replace(original, schema_version=3, expression=proposed_expression,
+                parts=original.parts if proposed_parts is None else proposed_parts)
     if expected_project_id is not None and original.project_id != expected_project_id:
         raise ProjectConflict("Character project changed during master generation")
     if expected_revision is not None and original.revision != expected_revision:
@@ -159,6 +190,8 @@ def stage_unverified_master(
     try:
         if expected_sha256 is not None and digest != expected_sha256:
             raise ProjectStorageError("Validated worker master changed before staging")
+        if proposed_expression is not None and original.master_blend == f'master/versions/{digest}.blend':
+            raise ProjectStorageError('Preparing facial keys requires a genuinely new saved master')
         if cancel is not None and cancel.is_set():
             raise ProjectStorageError("Master staging cancelled before promotion")
         # A content-addressed destination is never overwritten. Hard links
@@ -196,14 +229,18 @@ def stage_unverified_master(
             master_blend=f"master/versions/{digest}.blend",
             geometry_state="generated_unverified",
             rig_profile=None,  # Old rig state may not describe this revision.
-            parts=tuple(replace(part, status="proposed") for part in original.parts),
+            parts=tuple(replace(part, status="proposed") for part in
+                        (original.parts if proposed_parts is None else proposed_parts)),
             revision=original.revision + 1,
+            schema_version=3 if proposed_expression is not None else original.schema_version,
+            expression=proposed_expression if proposed_expression is not None else original.expression,
+            appearance=original.appearance if proposed_appearance is None else proposed_appearance,
         )
         if before_project_save is not None:
             before_project_save()
         if cancel is not None and cancel.is_set():
             raise ProjectStorageError("Master staging cancelled before project commit")
-        saved = store.save(metadata, expected_revision=original.revision)
+        saved = store.save(metadata, expected_revision=original.revision, expected_project=original)
         return MasterRevision(saved, destination, digest, size, reused)
     finally:
         temporary.unlink(missing_ok=True)

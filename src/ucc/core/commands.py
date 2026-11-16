@@ -7,6 +7,16 @@ from uuid import uuid4
 from .anatomy import get_slot
 from .errors import CompatibilityError, ValidationError
 from .models import CharacterProject, MORPH_LIMITS, PartAsset, PartInstance, finite_number
+from .facial import FACE_DEFAULTS, validate_face_parameters
+from .reference_master_intent import supports_referenced_master_intent
+from .expressions import (DEFAULTS as EXPRESSION_DEFAULTS, ExpressionState,
+                          validate_expression_parameters, validate_expression_part_rebind, is_sha256)
+
+
+def _reference_identifier(value: str) -> str:
+    if type(value) is not str or not value.strip() or len(value) > 256 or any(ord(c) < 32 for c in value):
+        raise ValidationError('Animation reference requires a bounded source identifier')
+    return value
 
 
 class CharacterSession:
@@ -63,6 +73,162 @@ class CharacterSession:
     def rename(self, value: str) -> CharacterProject:
         return self._commit(replace(self._project, name=value))
 
+    def attach_animation_reference(self, clip_id: str) -> CharacterProject:
+        """Metadata intent only; a job must verify source and target boundaries."""
+        _reference_identifier(clip_id)
+        if clip_id in self._project.animations:
+            return self._project
+        return self._commit(replace(self._project, animations=(*self._project.animations, clip_id)))
+
+    def detach_animation_reference(self, clip_id: str) -> CharacterProject:
+        if type(clip_id) is not str:
+            raise ValidationError('Select an existing animation reference')
+        return self._commit(replace(self._project, animations=tuple(x for x in self._project.animations if x != clip_id)))
+
+    def accept_saved_animation_references(self, saved: CharacterProject) -> CharacterProject:
+        """Adopt one source-reference transaction without changing master intent."""
+        if saved == self._project:
+            return saved
+        added = set(saved.animations)-set(self._project.animations)
+        removed = set(self._project.animations)-set(saved.animations)
+        if len(added)+len(removed) != 1:
+            raise ValidationError('Saved reference transaction must attach or detach one identifier')
+        if added: _reference_identifier(next(iter(added)))
+        expected_refs = ((*self._project.animations, next(iter(added))) if added else
+                         tuple(x for x in self._project.animations if x not in removed))
+        expected = replace(self._project, animations=expected_refs, revision=self._project.revision+1)
+        if saved != expected:
+            raise ValidationError('Saved reference transaction changed unrelated character intent')
+        self._undo.append(self._project)
+        self._undo = self._undo[-self._history_limit:]
+        self._redo.clear(); self._project = saved
+        return saved
+
+    def set_face_parameter(self, name: str, value: float) -> CharacterProject:
+        """Record intent only; the later Blender transaction must apply real geometry."""
+        intent = validate_face_parameters({name: value})
+        if self._project.parts or self._project.animations:
+            raise CompatibilityError("Facial editing with attached parts or animations is not validated")
+        return self._set_face_intent(name, intent)
+
+    def set_referenced_face_parameter(self, name: str, value: float) -> CharacterProject:
+        """Save intent for the explicit prepared/reference transaction, not geometry."""
+        from .reference_master_intent import supports_referenced_master_intent
+        intent = validate_face_parameters({name: value})
+        if not supports_referenced_master_intent(self._project):
+            raise CompatibilityError('Reference-aware face intent requires a prepared MPFB character and supported hand')
+        return self._set_face_intent(name, intent)
+
+    def set_material_face_parameter(self, name: str, value: float) -> CharacterProject:
+        from .material_master_intent import supports_material_master_intent
+        intent=validate_face_parameters({name:value})
+        if not supports_material_master_intent(self._project):
+            raise CompatibilityError('Material-aware face intent requires a supported prepared character and hand')
+        return self._set_face_intent(name,intent)
+
+    def _set_face_intent(self, name: str, intent: dict) -> CharacterProject:
+        values = dict(self._project.facial_parameters)
+        if values.get(name, FACE_DEFAULTS[name]) == intent[name]:
+            return self._project
+        values.update(intent)
+        geometry = "generated_unverified" if self._project.master_blend else "not_generated"
+        return self._commit(replace(self._project, schema_version=max(2, self._project.schema_version),
+                                   facial_parameters=tuple(sorted(values.items())), geometry_state=geometry))
+
+    def set_expression_parameter(self, name: str, value: float) -> CharacterProject:
+        intent = validate_expression_parameters({name: value}, partial=True)
+        state = self._project.expression
+        if state is None:
+            raise CompatibilityError('Prepare real facial controls before setting expression preview strengths')
+        values = dict(state.parameters)
+        values.update(intent)
+        return self._commit(replace(self._project, expression=ExpressionState(
+            state.library_sha256, tuple(sorted(values.items())))))
+
+    def reset_expression(self) -> CharacterProject:
+        state = self._project.expression
+        if state is None:
+            raise CompatibilityError('No prepared facial controls to reset')
+        return self._commit(replace(self._project, expression=ExpressionState(
+            state.library_sha256, tuple(EXPRESSION_DEFAULTS.items()))))
+
+    def accept_saved_expression_master(self, saved: CharacterProject, *, library_sha256: str) -> CharacterProject:
+        """Adopt one completed neutral-key/hand composition as one history step."""
+        if (not is_sha256(library_sha256) or saved.expression is None
+                or saved.expression.library_sha256 != library_sha256):
+            raise ValidationError('Prepared expression result has a different library identity')
+        if saved == self._project:
+            return saved
+        if (self._project.expression is not None or not saved.expression.neutral
+                or saved.revision != self._project.revision+1 or saved.schema_version != 3
+                or saved.geometry_state != 'generated_unverified' or saved.rig_profile is not None
+                or saved.master_blend is None or saved.master_blend == self._project.master_blend):
+            raise ValidationError('Prepared expression master does not extend the current neutral source')
+        validate_expression_part_rebind(self._project.parts, saved.parts)
+        expected = replace(self._project, schema_version=3, expression=saved.expression,
+                           master_blend=saved.master_blend, parts=saved.parts,
+                           revision=saved.revision, geometry_state='generated_unverified', rig_profile=None)
+        if expected != saved:
+            raise ValidationError('Expression preparation changed unrelated character intent')
+        self._undo.append(self._project)
+        self._undo = self._undo[-self._history_limit:]
+        self._redo.clear()
+        self._project = saved
+        return saved
+
+    def accept_saved_master(self, saved: CharacterProject) -> CharacterProject:
+        """Keep an externally committed immutable-master pointer in session history."""
+        if saved == self._project:
+            return saved
+        previous, actual = self._project.to_dict(), saved.to_dict()
+        previous.pop('updated_at', None); actual.pop('updated_at', None)
+        if previous == actual:
+            self._project = saved
+            return saved
+        for field in ('master_blend', 'geometry_state', 'rig_profile', 'revision', 'updated_at'):
+            previous.pop(field, None); actual.pop(field, None)
+        if previous != actual or saved.revision != self._project.revision+1:
+            raise ValidationError('Saved master does not extend the exact current character intent')
+        self._undo.append(self._project)
+        self._undo = self._undo[-self._history_limit:]
+        self._redo.clear()
+        self._project = saved
+        return saved
+
+    def accept_saved_reference_master(self, saved: CharacterProject) -> CharacterProject:
+        """Adopt one independently verified reference/body/hand API result.
+
+        This is only exact metadata/history validation, never master admission.
+        The job layer must verify sources, applicable provenance and geometry.
+        """
+        if saved == self._project:
+            return saved
+        if (not supports_referenced_master_intent(self._project)
+                or saved.revision != self._project.revision+1 or saved.master_blend is None
+                or saved.geometry_state != 'generated_unverified' or saved.rig_profile is not None):
+            raise ValidationError('Saved reference-aware master does not extend the current revision')
+        if self._project.parts or saved.parts:
+            validate_expression_part_rebind(self._project.parts, saved.parts)
+        if saved.master_blend == self._project.master_blend and saved.parts == self._project.parts:
+            raise ValidationError('Unchanged reference-aware master must remain a verified no-op')
+        expected = replace(self._project, master_blend=saved.master_blend, parts=saved.parts,
+                           revision=saved.revision, geometry_state='generated_unverified', rig_profile=None)
+        if saved != expected:
+            raise ValidationError('Saved reference-aware master changed unrelated intent or source IDs')
+        self._undo.append(self._project)
+        self._undo = self._undo[-self._history_limit:]
+        self._redo.clear(); self._project = saved
+        return saved
+
+    def accept_saved_material_master(self, saved: CharacterProject,*,initial_assignment: bool=False) -> CharacterProject:
+        """Adopt a verified job result as one master/appearance/hand history step."""
+        if saved==self._project:return saved
+        from .material_master_intent import validate_material_master_adoption
+        validate_material_master_adoption(self._project,saved,initial_assignment=initial_assignment)
+        self._undo.append(self._project);self._undo=self._undo[-self._history_limit:]
+        self._redo.clear();self._project=saved
+        return saved
+
     def propose_part(self, asset_id: str) -> CharacterProject:
         asset = self._assets.get(asset_id)
         if asset is None:
@@ -80,6 +246,33 @@ class CharacterSession:
                                 slot=asset.slot, visible=True, status="proposed")
         replaced = tuple(p for p in self._project.parts if p.slot != asset.slot) + (proposal,)
         return self._commit(replace(self._project, parts=tuple(sorted(replaced, key=lambda p: p.slot))))
+
+    def accept_saved_part_master(self, saved: CharacterProject, *, manifest_sha256: str) -> CharacterProject:
+        """Accept a completed hand transaction as ONE part/master history step.
+
+        Hand selection stays provisional in the UI while Blender runs. The
+        revision API publishes the master pointer and proposed part together.
+        This method does not verify geometry; it accepts that saved API result.
+        """
+        from .hand_parts import hand_selection
+        previous_selection = hand_selection(self._project, manifest_sha256)
+        next_selection = hand_selection(saved, manifest_sha256)
+        if saved == self._project:
+            return saved
+        if (saved.revision != self._project.revision+1 or next_selection == previous_selection
+                or saved.geometry_state != 'generated_unverified' or saved.rig_profile is not None
+                or any(part.status != 'proposed' for part in saved.parts)):
+            raise ValidationError('Saved hand master does not extend the current selection/revision')
+        before, after = self._project.to_dict(), saved.to_dict()
+        for field in ('parts', 'master_blend', 'geometry_state', 'rig_profile', 'revision', 'updated_at'):
+            before.pop(field, None); after.pop(field, None)
+        if before != after:
+            raise ValidationError('Saved hand transaction changed unrelated character intent')
+        self._undo.append(self._project)
+        self._undo = self._undo[-self._history_limit:]
+        self._redo.clear()
+        self._project = saved
+        return saved
 
     def remove_part(self, slot: str) -> CharacterProject:
         get_slot(self._project.family, slot)

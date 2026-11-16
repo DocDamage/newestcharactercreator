@@ -19,10 +19,11 @@ from blender_bridge.native_hand_fit import angular_bones
 from blender_bridge.native_angular import angular_velocity
 
 
-def measure_saved_fit(bpy,root,options,*,source_frame_observer=None,fitted_frame_observer=None):
+def measure_saved_fit(bpy,root,options,*,source_frame_observer=None,fitted_frame_observer=None,context_factory=None):
     from mathutils import Matrix,Vector
-    baseline,profile,plan,state,reopened=(original_context(bpy,root,options) if source_frame_observer is None else
-        original_context(bpy,root,options,source_frame_observer=source_frame_observer))
+    context=original_context if context_factory is None else context_factory
+    baseline,profile,plan,state,reopened=(context(bpy,root,options) if source_frame_observer is None else
+        context(bpy,root,options,source_frame_observer=source_frame_observer))
     human,rig=open_fitted(bpy,root,options,baseline,profile,state)
     edges=evaluated_edges(bpy,human)
     bind=EdgeStrain(state['neutral'],edges);master=EdgeStrain(state['original'],edges)
@@ -62,7 +63,7 @@ def measure_saved_fit(bpy,root,options,*,source_frame_observer=None,fitted_frame
                 else:
                     delta=correction@previous_correction[name].inverted()
                     if delta.w<0:delta.negate()
-                    if plan.get('hand_rotations'):
+                    if plan.get('hand_rotations') or plan.get('active_frames') is not None:
                         velocity=Vector(angular_velocity(tuple(delta),plan['fps']))
                     else:
                         axis,angle=delta.to_axis_angle();velocity=axis*math.degrees(angle)*plan['fps']
@@ -104,6 +105,11 @@ def measure_saved_fit(bpy,root,options,*,source_frame_observer=None,fitted_frame
                 'skin_correction':{'corrected_vertices':changed,'max_correction_local':correction}})
         end_acceleration=max(v.length*plan['fps'] for v in previous_velocity.values())
         if end_acceleration>900.+.1:raise ValueError('Saved fit ends with discontinuous angular correction')
+        if 'active_frames' in plan:
+            from blender_bridge.native_symmetric_math import audit_symmetric
+            audit_symmetric(plan,[r['target_global_poses'] for r in baseline['full_timeline_frames']],
+                            [r['target_global_poses'] for r in plan['base_frames']],
+                            [r['target_global_poses'] for r in rows])
         check_scene(bpy,human,rig,baseline,profile,state)
         hashes={k:v for k,v in options.items() if k!='fit_report_sha256'}
         return {'schema_version':1,'policy':plan['policy'],'bindings':hashes,'measurement':'FRESH_SAVED_ACTION_V1',
@@ -140,9 +146,14 @@ def verify_fit(bpy,root,options):
     plan=load_fit(root,options,baseline,profile,{n:r['parent'] for n,r in actual['target_rest_frames'].items()})
     human=next(o for o in bpy.data.objects if o.type=='MESH' and len(o.data.vertices)>100)
     frames=plan['render_frames']
-    if frames is None:
-        active=[i for i,v in enumerate(plan['offsets'],1) if math.hypot(*v)>1e-7]
-        peak=max(active,key=lambda i:math.hypot(*plan['offsets'][i-1]))
+    if not frames:
+        if 'active_frames' in plan:
+            active=[i for i,v in enumerate(plan['active_frames'],1) if v]
+            peak=max(active,key=lambda i:sum(math.hypot(*plan[s]['offsets'][i-1])+math.hypot(*plan[s]['clavicle_rotations'][i-1])+
+                         (math.hypot(*plan[s]['hand_rotations'][i-1]) if plan[s]['hand_rotations'] else 0.) for s in ('left','right')))
+        else:
+            active=[i for i,v in enumerate(plan['offsets'],1) if math.hypot(*v)>1e-7]
+            peak=max(active,key=lambda i:math.hypot(*plan['offsets'][i-1]))
         chosen={1,baseline['source_frame_count'],active[0],active[-1],peak}
         for frame in range(1,baseline['source_frame_count']+1):
             if len(chosen)==5:break

@@ -16,7 +16,9 @@ def stage_native_fit(bpy,root,options):
     action=rig.animation_data.action.copy();action.name='UCC_PRIVATE_BOUNDED_TARGET_FIT_UNAPPROVED'
     rig.animation_data.action=action
     ordered=sorted(rig.pose.bones,key=lambda b:len(b.parent_recursive))
-    mapped=set(plan['targets']);root_name=plan['targets'][0];modified=set(plan['chain'])
+    mapped=set(plan['targets']);root_name=plan['targets'][0]
+    modified=({n for s in ('left','right') for n in (*plan[s]['chain'],plan[s]['clavicle'])}
+              if 'active_frames' in plan else set(plan['chain']))
     metrics={n:JointMotion(n) for n in mapped if n!=root_name};root_metric=RootRotation()
     inverse=rig.matrix_world.inverted();max_local_translation=max_scale_error=0.
     maximum_residual=0.

@@ -19,6 +19,8 @@ def job_hashes(operation):
 
 def checked_job(job):
     fields=job_hashes(job['operation']);options=job['options']
+    from blender_bridge.native_symmetric_policy import BASE_FIT_HASHES
+    if type(options) is dict and BASE_FIT_HASHES & set(options):fields |= BASE_FIT_HASHES
     if (job['input_project']!='candidate.blend' or type(options) is not dict or set(options)!=fields or
         any(type(v) is not str or len(v)!=64 or any(c not in '0123456789abcdef' for c in v) for v in options.values())):
         raise ValueError('Native fitting requires exact input hashes and fixed staged filenames')
@@ -91,6 +93,14 @@ def parse_fit(data,bindings,baseline,profile,parents):
 
 
 def load_fit(root,options,baseline,profile,parents):
+    if 'base_fit_policy_sha256' in options:
+        from blender_bridge.native_symmetric_policy import load_symmetric
+        plan=load_symmetric(root,options,baseline,profile,parents)
+        report=read_json(root/'base_fitted_timeline.json',options['base_fit_report_sha256'],64*1024*1024)
+        if type(report.get('frames')) is not list or len(report['frames'])!=baseline['source_frame_count']:
+            raise ValueError('Symmetric layer lacks complete canonical base poses')
+        plan['base_frames']=report['frames']
+        return plan
     bindings={k:options[k] for k in BASE_HASHES}
     return parse_fit(read_json(root/'contact_fit.json',options['fit_sha256'],512*1024),bindings,baseline,profile,parents)
 
@@ -119,5 +129,9 @@ def _arm_world_poses(plan,poses,frame):
 
 
 def fitted_world_poses(plan,poses,frame):
+    from blender_bridge.native_symmetric_policy import POLICY as SYMMETRIC_POLICY
+    if plan['policy']==SYMMETRIC_POLICY:
+        from blender_bridge.native_symmetric_math import symmetric_world_poses
+        return symmetric_world_poses(plan,poses,plan['base_frames'][frame-1]['target_global_poses'],frame)
     matrices=_arm_world_poses(plan,poses,frame)
     return orient(plan,matrices,frame) if plan.get('hand_rotations') else matrices

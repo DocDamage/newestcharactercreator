@@ -59,6 +59,24 @@ class ProjectStoreTests(unittest.TestCase):
             self.store.save(CharacterProject.new("Other"))
         self.assertEqual(path.read_bytes(), original_bytes)
 
+    def test_duplicate_and_nonfinite_project_json_is_never_rewritten(self):
+        original = self.store.save(CharacterProject.new("Legacy"))
+        v1 = json.dumps(original.to_dict())
+        v2 = json.dumps(replace(original, schema_version=2,
+                               facial_parameters=(("nose_width", .8),)).to_dict())
+        cases = [v1[:-1]+', "schema_version": 1}',
+                 v2.replace('"nose_width": 0.8', '"nose_width": 0.8, "nose_width": 0.7'),
+                 v2.replace('"nose_width": 0.8', '"nose_width": NaN')]
+        for raw in cases:
+            with self.subTest(raw=raw):
+                self.store.file.write_text(raw, encoding='utf-8')
+                before = self.store.file.read_bytes()
+                with self.assertRaises(ProjectStorageError):
+                    self.store.load()
+                with self.assertRaises(ProjectStorageError):
+                    self.store.save(replace(original, revision=2), expected_revision=original.revision)
+                self.assertEqual(self.store.file.read_bytes(), before)
+
     def test_atomic_replace_failure_retains_previous_revision(self):
         first = self.store.save(CharacterProject.new("Test"))
         old_bytes = (self.root / PROJECT_FILE).read_bytes()

@@ -11,7 +11,7 @@ from threading import Event
 import unittest
 
 from ucc.core.errors import ProjectConflict, ProjectStorageError, ValidationError
-from ucc.core.models import CharacterProject
+from ucc.core.models import CharacterProject, PartInstance
 from ucc.core.storage import ProjectStore
 from ucc.core.master_versions import stage_unverified_master
 from ucc.cli import main
@@ -50,6 +50,31 @@ class MasterRevisionTests(unittest.TestCase):
         self.assertEqual(first.master_path, second.master_path)
         self.assertTrue(second.reused)
         self.assertEqual(second.project.revision, first.project.revision + 1)
+
+    def test_explicit_part_intent_commits_with_pointer_and_failure_preserves_both(self):
+        part = PartInstance('unit-part', 'unit-asset', 'hand.L')
+        def fail():
+            raise RuntimeError('forced failure before atomic pointer/parts update')
+        with self.assertRaises(RuntimeError):
+            self.stage(proposed_parts=(part,), before_project_save=fail)
+        self.assertEqual(self.store.load(), self.initial)
+        result = self.stage(proposed_parts=(part,))
+        saved = self.store.load()
+        self.assertEqual(saved.parts, (part,))
+        self.assertEqual(saved.master_blend, result.project.master_blend)
+        self.assertEqual(saved.revision, self.initial.revision+1)
+        reset = self.stage(proposed_parts=())
+        self.assertEqual(reset.project.parts, ())
+        self.assertTrue(reset.reused)
+        self.assertEqual(result.master_path.read_bytes(), self.data)
+
+    def test_part_staging_never_grants_geometry_validation_or_accepts_bad_shape(self):
+        proposed = PartInstance('unit-part', 'unit-asset', 'hand.L')
+        for value in ([proposed], ('wrong-type',), (replace(proposed, status='geometry_validated'),),
+                      (proposed, replace(proposed, part_id='duplicate-slot'))):
+            with self.subTest(value=value), self.assertRaises(ValidationError):
+                self.stage(proposed_parts=value)
+        self.assertEqual(self.store.load(), self.initial)
 
     def test_new_revision_does_not_modify_original_master(self):
         first = self.stage()
@@ -118,6 +143,16 @@ class MasterRevisionTests(unittest.TestCase):
         self.assertEqual(self.store.load().name, "Concurrent editor")
         self.assertEqual(self.store.load().geometry_state, "not_generated")
 
+    def test_unversioned_external_metadata_edit_is_not_lost_at_atomic_commit(self):
+        def manual_edit():
+            raw=json.loads(self.store.file.read_text())
+            raw['name']='External editor kept the same revision'
+            self.store.file.write_text(json.dumps(raw))
+        with self.assertRaises(ProjectConflict):
+            self.stage(before_project_save=manual_edit,expected_project=self.initial)
+        self.assertEqual(self.store.load().name,'External editor kept the same revision')
+        self.assertEqual(self.store.load().master_blend,None)
+
     def test_existing_corrupted_hash_revision_rejected(self):
         digest = sha256(self.data).hexdigest()
         versions = self.store.root / "master" / "versions"
@@ -178,6 +213,22 @@ class MasterRevisionTests(unittest.TestCase):
     def test_bad_size_limit(self):
         with self.assertRaises(ValidationError):
             self.stage(max_bytes=0)
+
+    def test_appearance_and_master_commit_together_with_failure_rollback(self):
+        appearance=(('existing','preserved'),('ucc.body_material.v1','a'*64))
+        def fail():raise RuntimeError('UNIT final appearance commit rejected')
+        with self.assertRaises(RuntimeError):self.stage(proposed_appearance=appearance,before_project_save=fail)
+        self.assertEqual(self.store.load(),self.initial)
+        result=self.stage(proposed_appearance=appearance)
+        self.assertEqual(result.project.appearance,appearance)
+        self.assertEqual(self.store.load().appearance,appearance)
+        self.assertEqual(self.store.load().master_blend,result.project.master_blend)
+
+    def test_invalid_or_duplicate_appearance_stops_before_master_install(self):
+        for appearance in ([('key','value')],(('same','one'),('same','two')),(('key',1),),(('key',''),)):
+            with self.subTest(appearance=appearance),self.assertRaises(ValidationError):self.stage(proposed_appearance=appearance)
+        self.assertEqual(self.store.load(),self.initial)
+        self.assertFalse((self.store.root/'master').exists())
 
 
 if __name__ == "__main__":

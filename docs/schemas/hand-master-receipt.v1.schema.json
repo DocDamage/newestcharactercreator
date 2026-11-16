@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/DocDamage/newestcharactercreator/tree/main/docs/schemas/hand-master-receipt.v1.schema.json",
+  "title": "Immutable compatible hand master revision receipt v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "policy",
+    "manifest_sha256",
+    "master_sha256",
+    "original_master_sha256",
+    "selection",
+    "observation_sha256"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "policy": {
+      "const": "SOURCE_BOUND_MPFB_JOINED_HAND_ASSETS_V1"
+    },
+    "manifest_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "master_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "original_master_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "selection": {
+      "enum": [
+        "shorter",
+        "longer"
+      ]
+    },
+    "observation_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

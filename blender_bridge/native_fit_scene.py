@@ -20,6 +20,10 @@ def input_hashes(options):
            'target_timeline.json':'timeline_sha256','contact_fit.json':'fit_sha256'}
     if 'fitted_sha256' in options:names['fitted_motion.blend']='fitted_sha256'
     if 'fit_report_sha256' in options:names['fitted_timeline.json']='fit_report_sha256'
+    if 'base_fit_policy_sha256' in options:
+        names.update({'base_contact_fit.json':'base_fit_policy_sha256',
+                      'base_fitted_motion.blend':'base_fitted_sha256',
+                      'base_fitted_timeline.json':'base_fit_report_sha256'})
     return {name:options[key] for name,key in names.items()}
 
 
@@ -56,6 +60,9 @@ def bone_controls(rig):
 
 
 def original_context(bpy,root,options,*,source_frame_observer=None):
+    if 'base_fit_policy_sha256' in options:
+        from blender_bridge.native_symmetric_scene import symmetric_context
+        return symmetric_context(bpy,root,options,source_frame_observer=source_frame_observer)
     unchanged(root,options)
     base={k:options[k] for k in BASE_HASHES}
     reopened=(reopen_native(bpy,root,base) if source_frame_observer is None else

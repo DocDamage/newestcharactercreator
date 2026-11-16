@@ -15,6 +15,7 @@ from threading import Event
 from ucc.core.errors import ProjectConflict, ProjectStorageError, ValidationError
 from ucc.core.master_versions import MAX_BLEND_BYTES
 from ucc.core.storage import ProjectStore
+from ucc.core.skin_material import SkinMaterialSpec
 from ucc.preview.glb_mesh import MAX_SOURCE_BYTES, PreviewMesh, load_glb_preview
 
 from .protocol import JobRequest
@@ -31,6 +32,8 @@ class MasterPreview:
     glb_sha256: str
     selected_vertex_count: int
     blender_version: str
+    full_surface: bool = False
+    watched_inputs: tuple[tuple[str,str], ...] = ()
 
     @property
     def certified_for_engine_import(self) -> bool:
@@ -84,9 +87,15 @@ def preview_saved_master(
     expected_master_blend: str,
     cancel: Event | None = None,
     timeout_s: float = 300,
+    full_surface: bool = False,
+    material_spec: SkinMaterialSpec | None = None,
 ) -> MasterPreview:
     """Read and preview the selected saved master without changing project JSON."""
     project = store.load()
+    if type(full_surface) is not bool:
+        raise ValidationError('Full static preview selection must be explicit Boolean')
+    if material_spec is not None and (not isinstance(material_spec,SkinMaterialSpec) or not full_surface):
+        raise ValidationError('Material preview requires an explicit owned material and complete surface')
     if (project.project_id != expected_project_id or
             project.revision != expected_revision or
             project.master_blend != expected_master_blend):
@@ -108,10 +117,14 @@ def preview_saved_master(
         raise ProjectStorageError("Private Blender job directory is redirected")
 
     runner = BlenderJobRunner(exe, work_root, script)
-    job = JobRequest.new("export_preview_glb", input_project="candidate.blend")
+    job = JobRequest.new("export_preview_glb", input_project="candidate.blend",
+                         options={} if material_spec is None else {'owned_material_spec':material_spec.to_dict()})
     outcome, directory = runner.run(job, timeout_s=timeout_s, cancel=cancel,
                                     staged_inputs={"candidate.blend": master})
     details = outcome.details
+    if material_spec is not None and (details.get('owned_material_spec')!=material_spec.to_dict()
+            or details.get('smooth_normals_exported') is not True):
+        raise ProjectStorageError('Blender preview lacks owned shader and smooth-normal evidence')
     if (details.get("staged_glb") != "preview.glb" or
             details.get("static_only") is not True or
             details.get("evaluated_geometry_baked") is not True or
@@ -137,7 +150,10 @@ def preview_saved_master(
     ):
         raise ProjectStorageError("Blender preview GLB is missing or oversized")
     _check_cancel(cancel)
-    mesh = load_glb_preview(output)
+    if material_spec is not None:
+        from ucc.preview.material_surface import load_material_surface
+        mesh=load_material_surface(output,material_spec)
+    else:mesh = load_glb_preview(output, full_surface=True) if full_surface else load_glb_preview(output)
     if mesh.source_face_count == 0:
         raise ProjectStorageError("Blender preview contains no displayable mesh faces")
     glb_hash = _digest(output, cancel)
@@ -151,4 +167,4 @@ def preview_saved_master(
         raise ProjectConflict("Saved master or project changed during preview; discard old preview")
     return MasterPreview(mesh, project.project_id, project.revision, expected_master_blend,
                          expected_hash, glb_hash, details["selected_vertex_count"],
-                         details["blender_version"])
+                         details["blender_version"], full_surface)

@@ -27,12 +27,90 @@ class SchemaTests(unittest.TestCase):
 
     def test_all_schema_files_load(self):
         files = list((ROOT / "docs" / "schemas").glob("*.schema.json"))
-        self.assertEqual(len(files), 16)
+        self.assertEqual(len(files), 28)
         for path in files:
             with self.subTest(path=path.name):
                 schema = self.read_schema(path.name)
                 self.assertEqual(schema["$schema"], "https://json-schema.org/draft/2020-12/schema")
                 self.assertFalse(schema["additionalProperties"])
+
+    @unittest.skipIf(Draft202012Validator is None,'Optional jsonschema is not installed')
+    def test_hand_library_manifest_and_revision_receipt_are_closed(self):
+        from copy import deepcopy
+        from dataclasses import replace
+        from ucc.core.hand_parts import build_hand_library_recipe,build_hand_manifest,build_hand_receipt
+        project=replace(CharacterProject.new('Hand schema contract only'),master_blend='master/versions/'+('a'*64)+'.blend',
+                        geometry_state='generated_unverified',schema_version=2,facial_parameters=(('nose_width',.2),))
+        recipe=build_hand_library_recipe(project,'a'*64)
+        manifest=build_hand_manifest(recipe,{'shorter':{'sha256':'b'*64,'observation_sha256':'c'*64},
+                                           'longer':{'sha256':'d'*64,'observation_sha256':'e'*64}})
+        receipt=build_hand_receipt('a'*64,'b'*64,'c'*64,'shorter','d'*64)
+        for filename,value in [('hand-library-recipe.v1.schema.json',recipe),
+                              ('hand-library-manifest.v1.schema.json',manifest),
+                              ('hand-master-receipt.v1.schema.json',receipt)]:
+            schema=self.read_schema(filename);Draft202012Validator.check_schema(schema)
+            validator=Draft202012Validator(schema);validator.validate(value)
+            for field in value:
+                broken=deepcopy(value);del broken[field]
+                with self.subTest(schema=filename,field=field):self.assertTrue(list(validator.iter_errors(broken)))
+            broken=deepcopy(value);broken['extra']='ignored'
+            self.assertTrue(list(validator.iter_errors(broken)))
+        validator=Draft202012Validator(self.read_schema('hand-library-manifest.v1.schema.json'))
+        for edit in (lambda r:r['rights'].update(no_ai=False),
+                     lambda r:r['rights'].update(source_redistribution_authorized=True),
+                     lambda r:r['recipe'].update(slot='hand.R'),
+                     lambda r:r['recipe']['variants'][0].update(asset_file='../outside.blend'),
+                     lambda r:r['recipe']['source']['body_parameters'].update(extra=.5)):
+            broken=deepcopy(manifest);edit(broken);self.assertTrue(list(validator.iter_errors(broken)))
+
+    @unittest.skipIf(Draft202012Validator is None, 'Optional jsonschema is not installed')
+    def test_hand_asset_schema_requires_complete_pinned_inputs(self):
+        from ucc.core.hand_parts import TARGETS, METADATA_SHA256
+        validator = Draft202012Validator(self.read_schema('worker-job.v1.schema.json'))
+        result_validator = Draft202012Validator(self.read_schema('worker-result.v1.schema.json'))
+        for operation in ('build_mpfb_hand_assets', 'verify_mpfb_hand_assets'):
+            options = {'master_sha256':'a'*64, 'recipe_sha256':'b'*64, 'metadata_sha256':METADATA_SHA256,
+                       **{t.variant+'_target_sha256':t.sha256 for t in TARGETS}}
+            if operation.startswith('verify'):
+                options.update(shorter_asset_sha256='c'*64, longer_asset_sha256='d'*64, assets_report_sha256='e'*64)
+            request = JobRequest.new(operation, input_project='candidate.blend', options=options)
+            validator.validate(request.as_dict())
+            result_validator.validate(JobResult(request.job_id, operation, 'ok', {}).as_dict())
+            for field in options:
+                raw=request.as_dict();raw['options']=dict(options);del raw['options'][field]
+                with self.subTest(operation=operation, field=field):
+                    self.assertTrue(list(validator.iter_errors(raw)))
+            for broken in (dict(options, extra='a'*64), dict(options, shorter_target_sha256='f'*64)):
+                raw=request.as_dict();raw['options']=broken
+                self.assertTrue(list(validator.iter_errors(raw)))
+            raw=request.as_dict();raw['input_project']='alternate.blend'
+            self.assertTrue(list(validator.iter_errors(raw)))
+
+    @unittest.skipIf(Draft202012Validator is None, 'Optional jsonschema is not installed')
+    def test_facial_worker_schema_rejects_partial_or_substituted_bindings(self):
+        from ucc.core.facial import NOSE_TARGETS
+        validator = Draft202012Validator(self.read_schema('worker-job.v1.schema.json'))
+        for operation in ('stage_mpfb_face', 'verify_mpfb_face'):
+            options = {'master_sha256': 'a'*64, 'recipe_sha256': 'b'*64,
+                       **{t.role+'_target_sha256': t.sha256 for t in NOSE_TARGETS}}
+            if operation.startswith('verify'):
+                options.update(face_sha256='c'*64, report_sha256='d'*64)
+            job = JobRequest.new(operation, input_project='candidate.blend', options=options)
+            validator.validate(job.as_dict())
+            for field in options:
+                partial = dict(options); del partial[field]
+                raw = job.as_dict(); raw['options'] = partial
+                with self.subTest(operation=operation, field=field):
+                    self.assertTrue(list(validator.iter_errors(raw)))
+            for bad in (dict(options, narrow_target_sha256='e'*64), dict(options, extra='a'*64)):
+                raw = job.as_dict(); raw['options'] = bad
+                self.assertTrue(list(validator.iter_errors(raw)))
+            raw = job.as_dict(); raw['input_project'] = 'elsewhere.blend'
+            self.assertTrue(list(validator.iter_errors(raw)))
+        inspection = JobRequest.new('inspect_mpfb_face_assets').as_dict()
+        validator.validate(inspection)
+        inspection['options'] = {'data_dir': '../elsewhere'}
+        self.assertTrue(list(validator.iter_errors(inspection)))
 
     @unittest.skipIf(Draft202012Validator is None, "Install jsonschema to validate v1 contracts")
     def test_schema_draft_and_sample_objects(self):
@@ -115,6 +193,28 @@ class SchemaTests(unittest.TestCase):
         data["unknown"] = "unapproved"
         errors = list(Draft202012Validator(self.read_schema("character-project.v1.schema.json")).iter_errors(data))
         self.assertTrue(errors)
+
+    @unittest.skipIf(Draft202012Validator is None, "Optional JSON Schema validator unavailable")
+    def test_explicit_v2_facial_project_and_closed_recipe(self):
+        from ucc.core.commands import CharacterSession
+        from ucc.core.facial import build_face_recipe
+        project = CharacterSession(CharacterProject.new('Facial intent')).set_face_parameter('nose_width', .8)
+        project_validator = Draft202012Validator(self.read_schema('character-project.v2.schema.json'))
+        recipe_validator = Draft202012Validator(self.read_schema('face-recipe.v1.schema.json'))
+        for schema in (project_validator.schema, recipe_validator.schema):
+            Draft202012Validator.check_schema(schema)
+        project_validator.validate(project.to_dict())
+        self.assertTrue(list(project_validator.iter_errors(CharacterProject.new('v1').to_dict())))
+        bad = project.to_dict();bad['facial_parameters']['unapproved'] = .5
+        self.assertTrue(list(project_validator.iter_errors(bad)))
+        for value in (0., .5, 1.):
+            recipe_validator.validate(build_face_recipe('a'*64, {'nose_width': value}))
+        bad = build_face_recipe('a'*64, {'nose_width': .8});bad['targets'][0]['file'] = '../custom.target'
+        self.assertTrue(list(recipe_validator.iter_errors(bad)))
+        bad = build_face_recipe('a'*64, {'nose_width': .8});bad['bindings']['wide_target_sha256'] = 'b'*64
+        self.assertTrue(list(recipe_validator.iter_errors(bad)))
+        bad = build_face_recipe('a'*64, {'nose_width': .8});bad['targets'][0]['weight'] = .2
+        self.assertTrue(list(recipe_validator.iter_errors(bad)))
 
     @unittest.skipIf(Draft202012Validator is None, "Optional JSON Schema validator unavailable")
     def test_source_rest_and_reviewed_worker_contracts(self):

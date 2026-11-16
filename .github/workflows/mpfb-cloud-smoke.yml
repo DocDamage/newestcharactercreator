@@ -12,8 +12,59 @@ on:
       - 'Stage0_Starter/tools/run_mpfb_smoke.py'
       - 'ci/verify_production_worker.py'
       - 'ci/verify_project_generation.py'
+      - 'ci/verify_custom_face.py'
+      - 'ci/verify_hand_parts.py'
+      - 'ci/verify_expressions.py'
+      - 'ci/verify_source_references.py'
+      - 'ci/source_reference_*.py'
+      - 'ci/verify_reference_creator.py'
+      - 'ci/reference_creator_*.py'
+      - 'ci/verify_plain_reference.py'
+      - 'ci/plain_reference_*.py'
+      - 'tests/test_plain_reference_ci.py'
+      - 'tests/test_reference_creator_ci.py'
+      - 'tests/fixtures/blender_source_reference_faults.py'
+      - 'src/ucc/animations/project_references.py'
+      - 'src/ucc/animations/catalog_clip.py'
+      - 'src/ucc/jobs/catalog_clip.py'
+      - 'src/ucc/jobs/fbx_catalog.py'
+      - 'src/ucc/jobs/neutral_master.py'
+      - 'src/ucc/jobs/project_animation_references.py'
+      - 'src/ucc/jobs/animation_reference_storage.py'
+      - 'src/ucc/jobs/reference_*.py'
+      - 'ci/verify_regional_skin.py'
+      - 'ci/regional_*.py'
+      - 'tests/fixtures/blender_regional*.py'
+      - 'ci/expression_*_checks.py'
+      - 'tests/fixtures/blender_expression*.py'
+      - 'src/ucc/core/expression*.py'
+      - 'src/ucc/jobs/expression_*.py'
+      - 'src/ucc/preview/expression_cache.py'
+      - 'ci/hand_*_checks.py'
+      - 'tests/fixtures/blender_hand_faults.py'
+      - 'src/ucc/core/hand_parts.py'
+      - 'src/ucc/core/commands.py'
+      - 'src/ucc/core/models.py'
+      - 'src/ucc/animations/catalog*.py'
+      - 'src/ucc/animations/fbx*.py'
+      - 'src/ucc/animations/metadata.py'
+      - 'src/ucc/jobs/fbx_intake.py'
+      - 'src/ucc/library/provenance.py'
+      - 'tests/test_source_reference_ci.py'
+      - 'src/ucc/core/storage.py'
+      - 'src/ucc/jobs/hand_*.py'
+      - 'tests/fixtures/blender_face_checks.py'
+      - 'src/ucc/core/facial.py'
+      - 'src/ucc/jobs/face_*.py'
+      - 'src/ucc/jobs/customized_humanoid.py'
       - 'ci/verify_native_body.py'
       - 'ci/verify_native_fit.py'
+      - 'ci/verify_symmetric_fit.py'
+      - 'src/ucc/animations/symmetric*.py'
+      - 'src/ucc/jobs/symmetric_fit_evidence.py'
+      - 'tests/fixtures/blender_symmetric_math.py'
+      - 'tests/fixtures/blender_symmetric_action_faults.py'
+      - 'tests/fixtures/symmetric*'
       - 'ci/verify_hand_fit.py'
       - 'src/ucc/animations/hand_fit.py'
       - 'ci/verify_contact_candidate.py'
@@ -70,8 +121,59 @@ on:
       - 'Stage0_Starter/tools/run_mpfb_smoke.py'
       - 'ci/verify_production_worker.py'
       - 'ci/verify_project_generation.py'
+      - 'ci/verify_custom_face.py'
+      - 'ci/verify_hand_parts.py'
+      - 'ci/verify_expressions.py'
+      - 'ci/verify_source_references.py'
+      - 'ci/source_reference_*.py'
+      - 'ci/verify_reference_creator.py'
+      - 'ci/reference_creator_*.py'
+      - 'ci/verify_plain_reference.py'
+      - 'ci/plain_reference_*.py'
+      - 'tests/test_plain_reference_ci.py'
+      - 'tests/test_reference_creator_ci.py'
+      - 'tests/fixtures/blender_source_reference_faults.py'
+      - 'src/ucc/animations/project_references.py'
+      - 'src/ucc/animations/catalog_clip.py'
+      - 'src/ucc/jobs/catalog_clip.py'
+      - 'src/ucc/jobs/fbx_catalog.py'
+      - 'src/ucc/jobs/neutral_master.py'
+      - 'src/ucc/jobs/project_animation_references.py'
+      - 'src/ucc/jobs/animation_reference_storage.py'
+      - 'src/ucc/jobs/reference_*.py'
+      - 'ci/verify_regional_skin.py'
+      - 'ci/regional_*.py'
+      - 'tests/fixtures/blender_regional*.py'
+      - 'ci/expression_*_checks.py'
+      - 'tests/fixtures/blender_expression*.py'
+      - 'src/ucc/core/expression*.py'
+      - 'src/ucc/jobs/expression_*.py'
+      - 'src/ucc/preview/expression_cache.py'
+      - 'ci/hand_*_checks.py'
+      - 'tests/fixtures/blender_hand_faults.py'
+      - 'src/ucc/core/hand_parts.py'
+      - 'src/ucc/core/commands.py'
+      - 'src/ucc/core/models.py'
+      - 'src/ucc/animations/catalog*.py'
+      - 'src/ucc/animations/fbx*.py'
+      - 'src/ucc/animations/metadata.py'
+      - 'src/ucc/jobs/fbx_intake.py'
+      - 'src/ucc/library/provenance.py'
+      - 'tests/test_source_reference_ci.py'
+      - 'src/ucc/core/storage.py'
+      - 'src/ucc/jobs/hand_*.py'
+      - 'tests/fixtures/blender_face_checks.py'
+      - 'src/ucc/core/facial.py'
+      - 'src/ucc/jobs/face_*.py'
+      - 'src/ucc/jobs/customized_humanoid.py'
       - 'ci/verify_native_body.py'
       - 'ci/verify_native_fit.py'
+      - 'ci/verify_symmetric_fit.py'
+      - 'src/ucc/animations/symmetric*.py'
+      - 'src/ucc/jobs/symmetric_fit_evidence.py'
+      - 'tests/fixtures/blender_symmetric_math.py'
+      - 'tests/fixtures/blender_symmetric_action_faults.py'
+      - 'tests/fixtures/symmetric*'
       - 'ci/verify_hand_fit.py'
       - 'src/ucc/animations/hand_fit.py'
       - 'ci/verify_contact_candidate.py'
@@ -124,16 +226,17 @@ permissions:
 
 concurrency:
   group: mpfb-cloud-smoke-${{ github.ref }}
-  cancel-in-progress: true
+  # Preserve healthy integration work when a new reviewed checkpoint is pushed.
+  cancel-in-progress: false
 
 jobs:
   verify-mpfb-linux:
-    name: ${{ matrix.suite == 'regression' && 'verify-mpfb-linux' || matrix.suite == 'native-fit' && 'verify-native-fit-linux' || 'verify-body-contacts-linux' }}
+    name: ${{ matrix.suite == 'regression' && 'verify-mpfb-linux' || matrix.suite == 'native-fit' && 'verify-native-fit-linux' || matrix.suite == 'symmetric-fit' && 'verify-symmetric-fit-linux' || matrix.suite == 'regional-skin' && 'verify-regional-skin-linux' || matrix.suite == 'source-references' && 'verify-source-references-linux' || matrix.suite == 'reference-creator' && 'verify-reference-creator-linux' || 'verify-body-contacts-linux' }}
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
-        suite: [regression, native-fit, body-contacts]
+        suite: [regression, native-fit, body-contacts, symmetric-fit, regional-skin, source-references, reference-creator]
     # The full 300-frame neutral-reference regression completed at the old
     # 25-minute job boundary (including tool setup), cancelling a passing run.
     # Keep every integration assertion and allow bounded setup/runner headroom.
@@ -160,7 +263,14 @@ jobs:
     # failure after the first full hand-policy fault copy was authored. The
     # second hand/body-shape contract and final source-contact negatives remain.
     # Preserve all gates and individual worker limits; bound this suite at 3h.
-    timeout-minutes: ${{ matrix.suite == 'native-fit' && 180 || matrix.suite == 'body-contacts' && 90 || 40 }}
+    # The separate layer gate reopens the complete original/base/new sequence
+    # in every process and retains both anatomical comparison workers.
+    # Regression also runs the bounded original-only facial gate (three builds,
+    # existing-body refit, 80 poses and seven faults); retain explicit headroom.
+    # Expression regression adds three prepared bodies, preservation, a registered
+    # hand, complete 25-frame previews and thirteen faults. Keep earlier gates
+    # and individual subprocess bounds, with explicit regression headroom.
+    timeout-minutes: ${{ matrix.suite == 'native-fit' && 180 || matrix.suite == 'symmetric-fit' && 120 || matrix.suite == 'body-contacts' && 90 || matrix.suite == 'regional-skin' && 90 || matrix.suite == 'reference-creator' && 90 || matrix.suite == 'source-references' && 90 || 120 }}
     env:
       PYTHONUNBUFFERED: '1'
     steps:
@@ -255,6 +365,59 @@ jobs:
           python3 ci/verify_project_generation.py \
             --blender "$BLENDER_EXE" \
             --outdir "$RUNNER_TEMP/ucc-project-integration"
+      - name: Verify original MPFB facial generation, body refit, 80 poses and saved-scene faults
+        if: matrix.suite == 'regression'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ci/verify_custom_face.py \
+            --blender "$BLENDER_EXE" \
+            --outdir "$RUNNER_TEMP/ucc-custom-face"
+      - name: Verify compatible hand assets, swaps, complete skin poses and saved-scene faults
+        if: matrix.suite == 'regression'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ci/verify_hand_parts.py \
+            --blender "$BLENDER_EXE" \
+            --source-root "$RUNNER_TEMP/ucc-custom-face" \
+            --outdir "$RUNNER_TEMP/ucc-hand-parts"
+      - name: Verify original expressions, preservation, registered hand and all saved frames
+        if: matrix.suite == 'regression'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ci/verify_expressions.py \
+            --blender "$BLENDER_EXE" \
+            --source-root "$RUNNER_TEMP/ucc-hand-parts" \
+            --outdir "$RUNNER_TEMP/ucc-expressions"
+      - name: Verify original regional skin on three bodies, all 900 frames and saved/transaction faults
+        if: matrix.suite == 'regional-skin'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ci/verify_regional_skin.py \
+            --blender "$BLENDER_EXE" \
+            --outdir "$RUNNER_TEMP/ucc-regional-skin"
+      - name: Verify original source catalog, bound references, hand editing and actual guards
+        if: matrix.suite == 'source-references'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ci/verify_source_references.py \
+            --blender "$BLENDER_EXE" \
+            --outdir "$RUNNER_TEMP/ucc-source-references"
+      - name: Verify original reference-aware body, face, expression and transaction guards
+        if: matrix.suite == 'reference-creator'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ci/verify_reference_creator.py \
+            --blender "$BLENDER_EXE" \
+            --outdir "$RUNNER_TEMP/ucc-reference-creator"
+          python3 ci/verify_plain_reference.py \
+            --blender "$BLENDER_EXE" \
+            --outdir "$RUNNER_TEMP/ucc-plain-reference"
       - name: Verify original full-timeline target fitting and real saved-scene corruptions
         if: matrix.suite == 'native-fit'
         shell: bash
@@ -271,6 +434,17 @@ jobs:
           python3 ci/verify_body_contacts.py \
             --blender "$BLENDER_EXE" \
             --outdir "$RUNNER_TEMP/ucc-body-contacts"
+      - name: Verify independent shoulder math and complete real MPFB layer workflow
+        if: matrix.suite == 'symmetric-fit'
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$BLENDER_EXE" --background --factory-startup --disable-autoexec --python-exit-code 13 \
+            --python tests/fixtures/blender_symmetric_math.py -- \
+            --output "$RUNNER_TEMP/ucc-symmetric-math.json"
+          python3 ci/verify_symmetric_fit.py \
+            --blender "$BLENDER_EXE" \
+            --outdir "$RUNNER_TEMP/ucc-symmetric-fit"
       - name: Retain JSON diagnostics only; no assets or .blend in artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -282,7 +456,16 @@ jobs:
             ${{ runner.temp }}/ucc-mpfb-smoke/reopen_result.json
             ${{ runner.temp }}/ucc-production-worker/production_summary.json
             ${{ runner.temp }}/ucc-project-integration/transaction_summary.json
+            ${{ runner.temp }}/ucc-custom-face/custom_face_summary.json
+            ${{ runner.temp }}/ucc-hand-parts/hand_parts_summary.json
+            ${{ runner.temp }}/ucc-expressions/expression_summary.json
+            ${{ runner.temp }}/ucc-regional-skin/regional_skin_summary.json
+            ${{ runner.temp }}/ucc-source-references/source_reference_summary.json
+            ${{ runner.temp }}/ucc-reference-creator/reference_creator_summary.json
+            ${{ runner.temp }}/ucc-plain-reference/plain_reference_summary.json
             ${{ runner.temp }}/ucc-native-fit/native_fit_summary.json
             ${{ runner.temp }}/ucc-body-contacts/body_contact_summary.json
+            ${{ runner.temp }}/ucc-symmetric-math.json
+            ${{ runner.temp }}/ucc-symmetric-fit/symmetric_fit_summary.json
           if-no-files-found: ignore
           retention-days: 3

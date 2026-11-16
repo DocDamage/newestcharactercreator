@@ -100,10 +100,12 @@ def validate_profile(data, source_sha, snapshot_sha, master_sha):
         raise ValueError("Native map convention/binding differs")
     if "root_motion_policy" in data and (type(data["root_motion_policy"]) is not str or data["root_motion_policy"] not in {"ARMATURE_ORIGIN_DISPLACEMENT_V1", "SOURCE_HIP_MIDPOINT_V1"}):
         raise ValueError("Invalid explicit native root-motion policy")
-    if "skin_deformation_policy" in data and (type(data["skin_deformation_policy"]) is not str or data["skin_deformation_policy"] not in {"MASTER_MODIFIERS_V1","BOUND_CORRECTIVE_SMOOTH_V1"}):
+    if "skin_deformation_policy" in data and (type(data["skin_deformation_policy"]) is not str or data["skin_deformation_policy"] not in {"MASTER_MODIFIERS_V1","BOUND_CORRECTIVE_SMOOTH_V1","BOUND_REGIONAL_CORRECTIVE_SMOOTH_V2"}):
         raise ValueError("Invalid explicit native skin-deformation policy")
     if "mesh_strain_reference" in data and (type(data["mesh_strain_reference"]) is not str or data["mesh_strain_reference"] not in {"FIRST_POSE_AND_NEUTRAL_V1","TRUE_NEUTRAL_BIND_V2"}):
         raise ValueError("Invalid explicit native mesh-strain reference")
+    if data.get("skin_deformation_policy")=="BOUND_REGIONAL_CORRECTIVE_SMOOTH_V2" and data.get("mesh_strain_reference")!="TRUE_NEUTRAL_BIND_V2":
+        raise ValueError("Regional skin requires the actual neutral-bind strain reference")
     pairs=data["pairs"]
     if type(pairs) is not list or not 15<=len(pairs)<=64: raise ValueError("Native map needs 15–64 explicit pairs")
     sources,targets,exact=set(),set(),{}

@@ -1,7 +1,25 @@
-"""Blender-side palm declaration, branch and actual rest-geometry verification."""
+"""Versioned palm geometry: V1 mathutils corners, V2 declared snapshot precision."""
 import math
 
 PALM_AXES={"PALM_LEFT_V1":"left","PALM_RIGHT_V1":"right"}
+
+
+def source_rest_points(source: dict) -> dict[str, list[float]]:
+    """Transform validated snapshot heads before mathutils rounds their values.
+
+    Creation and reopening must measure the same declared source geometry as
+    the independent host reader, rather than a float32 copy of its corners.
+    The caller has already validated the complete source snapshot.
+    """
+    world = source["armature_rest_world"]
+    return {
+        bone["name"]: [
+            sum(world[row * 4 + axis] * bone["head"][axis] for axis in range(3))
+            + world[row * 4 + 3]
+            for row in range(3)
+        ]
+        for bone in source["bones"]
+    }
 
 
 def validate_palm_profile(profile: dict) -> None:
@@ -10,9 +28,9 @@ def validate_palm_profile(profile: dict) -> None:
         if "hand_reference_planes" in profile:raise ValueError("Unused native palm declaration")
         return
     declaration=profile.get("hand_reference_planes")
-    if (profile.get("skin_deformation_policy")!="BOUND_CORRECTIVE_SMOOTH_V1" or
+    if (profile.get("skin_deformation_policy") not in {"BOUND_CORRECTIVE_SMOOTH_V1", "BOUND_REGIONAL_CORRECTIVE_SMOOTH_V2"} or
             type(declaration) is not dict or set(declaration)!={"schema_version","planes"} or
-            type(declaration["schema_version"]) is not int or declaration["schema_version"]!=1 or
+            type(declaration["schema_version"]) is not int or declaration["schema_version"] not in (1,2) or
             type(declaration["planes"]) is not dict or set(declaration["planes"])!=used):
         raise ValueError("Native palm axes require versioned planes and independent corrective-skin reopening")
     mapping={r["source"]:r["target"] for r in profile["pairs"]}
@@ -64,10 +82,15 @@ def normal(points: dict, height: float) -> list[float]:
 
 
 def measure_planes(profile: dict, source_points: dict, target_points: dict,
-                   source_parents: dict, target_parents: dict, source_height: float, target_height: float) -> dict | None:
+                   source_parents: dict, target_parents: dict, source_height: float, target_height: float,
+                   *, source_snapshot: dict | None = None) -> dict | None:
     validate_palm_profile(profile)
     declaration=profile.get("hand_reference_planes")
     if declaration is None:return None
+    if declaration["schema_version"] == 2:
+        if source_snapshot is None:
+            raise ValueError("V2 palm references require the validated source snapshot")
+        source_points=source_rest_points(source_snapshot)
     for parents,domain in ((source_parents,"source"),(target_parents,"target")):
         check_branches(profile,parents,domain)
     planes={}
@@ -78,7 +101,7 @@ def measure_planes(profile: dict, source_points: dict, target_points: dict,
                      **{key:list(points[row[domain]]) for key,row in plane.items()}}
             measured[domain]=(corners,normal(corners,height))
         planes[side]={"target_points":measured["target"][0],"source_normal":measured["source"][1],"target_normal":measured["target"][1]}
-    return {"schema_version":1,"planes":planes}
+    return {"schema_version":declaration["schema_version"],"planes":planes}
 
 
 def reopen_planes(profile: dict, source: dict, rig, timeline: dict) -> int:
@@ -88,13 +111,14 @@ def reopen_planes(profile: dict, source: dict, rig, timeline: dict) -> int:
         return 0
     from mathutils import Matrix,Vector
     from blender_bridge.native_reference import body_frame
+    # Existing V1 receipts retain their original float32 corner arithmetic.
     sw=Matrix([source["armature_rest_world"][i:i+4] for i in range(0,16,4)])
     sp={b["name"]:sw@Vector(b["head"]) for b in source["bones"]}
     tp={b.name:rig.matrix_world@b.head_local for b in rig.data.bones}
     sh=body_frame(*(tuple(sp[profile["landmarks"][k]["source"]]) for k in ("left_hip","right_hip","head")))[1]
     th=body_frame(*(tuple(tp[profile["landmarks"][k]["target"]]) for k in ("left_hip","right_hip","head")))[1]
     expected=measure_planes(profile,sp,tp,{b["name"]:b["parent"] for b in source["bones"]},
-        {b.name:b.parent.name if b.parent else None for b in rig.data.bones},sh,th)
+        {b.name:b.parent.name if b.parent else None for b in rig.data.bones},sh,th,source_snapshot=source)
     def same(actual,wanted):
         if type(wanted) is not type(actual):return False
         if type(actual) is dict:return set(actual)==set(wanted) and all(same(v,wanted[k]) for k,v in actual.items())

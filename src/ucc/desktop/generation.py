@@ -13,7 +13,10 @@ from threading import Event
 from ucc.core.errors import ValidationError
 from ucc.core.storage import ProjectStore
 from ucc.jobs.humanoid_generation import HumanoidGeneration, generate_humanoid
+from ucc.jobs.reference_master_revision import ReferencedMasterResult
 from ucc.jobs.body_revision import BodyRevisionResult, apply_saved_body_revision
+from ucc.jobs.customized_humanoid import CustomizedHumanoidBuild
+from ucc.jobs.skin_material_revision import SkinMaterialRevision,MaterialMasterNoOp
 from ucc.jobs.master_preview import MasterPreview, preview_saved_master
 from ucc.jobs.pose_diagnostic import SavedMasterPoseCheck, check_saved_master_pose
 from ucc.jobs.timeline_diagnostic import SavedTimelineDiagnostic, check_saved_master_timeline
@@ -27,6 +30,12 @@ def bundled_worker_path() -> Path:
     else:
         base = Path(__file__).resolve().parents[3]
     worker = base / "blender_bridge" / "entrypoint.py"
+    if getattr(sys, "frozen", False):
+        from ucc.core.worker_payload import validate_worker_payload, WorkerPayloadError
+        try:
+            validate_worker_payload(base)
+        except (WorkerPayloadError, OSError) as error:
+            raise ValidationError("Bundled Blender worker payload is incomplete or changed") from error
     service = worker.parent / "mpfb_service.py"
     preview = worker.parent / "preview_export.py"
     morphs = worker.parent / "morphs.py"
@@ -47,6 +56,15 @@ def bundled_worker_path() -> Path:
     private_renders = worker.parent / "private_review_render.py"
     fbx_source = worker.parent / "fbx_source.py"
     native_files=[worker.parent/name for name in ("native_reference.py","native_inputs.py","native_retarget.py","native_timeline.py","native_skin.py","native_anchor.py","native_corrective.py","native_skin_stack.py","native_review_reopen.py","native_playback_cache.py")]
+    native_files += [worker.parent/name for name in ('face_policy.py', 'face_geometry.py',
+                    'face_materials.py', 'face_operations.py', 'face_assets.py')]
+    native_files += [worker.parent/name for name in ('hand_policy.py', 'hand_geometry.py', 'hand_assets.py')]
+    native_files += [worker.parent/name for name in ('hand_master.py','hand_revision.py','hand_pose_checks.py')]
+    native_files += [worker.parent/'hand_bounds.py']
+    native_files += [worker.parent/name for name in ('expression_policy.py', 'expression_geometry.py',
+                                                   'expression_prepare.py', 'expression_existing.py')]
+    native_files += [worker.parent/name for name in ('expression_clip_policy.py', 'expression_clip_action.py',
+                                                   'expression_clip_surface.py', 'expression_clip_workers.py', 'neutral_master.py')]
     if (not worker.is_file() or worker.is_symlink()
             or not service.is_file() or service.is_symlink()
             or not preview.is_file() or preview.is_symlink()
@@ -82,7 +100,28 @@ def generate_from_desktop(
     project_id: str,
     revision: int,
     cancel: Event,
-) -> HumanoidGeneration:
+    database_path: Path | None = None,
+    master_blend: str | None = None,
+) -> HumanoidGeneration | CustomizedHumanoidBuild | ReferencedMasterResult | SkinMaterialRevision | MaterialMasterNoOp:
+    snapshot = store.load()
+    from ucc.core.skin_material import APPEARANCE_KEY
+    if APPEARANCE_KEY in dict(snapshot.appearance):
+        from .material_master_workflow import run_material_master
+        return run_material_master(store,operation='body_generation',blender_exe=blender_exe,
+            project_id=project_id,revision=revision,master_blend=master_blend,cancel=cancel)
+    if snapshot.animations:
+        from .reference_master_workflow import run_referenced_master
+        return run_referenced_master(store, database_path, operation="body_generation",
+            blender_exe=blender_exe, project_id=project_id, revision=revision,
+            master_blend=master_blend, cancel=cancel)
+    if store.load().facial_parameters or store.load().expression is not None:
+        from ucc.jobs.customized_humanoid import generate_customized_humanoid
+        from ucc.jobs.face_discovery import discover_face_data
+        script = bundled_worker_path()
+        data = discover_face_data(store, blender_exe=blender_exe, worker_script=script, cancel=cancel)
+        return generate_customized_humanoid(
+            store, blender_exe=blender_exe, worker_script=script, mpfb_data_dir=data,
+            expected_project_id=project_id, expected_revision=revision, cancel=cancel)
     return generate_humanoid(
         store, blender_exe=blender_exe, worker_script=bundled_worker_path(),
         expected_project_id=project_id, expected_revision=revision,
@@ -99,10 +138,20 @@ def preview_master_from_desktop(
     master_blend: str,
     cancel: Event,
 ) -> MasterPreview:
+    project=store.load()
+    from ucc.core.skin_material import APPEARANCE_KEY
+    if APPEARANCE_KEY in dict(project.appearance):
+        from ucc.jobs.material_master_preview import preview_material_master
+        from ucc.jobs.face_discovery import discover_face_data
+        worker=bundled_worker_path()
+        data=discover_face_data(store,blender_exe=blender_exe,worker_script=worker,cancel=cancel)
+        return preview_material_master(store,blender_exe=blender_exe,worker_script=worker,mpfb_data_dir=data,
+            expected_project_id=project_id,expected_revision=revision,expected_master_blend=master_blend,cancel=cancel)
     return preview_saved_master(
         store, blender_exe=blender_exe, worker_script=bundled_worker_path(),
         expected_project_id=project_id, expected_revision=revision,
         expected_master_blend=master_blend, cancel=cancel, timeout_s=300,
+        full_surface=bool(project.facial_parameters or project.parts or project.expression),
     )
 
 
@@ -114,7 +163,27 @@ def refit_from_desktop(
     revision: int,
     master_blend: str,
     cancel: Event,
-) -> BodyRevisionResult:
+    database_path: Path | None = None,
+) -> BodyRevisionResult | CustomizedHumanoidBuild | ReferencedMasterResult | SkinMaterialRevision | MaterialMasterNoOp:
+    from ucc.core.skin_material import APPEARANCE_KEY
+    if APPEARANCE_KEY in dict(store.load().appearance):
+        from .material_master_workflow import run_material_master
+        return run_material_master(store,operation='body_refit',blender_exe=blender_exe,
+            project_id=project_id,revision=revision,master_blend=master_blend,cancel=cancel)
+    if store.load().animations:
+        from .reference_master_workflow import run_referenced_master
+        return run_referenced_master(store, database_path, operation="body_refit",
+            blender_exe=blender_exe, project_id=project_id, revision=revision,
+            master_blend=master_blend, cancel=cancel)
+    if store.load().facial_parameters or store.load().expression is not None:
+        from ucc.jobs.customized_humanoid import apply_saved_customized_body_revision
+        from ucc.jobs.face_discovery import discover_face_data
+        script = bundled_worker_path()
+        data = discover_face_data(store, blender_exe=blender_exe, worker_script=script, cancel=cancel)
+        return apply_saved_customized_body_revision(
+            store, blender_exe=blender_exe, worker_script=script, mpfb_data_dir=data,
+            expected_project_id=project_id, expected_revision=revision,
+            expected_master_blend=master_blend, cancel=cancel)
     return apply_saved_body_revision(
         store, blender_exe=blender_exe, worker_script=bundled_worker_path(),
         expected_project_id=project_id, expected_revision=revision,

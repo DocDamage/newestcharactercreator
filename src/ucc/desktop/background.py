@@ -42,6 +42,10 @@ class BackgroundJobs(QObject):
     def busy(self) -> bool:
         return self._thread is not None
 
+    @property
+    def cancel_requested(self) -> bool:
+        return self._cancel is not None and self._cancel.is_set()
+
     def submit(self, func: Callable[[], Any], *, cancel: Event | None = None) -> bool:
         if self.busy:
             return False

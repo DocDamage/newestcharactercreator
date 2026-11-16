@@ -7,7 +7,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QCheckBox, QComboBox, QFormLayout, QGroupBox, QHBoxLayout, QLabel,
     QLineEdit, QPushButton, QSlider, QSpinBox, QTableWidget, QTableWidgetItem,
-    QTextEdit, QVBoxLayout, QWidget, QFileDialog, QScrollArea,
+    QTextEdit, QVBoxLayout, QWidget, QFileDialog, QScrollArea, QListWidget,
 )
 
 from ucc.core.anatomy import slot_catalog
@@ -27,7 +27,13 @@ class CharacterPane(QWidget):
 
     def __init__(self) -> None:
         super().__init__()
-        layout = QVBoxLayout(self)
+        outer = QVBoxLayout(self)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        content = QWidget()
+        scroll.setWidget(content)
+        outer.addWidget(scroll)
+        layout = QVBoxLayout(content)
         self.heading = QLabel("Open or create a character project to begin")
         self.heading.setWordWrap(True)
         self.heading.setStyleSheet("font-size: 16px; font-weight: 600;")
@@ -80,6 +86,18 @@ class CharacterPane(QWidget):
         )
         self.note.setWordWrap(True)
         layout.addWidget(self.note)
+        from .face_controls import FaceControls
+        self.face = FaceControls()
+        layout.addWidget(self.face)
+        from .skin_material_controls import SkinMaterialControls
+        self.material=SkinMaterialControls()
+        layout.addWidget(self.material)
+        from .hand_controls import HandControls
+        self.hands=HandControls()
+        layout.addWidget(self.hands)
+        from .expression_controls import ExpressionControls
+        self.expressions = ExpressionControls()
+        layout.addWidget(self.expressions)
 
         self.advanced = QGroupBox("Anatomy sockets and export status")
         adv_layout = QVBoxLayout(self.advanced)
@@ -113,9 +131,9 @@ class CharacterPane(QWidget):
         self.generate.setEnabled(False)
         generate_layout.addWidget(self.generate)
         generation_note = QLabel(
-            "Save slider changes first. Generating again creates a new immutable master "
-            "and preserves older revisions; previously edited mesh parts are not carried "
-            "forward. Animation skinning and game-engine export remain unverified."
+            "Save settings first. Generation creates a new master and keeps earlier revisions. "
+            "Compatible hand selections are retained where supported; other attachments remain blocked. "
+            "Animation quality and game-engine export require separate verification."
         )
         generation_note.setWordWrap(True)
         generate_layout.addWidget(generation_note)
@@ -169,6 +187,12 @@ class CharacterPane(QWidget):
     def set_active(self, active: bool) -> None:
         self.identity.setEnabled(active)
         self.morph_box.setEnabled(active)
+        self.face.setEnabled(active)
+        if not active:self.material.setEnabled(False)
+        self.hands.setEnabled(active)
+        self.expressions.setEnabled(active)
+        if not active:
+            self.face.apply.setEnabled(False)
         self.generate.setEnabled(active)
         self.apply_body.setEnabled(False)
         self.check_rig_pose.setEnabled(False)
@@ -182,6 +206,10 @@ class CharacterPane(QWidget):
 
     def display(self, view: ProjectView) -> None:
         self.set_active(True)
+        self.face.display(view)
+        self.expressions.display(view)
+        self.morph_box.setEnabled(view.part_count==0 or view.referenced_master_intent or view.material_master_intent)
+        self.morph_box.setToolTip('Restore the original hand before changing body settings.' if view.part_count and not (view.referenced_master_intent or view.material_master_intent) else '')
         self.heading.setText(view.name + ("  •  unsaved edits" if view.dirty else ""))
         if self.name.text() != view.name:
             self.name.blockSignals(True)
@@ -220,6 +248,8 @@ class AnimationPane(QWidget):
     native_renders_open_requested = Signal()
     native_playback_requested = Signal()
     refresh_requested = Signal()
+    reference_attach_requested = Signal()
+    reference_detach_requested = Signal()
 
     def __init__(self) -> None:
         super().__init__()
@@ -263,7 +293,9 @@ class AnimationPane(QWidget):
         row = QHBoxLayout()
         self.inspect = QPushButton("Inspect selected file")
         self.inspect.clicked.connect(lambda: self.inspect_requested.emit(self.selected.text()))
-        self.index = QPushButton("Index as unreviewed")
+        self.index = QPushButton("Index selected source")
+        self.index.setToolTip("Reviewed local FBX inputs are measured in Blender before source clips are indexed. "
+                              "Without local review, indexing stores unreviewed metadata only.")
         self.index.clicked.connect(lambda: self.index_requested.emit(
             self.selected.text(), self.asset_id.text(), self.provider.text(),
             self.license.text(), self.uri.text()))
@@ -428,6 +460,42 @@ class AnimationPane(QWidget):
         self.catalog.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.catalog.horizontalHeader().setStretchLastSection(True)
         layout.addWidget(self.catalog, 1)
+        references = QGroupBox("Character source references")
+        reference_layout = QVBoxLayout(references)
+        info = QLabel("Attach measured sources to this saved character. Target playback and engine checks run separately.")
+        info.setWordWrap(True); reference_layout.addWidget(info)
+        self.references = QListWidget(); self.references.setMaximumHeight(120)
+        reference_layout.addWidget(self.references)
+        buttons = QHBoxLayout()
+        self.attach_reference = QPushButton("Attach selected source reference")
+        self.detach_reference = QPushButton("Detach selected reference")
+        self.attach_reference.clicked.connect(self.reference_attach_requested.emit)
+        self.detach_reference.clicked.connect(self.reference_detach_requested.emit)
+        buttons.addWidget(self.attach_reference); buttons.addWidget(self.detach_reference)
+        reference_layout.addLayout(buttons); layout.addWidget(references)
+        self._reference_target_ready = False
+        self.catalog.currentCellChanged.connect(lambda *_: self._refresh_reference_buttons())
+        self.references.currentRowChanged.connect(lambda *_: self._refresh_reference_buttons())
+        self._refresh_reference_buttons()
+
+    def set_reference_target_ready(self, ready: bool) -> None:
+        self._reference_target_ready = ready
+        self._refresh_reference_buttons()
+
+    def display_reference_ids(self, identifiers: tuple[str, ...]) -> None:
+        selected = self.references.currentItem().text() if self.references.currentItem() else None
+        self.references.clear(); self.references.addItems(identifiers)
+        if selected in identifiers: self.references.setCurrentRow(identifiers.index(selected))
+        elif identifiers: self.references.setCurrentRow(0)
+        self._refresh_reference_buttons()
+
+    def _refresh_reference_buttons(self) -> None:
+        row = self.catalog.currentRow()
+        measured = (row >= 0 and all(self.catalog.item(row, i) is not None for i in range(4)) and
+                    [self.catalog.item(row, i).text() for i in (1, 2, 3)] == ['fbx', '1', 'METADATA_EXTRACTED'])
+        self.attach_reference.setEnabled(self._reference_target_ready and measured)
+        self.detach_reference.setEnabled(self._reference_target_ready and self.references.currentItem() is not None)
+
 
     def choose_source_rest_profile(self) -> None:
         path, _ = QFileDialog.getOpenFileName(
@@ -450,6 +518,7 @@ class AnimationPane(QWidget):
             values = (item["asset_id"], item["format"], str(len(item["clips"])), item["status"])
             for col, value in enumerate(values):
                 self.catalog.setItem(row, col, QTableWidgetItem(value))
+        self._refresh_reference_buttons()
 
 
 class ToolsPane(QWidget):

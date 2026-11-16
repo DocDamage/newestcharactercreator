@@ -44,7 +44,7 @@ def layout(include_hands=False):
     return rows
 
 
-def author(master: Path,folder: Path,*,origin="target-root",corrective_challenge=False,posed_origin_challenge=False,include_hands=False):
+def author(master: Path,folder: Path,*,origin="target-root",corrective_challenge=False,posed_origin_challenge=False,include_hands=False,symmetric_challenge=False):
     folder.mkdir(parents=True,exist_ok=False)
     before=sha256(master.read_bytes()).hexdigest()
     bpy.ops.wm.open_mainfile(filepath=str(master),load_ui=False)
@@ -119,6 +119,10 @@ def author(master: Path,folder: Path,*,origin="target-root",corrective_challenge
             bone.rotation_mode="XYZ"
             bone.rotation_euler.x=math.radians(3)*math.sin(2*math.pi*t+i*.2)
             if bone.name==names["upperarm01.L"]:bone.rotation_euler.x+=math.radians(7)
+            if symmetric_challenge and bone.name in {names['lowerarm01.L'],names['lowerarm01.R']}:
+                # This separate nonshipping test needs two stable elbow poles.
+                # Retain all prior fixture variants and production IK guards.
+                bone.rotation_euler.x+=math.radians(12)*math.sin(math.pi*t)**2
             if corrective_challenge and bone.name in {names["spine05"],names["upperleg01.L"]}:
                 # Original analytic opposing bend, not sampled owner motion.
                 # V2 starts in the already-tested opposing-bend pose and
@@ -331,7 +335,8 @@ if __name__=="__main__":
     parser.add_argument("--corrective-challenge",action="store_true")
     parser.add_argument("--posed-origin-challenge",action="store_true")
     parser.add_argument("--include-hands",action="store_true")
+    parser.add_argument('--symmetric-challenge',action='store_true')
     args=parser.parse_args(sys.argv[sys.argv.index("--")+1:])
-    if args.mode=="author":author(args.master,args.folder,origin=args.origin,corrective_challenge=args.corrective_challenge,posed_origin_challenge=args.posed_origin_challenge,include_hands=args.include_hands)
+    if args.mode=="author":author(args.master,args.folder,origin=args.origin,corrective_challenge=args.corrective_challenge,posed_origin_challenge=args.posed_origin_challenge,include_hands=args.include_hands,symmetric_challenge=args.symmetric_challenge)
     elif args.mode=="reopen":reopen(args.review,args.timeline,args.output)
     else:fault(args.master,args.job,args.folder)
