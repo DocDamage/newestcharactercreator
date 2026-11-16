@@ -1,5 +1,23 @@
 # UCC development status - November 16, 2026
 
+## Registered Godot source preparation - local API checkpoint
+
+[UCC-P1-GODOT-MOTION-001A](acceptance/UCC-P1-GODOT-MOTION-001A.md) now prepares
+private native source inputs from a selected saved target binding while retaining
+all animation IDs and source policies. Two fresh Blender workers independently
+verify all 300 frames; source/data preservation, a live caller cancellation and
+a coherently rehashed saved material-slot fault pass within their recorded scope.
+The final cold-source run passes in 192.5015 seconds without creating caches.
+The required-Qt suite passes 1,736 tests: 1,722 passed and fourteen existing
+Windows privilege skips. Source launcher and complete worker-payload checks pass.
+
+This is a private source-preparation API. It adds no GUI export, executes no
+Godot/runtime code and publishes no engine project. The six experimental runtime
+files stay outside Git; code provenance/delivery and full runtime acceptance
+remain separate. The acceptance record distinguishes final source and historical
+negative identities; exact-head publication gates are tracked separately.
+
+
 ## Verified consolidation - November 16, 2026
 
 The verified workflow stack entered `main` through [PR #73](https://github.com/DocDamage/newestcharactercreator/pull/73), merge `85ac06b10b89c28b7beb5f4cee00d32487a92a9f`. Its tree exactly matches accepted candidate `687d110`: all five exact-head workflows, seven Linux archives / 40 diagnostic records, combined source review, and the current Windows package / normal saved Load passed independent admission. Historical native jobs retain their original producer identities.
