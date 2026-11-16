@@ -108,6 +108,9 @@ class MainWindow(QMainWindow):
         from .unity_export_workflow import start_unity_export
         self.unity_export_action=self._action(menu,'Export private Unity character…','',lambda:start_unity_export(self))
         self.unity_export_action.setEnabled(False)
+        from .unreal_export_workflow import start_unreal_export
+        self.unreal_export_action=self._action(menu,'Export private Unreal character…','',lambda:start_unreal_export(self))
+        self.unreal_export_action.setEnabled(False)
         from .sprite_workflow import start_sprite
         self.sprite_export_action=self._action(menu,'Render character sprite sample…','',lambda:start_sprite(self))
         self.sprite_export_action.setEnabled(False)
@@ -237,6 +240,8 @@ class MainWindow(QMainWindow):
         refresh_export(self)
         from .unity_export_workflow import refresh_unity_export
         refresh_unity_export(self)
+        from .unreal_export_workflow import refresh_unreal_export
+        refresh_unreal_export(self)
         from .sprite_workflow import refresh_sprite
         refresh_sprite(self)
         from .facial_sprite_workflow import refresh_facial_sprite
@@ -390,10 +395,12 @@ class MainWindow(QMainWindow):
             self.undo_action.setEnabled(not busy and state.can_undo)
             self.redo_action.setEnabled(not busy and state.can_redo)
         self.cancel_generation_action.setEnabled(
-            busy and self._work_kind in {"facial_sprite_export", "sprite_export", "godot_export", "unity_export", "unity_export_review", "skin_material", "expression_prepare", "expression_preview", "generate_humanoid", "saved_master_preview", "body_refit", "face_revision", "hand_library", "hand_revision", "hand_preview", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain", "native_body", "native_playback", "fbx_intake", "fbx_catalog", "animation_reference_attach", "animation_reference_detach", "fitted_comparison", "body_contacts"}
+            busy and self._work_kind in {"facial_sprite_export", "sprite_export", "godot_export", "unity_export", "unity_export_review", "unreal_export", "unreal_export_review", "skin_material", "expression_prepare", "expression_preview", "generate_humanoid", "saved_master_preview", "body_refit", "face_revision", "hand_library", "hand_revision", "hand_preview", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain", "native_body", "native_playback", "fbx_intake", "fbx_catalog", "animation_reference_attach", "animation_reference_detach", "fitted_comparison", "body_contacts"}
         )
         self.statusBar().showMessage(
             ("Rendering and independently reopening the character sprite sample..." if self._work_kind in {'sprite_export','facial_sprite_export'} else
+             "Reviewing saved Unreal source identities..." if self._work_kind=='unreal_export_review' else
+             "Exporting and checking the published static Unreal project..." if self._work_kind=='unreal_export' else
              "Reviewing saved Unity source identities..." if self._work_kind=='unity_export_review' else
              "Exporting and checking the published Unity project..." if self._work_kind=='unity_export' else
              "Exporting and independently checking the Godot character package..." if self._work_kind=='godot_export' else
@@ -439,7 +446,7 @@ class MainWindow(QMainWindow):
              "Measuring native FBX source skeleton and complete timeline..."
              if self._work_kind in {"fbx_intake", "fbx_catalog"} else
              "Converting saved Blender master to a static GLB preview...")
-            if busy and self._work_kind in {"facial_sprite_export", "sprite_export", "godot_export", "unity_export", "unity_export_review", "skin_material", "expression_prepare", "expression_preview", "generate_humanoid", "saved_master_preview", "body_refit", "face_revision", "hand_library", "hand_revision", "hand_preview", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain", "native_body", "native_playback", "fbx_intake", "fbx_catalog", "animation_reference_attach", "animation_reference_detach", "fitted_comparison", "body_contacts"}
+            if busy and self._work_kind in {"facial_sprite_export", "sprite_export", "godot_export", "unity_export", "unity_export_review", "unreal_export", "unreal_export_review", "skin_material", "expression_prepare", "expression_preview", "generate_humanoid", "saved_master_preview", "body_refit", "face_revision", "hand_library", "hand_revision", "hand_preview", "skin_pose_check", "keyframed_timeline", "local_bvh_motion", "multi_bvh_chain", "calibrated_bvh_chain", "reviewed_bvh_chain", "native_body", "native_playback", "fbx_intake", "fbx_catalog", "animation_reference_attach", "animation_reference_detach", "fitted_comparison", "body_contacts"}
             else ("Working on local files..." if busy else "Local task finished")
         )
 
@@ -463,6 +470,8 @@ class MainWindow(QMainWindow):
         refresh_export(self)
         from .unity_export_workflow import refresh_unity_export
         refresh_unity_export(self)
+        from .unreal_export_workflow import refresh_unreal_export
+        refresh_unreal_export(self)
         from .sprite_workflow import refresh_sprite
         refresh_sprite(self)
         from .facial_sprite_workflow import refresh_facial_sprite
@@ -470,12 +479,20 @@ class MainWindow(QMainWindow):
         if not busy:
             from .unity_export_workflow import resume_unity_source_review
             resume_unity_source_review(self)
+            from .unreal_export_workflow import resume_unreal_source_review
+            resume_unreal_source_review(self)
 
     def _job_success(self, result: object) -> None:
         from .target_action_workflow import KINDS, finish_target_action
         if self._work_kind in KINDS:
             finish_target_action(self, result)
             return
+        if self._work_kind=='unreal_export_review':
+            from .unreal_export_workflow import finish_unreal_source_review
+            finish_unreal_source_review(self,result);return
+        if self._work_kind=='unreal_export':
+            from .unreal_export_workflow import finish_unreal_export
+            finish_unreal_export(self,result);return
         if self._work_kind=='unity_export_review':
             from .unity_export_workflow import finish_unity_source_review
             finish_unity_source_review(self,result);return
@@ -788,6 +805,9 @@ class MainWindow(QMainWindow):
         if self._work_kind in KINDS:
             target_action_error(self, error)
             return
+        if self._work_kind in {'unreal_export','unreal_export_review'}:
+            from .unreal_export_workflow import unreal_export_error
+            unreal_export_error(self,error);return
         if self._work_kind in {'unity_export','unity_export_review'}:
             from .unity_export_workflow import unity_export_error
             unity_export_error(self,error);return

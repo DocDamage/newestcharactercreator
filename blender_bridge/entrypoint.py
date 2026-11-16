@@ -96,6 +96,13 @@ OPERATIONS|={'stage_mpfb_sprite_sample','verify_mpfb_sprite_sample'}
 OPERATIONS|={'stage_mpfb_facial_sprites','verify_mpfb_facial_sprites'}
 OPERATIONS|={'stage_mpfb_unity_source','verify_mpfb_unity_source'}
 OPERATIONS|={'stage_mpfb_unity_runtime_source','verify_mpfb_unity_runtime_source'}
+OPERATIONS|={'stage_mpfb_unreal_source','verify_mpfb_unreal_source'}
+
+
+def unreal_source(job: dict,root: Path) -> dict:
+    activate_material_contract()
+    from blender_bridge.unreal_source_workers import stage,verify
+    return (stage if job['operation']=='stage_mpfb_unreal_source' else verify)(bpy,root,job)
 
 
 def unity_source(job: dict,root: Path) -> dict:
@@ -537,6 +544,8 @@ def main() -> int:
                   'stage_mpfb_skin_material': skin_material_revision,
                   'verify_mpfb_skin_material': skin_material_revision,
                   'stage_mpfb_unity_source': unity_source,
+                  'stage_mpfb_unreal_source': unreal_source,
+                  'verify_mpfb_unreal_source': unreal_source,
                   'verify_mpfb_unity_source': unity_source,
                   'stage_mpfb_unity_runtime_source': unity_runtime_source,
                   'verify_mpfb_unity_runtime_source': unity_runtime_source,

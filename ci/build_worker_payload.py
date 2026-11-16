@@ -69,6 +69,9 @@ def build_payload(repo: Path, destination: Path) -> dict:
     from ucc.core.worker_payload import UNITY_ADAPTER,UNITY_ADAPTER_FILES
     for name in UNITY_ADAPTER_FILES:
         sources[UNITY_ADAPTER+'/'+name] = repo/'engine_adapters/unity'/name
+    from ucc.core.worker_payload import UNREAL_ADAPTER,UNREAL_ADAPTER_FILES
+    for name in UNREAL_ADAPTER_FILES:
+        sources[UNREAL_ADAPTER+'/'+name] = repo/'engine_adapters/unreal'/name
     sources['blender_bridge/payload_contract.py'] = src / 'ucc/core/worker_payload.py'
     snapshots = {}
     for relative, path in sources.items():

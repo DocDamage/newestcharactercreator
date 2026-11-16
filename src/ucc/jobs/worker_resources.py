@@ -6,6 +6,7 @@ from ucc.core.errors import ValidationError
 from ucc.core.worker_payload import validate_worker_payload, WorkerPayloadError, SUPPORT, ADAPTER, ADAPTER_FILES
 from ucc.core.worker_payload import STATIC_ADAPTER
 from ucc.core.worker_payload import UNITY_ADAPTER,UNITY_ADAPTER_FILES
+from ucc.core.worker_payload import UNREAL_ADAPTER,UNREAL_ADAPTER_FILES
 
 
 def worker_dependency_files(worker: Path) -> set[Path]:
@@ -65,4 +66,20 @@ def bundled_unity_adapter_paths() -> dict[str,Path]:
     files={name:root/name for name in sorted(UNITY_ADAPTER_FILES)}
     if any(path.is_symlink() or not path.is_file() or path.resolve()!=path or not 0<path.stat().st_size<=256*1024 for path in files.values()):
         raise ValidationError('Unity adapter resources are missing, redirected or oversized')
+    return files
+
+
+def bundled_unreal_adapter_paths() -> dict[str,Path]:
+    """Enumerated first-party editor verification sources, never installed SDKs."""
+    if getattr(sys,'frozen',False):
+        base=Path(sys._MEIPASS)
+        try:validate_worker_payload(base)
+        except (WorkerPayloadError,OSError) as error:
+            raise ValidationError('Bundled Unreal adapter is incomplete or changed') from error
+        root=base/UNREAL_ADAPTER
+    else:root=Path(__file__).resolve().parents[3]/'engine_adapters/unreal'
+    files={name:root/name for name in sorted(UNREAL_ADAPTER_FILES)}
+    if any(path.is_symlink() or not path.is_file() or path.resolve()!=path
+           or not 0<path.stat().st_size<=256*1024 for path in files.values()):
+        raise ValidationError('Unreal adapter sources are missing, redirected or oversized')
     return files

@@ -6,6 +6,7 @@ on:
       - 'src/ucc/core/**'
       - 'src/ucc/preview/**'
       - 'src/ucc/jobs/**'
+      - 'src/ucc/export/**'
       - 'tests/test_*qt.py'
       - 'tests/fixtures/**'
       - 'tests/test_motion_*.py'
@@ -14,6 +15,8 @@ on:
       - 'tests/test_unity_export_desktop.py'
       - 'tests/test_target_action_dialog.py'
       - 'tests/test_target_action_desktop.py'
+      - 'tests/test_unreal_export_dialog.py'
+      - 'tests/test_unreal_export_desktop.py'
       - 'pyproject.toml'
       - '.github/workflows/desktop-tests.yml'
   push:
@@ -77,3 +80,7 @@ jobs:
         run: python -m unittest discover -s tests -p test_target_action_dialog.py -v
       - name: Run target saved-load and preview lifetime tests (no Blender claim)
         run: python -m unittest discover -s tests -p test_target_action_desktop.py -v
+      - name: Run Unreal per-use review dialog tests (real Qt, no skips)
+        run: python -m unittest discover -s tests -p test_unreal_export_dialog.py -v
+      - name: Run Unreal desktop static export workflow tests (real Qt, no engine claim)
+        run: python -m unittest discover -s tests -p test_unreal_export_desktop.py -v

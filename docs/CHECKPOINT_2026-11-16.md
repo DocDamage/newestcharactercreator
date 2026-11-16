@@ -1,5 +1,30 @@
 # Universal Character Creator checkpoint — November 16, 2026
 
+## Safe stop requested by the user
+
+The user requested a safe stop. Both e42 frozen-app sessions and their monitors
+are closed normally; all 48 observed process identities are terminal. Final
+independent native, transport, invalidation/restoration, precommit cancellation,
+preservation and private ZIP/extracted-startup gates passed for that historical
+e42 product. Its exact 726 physical source/cache files are archived privately.
+
+The accepted Unreal parent `abb1becd` is now combined with the target branch in
+an explicitly **unvalidated WIP integration checkpoint**. Four conflicts were
+resolved, retaining both feature dispatches and CI test sets; eleven inherited
+UI text encoding sequences were repaired from canonical target text. No combined
+regression, build, normal frozen saved Load or final-head CI acceptance has run.
+Independent source review is incomplete. PR #73 must remain draft; do not merge.
+
+On resumption, inspect the durable local handoff, current Git/CI state and this
+WIP diff, finish independent integration review, then run the combined regression
+before building and checking the matching package. Healthy remote CI was left
+running; do not restart or cancel it solely because this chat was paused.
+
+The remaining sections retain the earlier preservation snapshot and complete
+blueprint backlog. Their older held-app and pending-e42 statements are historical
+and superseded by this safe-stop notice and the updated acceptance record.
+
+
 Task: repository preservation and whole-project handoff. This records the state
 after product checkpoint `1b23bac` and Unreal integration `abb1becd`.
 The entire locked blueprint remains unfinished and active.

@@ -6,19 +6,26 @@ are merged into `feat/anim-007-plain-reference-edits` at `abb1becd`.
 Main remains `2c03434`; these changes have not been merged into main.
 
 The current independent batch is [registered private target actions](acceptance/UCC-P1-TARGET-ACTION-001.md),
-draft PR #73. Product source `e42baf4` passed actual API preparation/save/reload,
-independent nine-worker/300-frame proof admission and normal frozen preparation.
-Frozen seeking, interior pause/hold, one-shot completion and explicit saved-record
-reload after restart passed; restart reload created no new worker jobs.
-An unsaved name edit cleared the stale preview and transport; independent final
-invalidation/restoration and live-cancellation acceptance remain open.
+draft PR #73. Product source `e42baf4` passed actual API and normal frozen-app
+preparation/save/reload, all 300-frame retained native proofs, seeking, interior
+pause/hold, one-shot completion, explicit restart Load without new worker jobs,
+and stationary invalidation followed by normal discard/reopen/restoration.
+A second fresh preparation passed actual precommit caller cancellation. The
+continuous monitor identifies the second body as cancelled; the first manually
+captured body completed before input and is explicitly qualified.
 
-At the `1b23bac` checkpoint, core, preflight, Qt and Windows-package workflows
-passed. Linux native jobs remain active; two jobs failed during official Blender
-download with HTTP 403 before tests. Preserve healthy jobs and retry only after
-the whole run is terminal. The CI-only interpreter correction preserved strict
-product guards. These results grant no engine-animation, AI, redistribution,
-human visual approval or usable-clip status.
+All 48 observed identities are terminal; 5,583 protected files and the positive
+46-file binding stayed unchanged. The exact private 401-file program plus two
+metadata files passed ZIP/extraction and the existing three-check startup.
+Historical physical source/cache bytes are archived privately and independently
+verified. No usable clip, engine animation, FPS/GPU/artist or distribution claim.
+
+The accepted Unreal parent `abb1becd` is being integrated into this target branch.
+Combined source review, union regression, matching package and normal saved Load,
+and exact final-head CI/artifact acceptance remain open. The older `1b23bac`
+Linux run is preserved while healthy native jobs finish; its two official Blender
+HTTP 403 setup failures and all available artifacts remain retained. Earlier
+results are not relabelled as acceptance of the new combined source.
 
 See [the November 16 checkpoint and complete remaining-work summary](CHECKPOINT_2026-11-16.md)
 and the [full requirement map](REQUIREMENTS_ACCEPTANCE_MAP.md). The complete
@@ -27,15 +34,26 @@ this current state supersedes their older next-task and merge statements.
 
 The [complete requirements and acceptance map](REQUIREMENTS_ACCEPTANCE_MAP.md)
 tracks the locked blueprint, scoped evidence and every remaining feature area.
-The current coordinated batch connects Unity publication, its normal desktop
-action and actual frozen-app acceptance. Those gates remain open until their
-new transaction, application and package evidence is independently accepted.
+Unity's transaction, normal desktop and current fixed-source frozen package pass
+within their finite profile. A/B/C integrate through PRs #69, #70 and #72; their
+accepted trees and safe pruning are independently recorded. Owner launchers and
+earlier packages remain preserved.
 
-Current transaction validation: actual complete private API export and independent
-persisted-evidence audit and current normal frozen desktop export/failure gates
-pass. Final streaming-guard integrated regression passes 1,449 tests with 14
-existing Windows symlink skips (1,463 total); final remote-head checks and
-integration merges remain open.
+Unreal's production static API and matching frozen601 normal desktop export now
+pass source preparation, compilation, import, saved reopen, sealed publication
+and final delivered-copy verification. Independent audits accept both thirteen-
+gate native pairs, exact eleven-file delivery and preservation. Native existing-
+destination rejection and actual live Unreal cancellation pass, as do private
+archive/extraction/startup checks. The exact collision-time process snapshot is
+unavailable and explicitly qualified; direct rejection, retained transaction
+inventory and unchanged bytes remain verified.
+
+Final local required-Qt regression 603 passes 1,587 tests with fourteen existing
+Windows skips (1,601 total), with all 454 accepted product resources unchanged.
+Final PR-head CI/artifact review and integration remain open. See the
+[Unreal acceptance record](acceptance/UCC-P1-UNREAL-001.md) for source/tool profile,
+retained failures and exact scope. Shader/GPU rendering, shipping clips, player,
+artist, distribution and broader compatibility requirements remain separate.
 
 The Universal Character Creator is a functional Windows alpha under active
 development. The locked blueprint remains the full target. A customizable
@@ -78,20 +96,22 @@ installed for this work.
 
 ## Where the project stands
 
-Milestone 1 is substantially implemented but incomplete. Godot and sprite paths
-have actual app-level acceptance for their documented scope. Unity now has a
-verified complete guarded API export transaction, including final delivered-byte
-graphical admission and source/history preservation. Its normal desktop and
-current frozen-app workflow also pass within that finite private profile;
-remote check/merge gates remain open. Unreal import acceptance has
-not been established. The owner's existing launcher/package is not silently
-replaced by development changes.
+Milestone 1 remains incomplete. Godot and sprite paths have actual application
+acceptance within their documented scopes. Unity has complete guarded API and
+normal frozen desktop acceptance, and A/B integration has merged. Its separate
+receipt-ownership correction and current package interval C also pass and merge
+through PR #72; the three merged inactive Unity task branches are safely pruned. Unreal's production
+static API now passes import, fresh reopen, publication and actual delivered-copy
+verification with independent native admission. The normal frozen desktop
+positive/collision/live-engine-cancel and private archive gates also pass;
+final-head integration gates remain open. Owner launchers and earlier
+packages are preserved.
 
 ## What remains to finish the locked blueprint
 
-1. Finish the first complete human workflow: connect Unity's verified stages to
-   the guarded export transaction, desktop controls and frozen app; verify real
-   Unreal imports; expand Godot/engine body-motion acceptance; resolve remaining
+1. Finish the first complete human workflow: close final-head Unreal integration
+   while preserving accepted Unity integration; expand
+   Godot/engine body-motion acceptance; resolve remaining
    contact/grasp/visual quality and recovery cases across the normal user flows.
 2. Complete character customization and output breadth: clothing, hair,
    accessories and compatibility/rig behavior; facial lip-sync/phonemes and
@@ -109,9 +129,9 @@ replaced by development changes.
    end-user usability and visual acceptance, documentation, source/license review
    and the intended private/public distribution decision.
 
-The immediate integration task is the required CI dependency correction and
-final-head checks, preserving healthy jobs. The next engine task is independent
-native Unreal source/bind admission on the same authored humanoid.
+The immediate integration tasks are final-head checks and artifact audits,
+preserving healthy jobs. The current normal frozen Unreal workflow is locally accepted. Its final-head
+CI/artifact gates remain before integration; preserve healthy running jobs.
 The project has not reached a finished or generally engine-compatible release.
 
 Key evidence and limits:
@@ -125,10 +145,9 @@ Key evidence and limits:
 
 ## What remains to finish
 
-1. Finish Unity's enclosing export transaction: source/revision checks through
-   publication, atomic no-replace output, rollback, user-facing rights review,
-   desktop controls/error states and frozen-app verification.
-2. Complete actual Unreal export/import/reopen acceptance, and broader body-motion
+1. Preserve the accepted Unity transaction/desktop/package flow while extending
+   character and motion coverage; keep broader player/visual/release gates open.
+2. Complete current Unreal frozen desktop acceptance and broader body-motion
    import/playback across Godot, Unity and Unreal. Verify supported axes, rig
    families, blendshapes, materials and failures in each target.
 3. Finish the initial user workflow end to end: create, customize, swap parts,
@@ -148,7 +167,8 @@ Key evidence and limits:
    recovery acceptance, target-engine player builds, documentation and final
    dependency/source/distribution license review.
 
-The next task is the enclosing Unity export transaction and desktop workflow.
+The next task is final-head Unreal CI/artifact acceptance and verified integration,
+with the accepted Unity transaction and current package retained.
 The full blueprint remains active; this checkpoint does not claim project
 completion or public release readiness.
 
@@ -159,3 +179,7 @@ Windows symlink-privilege skips (1,405 total, 212.991 seconds). All 15 earlier
 preflight and gate/license-policy tests passed. Actual Blender/MPFB and Unity
 runtime evidence is recorded in the acceptance documents; a passing Python
 suite alone is not engine integration proof.
+
+Current integrated regression 603: 1,601 total, 1,587 passed and fourteen existing
+Windows skips in 360.561 seconds. All 454 accepted product resources remain
+unchanged; no additional engine or baseline jobs were run by this suite.

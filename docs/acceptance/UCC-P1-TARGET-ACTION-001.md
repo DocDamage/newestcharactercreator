@@ -1,12 +1,12 @@
 # UCC-P1-TARGET-ACTION-001 — registered private target action
 
-Status: real private API preparation, immutable save and common saved reload
-were independently accepted at product source `e42baf4`. Normal frozen preparation,
-300-frame transport and explicit saved-record reload after restart also passed.
-The unsaved-edit invalidation observation is recorded, with final independent
-invalidation/restoration and live-cancellation acceptance still open. Final CI,
-combined integration and private packaged delivery remain open. This record does
-not establish a usable or shipping animation clip.
+Status: actual private API and normal frozen-app acceptance passed at product
+source `e42baf4`. Independent admission covers fresh preparation, immutable save,
+explicit reload after restart, transport, stationary invalidation/restoration,
+caller cancellation and preservation. The exact private program ZIP/extraction
+also passed its three standard startup checks. Current integration with the
+accepted Unreal parent `abb1becd`, the combined package and final-head CI remain
+open. This record does not establish a usable or shipping animation clip.
 
 The workflow uses an explicitly selected, attached source reference and the
 current saved neutral humanoid. It prepares a fresh private target Action,
@@ -63,22 +63,42 @@ Additional actual frozen-app results at the same unchanged product source:
   Restart and explicit binding selection plus fresh consent reloaded the record
   with the exact same 18 job directories and 34 request/result files.
 - An ordinary unsaved name edit cleared the stationary preview and transport.
-  Disk project and saved binding remain unchanged. Final independent checkpoint,
-  normal discard/restoration and live cancellation are not yet accepted.
+  Normal discard/reopen and explicit reload restored the saved revision and binding,
+  without changing the 18 pre-cancellation job directories or 34 control files.
 - Private screenshots were restricted to approved empty-app/control-only dialogs;
   no private model, pose or render pixels were captured for AI inspection.
 
+Final frozen negative and package acceptance:
+
+- A new normal preparation was cancelled during a genuinely owned body worker.
+  The earlier manual snapshot captured the first body, which completed before
+  input. Immutable continuous-monitor evidence captured the second body live
+  1.545 seconds before the original Cancel input receipt. That second body did
+  not complete its result; the app reported caller cancellation and retained
+  its diagnostic path. Both original observations and the explicit handoff
+  qualification remain preserved; the first body is not claimed as cancelled.
+- All 46 positive saved-record files, current project/master/source/mapping,
+  policy and catalog rows stayed unchanged. No new binding crossed publication.
+  This is precommit cancellation, not rollback of a committed record.
+- Both app sessions closed normally; all 48 observed process identities were
+  absent and both monitors exited naturally. Independent terminal admission
+  rehashed 5,583 protected files and accepted all seven checkpoint phases.
+- The private ZIP contains exactly 401 unchanged application files and two
+  metadata files. Exclusive extraction and one standard offscreen invocation
+  passed PROJECT_SAVE_REOPEN_OK, QT_WIDGETS_OK and BLENDER_BRIDGE_BUNDLED_OK;
+  all 403 extracted files remained unchanged. No owner launcher was promoted.
+- An independently verified private archive preserves the exact historical 726
+  source/cache files behind this acceptance. These historical results retain
+  their original product/EXE identities when later source changes are integrated.
+
 Acceptance still required:
 
-- Independently checkpoint invalidation, restore the saved project through normal
-  discard/reopen controls, and exercise cancellation during a genuine owned
-  Blender body job. Preserve the existing binding; distinguish precommit failure
-  from postcommit historical retention.
-- Close/audit the second process tree, finish private ZIP/extraction/startup,
-  and archive the exact historic physical source/cache bytes before code changes.
-- Integrate the verified Unreal parent `abb1becd` after the frozen run is terminal;
-  resolve shared code/docs, run checks appropriate to the combined change, and
-  verify exact final-head CI/artifacts before any acceptance-gated merge.
+- Review the combined Unreal/target-action integration, full union regression,
+  both adapter payloads, matching compiled package and actual normal saved Load.
+- Verify exact final-head CI and independently inspect its artifacts before an
+  acceptance-gated merge. Earlier artifact results are not current-head evidence.
+- Reuse unchanged native proof semantics; rerun actual preparation only when
+  relevant source/validator/guard/clock changes invalidate the historical scope.
 
 This is a dependency for remaining Godot body-motion work. The entire locked
 blueprint remains active, including ordinary-user, visual, contact/grasp,
