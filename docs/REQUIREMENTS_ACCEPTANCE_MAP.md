@@ -25,7 +25,9 @@ draft PR #73. Transaction owns preparation/storage/context and narrow existing
 worker guard seams; desktop owns explicit prepare/load and preview lifecycle;
 verification owns independent retained-proof admission and private actual audits.
 Primary owns contracts, integration, evidence review and Git. No worker commits.
-Actual new target-action workflow acceptance remains open. Earlier batch details
+Actual private API preparation/save/reload and independent full retained-proof
+admission pass at `e42baf4`; normal frozen desktop and final CI acceptance remain
+open. Earlier batch details
 below are retained as historical context and superseded by these current states.
 
 ## Current batch and shared contracts

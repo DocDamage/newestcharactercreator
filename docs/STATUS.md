@@ -8,9 +8,12 @@ acceptance and integration remain open.
 
 The current independent batch is
 [registered private target actions](acceptance/UCC-P1-TARGET-ACTION-001.md),
-draft PR #73. Core contracts and focused implementation checks are present;
-actual new action preparation, saved reload and normal frozen-app gates remain
-open. This batch grants no engine, AI, redistribution or usable-clip status.
+draft PR #73. Real private API preparation/save/reload and independent nine-worker,
+300-frame proof admission passed at `e42baf4`. Context/policy load negatives and
+local package construction also pass; normal frozen desktop acceptance remains
+open. A CI-only follow-up selects the canonical installed Python interpreter,
+retaining strict resource guards. This batch grants no engine, AI, redistribution
+or usable-clip status.
 The complete locked blueprint remains active. Earlier progress entries below
 are historical and do not supersede these current integration states.
 

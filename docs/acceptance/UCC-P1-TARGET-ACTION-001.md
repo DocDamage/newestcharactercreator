@@ -1,8 +1,9 @@
 # UCC-P1-TARGET-ACTION-001 — registered private target action
 
-Status: implementation and focused checks in progress. Actual new production
-action preparation, saved reload, normal desktop and frozen-app acceptance remain
-open. This record does not establish a usable or shipping animation clip.
+Status: real private API preparation, immutable save and common saved reload
+were independently accepted at source checkpoint `e42baf4`. Normal frozen desktop
+acceptance and final CI remain open. This record does not establish a usable or
+shipping animation clip.
 
 The workflow uses an explicitly selected, attached source reference and the
 current saved neutral humanoid. It prepares a fresh private target Action,
@@ -34,11 +35,22 @@ editing authorization, project animation records and catalog rights remain
 unchanged. Engine use, redistribution, AI, cloud transmission, human motion
 approval and usable-clip counts are not established.
 
+Verified private scope:
+
+- Full required-Qt regression: 1,523 passed, 14 existing Windows skips, with all
+  433 checked product source/resource files unchanged.
+- Actual normal private Index/Measure/Attach, nine fresh production workers,
+  immutable 46-file save and common host-only reload passed in 576.125 seconds.
+  Independent admission rechecked all 300 frames, native/source/reopen/cache/
+  surface/render proofs and original/package preservation using existing gates.
+- Actual context-drift and catalog preview-revocation load negatives stopped at
+  source review, preserving the historical record and launching no workers.
+- Exact-source local package construction passed compiled-source/payload checks
+  and three startup checks. The actual 401-file bundle stayed unchanged through
+  a fresh independently observed startup. This is construction evidence only.
+
 Acceptance still required:
 
-- Freeze and independently audit the complete source/resource closure.
-- Run the real registered original source through all nine production workers,
-  immutable save and common host-only reload; audit retained proof and originals.
 - Exercise normal prepare, explicit reload after restart, one-shot transport,
   current-context invalidation and live cancellation in the frozen application.
 - Pass relevant final-head regression, remote checks and artifact audits before
