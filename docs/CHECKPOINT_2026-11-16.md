@@ -1,6 +1,13 @@
 # Universal Character Creator checkpoint — November 16, 2026
 
-## Safe stop requested by the user
+## Verified consolidation - November 16, 2026
+
+The verified workflow stack entered `main` through [PR #73](https://github.com/DocDamage/newestcharactercreator/pull/73), merge `85ac06b10b89c28b7beb5f4cee00d32487a92a9f`. Its tree exactly matches accepted candidate `687d110`: all five exact-head workflows, seven Linux archives / 40 diagnostic records, combined source review, and the current Windows package / normal saved Load passed independent admission. Historical native jobs retain their original producer identities.
+
+The full locked blueprint remains unfinished. Godot body-motion delivery, usable clips, artist approval, controlled AI, other families and release requirements remain open. See [repository reconciliation](acceptance/UCC-REPO-001.md) for history preservation and cleanup rules. Earlier safe-stop, unrun-combined-gate and pre-merge-main notices below are historical snapshots superseded by this checkpoint.
+
+
+## Historical safe-stop snapshot
 
 The user requested a safe stop. Both e42 frozen-app sessions and their monitors
 are closed normally; all 48 observed process identities are terminal. Final

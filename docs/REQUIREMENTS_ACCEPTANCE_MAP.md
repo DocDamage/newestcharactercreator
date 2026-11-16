@@ -1,5 +1,12 @@
 # Locked blueprint requirements and acceptance map
 
+## Verified consolidation - November 16, 2026
+
+The verified workflow stack entered `main` through [PR #73](https://github.com/DocDamage/newestcharactercreator/pull/73), merge `85ac06b10b89c28b7beb5f4cee00d32487a92a9f`. Its tree exactly matches accepted candidate `687d110`: all five exact-head workflows, seven Linux archives / 40 diagnostic records, combined source review, and the current Windows package / normal saved Load passed independent admission. Historical native jobs retain their original producer identities.
+
+The full locked blueprint remains unfinished. Godot body-motion delivery, usable clips, artist approval, controlled AI, other families and release requirements remain open. See [repository reconciliation](acceptance/UCC-REPO-001.md) for history preservation and cleanup rules. Earlier safe-stop, unrun-combined-gate and pre-merge-main notices below are historical snapshots superseded by this checkpoint.
+
+
 Updated November 16, 2026. Objective: complete the entire locked
 `UNIVERSAL_CHARACTER_CREATOR_BLUEPRINT.md`, preserving the existing stack,
 working features, originals, privacy and per-use source rights. This objective
@@ -11,7 +18,7 @@ where source code, diagnostics or a partial implementation exists. Historical
 blueprint checkboxes are not current evidence. Every scope extension needs its
 own actual application evidence; unit tests and CI status alone are insufficient.
 
-## Current target-action batch
+## Historical target-action batch (superseded above)
 
 Current integration: Unity transaction, desktop and private frozen-package slices
 (PRs #69, #70 and #72) and the verified Unreal 5.9 static workflow (PR #71)
