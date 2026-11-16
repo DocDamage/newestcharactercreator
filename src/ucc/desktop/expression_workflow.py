@@ -46,6 +46,11 @@ def start_expression(window, *, prepare=False):
                     worker_script=script, mpfb_data_dir=data, expected_project_id=snapshot.project_id,
                     expected_revision=snapshot.revision, expected_master_blend=snapshot.master_blend, cancel=cancel)
             operation = prepare_saved_expressions if prepare else preview_saved_expressions
+            if not prepare:
+                from ucc.core.skin_material import APPEARANCE_KEY
+                if APPEARANCE_KEY in dict(snapshot.appearance):
+                    from ucc.jobs.material_expression_preview import preview_material_expressions
+                    operation=preview_material_expressions
             return operation(store, blender_exe=executable, worker_script=script, mpfb_data_dir=data,
                 expected_project_id=snapshot.project_id, expected_revision=snapshot.revision,
                 expected_master_blend=snapshot.master_blend, cancel=cancel)
@@ -88,7 +93,9 @@ def finish_expression(window, result):
             except BaseException:
                 clear_expression(window); raise
             window.log.setPlainText('All 25 saved expression frames independently verified against reference skin and '
-                'complete playback buffers. Saved master remains neutral. Visual quality and engine imports are unapproved.')
+                'complete playback buffers. Saved master remains neutral. Visual quality and engine imports are unapproved.'
+                + ('\nSaved owned material and frame-specific smooth normals are loaded for local PBR playback.'
+                   if getattr(cache,'material',None) is not None else ''))
         else: raise ValidationError('Unexpected expression worker result')
     except (UCCError, OSError, ValueError) as error:
         window._error('Expression result could not be adopted: '+str(error))

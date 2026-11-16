@@ -1,10 +1,377 @@
-# UCC development status — November 15, 2026
+# UCC development status — November 16, 2026
+
+**Latest Unity transaction (582–584):** The complete production API now stages,
+atomically publishes and graphically verifies the final sealed private Unity
+project. Actual original-authored specimen acceptance and an independent
+persisted-evidence audit pass: 62 delivered files, 178 states/two cameras,
+356 images, exact native position bytes, unchanged source/master/history.
+Final streaming-guard required-Qt regression: 1,449 passed / 14 existing skips in
+263.324 seconds, including genuine junction, nested-budget and traversal faults.
+The pre-streaming-fix frozen app passes its normal desktop export; current
+matching frozen export, PR checks
+and merge remain pending. Three workers retain separate transaction, desktop
+and independent verification/package ownership. Existing 540/575/576 evidence
+is preserved. The
+[requirements/acceptance map](REQUIREMENTS_ACCEPTANCE_MAP.md) keeps the complete
+locked blueprint active beyond this batch. Existing draft PRs #61–#68 and the
+owner launcher/package remain preserved.
+
+**Latest Unity progress (575–577):** Production runtime source capture and fresh
+Blender recomputation pass all 178 diagnostic states. The production graphical
+Unity verifier now independently admits both automatic-camera outputs: native
+position bytes remain exact, maximum source-position difference is 3.526 µm,
+and maximum normal difference is 0.220184°. All 356 images pass decoding,
+contrast/margin checks, neutral return and camera/deformation distinction.
+The enclosing atomic export transaction, desktop action and frozen executable
+acceptance remain open. [Overall progress and remaining work](PROJECT_PROGRESS.md).
+
+**Latest Unity progress (554–571):** The production host now runs native import,
+checks source parity independently (including triangle winding), attaches
+topology and verifies a fresh saved reopen. Live cancellation/deadline tests
+preserve sources. Strict checks exposed the raw importer weight clamp and a
+nonserialized matrix flag; the declared profile/runtime ownership now handle
+them explicitly. The corrected runtime passes the two-camera diagnostic checks.
+Full regression: 1,387 passed / 14 existing skips; subsequent focused checks:
+36 passed. Production graphical runtime admission, atomic publication, desktop
+workflow and frozen executable validation remain open. See
+[the acceptance record](acceptance/UCC-P1-UNITY-001.md).
+
+**Latest Unity progress (540–551):** Production Blender source staging and fresh
+master reopen passed. The explicit native importer now preserves every positive
+influence and persists the reviewed material, topology and runtime references.
+Fresh Unity reopen and 178-state/two-camera checks on the newly exported FBX pass
+the existing position/normal gates; three actual import faults reject without
+changing the saved mesh. Full regression: 1,380 passed, 14 existing skips;
+subsequent schema/payload checks: 26 passed. The application export transaction,
+desktop workflow and frozen Unity resources remain unfinished. Details and
+retained failed attempts are in [the acceptance record](acceptance/UCC-P1-UNITY-001.md).
+
+**Unity integration in progress:** The installed 6000.4.5f1 editor runs local
+package-manager-disabled probes. Raw FBX import exposed triangulation and small
+weight loss. Explicit source triangulation now matches every triangle/UV corner;
+a native mesh-API prototype retains every influence, all 163 bones and twelve
+facial shapes, with measured sub-micrometer geometry parity. Weight precision,
+posed deformation, graphical material/render validation and the product workflow
+remain unaccepted. No new engine claim, installation or Unity UI control.
+See [Unity feasibility](acceptance/UCC-P1-UNITY-001.md).
+
+The corrected native Player Loop exercises all 178 original-source rig/shape
+diagnostics with real Direct3D 11 vertex readback and images. A private GPU draw
+adapter now reconstructs geometric normals from native posed positions and the
+original quads: maximum observed error 0.191°, with every position byte preserved.
+Direct edits to Unity's skinned buffer failed and remain recorded. This is a
+prototype, without product integration or saved-project adapter acceptance.
+The observed precision gate now includes input/operator transfer, source/native
+roundoff and transform-hierarchy formation: all 5,168,052 CPU/GPU comparisons
+pass the independent 50 µm cap. A real 100.076 µm GPU fault rejects even inside
+the conservative arithmetic envelope. See the [numerical record](acceptance/UCC-P1-UNITY-001-NUMERICS.md).
+The first-party Unity runtime now persists its source-bound component and runs
+from fresh scene reopens without mesh/weight/axis/material repair. Automatic
+per-camera GPU checks cover all 178 states, two cameras, and a translated/rotated
+placement; native position bytes remain exact and normal error stays below
+0.225°. Root-space computation fixes a measured world-translation shading fault.
+Real saved topology/mesh faults reject; disable/re-enable restores ownership.
+Closed request/topology contracts are implemented. The standalone export
+transaction/UI, player builds, performance and broader rendering remain open;
+no new frozen package. Regression 532: 1,378 passed, 14 existing skips, 217.466 s.
+
+**Latest animated facial sprite gate:** Saved strengths now drive the pinned
+25-frame/24 FPS loop, with separate explicit per-use source review. Real source
+desktop cases deliver 100/200 frames and exact 5×5 atlases; unmodified frozen build
+430 also passes the native Windows workflow. Audit 436 checks 400 delivered
+frames against 800 independent original-source/saved-Action rasters, geometry,
+normals, timelines and schemas. Real PNG/Action/coherent material-override and
+unrelated-scene faults reject; cancellation/collision preserve originals.
+Regression: 1,355 passed, 14 existing skips. Private authored whole-character
+samples only; artist/pixel-art quality, body-motion sprites, separated layers,
+Unity/Unreal and public distribution remain open. Owner launcher unchanged.
+Next: installed Unity/export-format inventory and actual import validation.
+See [animated sprite acceptance](acceptance/UCC-P1-SPRITE-003.md).
+
+**Latest saved-character sprite gate:** The normal File action renders the saved
+material-bound human to transparent neutral-pose directions, with explicit per-use
+source permissions and a new output folder. Real four/eight-direction cases pass
+independent original-source and saved-scene pixel checks and exact atlas packing.
+Unmodified frozen build 414 passes the normal Windows workflow; all 199 bundled
+UCC modules/main and 183 worker payload files match current source. Real faults,
+cancellation and destination collision preserve originals. Regression: 1,344
+passed, 14 existing skips. Private authored tests only; no animation, artist or
+public-distribution approval and no owner-shortcut update. Next: animated facial
+sprite strip. See [sprite acceptance](acceptance/UCC-P1-SPRITE-002.md).
+
+**Latest private Windows package gate:** Current frozen build 382 passes actual
+normal desktop Godot export through bundled Blender workers and separate Godot
+reopen, plus material facial preview and cancellation. All 194 bundled UCC modules
+and the main entry point match current source; every facial frame matches the
+independent Blender position/triangle/normal reference. Regression: 1,332 passed,
+14 existing skips. Private authored tests only; owner shortcut and archive 198
+remain unchanged. Next: real saved-character sprite rendering.
+See [private package acceptance](acceptance/UCC-P1-PKG-002.md).
+
+**Latest desktop Godot export gate:** The normal File action now requires per-use
+review of exact sources and a new destination, then freshly verifies Blender
+source/material, actual Godot rig/UV/skin/facial shapes and a separate saved-scene
+reopen before exclusive folder publication. Both authored material cases also
+pass relocation without their intermediate GLB. Actual cancellation, destination
+collision and saved-material fault rejection preserve originals. Final regression:
+1,330 passed, 14 existing Windows symlink-privilege skips. Source desktop only;
+no animation clips, artist/public-license approval, frozen execution or owner
+shortcut update. Next: bundle and verify the current private Windows package.
+See [desktop export acceptance](acceptance/UCC-P1-EXPORT-002.md).
+
+**Latest material facial playback gate:** The existing expression-preview button
+now preserves the saved owned material and uses evaluated normals for each frame.
+The original geometry cache contract stays intact; a separate versioned stream
+passes original-source, saved-Action and all-frame GPU checks. Both real color
+cases play all 25 frames, retain exact neutral endpoints and leave project/history
+unchanged. A rehashed static-normal substitution rejects, and material/normal-file
+changes revoke playback. This remains local preview, without textures, artist
+approval, frozen execution or owner-launcher changes.
+Final regression: 1,319 passed, 14 existing Windows symlink-privilege skips.
+See [facial material acceptance](acceptance/UCC-P1-MAT-001-G.md).
+
+**Latest desktop material preview gate:** The existing saved-master preview action
+now admits the material graph through fresh Blender source/hand/shader checks,
+then displays the evaluated surface with smooth normals and local dielectric PBR.
+Two real application runs pass actual GPU uniform/buffer readback and inspected
+face/whole-character views. All 26,756 triangles match independent fresh Blender
+references; normals match Blender's documented-in-source float32 serialization
+rule. Actual proof mutation invalidates the surface; real cancellation preserves
+metadata/history. Final regression: 1,308 passed, 14 existing skips. Motion and
+uncolored expression previews retain their earlier clay path; material-bound
+facial playback has the subsequent gate above. No textures, Blender render
+parity, frozen execution or owner-launcher update is claimed.
+See [preview acceptance](acceptance/UCC-P1-MAT-001-F.md).
+
+**Latest explicit skin controls gate:** The desktop now accepts an explicit sRGB
+color and roughness without changing project metadata while drafting. Real
+application first assignment and later edits pass Blender verification, strict
+history adoption and saved undo/redo. Current-source unchanged Apply independently
+checks the owned shader and reopens it without a new revision; actual Cancel stops
+a live Blender child without publication. Both final selected colors also pass
+normal exports and actual Godot material readback/render. The desktop geometry
+preview had not yet shown the saved material at this earlier gate; the gate above
+adds it. No frozen build or owner-launcher update is claimed.
+See [controls acceptance](acceptance/UCC-P1-MAT-001-E.md).
+
+**Latest desktop material edit gate:** Existing body refit, generation and face
+buttons now route supported material-bound characters through the verified backend.
+A strict session adopter keeps master, appearance and rebuilt hand in one history
+step. Actual visible application windows execute all three actions through normal
+Qt background jobs and real Blender workers on disposable projects. Each then
+passes saved undo/redo checks without reopening the project or dropping history.
+An actual Cancel action stops an observed Blender child without adoption or
+metadata/history changes. Source-animation references and unsupported parts remain
+guarded. This earlier gate added no material controls; the subsequent gate above
+does. Material preview, frozen build and owner-launcher updates remain unfinished.
+See [desktop acceptance](acceptance/UCC-P1-MAT-001-D.md).
+
+**Latest material-preserving edit gate:** The new backend API
+`revise_material_bound_master` composes existing body/face workers with material
+admission, expression ancestry and compatible-hand rebuilding. Real refit
+(`height=0.58`), regeneration (`height=0.62`) and face revision (`nose_width=0.65`)
+pass complete transactions, separate saved-master checks, final exports and
+actual Godot material renders on disposable copies. The chosen color/roughness,
+hand variant/instance and facial strengths remain intact. A repeated real face
+edit is a verified no-op without metadata/history changes. Live cancellation
+and a coherently rebound saved-shader fault reject safely. Final regression:
+1,275 passed, 14 existing skips. Desktop routing/history has later acceptance
+above; lower-level guards remain. No new controls or owner-launcher update.
+See [edit acceptance](acceptance/UCC-P1-MAT-001-C.md).
+
+**Latest material graph gate:** `UCC-P1-MAT-001` now publishes a verified material
+master, appearance binding, expression ancestry and rebuilt compatible hand in
+one project metadata revision. The normal API and a separate saved-master
+verification passed on an admitted private copy, then passed again for a second
+color/roughness edit on a copy of that published character. The original hand variant,
+part instance ID, facial strengths and original master files are preserved.
+A real altered shader still rejects after coherent private rebinding of both
+the material manifest and hand receipt. Lower-level body/face calls and a different
+hand selection still return explicit errors on material-bound characters; the
+new backend edit path above has separate acceptance. No new UI is exposed and
+the owner launcher is unchanged.
+Both final rebuilt-hand masters also pass a normal same-spec export no-op and
+actual Godot material import/readback/render. Final regression: 1,268 passed,
+14 existing skips. Material colors are private verification inputs, not shipping defaults.
+
+**Material preparation gate:** `UCC-P1-MAT-001` has a closed,
+versioned API for an explicit first-party body color and roughness. Real Blender
+5.3/MPFB 2.0.18 creation and a fresh worker reopen pass on the prepared character
+with its registered hand. The API retains a private candidate; it does not
+publish a project pointer or add a UI control. Geometry, shape keys, UVs, rig,
+unrelated scene materials, and original source files remain unchanged.
+Godot 4.7.1 imported the actual standard PBR material, retained 163 bones and
+12 morphs, and rendered it on the RTX 3060 without a material override. Maximum
+sRGB readback error is 5.961e-8. Actual coherently rehashed saved-shader,
+saved-geometry, and GLB-color faults reject in fresh Blender workers.
+This is plain color material preparation, not textured skin, animation/material
+runtime acceptance, artist approval, or a published editable character revision.
+The later graph gate above adds publication after rebuilding the hand.
+See [material acceptance](acceptance/UCC-P1-MAT-001.md).
+
+**Latest native surface gate:** Actual read-only inventory finds one UV layer
+and no material slots or textures on the prepared human. The scene's sole
+material belongs to the unrelated original cube. That surface gate adds no skin.
+The normal native stage/reopen workers now compare all 53,512 masked source
+corners with the saved copy and exported GLB, including 14,517 vertex/UV seam
+pairs. Both real workers pass with maximum UV component error 2.981e-8 under
+the declared dimensionless 1e-6 limit. All 21 runtime inputs are byte-identical
+to accepted producer 146. Actual rehashed saved-copy and GLB UV faults reject.
+Godot's new full 2,697-case run checks UV preservation on each corrected mesh;
+independent imported UV readback matches the admitted GLB exactly. Altered
+readback and swapped real seam sides reject even with rebound hashes and an
+unchanged global vertex/UV set. Required-Qt regression runs 1,262 tests: 1,248
+pass and fourteen existing skips remain; guardrails pass all twelve checks.
+Materials, texture appearance, tangent support and desktop export remain open.
+The private packaging archive from checkpoint 198 predates this UV extension.
+
+**Latest worker packaging checkpoint:** A versioned, SHA-bound worker payload
+now includes the bridge, 54 pure Python contract modules and four trusted
+Godot adapter resources. Isolated Blender imports use only those sources and
+Blender's own Python 3.13 native modules. The host Python 3.12 extension directory
+is excluded from Blender's import path. Actual packaged sampling reproduces all
+2,697 reference cases exactly; the final private frozen archive passes its three
+startup checks and an external Blender saved-scene check of 300 source/saved
+frames and twelve morphs. A separate actual frozen-parent diagnostic also
+launches Blender through the normal runner and reproduces those complete checks.
+Its Godot resources pass import/configuration/reimport;
+the earlier full 2,697 draw is not repeated from that archive. A controlled build
+PATH prevents an unrelated Poppler ICU DLL from breaking Qt. Preliminary failed
+builds/probes are preserved. Final regression runs 1,255 tests: 1,241 pass and
+fourteen existing Windows skips remain; all twelve guardrails pass. The owner's
+launcher, export UI, private runtime-kernel distribution and readiness flags
+remain unchanged. Remote packaging CI for these local changes is unrun.
+
+**Latest private native Godot checkpoint:** The normal Blender sampler now
+produces fresh, source-bound positions and normals for 2,697 cases: 300 neutral
+integer frames, 897 neutral subframes and 1,500 individual/combined facial cases.
+The normal target coordinator consumes that production receipt and fresh
+references, runs four actual Godot 4.7.1 phases, independently decodes every
+clay PNG and checks every position/normal readback before atomic retention.
+Actual run 158 passes with maximum position error 3.150e-6 metres, maximum
+normal angle 0.081884 degrees and 2,304 distinct pixel hashes. Original project,
+master and authored FBX bytes remain unchanged. Live Godot cancellation and a
+1 mm readback corruption after successful engine execution both reject and
+retain no candidate; a preceding import crash is recorded separately. Full
+required-Qt regression runs 1,245 tests: 1,231
+pass and fourteen existing Windows skips remain; all twelve guardrails pass.
+This source-checkout API does not approve materials, artist quality, runtime
+distribution or a shipping export. Portable bridge/core resources, desktop
+dispatch, Unity, Unreal and sprite acceptance remain unfinished. The owner's
+launcher is unchanged. See [the current gate](acceptance/UCC-P1-007.md).
+
+**Godot export investigation:** [UCC-P1-007](acceptance/UCC-P1-007.md) now has
+actual Godot 4.7.1 import data checks and RTX 3060 facial rendering on a staged
+original MPFB character. A bounded versioned skin adapter now works without
+diagnostic UV2. Actual original combined skeletal/facial diagnostic motion
+passes all 25 full-surface samples with required import settings and unit-sum
+skin encoding; default animation optimization fails those checks. A versioned
+private candidate job now verifies copied staged inputs through real Godot,
+checks per-input permissions and source/revision stability, and retains a new
+private candidate atomically. Actual cancellation/timeout/mutation negatives
+preserve earlier candidates. No desktop export control or readiness upgrade is
+included. Broader production motion integration, owner-pack
+compatibility, materials, packaging, Unity, Unreal and sprites remain unfinished.
+
+The bounded production Blender path now stages from the authoritative saved
+master, appends only the explicitly selected compatible rig Action, and verifies
+the saved candidate in a fresh Blender process. The normal
+`produce_private_godot_candidate` API passes actual Blender 5.3 / MPFB 2.0.18
+and Godot 4.7.1 checks on the original nonshipping diagnostic, preserving all
+162 preceding candidate files. Three rehashed saved-scene faults reject.
+The final regression run passes 1,206 tests with fourteen existing Windows
+skips, including malformed producer evidence and job-schema checks. Broader native-motion
+lineage and desktop dispatch remain unfinished; this is private verification.
+
+Fresh native integration on this same prepared master now independently
+reproduces the original 300-frame / 30 FPS clip through two target workers and
+a saved-scene reopen, retaining 59 mapped joints, all 22 shape keys and the
+163-bone bind state. Its corrective smoothing remains part of the source;
+full-timeline Godot export is still required. Private harness metadata errors
+and the independent recovery audit are retained separately.
+
+The subsequent private corrective-export prototype now passes actual Blender
+staging and fresh reopening for all 300 frames, then actual Godot 4.7.1 import,
+skin/morph evaluation and RTX 3060 rendering. It retains the family skeleton,
+twelve canonical morphs and 300 sampled corrective morphs. All 300 images are
+independently decoded and hash-checked; maximum sampled engine-baked error is
+7.872326933e-6 metres against the unchanged 1e-5 limit. A rehashed 1 mm
+corrective-vertex fault rejects. The V1 normal API still passes after the bind
+precision/neutral-key fixes; final regression passes 1,208 tests with fourteen
+existing skips. Production native dispatch, combined nonneutral facial motion,
+between-frame corrective accuracy and packaging remain unfinished.
+
+Further private interaction measurements expose a limitation in that sampled
+prototype: all 897 neutral subframe queries remain below 1e-5 metres, but active
+facial controls produce 1.1–5.2 mm errors across the complete clip. Those
+integer-frame results therefore do not establish combined facial usability.
+A separate nonlinear GPU correction experiment now matches actual Blender
+references for all 2,397 temporal/facial cases within 9.611e-7 metres, with an
+independent full-buffer audit. Those inputs were Blender-evaluated raw skinning.
+Nine critical cases additionally pass imported Godot skeleton/morph evaluation,
+runtime GPU correction and visibility rendering within 2.568e-6 metres.
+The complete imported-engine check now passes all 2,397 cases within
+3.150e-6 metres, retaining 163 bones and twelve canonical morphs. Independent
+readback and PNG audits verify every case, input hash and original source file;
+2,397 visibility images contain 1,348 distinct pixel hashes. A rehashed 1 mm
+bind-offset fault rejects at 2.337e-4 metres. These isolated Mobile/Vulkan
+experiments do not change the product renderer, admit a shipping adapter,
+approve redistribution, or establish material quality. The unshaded renders
+fail the separate surface-contrast gate as expected; that gate remains intact.
+
+Subsequent private normal validation now covers the same 2,397 cases against
+fresh Blender source normals. GPU normals reconstructed from the original
+smooth polygons pass the predeclared 0.1-degree / 0.002-vector limits; independent
+maximum angle is 0.081884 degrees. Corrected positions are byte-identical to
+the previous accepted run. All 2,397 defined Lambert clay images pass the
+unchanged surface-contrast verifier, with 2,177 distinct pixel hashes. Nine
+matched actual Blender/Godot clay views additionally pass the declared
+silhouette and mean-colour gates; localized pixel differences remain. A rehashed
+one-normal inversion rejects at 180 degrees without changing any positions or
+other normals. This establishes bounded normal/clay checks, not textured
+material fidelity, artist approval, general-topology support or production
+native dispatch. The raw GLB contains no materials, textures or images.
+
+An additive `UCC_PRIVATE_NATIVE_RUNTIME_INPUTS_V1` contract and retention API now
+bind all 21 runtime files, master/project revision, original-source permissions
+and separate native-review/timeline evidence. Independent checks cover polygon
+triangulation/winding, adjacency/incidence, finite offsets, bind correspondence,
+skin encoding and native clocks. Retention never executes supplied code or
+grants execution, lineage, shipping, distribution or visual approval. Twelve
+real-input storage negatives reject, including source mutation, NoAI removal,
+cancellation and post-rename rollback. The strict clock gate exposed optimized
+nonconstant STEP endpoints; a separate fresh Blender export disables animation
+size optimization without changing V1. That retained bundle passes a new full
+2,397-case Godot run and independent geometry/normal/shaded-image audits at the
+unchanged limits. Failed preliminary imports/verifications are retained.
+Required-Qt regression now runs 1,224 tests: 1,210 pass and fourteen existing
+Windows skips remain. This input-retention slice precedes the native source
+producer described below; normal target coordination and desktop dispatch remain
+unfinished.
+
+`produce_private_native_runtime_inputs` now runs the versioned normal native
+producer: two fresh FBX intakes, independent core timeline validation, actual
+300-frame source reopening, new runtime-data/GLB production, and a separate
+fresh process checking all 300 saved frames and twelve canonical morphs before
+atomic retention. The prepared master, exact original raw weights, UVs, shape
+keys, rest rig and unrelated original scene objects are preserved. Source
+reconstruction reaches 9.611e-7 metres; relative export-weight error reaches
+1.369e-7. Source weights and deliberate export serialization are checked
+separately; the fixed limits were not relaxed. Failed attempts remain private.
+The newly produced bundle also passes all 2,397 actual Godot cases and independent
+geometry/normal/shaded-image audits. A rehashed saved-mesh fault rejects, as do
+original-source mutation and cancellation of a live Blender stage. No runtime
+or engine readiness flags are promoted. Normal Godot coordination, portable
+packaging for the new bridge dependencies, materials and desktop exposure remain
+unfinished; the owner's launcher is unchanged.
+Final required-Qt regression runs 1,232 tests: 1,218 pass and fourteen existing
+Windows skips remain. Guardrails pass all twelve checks.
 
 **Target:** Windows 11, Blender 5.3, installed MPFB and PySide6 desktop. Local AI and actual Godot/Unity/Unreal validation remain later blueprint work.
 
-**Current plain-master creator slice:** [UCC-P1-ANIM-007H](acceptance/UCC-P1-ANIM-007H.md) enables the existing body, face and generation controls on saved unprepared MPFB masters while retaining exact source-only references. Genuine rebuilt-hand identity/selection, no-hand behavior, paired physical-body readbacks, atomic promotion, native saved history, NoAI, cancellation and concurrent-save protection pass. The current required-Qt suite passes 1,149 tests (1,135 passed, fourteen existing Windows symlink skips); scanner 3/3, guardrails 12/12 and the actual source launcher pass. Actual normal controls, full static RTX 3060 drawing/invalidation and an independently audited 19-worker cached-Generate follow-up pass. The new portable original-only CI command also passes in full: eight transactions, thirteen guards, 112 positive workers, 87 guard requests, six native saved-history cycles and 10,800 complete setup/positive/guard source-frame observations. An independent audit rechecks all 623 frozen source files. The existing seventh job retains one additional closed aggregate JSON only; old suites, assertions, checksums and budgets remain. Fresh remote acceptance requires seven archives / forty records and the exact-head Windows package. It is still pending; parent results are separate. Reference-bound expression preparation, target actions, human visual quality, engines and sprite output remain unfinished. No dependencies, installs, rights or NoAI restrictions changed.
+**Current plain-master creator slice:** [UCC-P1-ANIM-007H](acceptance/UCC-P1-ANIM-007H.md) enables the existing body, face and generation controls on saved unprepared MPFB masters while retaining exact source-only references. Genuine rebuilt-hand identity/selection, no-hand behavior, paired physical-body readbacks, atomic promotion, native saved history, NoAI, cancellation and concurrent-save protection pass. The current required-Qt suite passes 1,149 tests (1,135 passed, fourteen existing Windows symlink skips); scanner 3/3, guardrails 12/12 and the actual source launcher pass. Actual normal controls, full static RTX 3060 drawing/invalidation and an independently audited 19-worker cached-Generate follow-up pass. The new portable original-only CI command also passes in full: eight transactions, thirteen guards, 112 positive workers, 87 guard requests, six native saved-history cycles and 10,800 complete setup/positive/guard source-frame observations. An independent audit rechecks all 623 frozen source files. The existing seventh job retains one additional closed aggregate JSON only; old suites, assertions, checksums and budgets remain. Exact-head remote acceptance now passes all five workflows, seven Linux archives / forty independently inspected records, and the Windows package with all 90 bridge sources plus actual extracted executable health checks. All 624 published source files rehash unchanged. PR #68 remains draft and unmerged; parent results are separate. Reference-bound expression preparation, target actions, human visual quality, engines and sprite output remain unfinished. No dependencies, installs, rights or NoAI restrictions changed.
 
-**Parent PR #67 current checkpoint:** exact head `43529a43ea17fc4e702cd1f6c2fd7d633a129103` passes Core, all four Qt matrix jobs, preflight and Windows packaging. Its fresh Windows package matches all 90 bridge sources and the actual extracted executable passes the three health checks. Five Linux archives / 29 JSON records are independently accepted, including fresh prepared-creator, regression, regional, body-contact and symmetric suites. The healthy native-fit job remains running. One source-reference job failed before tests at the official Blender HTTP 403 download; only that proven setup failure may be retried after the whole attempt is terminal. No healthy job has been canceled or restarted. All five workflows / seven archives / 39 records remain the parent gate; no complete remote acceptance or merge is claimed.
+**Parent PR #67 current checkpoint:** exact head `43529a43ea17fc4e702cd1f6c2fd7d633a129103` passes Core, all four Qt matrix jobs, preflight and Windows packaging. Its fresh Windows package matches all 90 bridge sources and the actual extracted executable passes the three health checks. All seven Linux archives / 39 JSON records are independently accepted. All five workflows and the final-head Windows package pass; its complete final audit is separate from PR #68. Only confirmed official Blender HTTP 403 setup failures were retried after prior attempts became terminal. No healthy job was canceled or restarted. PR #67 remains draft and unmerged.
 
 **Accepted facial preview:** [UCC-P1-FACIAL-001](acceptance/UCC-P1-FACIAL-001.md) is technically accepted at `7db913e373c1147ea78f06408cc44c00e5d2669b` / draft PR #64. All five workflows and all four Linux archives / 24 diagnostic records are independently accepted. The Windows package's 87 bridge sources match that head and its actual extracted executable passes the three-check self-test. Local 915-test regression, original-only three-case expression integration, real desktop preparation/history/save/reopen/reset/cancellation, complete 25-frame GPU playback and stale-input invalidation pass. Strengths remain bounded to 0–0.5; full eyelid closure, human visual quality, speech and engine imports remain unapproved.
 

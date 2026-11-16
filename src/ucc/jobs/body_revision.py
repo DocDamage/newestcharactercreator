@@ -79,6 +79,8 @@ def apply_saved_body_revision(
 ) -> BodyRevisionResult:
     """Refit existing master; re-open copy; atomically save a *new* master pointer."""
     initial = store.load()
+    from ucc.core.skin_material import require_material_preservation
+    require_material_preservation(initial)
     if (initial.project_id != expected_project_id or
             initial.revision != expected_revision or
             initial.master_blend != expected_master_blend):

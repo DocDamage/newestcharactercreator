@@ -27,8 +27,9 @@ def clear_expression(window):
 
 def _paths(store, result):
     paths = {store.root, store.file}
+    extra=() if result.material_evidence is None else (store.root/'materials',result.material_evidence.workdir,result.material_evidence.verify_dir)
     for directory in (store.root/'master', store.root/'expressions', store.root/'parts',
-                      result.workdir, result.verify_dir):
+                      result.workdir, result.verify_dir,*extra):
         if not directory.exists(): continue
         paths.add(directory); paths.add(directory.parent)
         # Directory watchers are not recursive. Every descendant is registered.
@@ -71,8 +72,23 @@ def bind_expression(window, result):
                     raise ProjectStorageError('Expression saved scene changed before publication')
             report = read_json(directory/'expression_motion.json', result.bindings['motion_report_sha256'], 4*1024*1024)
             checked = read_expression_cache(directory, result.bindings, result.observed, report)
-            if checked != result.cache:
+            geometry=result.cache if result.material_evidence is None else result.cache.geometry
+            if checked != geometry:
                 raise ProjectStorageError('Expression CPU buffers differ from independently verified disk evidence')
+        if result.material_evidence is not None:
+            from ucc.jobs.skin_material_storage import registered_material_binding
+            from ucc.preview.expression_material import read_material_expression
+            evidence=result.material_evidence
+            binding=registered_material_binding(store,project)
+            if binding is None or binding['spec']!=result.cache.material.to_dict():
+                raise ProjectStorageError('Expression material differs from the current saved publication')
+            for name,sha in evidence.watched_inputs:
+                from pathlib import Path
+                path=Path(name)
+                if path.is_symlink() or not path.is_file() or _digest(path)!=sha:raise ProjectStorageError('Material expression proof or source changed')
+            for directory in (evidence.workdir,evidence.verify_dir):
+                checked=read_material_expression(directory,result.cache.geometry,evidence.bindings,evidence.proof,report)
+                if checked!=result.cache:raise ProjectStorageError('Material expression CPU buffers differ from verified normal files')
 
     unchanged()
     watcher = getattr(window, '_expression_watcher', None)

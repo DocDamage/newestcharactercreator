@@ -1,6 +1,8 @@
 # Universal AI Character Creator
 
-**Project stage: functional PySide6 desktop alpha, versioned core and Linux-verified MPFB character generation, saved-body refit, static GLB preview and rig-pose deformation diagnostic.** This is not a complete character animation editor or certified Godot/Unity/Unreal export pipeline.
+**Project stage: functional Windows desktop alpha with verified humanoid editing, saved facial/material workflows, Godot character export and sprite output.** Unity source/import/runtime verification now passes its tested diagnostic profile; its desktop export workflow remains unfinished. Unreal and the complete three-engine workflow remain open.
+
+**November 16, 2026:** See [current accomplishments and remaining work](docs/PROJECT_PROGRESS.md) and [detailed acceptance records](docs/STATUS.md). The dated sections below preserve earlier milestone history and limitations as they stood then.
 
 ## Current character workflow and verified evidence (November 11, 2026)
 

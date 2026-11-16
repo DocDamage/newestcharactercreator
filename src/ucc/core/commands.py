@@ -119,6 +119,13 @@ class CharacterSession:
             raise CompatibilityError('Reference-aware face intent requires a prepared MPFB character and supported hand')
         return self._set_face_intent(name, intent)
 
+    def set_material_face_parameter(self, name: str, value: float) -> CharacterProject:
+        from .material_master_intent import supports_material_master_intent
+        intent=validate_face_parameters({name:value})
+        if not supports_material_master_intent(self._project):
+            raise CompatibilityError('Material-aware face intent requires a supported prepared character and hand')
+        return self._set_face_intent(name,intent)
+
     def _set_face_intent(self, name: str, intent: dict) -> CharacterProject:
         values = dict(self._project.facial_parameters)
         if values.get(name, FACE_DEFAULTS[name]) == intent[name]:
@@ -211,6 +218,15 @@ class CharacterSession:
         self._undo.append(self._project)
         self._undo = self._undo[-self._history_limit:]
         self._redo.clear(); self._project = saved
+        return saved
+
+    def accept_saved_material_master(self, saved: CharacterProject,*,initial_assignment: bool=False) -> CharacterProject:
+        """Adopt a verified job result as one master/appearance/hand history step."""
+        if saved==self._project:return saved
+        from .material_master_intent import validate_material_master_adoption
+        validate_material_master_adoption(self._project,saved,initial_assignment=initial_assignment)
+        self._undo.append(self._project);self._undo=self._undo[-self._history_limit:]
+        self._redo.clear();self._project=saved
         return saved
 
     def propose_part(self, asset_id: str) -> CharacterProject:

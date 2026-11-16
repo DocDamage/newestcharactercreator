@@ -34,7 +34,7 @@ class MotionCanvas(QOpenGLWidget):
 
     def initializeGL(self):
         try:
-            self.renderer=SkinRenderer(self.context())
+            self.renderer=SkinRenderer(self.context(),material=getattr(self.cache,'material',None))
             self.context().aboutToBeDestroyed.connect(self.release)
         except Exception as error:self._fail(str(error))
 

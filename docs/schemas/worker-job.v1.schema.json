@@ -75,7 +75,24 @@
         "verify_mpfb_expression_keys",
         "inspect_mpfb_expression_keys",
         "stage_mpfb_expression_clip",
-        "verify_mpfb_expression_clip"
+        "verify_mpfb_expression_clip",
+        "stage_mpfb_godot_candidate",
+        "verify_mpfb_godot_candidate",
+        "stage_native_godot_runtime",
+        "verify_native_godot_runtime",
+        "sample_native_godot_runtime",
+        "stage_mpfb_skin_material",
+        "verify_mpfb_skin_material",
+        "stage_mpfb_expression_normals",
+        "verify_mpfb_expression_normals",
+        "stage_mpfb_sprite_sample",
+        "verify_mpfb_sprite_sample",
+        "stage_mpfb_facial_sprites",
+        "verify_mpfb_facial_sprites",
+        "stage_mpfb_unity_source",
+        "verify_mpfb_unity_source",
+        "stage_mpfb_unity_runtime_source",
+        "verify_mpfb_unity_runtime_source"
       ]
     },
     "input_project": {
@@ -89,6 +106,129 @@
     }
   },
   "allOf": [
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "stage_native_godot_runtime"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "input_project": {
+            "const": "candidate.blend"
+          },
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "mapping_sha256",
+              "master_sha256",
+              "native_recipe_sha256",
+              "review_sha256",
+              "snapshot_sha256",
+              "source_sha256",
+              "timeline_sha256"
+            ],
+            "properties": {
+              "mapping_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "master_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "native_recipe_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "review_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "snapshot_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "source_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "timeline_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "verify_native_godot_runtime"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "input_project": {
+            "const": "candidate.blend"
+          },
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "mapping_sha256",
+              "master_sha256",
+              "native_recipe_sha256",
+              "native_stage_sha256",
+              "review_sha256",
+              "snapshot_sha256",
+              "source_sha256",
+              "timeline_sha256"
+            ],
+            "properties": {
+              "mapping_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "master_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "native_recipe_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "native_stage_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "review_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "snapshot_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "source_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "timeline_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
     {
       "if": {
         "properties": {
@@ -3439,6 +3579,1139 @@
                 "pattern": "^[a-f0-9]{64}$"
               },
               "cache_manifest_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "stage_mpfb_godot_candidate"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "input_project": {
+            "const": "candidate.blend"
+          },
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "master_sha256",
+              "target_motion_sha256",
+              "export_recipe_sha256",
+              "clip_sha256",
+              "eye_left_closure_african_sha256",
+              "eye_left_closure_asian_sha256",
+              "eye_left_closure_caucasian_sha256",
+              "eye_right_closure_african_sha256",
+              "eye_right_closure_asian_sha256",
+              "eye_right_closure_caucasian_sha256",
+              "mouth_corners_african_sha256",
+              "mouth_corners_asian_sha256",
+              "mouth_corners_caucasian_sha256",
+              "mouth_open_african_sha256",
+              "mouth_open_asian_sha256",
+              "mouth_open_caucasian_sha256"
+            ],
+            "properties": {
+              "master_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "target_motion_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "export_recipe_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "clip_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "eye_left_closure_african_sha256": {
+                "const": "2d358745e955ead9d73f85ed224568a8d347f3f3b897c26cbd412faf2bfa9f3a"
+              },
+              "eye_left_closure_asian_sha256": {
+                "const": "0d52fee2d66b933ece83f3c7aa48e85bfe85e8adbed0931dbd37025866a1a67d"
+              },
+              "eye_left_closure_caucasian_sha256": {
+                "const": "ff0d21ceb6da55fe51e03b48a7562a650924fea9bef0c686fcd7aa44d16422ed"
+              },
+              "eye_right_closure_african_sha256": {
+                "const": "c1b0c3609d9fb59a97dabe8ace10622da58969f4566125b38f47285afef320d5"
+              },
+              "eye_right_closure_asian_sha256": {
+                "const": "0c99a5f559a1d67f630a329b9724fe3742a2c35709b8baa8a6d37903f35b9b77"
+              },
+              "eye_right_closure_caucasian_sha256": {
+                "const": "2b7be6bc65845d77e5f83b7bf852090854747e448644997795fa59b6cf76122d"
+              },
+              "mouth_corners_african_sha256": {
+                "const": "5560c685cd55ae6a00830e539ac54135cb4dcfec6a28be90510c931dcfdca478"
+              },
+              "mouth_corners_asian_sha256": {
+                "const": "d881bb8feda2637bdaef2c7d7c6bed12f0be5914949e5a2cb9b06a583af412c0"
+              },
+              "mouth_corners_caucasian_sha256": {
+                "const": "d881bb8feda2637bdaef2c7d7c6bed12f0be5914949e5a2cb9b06a583af412c0"
+              },
+              "mouth_open_african_sha256": {
+                "const": "d710d4ae1693e7278a5bbe620276970fb6e89de139b50aaaea2830c31146459a"
+              },
+              "mouth_open_asian_sha256": {
+                "const": "b52bbe631152844bb7b835c0f98d12ab0a1c0689e02e067b239d8349ccf9aab2"
+              },
+              "mouth_open_caucasian_sha256": {
+                "const": "dc1260a8728d93a9c52d6b35b5f55ad39ab8096090acd5ccad7f973c26e28818"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "verify_mpfb_godot_candidate"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "input_project": {
+            "const": "candidate.blend"
+          },
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "master_sha256",
+              "target_motion_sha256",
+              "export_recipe_sha256",
+              "clip_sha256",
+              "eye_left_closure_african_sha256",
+              "eye_left_closure_asian_sha256",
+              "eye_left_closure_caucasian_sha256",
+              "eye_right_closure_african_sha256",
+              "eye_right_closure_asian_sha256",
+              "eye_right_closure_caucasian_sha256",
+              "mouth_corners_african_sha256",
+              "mouth_corners_asian_sha256",
+              "mouth_corners_caucasian_sha256",
+              "mouth_open_african_sha256",
+              "mouth_open_asian_sha256",
+              "mouth_open_caucasian_sha256",
+              "candidate_sha256",
+              "review_scene_sha256",
+              "stage_report_sha256",
+              "positions_sha256",
+              "bind_positions_sha256",
+              "bones_sha256",
+              "action_report_sha256"
+            ],
+            "properties": {
+              "master_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "target_motion_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "export_recipe_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "clip_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "eye_left_closure_african_sha256": {
+                "const": "2d358745e955ead9d73f85ed224568a8d347f3f3b897c26cbd412faf2bfa9f3a"
+              },
+              "eye_left_closure_asian_sha256": {
+                "const": "0d52fee2d66b933ece83f3c7aa48e85bfe85e8adbed0931dbd37025866a1a67d"
+              },
+              "eye_left_closure_caucasian_sha256": {
+                "const": "ff0d21ceb6da55fe51e03b48a7562a650924fea9bef0c686fcd7aa44d16422ed"
+              },
+              "eye_right_closure_african_sha256": {
+                "const": "c1b0c3609d9fb59a97dabe8ace10622da58969f4566125b38f47285afef320d5"
+              },
+              "eye_right_closure_asian_sha256": {
+                "const": "0c99a5f559a1d67f630a329b9724fe3742a2c35709b8baa8a6d37903f35b9b77"
+              },
+              "eye_right_closure_caucasian_sha256": {
+                "const": "2b7be6bc65845d77e5f83b7bf852090854747e448644997795fa59b6cf76122d"
+              },
+              "mouth_corners_african_sha256": {
+                "const": "5560c685cd55ae6a00830e539ac54135cb4dcfec6a28be90510c931dcfdca478"
+              },
+              "mouth_corners_asian_sha256": {
+                "const": "d881bb8feda2637bdaef2c7d7c6bed12f0be5914949e5a2cb9b06a583af412c0"
+              },
+              "mouth_corners_caucasian_sha256": {
+                "const": "d881bb8feda2637bdaef2c7d7c6bed12f0be5914949e5a2cb9b06a583af412c0"
+              },
+              "mouth_open_african_sha256": {
+                "const": "d710d4ae1693e7278a5bbe620276970fb6e89de139b50aaaea2830c31146459a"
+              },
+              "mouth_open_asian_sha256": {
+                "const": "b52bbe631152844bb7b835c0f98d12ab0a1c0689e02e067b239d8349ccf9aab2"
+              },
+              "mouth_open_caucasian_sha256": {
+                "const": "dc1260a8728d93a9c52d6b35b5f55ad39ab8096090acd5ccad7f973c26e28818"
+              },
+              "candidate_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "review_scene_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "stage_report_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "positions_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "bind_positions_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "bones_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "action_report_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "sample_native_godot_runtime"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "input_project": {
+            "const": "candidate.blend"
+          },
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "mapping_sha256",
+              "master_sha256",
+              "native_recipe_sha256",
+              "native_stage_sha256",
+              "native_verification_sha256",
+              "production_receipt_sha256",
+              "review_sha256",
+              "runtime_request_sha256",
+              "snapshot_sha256",
+              "source_sha256",
+              "timeline_sha256"
+            ],
+            "properties": {
+              "mapping_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "master_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "native_recipe_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "native_stage_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "native_verification_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "production_receipt_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "review_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "runtime_request_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "snapshot_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "source_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "timeline_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "stage_mpfb_skin_material"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "input_project": {
+            "const": "candidate.blend"
+          },
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "master_sha256",
+              "recipe_sha256"
+            ],
+            "properties": {
+              "master_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "recipe_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "verify_mpfb_skin_material"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "input_project": {
+            "const": "candidate.blend"
+          },
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "master_sha256",
+              "recipe_sha256",
+              "material_master_sha256",
+              "stage_report_sha256",
+              "glb_sha256"
+            ],
+            "properties": {
+              "master_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "recipe_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "material_master_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "stage_report_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "glb_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "stage_mpfb_expression_normals"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "input_project": {
+            "const": "candidate.blend"
+          },
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "cache_manifest_sha256",
+              "cache_sha256",
+              "clip_sha256",
+              "eye_left_closure_african_sha256",
+              "eye_left_closure_asian_sha256",
+              "eye_left_closure_caucasian_sha256",
+              "eye_right_closure_african_sha256",
+              "eye_right_closure_asian_sha256",
+              "eye_right_closure_caucasian_sha256",
+              "master_sha256",
+              "motion_report_sha256",
+              "motion_sha256",
+              "mouth_corners_african_sha256",
+              "mouth_corners_asian_sha256",
+              "mouth_corners_caucasian_sha256",
+              "mouth_open_african_sha256",
+              "mouth_open_asian_sha256",
+              "mouth_open_caucasian_sha256",
+              "owned_material_spec"
+            ],
+            "properties": {
+              "cache_manifest_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "cache_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "clip_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "eye_left_closure_african_sha256": {
+                "const": "2d358745e955ead9d73f85ed224568a8d347f3f3b897c26cbd412faf2bfa9f3a"
+              },
+              "eye_left_closure_asian_sha256": {
+                "const": "0d52fee2d66b933ece83f3c7aa48e85bfe85e8adbed0931dbd37025866a1a67d"
+              },
+              "eye_left_closure_caucasian_sha256": {
+                "const": "ff0d21ceb6da55fe51e03b48a7562a650924fea9bef0c686fcd7aa44d16422ed"
+              },
+              "eye_right_closure_african_sha256": {
+                "const": "c1b0c3609d9fb59a97dabe8ace10622da58969f4566125b38f47285afef320d5"
+              },
+              "eye_right_closure_asian_sha256": {
+                "const": "0c99a5f559a1d67f630a329b9724fe3742a2c35709b8baa8a6d37903f35b9b77"
+              },
+              "eye_right_closure_caucasian_sha256": {
+                "const": "2b7be6bc65845d77e5f83b7bf852090854747e448644997795fa59b6cf76122d"
+              },
+              "master_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "motion_report_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "motion_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "mouth_corners_african_sha256": {
+                "const": "5560c685cd55ae6a00830e539ac54135cb4dcfec6a28be90510c931dcfdca478"
+              },
+              "mouth_corners_asian_sha256": {
+                "const": "d881bb8feda2637bdaef2c7d7c6bed12f0be5914949e5a2cb9b06a583af412c0"
+              },
+              "mouth_corners_caucasian_sha256": {
+                "const": "d881bb8feda2637bdaef2c7d7c6bed12f0be5914949e5a2cb9b06a583af412c0"
+              },
+              "mouth_open_african_sha256": {
+                "const": "d710d4ae1693e7278a5bbe620276970fb6e89de139b50aaaea2830c31146459a"
+              },
+              "mouth_open_asian_sha256": {
+                "const": "b52bbe631152844bb7b835c0f98d12ab0a1c0689e02e067b239d8349ccf9aab2"
+              },
+              "mouth_open_caucasian_sha256": {
+                "const": "dc1260a8728d93a9c52d6b35b5f55ad39ab8096090acd5ccad7f973c26e28818"
+              },
+              "owned_material_spec": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "schema_version",
+                  "policy",
+                  "base_color_srgb",
+                  "roughness",
+                  "metallic",
+                  "alpha",
+                  "textures",
+                  "source"
+                ],
+                "properties": {
+                  "schema_version": {
+                    "const": 1
+                  },
+                  "policy": {
+                    "const": "UCC_MPFBBODY_PRINCIPLED_COLOR_V1"
+                  },
+                  "base_color_srgb": {
+                    "type": "array",
+                    "minItems": 3,
+                    "maxItems": 3,
+                    "items": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    }
+                  },
+                  "roughness": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "metallic": {
+                    "const": 0.0
+                  },
+                  "alpha": {
+                    "const": 1.0
+                  },
+                  "textures": {
+                    "const": false
+                  },
+                  "source": {
+                    "const": "FIRST_PARTY_EXPLICIT_PARAMETERS"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "verify_mpfb_expression_normals"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "input_project": {
+            "const": "candidate.blend"
+          },
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "cache_manifest_sha256",
+              "cache_sha256",
+              "clip_sha256",
+              "eye_left_closure_african_sha256",
+              "eye_left_closure_asian_sha256",
+              "eye_left_closure_caucasian_sha256",
+              "eye_right_closure_african_sha256",
+              "eye_right_closure_asian_sha256",
+              "eye_right_closure_caucasian_sha256",
+              "master_sha256",
+              "motion_report_sha256",
+              "motion_sha256",
+              "mouth_corners_african_sha256",
+              "mouth_corners_asian_sha256",
+              "mouth_corners_caucasian_sha256",
+              "mouth_open_african_sha256",
+              "mouth_open_asian_sha256",
+              "mouth_open_caucasian_sha256",
+              "owned_material_spec",
+              "normals_sha256",
+              "normals_manifest_sha256"
+            ],
+            "properties": {
+              "cache_manifest_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "cache_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "clip_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "eye_left_closure_african_sha256": {
+                "const": "2d358745e955ead9d73f85ed224568a8d347f3f3b897c26cbd412faf2bfa9f3a"
+              },
+              "eye_left_closure_asian_sha256": {
+                "const": "0d52fee2d66b933ece83f3c7aa48e85bfe85e8adbed0931dbd37025866a1a67d"
+              },
+              "eye_left_closure_caucasian_sha256": {
+                "const": "ff0d21ceb6da55fe51e03b48a7562a650924fea9bef0c686fcd7aa44d16422ed"
+              },
+              "eye_right_closure_african_sha256": {
+                "const": "c1b0c3609d9fb59a97dabe8ace10622da58969f4566125b38f47285afef320d5"
+              },
+              "eye_right_closure_asian_sha256": {
+                "const": "0c99a5f559a1d67f630a329b9724fe3742a2c35709b8baa8a6d37903f35b9b77"
+              },
+              "eye_right_closure_caucasian_sha256": {
+                "const": "2b7be6bc65845d77e5f83b7bf852090854747e448644997795fa59b6cf76122d"
+              },
+              "master_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "motion_report_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "motion_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "mouth_corners_african_sha256": {
+                "const": "5560c685cd55ae6a00830e539ac54135cb4dcfec6a28be90510c931dcfdca478"
+              },
+              "mouth_corners_asian_sha256": {
+                "const": "d881bb8feda2637bdaef2c7d7c6bed12f0be5914949e5a2cb9b06a583af412c0"
+              },
+              "mouth_corners_caucasian_sha256": {
+                "const": "d881bb8feda2637bdaef2c7d7c6bed12f0be5914949e5a2cb9b06a583af412c0"
+              },
+              "mouth_open_african_sha256": {
+                "const": "d710d4ae1693e7278a5bbe620276970fb6e89de139b50aaaea2830c31146459a"
+              },
+              "mouth_open_asian_sha256": {
+                "const": "b52bbe631152844bb7b835c0f98d12ab0a1c0689e02e067b239d8349ccf9aab2"
+              },
+              "mouth_open_caucasian_sha256": {
+                "const": "dc1260a8728d93a9c52d6b35b5f55ad39ab8096090acd5ccad7f973c26e28818"
+              },
+              "owned_material_spec": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "schema_version",
+                  "policy",
+                  "base_color_srgb",
+                  "roughness",
+                  "metallic",
+                  "alpha",
+                  "textures",
+                  "source"
+                ],
+                "properties": {
+                  "schema_version": {
+                    "const": 1
+                  },
+                  "policy": {
+                    "const": "UCC_MPFBBODY_PRINCIPLED_COLOR_V1"
+                  },
+                  "base_color_srgb": {
+                    "type": "array",
+                    "minItems": 3,
+                    "maxItems": 3,
+                    "items": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    }
+                  },
+                  "roughness": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "metallic": {
+                    "const": 0.0
+                  },
+                  "alpha": {
+                    "const": 1.0
+                  },
+                  "textures": {
+                    "const": false
+                  },
+                  "source": {
+                    "const": "FIRST_PARTY_EXPLICIT_PARAMETERS"
+                  }
+                }
+              },
+              "normals_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "normals_manifest_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "stage_mpfb_sprite_sample"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "input_project": {
+            "const": "candidate.blend"
+          },
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "master_sha256",
+              "recipe_sha256"
+            ],
+            "properties": {
+              "master_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "recipe_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "verify_mpfb_sprite_sample"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "input_project": {
+            "const": "candidate.blend"
+          },
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "master_sha256",
+              "recipe_sha256",
+              "scene_sha256",
+              "stage_sha256"
+            ],
+            "properties": {
+              "master_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "recipe_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "scene_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "stage_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "stage_mpfb_facial_sprites"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "input_project": {
+            "const": "candidate.blend"
+          },
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "clip_sha256",
+              "eye_left_closure_african_sha256",
+              "eye_left_closure_asian_sha256",
+              "eye_left_closure_caucasian_sha256",
+              "eye_right_closure_african_sha256",
+              "eye_right_closure_asian_sha256",
+              "eye_right_closure_caucasian_sha256",
+              "master_sha256",
+              "mouth_corners_african_sha256",
+              "mouth_corners_asian_sha256",
+              "mouth_corners_caucasian_sha256",
+              "mouth_open_african_sha256",
+              "mouth_open_asian_sha256",
+              "mouth_open_caucasian_sha256",
+              "recipe_sha256"
+            ],
+            "properties": {
+              "clip_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "eye_left_closure_african_sha256": {
+                "const": "2d358745e955ead9d73f85ed224568a8d347f3f3b897c26cbd412faf2bfa9f3a"
+              },
+              "eye_left_closure_asian_sha256": {
+                "const": "0d52fee2d66b933ece83f3c7aa48e85bfe85e8adbed0931dbd37025866a1a67d"
+              },
+              "eye_left_closure_caucasian_sha256": {
+                "const": "ff0d21ceb6da55fe51e03b48a7562a650924fea9bef0c686fcd7aa44d16422ed"
+              },
+              "eye_right_closure_african_sha256": {
+                "const": "c1b0c3609d9fb59a97dabe8ace10622da58969f4566125b38f47285afef320d5"
+              },
+              "eye_right_closure_asian_sha256": {
+                "const": "0c99a5f559a1d67f630a329b9724fe3742a2c35709b8baa8a6d37903f35b9b77"
+              },
+              "eye_right_closure_caucasian_sha256": {
+                "const": "2b7be6bc65845d77e5f83b7bf852090854747e448644997795fa59b6cf76122d"
+              },
+              "master_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "mouth_corners_african_sha256": {
+                "const": "5560c685cd55ae6a00830e539ac54135cb4dcfec6a28be90510c931dcfdca478"
+              },
+              "mouth_corners_asian_sha256": {
+                "const": "d881bb8feda2637bdaef2c7d7c6bed12f0be5914949e5a2cb9b06a583af412c0"
+              },
+              "mouth_corners_caucasian_sha256": {
+                "const": "d881bb8feda2637bdaef2c7d7c6bed12f0be5914949e5a2cb9b06a583af412c0"
+              },
+              "mouth_open_african_sha256": {
+                "const": "d710d4ae1693e7278a5bbe620276970fb6e89de139b50aaaea2830c31146459a"
+              },
+              "mouth_open_asian_sha256": {
+                "const": "b52bbe631152844bb7b835c0f98d12ab0a1c0689e02e067b239d8349ccf9aab2"
+              },
+              "mouth_open_caucasian_sha256": {
+                "const": "dc1260a8728d93a9c52d6b35b5f55ad39ab8096090acd5ccad7f973c26e28818"
+              },
+              "recipe_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "verify_mpfb_facial_sprites"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "input_project": {
+            "const": "candidate.blend"
+          },
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "clip_sha256",
+              "eye_left_closure_african_sha256",
+              "eye_left_closure_asian_sha256",
+              "eye_left_closure_caucasian_sha256",
+              "eye_right_closure_african_sha256",
+              "eye_right_closure_asian_sha256",
+              "eye_right_closure_caucasian_sha256",
+              "master_sha256",
+              "mouth_corners_african_sha256",
+              "mouth_corners_asian_sha256",
+              "mouth_corners_caucasian_sha256",
+              "mouth_open_african_sha256",
+              "mouth_open_asian_sha256",
+              "mouth_open_caucasian_sha256",
+              "recipe_sha256",
+              "scene_sha256",
+              "stage_sha256"
+            ],
+            "properties": {
+              "clip_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "eye_left_closure_african_sha256": {
+                "const": "2d358745e955ead9d73f85ed224568a8d347f3f3b897c26cbd412faf2bfa9f3a"
+              },
+              "eye_left_closure_asian_sha256": {
+                "const": "0d52fee2d66b933ece83f3c7aa48e85bfe85e8adbed0931dbd37025866a1a67d"
+              },
+              "eye_left_closure_caucasian_sha256": {
+                "const": "ff0d21ceb6da55fe51e03b48a7562a650924fea9bef0c686fcd7aa44d16422ed"
+              },
+              "eye_right_closure_african_sha256": {
+                "const": "c1b0c3609d9fb59a97dabe8ace10622da58969f4566125b38f47285afef320d5"
+              },
+              "eye_right_closure_asian_sha256": {
+                "const": "0c99a5f559a1d67f630a329b9724fe3742a2c35709b8baa8a6d37903f35b9b77"
+              },
+              "eye_right_closure_caucasian_sha256": {
+                "const": "2b7be6bc65845d77e5f83b7bf852090854747e448644997795fa59b6cf76122d"
+              },
+              "master_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "mouth_corners_african_sha256": {
+                "const": "5560c685cd55ae6a00830e539ac54135cb4dcfec6a28be90510c931dcfdca478"
+              },
+              "mouth_corners_asian_sha256": {
+                "const": "d881bb8feda2637bdaef2c7d7c6bed12f0be5914949e5a2cb9b06a583af412c0"
+              },
+              "mouth_corners_caucasian_sha256": {
+                "const": "d881bb8feda2637bdaef2c7d7c6bed12f0be5914949e5a2cb9b06a583af412c0"
+              },
+              "mouth_open_african_sha256": {
+                "const": "d710d4ae1693e7278a5bbe620276970fb6e89de139b50aaaea2830c31146459a"
+              },
+              "mouth_open_asian_sha256": {
+                "const": "b52bbe631152844bb7b835c0f98d12ab0a1c0689e02e067b239d8349ccf9aab2"
+              },
+              "mouth_open_caucasian_sha256": {
+                "const": "dc1260a8728d93a9c52d6b35b5f55ad39ab8096090acd5ccad7f973c26e28818"
+              },
+              "recipe_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "scene_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "stage_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "stage_mpfb_unity_source"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "input_project": {
+            "const": "candidate.blend"
+          },
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "master_sha256",
+              "recipe_sha256"
+            ],
+            "properties": {
+              "master_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "recipe_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "verify_mpfb_unity_source"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "input_project": {
+            "const": "candidate.blend"
+          },
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "master_sha256",
+              "recipe_sha256",
+              "character_fbx_sha256",
+              "source_reference_json_sha256",
+              "source_weights_json_sha256",
+              "unity_source_stage_json_sha256"
+            ],
+            "properties": {
+              "master_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "recipe_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "character_fbx_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "source_reference_json_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "source_weights_json_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "unity_source_stage_json_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "stage_mpfb_unity_runtime_source"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "input_project": {
+            "const": "candidate.blend"
+          },
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "master_sha256",
+              "recipe_sha256",
+              "bind_reference_sha256"
+            ],
+            "properties": {
+              "master_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "recipe_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "bind_reference_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "verify_mpfb_unity_runtime_source"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "input_project": {
+            "const": "candidate.blend"
+          },
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "master_sha256",
+              "recipe_sha256",
+              "bind_reference_sha256",
+              "unity_runtime_source_bin_sha256",
+              "unity_runtime_source_json_sha256"
+            ],
+            "properties": {
+              "master_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "recipe_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "bind_reference_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "unity_runtime_source_bin_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "unity_runtime_source_json_sha256": {
                 "type": "string",
                 "pattern": "^[a-f0-9]{64}$"
               }

@@ -12,6 +12,15 @@ from ucc.jobs.private_render_evidence import png_measurements, verify_private_re
 
 
 class PrivateRenderEvidenceTests(unittest.TestCase):
+    def test_independent_pixel_hash_is_identical_across_png_filters(self):
+        # Different compressed bytes must not count as changed rendered motion.
+        import hashlib
+        encoded = [png(method) for method in range(5)]
+        self.assertGreater(len({hashlib.sha256(data).hexdigest() for data in encoded}), 1)
+        decoded = [png_measurements(data, include_pixel_hash=True) for data in encoded]
+        self.assertEqual(len({row['rgba_sha256'] for row in decoded}), 1)
+        self.assertNotIn('rgba_sha256', png_measurements(encoded[0]))
+
     @classmethod
     def setUpClass(cls):
         cls.images = [png(phase=i*9) for i in range(5)]

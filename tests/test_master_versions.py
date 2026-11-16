@@ -214,6 +214,22 @@ class MasterRevisionTests(unittest.TestCase):
         with self.assertRaises(ValidationError):
             self.stage(max_bytes=0)
 
+    def test_appearance_and_master_commit_together_with_failure_rollback(self):
+        appearance=(('existing','preserved'),('ucc.body_material.v1','a'*64))
+        def fail():raise RuntimeError('UNIT final appearance commit rejected')
+        with self.assertRaises(RuntimeError):self.stage(proposed_appearance=appearance,before_project_save=fail)
+        self.assertEqual(self.store.load(),self.initial)
+        result=self.stage(proposed_appearance=appearance)
+        self.assertEqual(result.project.appearance,appearance)
+        self.assertEqual(self.store.load().appearance,appearance)
+        self.assertEqual(self.store.load().master_blend,result.project.master_blend)
+
+    def test_invalid_or_duplicate_appearance_stops_before_master_install(self):
+        for appearance in ([('key','value')],(('same','one'),('same','two')),(('key',1),),(('key',''),)):
+            with self.subTest(appearance=appearance),self.assertRaises(ValidationError):self.stage(proposed_appearance=appearance)
+        self.assertEqual(self.store.load(),self.initial)
+        self.assertFalse((self.store.root/'master').exists())
+
 
 if __name__ == "__main__":
     unittest.main()

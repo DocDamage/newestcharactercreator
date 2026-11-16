@@ -1,6 +1,6 @@
 """Static GLB inspection: sampled CPU view or complete humanoid GPU face view.
 
-The complete surface reuses the fixed local clay shader. Neither mode runs
+The complete surface uses local clay or checked owned dielectric PBR. Neither mode runs
 asset shaders, edits geometry, plays animation or certifies engine imports.
 """
 from __future__ import annotations
@@ -206,3 +206,6 @@ class MeshViewer(QWidget):
         self.face_focus.show(); self.whole_focus.show()
         self.note.setText('Complete static surface. Face focus uses the upper region of an upright humanoid. Read-only; no live morphing or animation.')
         self.status.setText(f'Complete saved-master surface: {model.source_face_count:,} triangles. Visual quality and engine imports remain unapproved.')
+        if model.material is not None:
+            self.status.setText(f'Saved material and complete surface: {model.source_face_count:,} triangles. Color and roughness from the verified Blender shader.')
+            self.note.setText('Smooth-normal dielectric PBR preview: fixed white light and ambient. No textures, shadows or Blender render matching. Drag to orbit; use face/whole-character focus.')

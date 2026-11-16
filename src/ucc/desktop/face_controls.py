@@ -47,7 +47,7 @@ class FaceControls(QGroupBox):
         self.slider.blockSignals(True); self.value.blockSignals(True)
         self.slider.setValue(round(value*1000)); self.value.setValue(value)
         self.slider.blockSignals(False); self.value.blockSignals(False)
-        supported = (view.part_count == 0 and view.animation_count == 0) or view.referenced_master_intent
+        supported = (view.part_count == 0 and view.animation_count == 0) or view.referenced_master_intent or view.material_master_intent
         self.setEnabled(supported)
         self.apply.setEnabled(supported and view.master_blend is not None and bool(view.facial_parameters) and not view.dirty)
         self.setToolTip('Facial editing with attached parts or animations is not validated.' if not supported else '')
