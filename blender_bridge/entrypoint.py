@@ -11,6 +11,10 @@ from pathlib import Path
 import sys
 import traceback
 
+# Blender's embedded Python can ignore PYTHONDONTWRITEBYTECODE. Keep both source
+# checkouts and frozen payloads immutable before importing any bridge/core code.
+sys.dont_write_bytecode = True
+
 import bpy
 
 # Blender --python does not guarantee the repository parent is on sys.path.
@@ -20,7 +24,6 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 # modules: never put that directory on Blender's import path.
 if ((REPO_ROOT/'worker_support').exists() or (REPO_ROOT/'worker_support').is_symlink()
         or (REPO_ROOT/'blender_bridge/payload_contract.py').exists()):
-    sys.dont_write_bytecode = True
     from types import ModuleType
     bridge_path=str(REPO_ROOT/'blender_bridge')
     bridge_package=sys.modules.get('blender_bridge')
@@ -90,6 +93,7 @@ OPERATIONS.add('inspect_mpfb_neutral_master')
 OPERATIONS |= {'stage_mpfb_godot_candidate', 'verify_mpfb_godot_candidate'}
 OPERATIONS |= {'stage_native_godot_runtime', 'verify_native_godot_runtime'}
 OPERATIONS.add('sample_native_godot_runtime')
+OPERATIONS |= {'stage_registered_native_godot_runtime', 'verify_registered_native_godot_runtime'}
 OPERATIONS|={'stage_mpfb_skin_material','verify_mpfb_skin_material'}
 OPERATIONS|={'stage_mpfb_expression_normals','verify_mpfb_expression_normals'}
 OPERATIONS|={'stage_mpfb_sprite_sample','verify_mpfb_sprite_sample'}
@@ -157,7 +161,7 @@ def native_godot_runtime(job: dict,root: Path) -> dict:
     if job['operation']=='sample_native_godot_runtime':
         from blender_bridge.godot_runtime_samples import sample_native_runtime
         return sample_native_runtime(bpy,root,job)
-    action=stage_native_runtime if job['operation']=='stage_native_godot_runtime' else verify_native_runtime
+    action=stage_native_runtime if job['operation'] in {'stage_native_godot_runtime','stage_registered_native_godot_runtime'} else verify_native_runtime
     return action(bpy,root,job)
 
 
@@ -541,6 +545,8 @@ def main() -> int:
                   'stage_native_godot_runtime': native_godot_runtime,
                   'verify_native_godot_runtime': native_godot_runtime,
                   'sample_native_godot_runtime': native_godot_runtime,
+                  'stage_registered_native_godot_runtime': native_godot_runtime,
+                  'verify_registered_native_godot_runtime': native_godot_runtime,
                   'stage_mpfb_skin_material': skin_material_revision,
                   'verify_mpfb_skin_material': skin_material_revision,
                   'stage_mpfb_unity_source': unity_source,

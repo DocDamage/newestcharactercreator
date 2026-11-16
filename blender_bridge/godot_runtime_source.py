@@ -20,8 +20,19 @@ from ucc.export.godot_runtime_contract import PROFILE
 
 
 def checked_recipe(root: Path,job: dict) -> dict:
-    options=job['options'];validate_native_job(job['operation'],job['input_project'],options)
-    recipe=validate_native_recipe(read_json(root/'native_recipe.json',options['native_recipe_sha256'],256*1024))
+    options=job['options']
+    registered = job['operation'] in {'stage_registered_native_godot_runtime',
+                                     'verify_registered_native_godot_runtime'}
+    if registered:
+        from ucc.export.godot_registered_native_recipe import (
+            validate_registered_native_job, validate_registered_native_recipe)
+        validate_registered_native_job(job['operation'],job['input_project'],options)
+        recipe=validate_registered_native_recipe(read_json(root/'native_recipe.json',options['native_recipe_sha256'],256*1024))
+        if recipe['target_action_binding_sha256'] != options['target_action_binding_sha256']:
+            raise ValueError('Registered native worker selected a different target binding')
+    else:
+        validate_native_job(job['operation'],job['input_project'],options)
+        recipe=validate_native_recipe(read_json(root/'native_recipe.json',options['native_recipe_sha256'],256*1024))
     bindings=recipe['source_bindings'];evidence=recipe['evidence_bindings']
     expected={'master_sha256':bindings['master'],'source_sha256':bindings[recipe['motion_asset_id']],
         'review_sha256':evidence['native_review'],'timeline_sha256':evidence['native_timeline'],
@@ -34,7 +45,20 @@ def checked_recipe(root: Path,job: dict) -> dict:
         path=root/name
         if path.is_symlink() or not path.is_file() or not 0<path.stat().st_size<=256*1024 or digest(path)!=sha:
             raise ValueError('Private native implementation changed: '+name)
+        if registered and path.stat().st_size != recipe['runtime_code_lengths'][name]:
+            raise ValueError('Registered private code byte length changed: '+name)
     return recipe
+
+
+def require_registered_material_state(bpy: Any,human: Any,recipe: dict) -> None:
+    """The finite V2 specimen has no assigned Human material or texture sources."""
+    from ucc.export.godot_registered_native_recipe import POLICY, MATERIAL_POLICY
+    if recipe['policy'] != POLICY:
+        return
+    if (recipe['material_policy'] != MATERIAL_POLICY or len(human.data.materials)
+            or bpy.data.libraries or any(image.source != 'VIEWER' or image.filepath
+                or image.packed_file is not None for image in bpy.data.images)):
+        raise ValueError('Registered native source changed its unassigned Human material profile')
 
 
 def character_state(bpy: Any,human: Any,rig: Any) -> str:
@@ -71,12 +95,16 @@ def character_state(bpy: Any,human: Any,rig: Any) -> str:
 
 
 def admitted_source(bpy: Any,root: Path,job: dict,observer=None) -> tuple:
+    recipe=checked_recipe(root,job)
     options=job['options'];bound_scene(root/'candidate.blend',options['master_sha256'])
     bpy.ops.wm.open_mainfile(filepath=str(root/'candidate.blend'),load_ui=False)
-    human,rig=scene_objects(bpy);master=character_state(bpy,human,rig)
+    human,rig=scene_objects(bpy)
+    require_registered_material_state(bpy,human,recipe)
+    master=character_state(bpy,human,rig)
     native_options={key:options[key] for key in INPUTS.values()}
     evidence=reopen_native(bpy,root,native_options,frame_observer=observer)
     human,rig=scene_objects(bpy)
+    require_registered_material_state(bpy,human,recipe)
     if character_state(bpy,human,rig)!=master:
         raise ValueError('Native review changed authoritative master shape keys, geometry, weights, UVs, materials or rest state')
     scene=bpy.context.scene

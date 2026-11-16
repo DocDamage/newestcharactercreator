@@ -4,7 +4,8 @@ from typing import Any
 import math
 import numpy as np
 
-from blender_bridge.godot_runtime_source import checked_recipe,admitted_source,character_state,source_profile
+from blender_bridge.godot_runtime_source import (checked_recipe,admitted_source,character_state,
+    source_profile,require_registered_material_state)
 from blender_bridge.godot_runtime_geometry import sampled_mesh,capture_binding,write_binding,reconstruct
 from blender_bridge.godot_bind_mesh import build_godot_bind_mesh
 from blender_bridge.godot_outputs import export_glb,write_json
@@ -55,6 +56,7 @@ def _loaded_binding(root: Path) -> dict:
 
 def stage_native_runtime(bpy: Any,root: Path,job: dict) -> dict:
     recipe=checked_recipe(root,job)
+    policy=recipe['policy']
     for name in (OUTPUT_FILES-CODE_FILES)|{'native_stage.json','runtime_edges.u32'}:
         if (root/name).exists() or (root/name).is_symlink():raise ValueError('Refuse to overwrite native runtime output: '+name)
     positions=[];normals=[];bones=[]
@@ -69,6 +71,7 @@ def stage_native_runtime(bpy: Any,root: Path,job: dict) -> dict:
     donor=human.copy();donor.data=human.data.copy();bpy.context.scene.collection.objects.link(donor)
     donor.modifiers.remove(donor.modifiers[NAME])
     candidate=build_godot_bind_mesh(bpy,donor,rig);converted=candidate.object
+    require_registered_material_state(bpy,converted,recipe)
     data=donor.data;bpy.data.objects.remove(donor,do_unlink=True);bpy.data.meshes.remove(data)
     weights=original_weights(human,rig,candidate.source_vertex_ids)
     apply_weights(converted,weights,serialized=False)
@@ -104,7 +107,7 @@ def stage_native_runtime(bpy: Any,root: Path,job: dict) -> dict:
     bpy.context.scene.frame_set(1);bpy.ops.wm.save_as_mainfile(filepath=str(root/'runtime_source.blend'),compress=False)
     checked_recipe(root,job)
     files={name:{'sha256':digest(root/name),'bytes':(root/name).stat().st_size} for name in sorted(OUTPUT_FILES|{'runtime_edges.u32'})}
-    report={'schema_version':1,'policy':POLICY,'status':'REAL_NATIVE_RUNTIME_SOURCE_STAGED_NOT_ENGINE_VERIFIED',
+    report={'schema_version':1,'policy':policy,'status':'REAL_NATIVE_RUNTIME_SOURCE_STAGED_NOT_ENGINE_VERIFIED',
         'recipe_sha256':job['options']['native_recipe_sha256'],'master_state_sha256':master,
         'native_reopen':native,'source_names':{'human':human.name,'rig':rig.name,'converted':converted.name},
         'frames':rows,'fps':30,'frame_count':300,'morphs':morphs,'blender_version':bpy.app.version_string,
@@ -112,14 +115,14 @@ def stage_native_runtime(bpy: Any,root: Path,job: dict) -> dict:
         'raw_copy_weight_policy':'EXACT_ORIGINAL_SOURCE_WEIGHTS_V1','max_serialized_weight_error':weight_error,
         'engine_import_verified':False,'visual_quality_approved':False,'distribution_license_review_complete':False}
     write_json(root/'native_stage.json',report)
-    return {'policy':POLICY,'status':report['status'],'native_stage_sha256':digest(root/'native_stage.json'),
+    return {'policy':policy,'status':report['status'],'native_stage_sha256':digest(root/'native_stage.json'),
             'frame_count':300,'engine_import_verified':False}
 
 
 def verify_native_runtime(bpy: Any,root: Path,job: dict,*,save_report: bool=True) -> dict:
-    checked_recipe(root,job);options=job['options']
+    recipe=checked_recipe(root,job);options=job['options'];policy=recipe['policy']
     stage=read_json(root/'native_stage.json',options['native_stage_sha256'],4*1024*1024)
-    if stage.get('policy')!=POLICY or stage.get('recipe_sha256')!=options['native_recipe_sha256']:
+    if stage.get('policy')!=policy or stage.get('recipe_sha256')!=options['native_recipe_sha256']:
         raise ValueError('Native saved producer report differs from the source recipe')
     for name,record in stage['files'].items():
         if name not in OUTPUT_FILES|{'runtime_edges.u32'} or (root/name).is_symlink() or (root/name).stat().st_size!=record['bytes'] or digest(root/name)!=record['sha256']:
@@ -131,6 +134,8 @@ def verify_native_runtime(bpy: Any,root: Path,job: dict,*,save_report: bool=True
     bound_scene(root/'runtime_source.blend',stage['files']['runtime_source.blend']['sha256'])
     bpy.ops.wm.open_mainfile(filepath=str(root/'runtime_source.blend'),load_ui=False)
     names=stage['source_names'];human=bpy.data.objects[names['human']];rig=bpy.data.objects[names['rig']];converted=bpy.data.objects[names['converted']]
+    require_registered_material_state(bpy,human,recipe)
+    require_registered_material_state(bpy,converted,recipe)
     if set(bpy.data.objects.keys())!=source_objects|{names['converted']}:
         raise ValueError('Saved native runtime scene has unexpected character objects')
     if character_state(bpy,human,rig)!=master or rig.animation_data.action.name!=source_action:
@@ -164,7 +169,7 @@ def verify_native_runtime(bpy: Any,root: Path,job: dict,*,save_report: bool=True
     checked_recipe(root,job)
     for name,record in stage['files'].items():
         if digest(root/name)!=record['sha256']:raise ValueError('Fresh reopening changed staged output bytes')
-    report={'schema_version':1,'policy':POLICY,'status':'FRESH_NATIVE_RUNTIME_SOURCE_AND_SAVED_OUTPUT_VERIFIED',
+    report={'schema_version':1,'policy':policy,'status':'FRESH_NATIVE_RUNTIME_SOURCE_AND_SAVED_OUTPUT_VERIFIED',
         'native_stage_sha256':options['native_stage_sha256'],'recipe_sha256':options['native_recipe_sha256'],
         'master_state_sha256':master,'native_reopen':native,'frames':rows,'frame_count':300,'morphs':morphs,
         'raw_copy_weight_policy':'EXACT_ORIGINAL_SOURCE_WEIGHTS_V1','max_serialized_weight_error':weight_error,
@@ -172,5 +177,5 @@ def verify_native_runtime(bpy: Any,root: Path,job: dict,*,save_report: bool=True
         'distribution_license_review_complete':False,'saved_output_rebuilt_or_repaired':False}
     if not save_report:return report
     write_json(root/'native_verification.json',report)
-    return {'policy':POLICY,'status':report['status'],'native_verification_sha256':digest(root/'native_verification.json'),
+    return {'policy':policy,'status':report['status'],'native_verification_sha256':digest(root/'native_verification.json'),
         'frame_count':300,'engine_import_verified':False}

@@ -92,7 +92,9 @@
         "stage_mpfb_unity_source",
         "verify_mpfb_unity_source",
         "stage_mpfb_unity_runtime_source",
-        "verify_mpfb_unity_runtime_source"
+        "verify_mpfb_unity_runtime_source",
+        "stage_registered_native_godot_runtime",
+        "verify_registered_native_godot_runtime"
       ]
     },
     "input_project": {
@@ -4712,6 +4714,139 @@
                 "pattern": "^[a-f0-9]{64}$"
               },
               "unity_runtime_source_json_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "stage_registered_native_godot_runtime"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "input_project": {
+            "const": "candidate.blend"
+          },
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "mapping_sha256",
+              "master_sha256",
+              "native_recipe_sha256",
+              "review_sha256",
+              "snapshot_sha256",
+              "source_sha256",
+              "timeline_sha256",
+              "target_action_binding_sha256"
+            ],
+            "properties": {
+              "mapping_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "master_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "native_recipe_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "review_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "snapshot_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "source_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "timeline_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "target_action_binding_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "verify_registered_native_godot_runtime"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "input_project": {
+            "const": "candidate.blend"
+          },
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "mapping_sha256",
+              "master_sha256",
+              "native_recipe_sha256",
+              "native_stage_sha256",
+              "review_sha256",
+              "snapshot_sha256",
+              "source_sha256",
+              "timeline_sha256",
+              "target_action_binding_sha256"
+            ],
+            "properties": {
+              "mapping_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "master_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "native_recipe_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "native_stage_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "review_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "snapshot_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "source_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "timeline_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "target_action_binding_sha256": {
                 "type": "string",
                 "pattern": "^[a-f0-9]{64}$"
               }
