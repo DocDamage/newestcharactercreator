@@ -1,5 +1,30 @@
 # UCC-P1-TARGET-ACTION-001 — registered private target action
 
+## Combined integration accepted on main
+
+The historical `e42baf4` native and frozen-app proofs remain bound to that producer.
+Combined source `687d110` independently passes source review, the 1,672-test
+required-Qt suite (1,658 passed, fourteen existing skips), compiled/resource and
+three-check startup admission of the exact Windows CI package, and normal
+explicit saved Load with no new jobs or changes to retained inputs. All five
+exact-head workflows and all seven Linux archives / 40 closed JSON diagnostics
+pass. PR #73 merges that exact application tree into main as `85ac06b`.
+
+The supplementary local broad run had two fixed 100 ms SQLite query interruptions;
+both exact cases pass isolated replay without source or query-budget changes.
+That supplementary full run remains failed, and no external-latency cause is
+asserted. The retained full pass, remote lanes and actual package gates above
+have separate preserved identities.
+
+This closes the combined-integration gates listed in the earlier snapshot below.
+It grants no usable/shipping clip, engine motion, FPS, artist or distribution
+acceptance. Source-mode cold-cache rejection remains a known limitation of this
+consolidation head; the packaged bootstrap already suppresses cache writes.
+Subsequent source-preparation work addresses source-mode bootstrap separately.
+
+The following historical acceptance record retains its original producer scope;
+its earlier pending integration/publication statements are superseded here.
+
 Status: actual private API and normal frozen-app acceptance passed at product
 source `e42baf4`. Independent admission covers fresh preparation, immutable save,
 explicit reload after restart, transport, stationary invalidation/restoration,
