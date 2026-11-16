@@ -7,9 +7,10 @@ action and actual frozen-app acceptance. Those gates remain open until their
 new transaction, application and package evidence is independently accepted.
 
 Current transaction validation: actual complete private API export and independent
-persisted-evidence audit pass. Final streaming-guard integrated regression passes
-1,449 tests with 14 existing Windows symlink skips (1,463 total); current matching
-desktop/frozen export and final-head remote checks remain separate gates.
+persisted-evidence audit and current normal frozen desktop export/failure gates
+pass. Final streaming-guard integrated regression passes 1,449 tests with 14
+existing Windows symlink skips (1,463 total); final remote-head checks and
+integration merges remain open.
 
 The Universal Character Creator is a functional Windows alpha under active
 development. The locked blueprint remains the full target. A customizable
@@ -56,7 +57,8 @@ Milestone 1 is substantially implemented but incomplete. Godot and sprite paths
 have actual app-level acceptance for their documented scope. Unity now has a
 verified complete guarded API export transaction, including final delivered-byte
 graphical admission and source/history preservation. Its normal desktop and
-frozen-app acceptance remain pending. Unreal import acceptance has
+current frozen-app workflow also pass within that finite private profile;
+remote check/merge gates remain open. Unreal import acceptance has
 not been established. The owner's existing launcher/package is not silently
 replaced by development changes.
 
@@ -82,7 +84,9 @@ replaced by development changes.
    end-user usability and visual acceptance, documentation, source/license review
    and the intended private/public distribution decision.
 
-The immediate next task is Unity's normal desktop and frozen-app acceptance.
+The immediate integration task is the required CI dependency correction and
+final-head checks, preserving healthy jobs. The next engine task is independent
+native Unreal source/bind admission on the same authored humanoid.
 The project has not reached a finished or generally engine-compatible release.
 
 Key evidence and limits:
