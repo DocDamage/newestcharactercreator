@@ -2,8 +2,8 @@
 
 Executed inside an isolated Blender process with --disable-autoexec, on a
 private copy of the existing master. No generated assets are committed here.
-This is deliberately a *mesh surface* preview: no materials, image textures,
-animations, morph playback, skinning or game-engine export certification.
+This bakes a mesh surface, optionally retaining one checked owned material and
+smooth normals. No textures, animations, morph playback, skinning or engine certification.
 """
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ class PreviewExportError(RuntimeError):
     """The source master cannot be converted safely to a static GLB preview."""
 
 
-def export_static_glb(bpy: Any, source: Path, destination: Path) -> dict:
+def export_static_glb(bpy: Any, source: Path, destination: Path, *, material_spec=None) -> dict:
     if source.suffix.lower() != ".blend" or not source.is_file() or source.is_symlink():
         raise PreviewExportError("Expected a regular staged Blender master")
     if destination.exists() or destination.is_symlink() or destination.suffix.lower() != ".glb":
@@ -35,6 +35,10 @@ def export_static_glb(bpy: Any, source: Path, destination: Path) -> dict:
         if obj.type == "MESH" and len(obj.data.vertices) > 100
     ]
     count = sum(len(obj.data.vertices) for obj in meshes)
+    if material_spec is not None:
+        from blender_bridge.skin_material_model import checked_owned_material
+        if len(meshes)!=1 or checked_owned_material(bpy,meshes[0])!=material_spec:
+            raise PreviewExportError('Saved preview shader differs from the admitted body material')
     if not meshes or len(meshes) > MAX_SELECTED_MESHES or not (
         101 <= count <= MAX_SELECTED_VERTICES
     ):
@@ -74,9 +78,9 @@ def export_static_glb(bpy: Any, source: Path, destination: Path) -> dict:
         check_existing=False,
         export_format="GLB",
         use_selection=True,
-        export_materials="NONE",
+        export_materials="EXPORT" if material_spec is not None else "NONE",
         export_texcoords=False,
-        export_normals=False,
+        export_normals=material_spec is not None,
         export_animations=False,
         export_skins=False,
         export_morph=False,
@@ -98,7 +102,7 @@ def export_static_glb(bpy: Any, source: Path, destination: Path) -> dict:
             destination.unlink(missing_ok=True)
             raise PreviewExportError("Blender wrote an invalid GLB container")
 
-    return {
+    evidence = {
         "staged_glb": destination.name,
         "selected_mesh_count": len(baked),
         "selected_vertex_count": total_baked,
@@ -111,3 +115,7 @@ def export_static_glb(bpy: Any, source: Path, destination: Path) -> dict:
         "engine_import_verified": False,
         "blender_version": bpy.app.version_string,
     }
+    if material_spec is not None:
+        evidence['owned_material_spec']=material_spec.to_dict()
+        evidence['smooth_normals_exported']=True
+    return evidence

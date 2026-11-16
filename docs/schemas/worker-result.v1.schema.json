@@ -48,7 +48,24 @@
         "verify_mpfb_expression_keys",
         "inspect_mpfb_expression_keys",
         "stage_mpfb_expression_clip",
-        "verify_mpfb_expression_clip"
+        "verify_mpfb_expression_clip",
+        "stage_mpfb_godot_candidate",
+        "verify_mpfb_godot_candidate",
+        "stage_native_godot_runtime",
+        "verify_native_godot_runtime",
+        "sample_native_godot_runtime",
+        "stage_mpfb_skin_material",
+        "verify_mpfb_skin_material",
+        "stage_mpfb_expression_normals",
+        "verify_mpfb_expression_normals",
+        "stage_mpfb_sprite_sample",
+        "verify_mpfb_sprite_sample",
+        "stage_mpfb_facial_sprites",
+        "verify_mpfb_facial_sprites",
+        "stage_mpfb_unity_source",
+        "verify_mpfb_unity_source",
+        "stage_mpfb_unity_runtime_source",
+        "verify_mpfb_unity_runtime_source"
       ]
     },
     "status": {
@@ -66,5 +83,1217 @@
         "null"
       ]
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "stage_native_godot_runtime"
+          },
+          "status": {
+            "const": "ok"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "details": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "policy",
+              "status",
+              "native_stage_sha256",
+              "frame_count",
+              "engine_import_verified"
+            ],
+            "properties": {
+              "policy": {
+                "const": "MPFB_NATIVE_RUNTIME_SOURCE_V1"
+              },
+              "status": {
+                "const": "REAL_NATIVE_RUNTIME_SOURCE_STAGED_NOT_ENGINE_VERIFIED"
+              },
+              "native_stage_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "frame_count": {
+                "const": 300
+              },
+              "engine_import_verified": {
+                "const": false
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "verify_native_godot_runtime"
+          },
+          "status": {
+            "const": "ok"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "details": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "policy",
+              "status",
+              "native_verification_sha256",
+              "frame_count",
+              "engine_import_verified"
+            ],
+            "properties": {
+              "policy": {
+                "const": "MPFB_NATIVE_RUNTIME_SOURCE_V1"
+              },
+              "status": {
+                "const": "FRESH_NATIVE_RUNTIME_SOURCE_AND_SAVED_OUTPUT_VERIFIED"
+              },
+              "native_verification_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "frame_count": {
+                "const": 300
+              },
+              "engine_import_verified": {
+                "const": false
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "sample_native_godot_runtime"
+          },
+          "status": {
+            "const": "ok"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "details": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "policy",
+              "status",
+              "native_samples_sha256",
+              "sample_count",
+              "engine_import_verified"
+            ],
+            "properties": {
+              "policy": {
+                "const": "MPFB_NATIVE_RUNTIME_INTERACTIONS_V1"
+              },
+              "status": {
+                "const": "FRESH_NATIVE_INTERACTION_REFERENCES_MEASURED"
+              },
+              "native_samples_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "sample_count": {
+                "const": 2697
+              },
+              "engine_import_verified": {
+                "const": false
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "stage_mpfb_skin_material"
+          },
+          "status": {
+            "const": "ok"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "details": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "policy",
+              "stage_report_sha256",
+              "material_master_sha256",
+              "glb_sha256",
+              "engine_import_verified"
+            ],
+            "properties": {
+              "policy": {
+                "const": "UCC_PREPARED_BODY_MATERIAL_CANDIDATE_V1"
+              },
+              "engine_import_verified": {
+                "const": false
+              },
+              "stage_report_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "material_master_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "glb_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "verify_mpfb_skin_material"
+          },
+          "status": {
+            "const": "ok"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "details": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "policy",
+              "verification_sha256",
+              "material_master_sha256",
+              "glb_sha256",
+              "engine_import_verified"
+            ],
+            "properties": {
+              "policy": {
+                "const": "UCC_PREPARED_BODY_MATERIAL_CANDIDATE_V1"
+              },
+              "engine_import_verified": {
+                "const": false
+              },
+              "verification_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "material_master_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "glb_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "stage_mpfb_expression_normals"
+          },
+          "status": {
+            "const": "ok"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "details": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "schema_version",
+              "policy",
+              "bindings",
+              "owned_material_spec",
+              "normals_sha256",
+              "normals_manifest_sha256",
+              "frame_count",
+              "visual_quality_approved",
+              "engine_import_verified"
+            ],
+            "properties": {
+              "schema_version": {
+                "const": 1
+              },
+              "policy": {
+                "const": "UCC_EXPRESSION_MATERIAL_NORMALS_V1"
+              },
+              "bindings": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "cache_manifest_sha256",
+                  "cache_sha256",
+                  "clip_sha256",
+                  "eye_left_closure_african_sha256",
+                  "eye_left_closure_asian_sha256",
+                  "eye_left_closure_caucasian_sha256",
+                  "eye_right_closure_african_sha256",
+                  "eye_right_closure_asian_sha256",
+                  "eye_right_closure_caucasian_sha256",
+                  "master_sha256",
+                  "motion_report_sha256",
+                  "motion_sha256",
+                  "mouth_corners_african_sha256",
+                  "mouth_corners_asian_sha256",
+                  "mouth_corners_caucasian_sha256",
+                  "mouth_open_african_sha256",
+                  "mouth_open_asian_sha256",
+                  "mouth_open_caucasian_sha256"
+                ],
+                "properties": {
+                  "cache_manifest_sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "cache_sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "clip_sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "eye_left_closure_african_sha256": {
+                    "const": "2d358745e955ead9d73f85ed224568a8d347f3f3b897c26cbd412faf2bfa9f3a"
+                  },
+                  "eye_left_closure_asian_sha256": {
+                    "const": "0d52fee2d66b933ece83f3c7aa48e85bfe85e8adbed0931dbd37025866a1a67d"
+                  },
+                  "eye_left_closure_caucasian_sha256": {
+                    "const": "ff0d21ceb6da55fe51e03b48a7562a650924fea9bef0c686fcd7aa44d16422ed"
+                  },
+                  "eye_right_closure_african_sha256": {
+                    "const": "c1b0c3609d9fb59a97dabe8ace10622da58969f4566125b38f47285afef320d5"
+                  },
+                  "eye_right_closure_asian_sha256": {
+                    "const": "0c99a5f559a1d67f630a329b9724fe3742a2c35709b8baa8a6d37903f35b9b77"
+                  },
+                  "eye_right_closure_caucasian_sha256": {
+                    "const": "2b7be6bc65845d77e5f83b7bf852090854747e448644997795fa59b6cf76122d"
+                  },
+                  "master_sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "motion_report_sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "motion_sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "mouth_corners_african_sha256": {
+                    "const": "5560c685cd55ae6a00830e539ac54135cb4dcfec6a28be90510c931dcfdca478"
+                  },
+                  "mouth_corners_asian_sha256": {
+                    "const": "d881bb8feda2637bdaef2c7d7c6bed12f0be5914949e5a2cb9b06a583af412c0"
+                  },
+                  "mouth_corners_caucasian_sha256": {
+                    "const": "d881bb8feda2637bdaef2c7d7c6bed12f0be5914949e5a2cb9b06a583af412c0"
+                  },
+                  "mouth_open_african_sha256": {
+                    "const": "d710d4ae1693e7278a5bbe620276970fb6e89de139b50aaaea2830c31146459a"
+                  },
+                  "mouth_open_asian_sha256": {
+                    "const": "b52bbe631152844bb7b835c0f98d12ab0a1c0689e02e067b239d8349ccf9aab2"
+                  },
+                  "mouth_open_caucasian_sha256": {
+                    "const": "dc1260a8728d93a9c52d6b35b5f55ad39ab8096090acd5ccad7f973c26e28818"
+                  }
+                }
+              },
+              "owned_material_spec": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "schema_version",
+                  "policy",
+                  "base_color_srgb",
+                  "roughness",
+                  "metallic",
+                  "alpha",
+                  "textures",
+                  "source"
+                ],
+                "properties": {
+                  "schema_version": {
+                    "const": 1
+                  },
+                  "policy": {
+                    "const": "UCC_MPFBBODY_PRINCIPLED_COLOR_V1"
+                  },
+                  "base_color_srgb": {
+                    "type": "array",
+                    "minItems": 3,
+                    "maxItems": 3,
+                    "items": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    }
+                  },
+                  "roughness": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "metallic": {
+                    "const": 0.0
+                  },
+                  "alpha": {
+                    "const": 1.0
+                  },
+                  "textures": {
+                    "const": false
+                  },
+                  "source": {
+                    "const": "FIRST_PARTY_EXPLICIT_PARAMETERS"
+                  }
+                }
+              },
+              "normals_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "normals_manifest_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "frame_count": {
+                "const": 25
+              },
+              "visual_quality_approved": {
+                "const": false
+              },
+              "engine_import_verified": {
+                "const": false
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "verify_mpfb_expression_normals"
+          },
+          "status": {
+            "const": "ok"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "details": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "schema_version",
+              "policy",
+              "bindings",
+              "verified_reopen",
+              "reference_frames",
+              "saved_frames",
+              "normal_frames",
+              "exact_neutral_endpoints",
+              "visual_quality_approved",
+              "engine_import_verified"
+            ],
+            "properties": {
+              "schema_version": {
+                "const": 1
+              },
+              "policy": {
+                "const": "UCC_EXPRESSION_MATERIAL_NORMALS_V1"
+              },
+              "bindings": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "cache_manifest_sha256",
+                  "cache_sha256",
+                  "clip_sha256",
+                  "eye_left_closure_african_sha256",
+                  "eye_left_closure_asian_sha256",
+                  "eye_left_closure_caucasian_sha256",
+                  "eye_right_closure_african_sha256",
+                  "eye_right_closure_asian_sha256",
+                  "eye_right_closure_caucasian_sha256",
+                  "master_sha256",
+                  "motion_report_sha256",
+                  "motion_sha256",
+                  "mouth_corners_african_sha256",
+                  "mouth_corners_asian_sha256",
+                  "mouth_corners_caucasian_sha256",
+                  "mouth_open_african_sha256",
+                  "mouth_open_asian_sha256",
+                  "mouth_open_caucasian_sha256",
+                  "owned_material_spec",
+                  "normals_sha256",
+                  "normals_manifest_sha256"
+                ],
+                "properties": {
+                  "cache_manifest_sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "cache_sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "clip_sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "eye_left_closure_african_sha256": {
+                    "const": "2d358745e955ead9d73f85ed224568a8d347f3f3b897c26cbd412faf2bfa9f3a"
+                  },
+                  "eye_left_closure_asian_sha256": {
+                    "const": "0d52fee2d66b933ece83f3c7aa48e85bfe85e8adbed0931dbd37025866a1a67d"
+                  },
+                  "eye_left_closure_caucasian_sha256": {
+                    "const": "ff0d21ceb6da55fe51e03b48a7562a650924fea9bef0c686fcd7aa44d16422ed"
+                  },
+                  "eye_right_closure_african_sha256": {
+                    "const": "c1b0c3609d9fb59a97dabe8ace10622da58969f4566125b38f47285afef320d5"
+                  },
+                  "eye_right_closure_asian_sha256": {
+                    "const": "0c99a5f559a1d67f630a329b9724fe3742a2c35709b8baa8a6d37903f35b9b77"
+                  },
+                  "eye_right_closure_caucasian_sha256": {
+                    "const": "2b7be6bc65845d77e5f83b7bf852090854747e448644997795fa59b6cf76122d"
+                  },
+                  "master_sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "motion_report_sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "motion_sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "mouth_corners_african_sha256": {
+                    "const": "5560c685cd55ae6a00830e539ac54135cb4dcfec6a28be90510c931dcfdca478"
+                  },
+                  "mouth_corners_asian_sha256": {
+                    "const": "d881bb8feda2637bdaef2c7d7c6bed12f0be5914949e5a2cb9b06a583af412c0"
+                  },
+                  "mouth_corners_caucasian_sha256": {
+                    "const": "d881bb8feda2637bdaef2c7d7c6bed12f0be5914949e5a2cb9b06a583af412c0"
+                  },
+                  "mouth_open_african_sha256": {
+                    "const": "d710d4ae1693e7278a5bbe620276970fb6e89de139b50aaaea2830c31146459a"
+                  },
+                  "mouth_open_asian_sha256": {
+                    "const": "b52bbe631152844bb7b835c0f98d12ab0a1c0689e02e067b239d8349ccf9aab2"
+                  },
+                  "mouth_open_caucasian_sha256": {
+                    "const": "dc1260a8728d93a9c52d6b35b5f55ad39ab8096090acd5ccad7f973c26e28818"
+                  },
+                  "owned_material_spec": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "schema_version",
+                      "policy",
+                      "base_color_srgb",
+                      "roughness",
+                      "metallic",
+                      "alpha",
+                      "textures",
+                      "source"
+                    ],
+                    "properties": {
+                      "schema_version": {
+                        "const": 1
+                      },
+                      "policy": {
+                        "const": "UCC_MPFBBODY_PRINCIPLED_COLOR_V1"
+                      },
+                      "base_color_srgb": {
+                        "type": "array",
+                        "minItems": 3,
+                        "maxItems": 3,
+                        "items": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        }
+                      },
+                      "roughness": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "metallic": {
+                        "const": 0.0
+                      },
+                      "alpha": {
+                        "const": 1.0
+                      },
+                      "textures": {
+                        "const": false
+                      },
+                      "source": {
+                        "const": "FIRST_PARTY_EXPLICIT_PARAMETERS"
+                      }
+                    }
+                  },
+                  "normals_sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "normals_manifest_sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                }
+              },
+              "verified_reopen": {
+                "const": true
+              },
+              "reference_frames": {
+                "const": 25
+              },
+              "saved_frames": {
+                "const": 25
+              },
+              "normal_frames": {
+                "const": 25
+              },
+              "exact_neutral_endpoints": {
+                "const": true
+              },
+              "visual_quality_approved": {
+                "const": false
+              },
+              "engine_import_verified": {
+                "const": false
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "stage_mpfb_sprite_sample"
+          },
+          "status": {
+            "const": "ok"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "details": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "policy",
+              "scene_sha256",
+              "stage_sha256"
+            ],
+            "properties": {
+              "policy": {
+                "const": "UCC_PRIVATE_NEUTRAL_SPRITES_V1"
+              },
+              "scene_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "stage_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "verify_mpfb_sprite_sample"
+          },
+          "status": {
+            "const": "ok"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "details": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "policy",
+              "schema_version",
+              "bindings",
+              "verified_reopen",
+              "saved_scene_rebuilt_or_repaired",
+              "source_state_sha256",
+              "shader_sha256",
+              "frame_count",
+              "exact_rerender_pixels",
+              "visual_quality_approved"
+            ],
+            "properties": {
+              "policy": {
+                "const": "UCC_PRIVATE_NEUTRAL_SPRITES_V1"
+              },
+              "schema_version": {
+                "const": 1
+              },
+              "bindings": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "master_sha256",
+                  "recipe_sha256",
+                  "scene_sha256",
+                  "stage_sha256"
+                ],
+                "properties": {
+                  "master_sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "recipe_sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "scene_sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "stage_sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                }
+              },
+              "verified_reopen": {
+                "const": true
+              },
+              "saved_scene_rebuilt_or_repaired": {
+                "const": false
+              },
+              "source_state_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "shader_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "frame_count": {
+                "enum": [
+                  4,
+                  8
+                ]
+              },
+              "exact_rerender_pixels": {
+                "const": true
+              },
+              "visual_quality_approved": {
+                "const": false
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "stage_mpfb_facial_sprites"
+          },
+          "status": {
+            "const": "ok"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "details": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "policy",
+              "scene_sha256",
+              "stage_sha256"
+            ],
+            "properties": {
+              "policy": {
+                "const": "UCC_PRIVATE_FACIAL_SPRITES_V1"
+              },
+              "scene_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "stage_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "verify_mpfb_facial_sprites"
+          },
+          "status": {
+            "const": "ok"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "details": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "schema_version",
+              "policy",
+              "bindings",
+              "verified_reopen",
+              "saved_scene_rebuilt_or_repaired",
+              "source_state_sha256",
+              "shader_sha256",
+              "reference_frames",
+              "saved_frames",
+              "exact_neutral_endpoints",
+              "exact_rerender_pixels",
+              "visual_quality_approved"
+            ],
+            "properties": {
+              "schema_version": {
+                "type": "integer",
+                "const": 1
+              },
+              "policy": {
+                "const": "UCC_PRIVATE_FACIAL_SPRITES_V1"
+              },
+              "bindings": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "clip_sha256",
+                  "eye_left_closure_african_sha256",
+                  "eye_left_closure_asian_sha256",
+                  "eye_left_closure_caucasian_sha256",
+                  "eye_right_closure_african_sha256",
+                  "eye_right_closure_asian_sha256",
+                  "eye_right_closure_caucasian_sha256",
+                  "master_sha256",
+                  "mouth_corners_african_sha256",
+                  "mouth_corners_asian_sha256",
+                  "mouth_corners_caucasian_sha256",
+                  "mouth_open_african_sha256",
+                  "mouth_open_asian_sha256",
+                  "mouth_open_caucasian_sha256",
+                  "recipe_sha256",
+                  "scene_sha256",
+                  "stage_sha256"
+                ],
+                "properties": {
+                  "clip_sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "eye_left_closure_african_sha256": {
+                    "const": "2d358745e955ead9d73f85ed224568a8d347f3f3b897c26cbd412faf2bfa9f3a"
+                  },
+                  "eye_left_closure_asian_sha256": {
+                    "const": "0d52fee2d66b933ece83f3c7aa48e85bfe85e8adbed0931dbd37025866a1a67d"
+                  },
+                  "eye_left_closure_caucasian_sha256": {
+                    "const": "ff0d21ceb6da55fe51e03b48a7562a650924fea9bef0c686fcd7aa44d16422ed"
+                  },
+                  "eye_right_closure_african_sha256": {
+                    "const": "c1b0c3609d9fb59a97dabe8ace10622da58969f4566125b38f47285afef320d5"
+                  },
+                  "eye_right_closure_asian_sha256": {
+                    "const": "0c99a5f559a1d67f630a329b9724fe3742a2c35709b8baa8a6d37903f35b9b77"
+                  },
+                  "eye_right_closure_caucasian_sha256": {
+                    "const": "2b7be6bc65845d77e5f83b7bf852090854747e448644997795fa59b6cf76122d"
+                  },
+                  "master_sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "mouth_corners_african_sha256": {
+                    "const": "5560c685cd55ae6a00830e539ac54135cb4dcfec6a28be90510c931dcfdca478"
+                  },
+                  "mouth_corners_asian_sha256": {
+                    "const": "d881bb8feda2637bdaef2c7d7c6bed12f0be5914949e5a2cb9b06a583af412c0"
+                  },
+                  "mouth_corners_caucasian_sha256": {
+                    "const": "d881bb8feda2637bdaef2c7d7c6bed12f0be5914949e5a2cb9b06a583af412c0"
+                  },
+                  "mouth_open_african_sha256": {
+                    "const": "d710d4ae1693e7278a5bbe620276970fb6e89de139b50aaaea2830c31146459a"
+                  },
+                  "mouth_open_asian_sha256": {
+                    "const": "b52bbe631152844bb7b835c0f98d12ab0a1c0689e02e067b239d8349ccf9aab2"
+                  },
+                  "mouth_open_caucasian_sha256": {
+                    "const": "dc1260a8728d93a9c52d6b35b5f55ad39ab8096090acd5ccad7f973c26e28818"
+                  },
+                  "recipe_sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "scene_sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "stage_sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                }
+              },
+              "verified_reopen": {
+                "const": true
+              },
+              "saved_scene_rebuilt_or_repaired": {
+                "const": false
+              },
+              "source_state_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "shader_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "reference_frames": {
+                "enum": [
+                  100,
+                  200
+                ]
+              },
+              "saved_frames": {
+                "enum": [
+                  100,
+                  200
+                ]
+              },
+              "exact_neutral_endpoints": {
+                "const": true
+              },
+              "exact_rerender_pixels": {
+                "const": true
+              },
+              "visual_quality_approved": {
+                "const": false
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "stage_mpfb_unity_source"
+          },
+          "status": {
+            "const": "ok"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "details": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "policy",
+              "request_sha256",
+              "files",
+              "engine_import_verified"
+            ],
+            "properties": {
+              "policy": {
+                "const": "UCC_UNITY_BLENDER_SOURCE_V1"
+              },
+              "request_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "files": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "character.fbx",
+                  "source_reference.json",
+                  "source_weights.json",
+                  "unity_source_stage.json"
+                ],
+                "properties": {
+                  "character.fbx": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "source_reference.json": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "source_weights.json": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "unity_source_stage.json": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                }
+              },
+              "engine_import_verified": {
+                "const": false
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "verify_mpfb_unity_source"
+          },
+          "status": {
+            "const": "ok"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "details": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "policy",
+              "request_sha256",
+              "files",
+              "engine_import_verified",
+              "verification_sha256"
+            ],
+            "properties": {
+              "policy": {
+                "const": "UCC_UNITY_BLENDER_SOURCE_V1"
+              },
+              "request_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "files": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "character.fbx",
+                  "source_reference.json",
+                  "source_weights.json",
+                  "unity_source_stage.json"
+                ],
+                "properties": {
+                  "character.fbx": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "source_reference.json": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "source_weights.json": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "unity_source_stage.json": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                }
+              },
+              "engine_import_verified": {
+                "const": false
+              },
+              "verification_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "stage_mpfb_unity_runtime_source"
+          },
+          "status": {
+            "const": "ok"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "details": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "policy",
+              "request_sha256",
+              "files",
+              "runtime_verified"
+            ],
+            "properties": {
+              "policy": {
+                "const": "UCC_UNITY_RUNTIME_SOURCE_V1"
+              },
+              "request_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "files": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "unity_runtime_source.bin",
+                  "unity_runtime_source.json"
+                ],
+                "properties": {
+                  "unity_runtime_source.bin": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "unity_runtime_source.json": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                }
+              },
+              "runtime_verified": {
+                "const": false
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "verify_mpfb_unity_runtime_source"
+          },
+          "status": {
+            "const": "ok"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "details": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "policy",
+              "request_sha256",
+              "files",
+              "runtime_verified",
+              "verification_sha256"
+            ],
+            "properties": {
+              "policy": {
+                "const": "UCC_UNITY_RUNTIME_SOURCE_V1"
+              },
+              "request_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "files": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "unity_runtime_source.bin",
+                  "unity_runtime_source.json"
+                ],
+                "properties": {
+                  "unity_runtime_source.bin": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "unity_runtime_source.json": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                }
+              },
+              "runtime_verified": {
+                "const": false
+              },
+              "verification_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
 }

@@ -46,8 +46,41 @@ The existing seventh `reference-creator` job additionally invokes `ci/verify_pla
 
 To reproduce with the existing configured Blender/MPFB profile, run `py -3.12 ci/verify_plain_reference.py --blender "<installed Blender 5.3 executable>" --outdir "<new evidence directory>"` from the checkout. The output directory must not already exist. A failed case leaves its worker logs and private evidence in place and does not write an accepted final summary.
 
-Only the exact additional path `ucc-plain-reference/plain_reference_summary.json` is retained. Its validator rejects missing/unknown fields, incomplete worker or guard coverage and visual/engine approval claims. Scenes, source animation, full poses, meshes, caches, private paths and renders remain outside artifact retention. Complete fresh remote acceptance will require seven archives with forty JSON records, all five workflows, and the exact-head Windows package plus actual extracted executable health verification. Parent results do not substitute for this branch.
+Only the exact additional path `ucc-plain-reference/plain_reference_summary.json` is retained. Its validator rejects missing/unknown fields, incomplete worker or guard coverage and visual/engine approval claims. Scenes, source animation, full poses, meshes, caches, private paths and renders remain outside artifact retention. Complete fresh remote acceptance now passes seven archives with forty JSON records, all five workflows, and the exact-head Windows package plus actual extracted executable health verification. Parent results do not substitute for this branch.
 
-The freshly assembled portable entry point passes in full locally; this is separate from the earlier private API and guard harnesses. Exact-head remote acceptance remains pending. Its closed summary SHA-256 is `07b0cbc3f7f1f50fe7ecfe7230d92ec55edba7ce93b3d8dc1282e5f5771bf79c`. Human visual/grasp quality, purchased-pack compatibility, usable target actions, root/loop/foot quality, Godot/Unity/Unreal imports, sprite output and the wider blueprint remain unfinished. No dependencies, installs, asset rights, export permissions or NoAI restrictions changed.
+The freshly assembled portable entry point passes in full locally; this is separate from the earlier private API and guard harnesses. Exact-head remote acceptance passes at `3e23952d57d91812f432bc7757b2ba3da873e50f`. Its closed summary SHA-256 is `07b0cbc3f7f1f50fe7ecfe7230d92ec55edba7ce93b3d8dc1282e5f5771bf79c`. Human visual/grasp quality, purchased-pack compatibility, usable target actions, root/loop/foot quality, Godot/Unity/Unreal imports, sprite output and the wider blueprint remain unfinished. No dependencies, installs, asset rights, export permissions or NoAI restrictions changed.
 
-Next: publish a draft from the locally accepted source, then independently accept all five exact-head workflows, seven Linux archives / forty JSON records and the actual Windows package without changing that head while healthy jobs run.
+## Final exact-head remote acceptance
+
+Draft [PR #68](https://github.com/DocDamage/newestcharactercreator/pull/68)
+retains head `3e23952d57d91812f432bc7757b2ba3da873e50f` on its existing parent.
+Core, all four Qt matrix jobs, preflight, Windows and Linux MPFB integration
+completed successfully at that exact head. Final local audit 38 rechecks all
+624 published source files and every archive digest against GitHub metadata.
+
+The seven Linux archives contain forty independently inspected records:
+regression 8, native fit 5, body contacts 5, symmetric fit 6, regional skin 5,
+source references 5 and reference creator 6. The final regional artifact is
+14159872856, SHA-256
+`80d6390b112f2c36de85d6ecea303d24c1693b58847b44315124fa736eb4bf07`.
+Only proven official Blender HTTP 403 setup failures were retried after the
+prior workflow attempt became terminal. Healthy jobs, original checksums,
+assertions and budgets were preserved.
+
+Windows artifact 14154061094 has outer SHA-256
+`7277ffba7d90d5112a601d6bb097e154c12e856e261ebe2cf91617ca37254a16`
+and inner package SHA-256
+`7ce110bb226fb13dd883578e1dd9f63633db2c0dca765beb3d4b9d7eaf8a2866`.
+All 90 bundled bridge modules match this Git head. The actual extracted
+portable executable passed all three health checks with exit code zero;
+its SHA-256 remains
+`b3a03417bc4da3c6082652f775465d8ef53bdb5978e3403266394222b414806f`.
+The health smoke does not prove reference editing inside the frozen UI.
+No software was installed or accepted package rerun during final auditing.
+
+The PR description is updated to these final facts. It remains draft and
+unmerged; further merges require owner approval. These results do not grant
+motion, human visual, export or engine acceptance.
+
+Next: continue the separate Godot export milestone, retaining these accepted
+plain-master/reference features and their exact-head evidence.

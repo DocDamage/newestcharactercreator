@@ -89,6 +89,9 @@ class CharacterPane(QWidget):
         from .face_controls import FaceControls
         self.face = FaceControls()
         layout.addWidget(self.face)
+        from .skin_material_controls import SkinMaterialControls
+        self.material=SkinMaterialControls()
+        layout.addWidget(self.material)
         from .hand_controls import HandControls
         self.hands=HandControls()
         layout.addWidget(self.hands)
@@ -185,6 +188,7 @@ class CharacterPane(QWidget):
         self.identity.setEnabled(active)
         self.morph_box.setEnabled(active)
         self.face.setEnabled(active)
+        if not active:self.material.setEnabled(False)
         self.hands.setEnabled(active)
         self.expressions.setEnabled(active)
         if not active:
@@ -204,8 +208,8 @@ class CharacterPane(QWidget):
         self.set_active(True)
         self.face.display(view)
         self.expressions.display(view)
-        self.morph_box.setEnabled(view.part_count==0 or view.referenced_master_intent)
-        self.morph_box.setToolTip('Restore the original hand before changing body settings.' if view.part_count and not view.referenced_master_intent else '')
+        self.morph_box.setEnabled(view.part_count==0 or view.referenced_master_intent or view.material_master_intent)
+        self.morph_box.setToolTip('Restore the original hand before changing body settings.' if view.part_count and not (view.referenced_master_intent or view.material_master_intent) else '')
         self.heading.setText(view.name + ("  •  unsaved edits" if view.dirty else ""))
         if self.name.text() != view.name:
             self.name.blockSignals(True)

@@ -15,7 +15,13 @@ WIDTH, HEIGHT = 256, 384
 VIEWS = ("front", "side", "quarter")
 
 
-def png_measurements(data: bytes) -> dict[str, Any]:
+def png_measurements(data: bytes, *, include_pixel_hash: bool = False,
+                     expected_size: tuple[int,int] = (WIDTH,HEIGHT)) -> dict[str, Any]:
+    if type(expected_size) is not tuple or len(expected_size)!=2 or any(type(n) is not int for n in expected_size) or expected_size not in {(256,384),(512,512),(128,128),(256,256)}:
+        raise ValidationError('Unsupported bounded private render dimensions')
+    WIDTH,HEIGHT=expected_size
+    if type(include_pixel_hash) is not bool:
+        raise ValidationError("PNG pixel-hash selection must be Boolean")
     if not 50 < len(data) <= 2*1024*1024 or data[:8] != b"\x89PNG\r\n\x1a\n":
         raise ValidationError("Invalid bounded private PNG")
     offset, compressed, header, ended = 8, bytearray(), False, False
@@ -54,6 +60,7 @@ def png_measurements(data: bytes) -> dict[str, Any]:
     if len(raw) != expected or not decoder.eof or decoder.unused_data or decoder.unconsumed_tail:
         raise ValidationError("PNG decoded size/stream mismatch")
     previous, count = bytearray(stride), 0
+    pixels = sha256() if include_pixel_hash else None
     xmin, ymin, xmax, ymax = WIDTH, HEIGHT, -1, -1
     color_min, color_max = 255, 0
     for y in range(HEIGHT):
@@ -73,6 +80,8 @@ def png_measurements(data: bytes) -> dict[str, Any]:
                 predictor = (left, up, corner)[distances.index(min(distances))]
             else: predictor = 0
             row[i] = (row[i] + predictor) & 255
+        if pixels is not None:
+            pixels.update(row)
         for x in range(WIDTH):
             i = x*4
             if row[i+3] >= 128:
@@ -84,7 +93,10 @@ def png_measurements(data: bytes) -> dict[str, Any]:
     if (not 64 <= count < WIDTH*HEIGHT*.95 or color_max-color_min < 4 or
             xmin < 4 or ymin < 4 or xmax >= WIDTH-4 or ymax >= HEIGHT-4):
         raise ValidationError("Private image is blank, clipped or has insufficient surface contrast")
-    return {"opaque_pixels": count, "opaque_bounds": [xmin, ymin, xmax, ymax]}
+    result = {"opaque_pixels": count, "opaque_bounds": [xmin, ymin, xmax, ymax]}
+    if pixels is not None:
+        result['rgba_sha256'] = pixels.hexdigest()
+    return result
 
 
 def verify_private_renders(folder: Path, raw: dict[str, Any], *, source_sha: str,

@@ -26,6 +26,11 @@ def bind_preview(window, result):
         path, expected = _master_file(store, actual.master_blend)
         if expected != result.master_sha256 or _digest(path) != result.master_sha256:
             raise ProjectStorageError('Saved master changed before complete static preview publication')
+        for name,sha in result.watched_inputs:
+            from pathlib import Path
+            source=Path(name)
+            if source.is_symlink() or not source.is_file() or _digest(source)!=sha:
+                raise ProjectStorageError('Saved material preview proof or source changed before publication')
         return path
     master = unchanged()
     watcher = getattr(window, '_static_preview_watcher', None)
@@ -36,7 +41,11 @@ def bind_preview(window, result):
         window._static_preview_watcher = watcher
     clear_binding(window)
     watcher.blockSignals(False)
-    paths = sorted({str(store.file), str(master), str(store.root), str(master.parent), str(master.parent.parent)})
+    paths = {str(store.file), str(master), str(store.root), str(master.parent), str(master.parent.parent)}
+    for name,_ in result.watched_inputs:
+        from pathlib import Path
+        paths.update((name,str(Path(name).parent)))
+    paths=sorted(paths)
     if watcher.addPaths(paths):
         clear_binding(window)
         raise ProjectStorageError('Cannot watch every complete static preview input')

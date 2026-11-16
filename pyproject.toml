@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ucc-character-core"
 version = "0.1.0a1"
-description = "Universal Character Creator pre-development core (no graphical editor yet)"
+description = "Versioned character core and Blender-backed desktop editor"
 requires-python = ">=3.12"
 dependencies = []
 

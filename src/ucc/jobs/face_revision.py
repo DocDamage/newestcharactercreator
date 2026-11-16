@@ -58,6 +58,8 @@ def apply_saved_face_revision(
     it never advances the project just because Blender resaved identical skin.
     """
     initial = store.load()
+    from ucc.core.skin_material import require_material_preservation
+    require_material_preservation(initial)
     if (type(expected_revision) is not int or initial.project_id != expected_project_id or initial.revision != expected_revision
             or initial.master_blend != expected_master_blend):
         raise ProjectConflict('Project changed while preparing facial revision')

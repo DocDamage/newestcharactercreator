@@ -68,6 +68,8 @@ def generate_humanoid(
     it is never included in published artifacts.
     """
     initial = store.load()
+    from ucc.core.skin_material import require_material_preservation
+    require_material_preservation(initial)
     if not isinstance(expected_project_id, str) or initial.project_id != expected_project_id:
         raise ProjectConflict("Selected character project is not the saved project")
     if type(expected_revision) is not int or initial.revision != expected_revision:

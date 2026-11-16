@@ -5,6 +5,7 @@ import struct
 
 from ucc.core.errors import ValidationError
 from .glb_mesh import PreviewMesh
+from ucc.core.skin_material import SkinMaterialSpec
 
 
 @dataclass(frozen=True, slots=True)
@@ -18,6 +19,8 @@ class StaticSurface:
     face_radius: float
     world_matrix: tuple[float, ...] = (1.,0.,0.,0.,0.,1.,0.,0.,0.,0.,1.,0.,0.,0.,0.,1.)
     surface_review: None = None
+    normals: bytes = b''
+    material: SkinMaterialSpec | None = None
 
     def frame(self, index: int) -> tuple[bytes, bytes]:
         if type(index) is not int or index != 0:
@@ -47,5 +50,12 @@ def from_full_mesh(mesh: PreviewMesh) -> StaticSurface:
     face_center = tuple((a+b)/2 for a, b in zip(face_low, face_high))
     vertices = b''.join(struct.pack('<3f', *p) for p in points)
     indices = struct.pack('<'+'I'*len(points), *range(len(points)))
+    normals=b''
+    if mesh.material is not None:
+        if len(mesh.normals)!=len(mesh.triangles):raise ValidationError('Material surface lacks complete smooth normals')
+        values=[(x,-z,y) for face in mesh.normals for x,y,z in face]
+        if len(values)!=len(points) or any(not math.isfinite(v) for n in values for v in n):raise ValidationError('Invalid material normals')
+        if any(abs(math.sqrt(sum(v*v for v in n))-1.)>1e-4 for n in values):raise ValidationError('Material normals must be normalized')
+        normals=b''.join(struct.pack('<3f',*n) for n in values)
     return StaticSurface(vertices, indices, mesh.source_face_count, (center,), radius,
-                         face_center, max(.001, math.dist(face_low, face_high)*.6))
+                         face_center, max(.001, math.dist(face_low, face_high)*.6),normals=normals,material=mesh.material)

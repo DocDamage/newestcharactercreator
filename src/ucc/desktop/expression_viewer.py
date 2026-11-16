@@ -40,6 +40,7 @@ class ExpressionViewer(QWidget):
         self.play = QPushButton('Play'); self.loop = QCheckBox('Loop')
         self.focus = QCheckBox('Head focus'); self.reset = QPushButton('Reset view')
         self.position = QLabel('Frame —')
+        self.position.setMinimumWidth(self.position.fontMetrics().horizontalAdvance('Frame 25 / 25'))
         for widget in (self.play, self.loop, self.focus, self.reset, self.position): row.addWidget(widget)
         self.layout.addLayout(row)
         self.scrub = QSlider(Qt.Orientation.Horizontal); self.layout.addWidget(self.scrub)
@@ -74,7 +75,8 @@ class ExpressionViewer(QWidget):
         self.canvas.failed.connect(self._failed); self.layout.insertWidget(1, self.canvas, 1)
         self.scrub.setRange(0, cache.frame_count-1); self._enable(True); self._present()
         self.status.setText(f'Verified expression preview: {cache.frame_count} frames at {cache.fps:g} fps; '
-                            f'{cache.vertex_count:,} visible vertices, {cache.triangle_count:,} triangles per frame.')
+                            f'{getattr(cache,"geometry",cache).vertex_count:,} visible vertices, {cache.triangle_count:,} triangles per frame.'
+                            + (' Saved material with frame-specific smooth normals.' if getattr(cache,'material',None) is not None else ''))
 
     def _failed(self, error):
         self.clear(); self.status.setText('Expression GPU playback failed: '+error)

@@ -7,6 +7,7 @@ from PySide6.QtWidgets import QFileDialog
 
 from ucc.core.errors import UCCError, ValidationError
 from ucc.core.reference_master_intent import supports_referenced_master_intent
+from ucc.core.material_master_intent import supports_material_master_intent
 from ucc.jobs.face_revision import FaceRevisionResult, apply_saved_face_revision
 from ucc.jobs.face_discovery import discover_face_data
 from ucc.jobs.customized_humanoid import CustomizedHumanoidBuild
@@ -22,6 +23,11 @@ def edit_face(window, name, value):
 
 
 def apply_face_from_desktop(store, *, blender_exe, project_id, revision, master_blend, cancel, database_path=None):
+    from ucc.core.skin_material import APPEARANCE_KEY
+    if APPEARANCE_KEY in dict(store.load().appearance):
+        from .material_master_workflow import run_material_master
+        return run_material_master(store,operation='face_revision',blender_exe=blender_exe,
+            project_id=project_id,revision=revision,master_blend=master_blend,cancel=cancel)
     if store.load().animations:
         from .reference_master_workflow import run_referenced_master
         return run_referenced_master(store, database_path, operation='face_revision',
@@ -46,7 +52,7 @@ def start_face(window):
     snapshot = window.controller.require_project()
     if not snapshot.master_blend or not snapshot.facial_parameters:
         window._error('Save a face setting and generate an MPFB master first'); return
-    if (snapshot.parts or snapshot.animations) and not supports_referenced_master_intent(snapshot):
+    if (snapshot.parts or snapshot.animations) and not (supports_referenced_master_intent(snapshot) or supports_material_master_intent(snapshot)):
         window._error('Face shape with attached parts or animations is not validated'); return
     executable = window._blender_executable
     if executable is None or executable.is_symlink() or not executable.is_file():
@@ -69,6 +75,9 @@ def start_face(window):
 
 
 def finish_face_build(window, result) -> bool:
+    from .material_master_workflow import SkinMaterialRevision,MaterialMasterNoOp,finish_material_master
+    if isinstance(result,(SkinMaterialRevision,MaterialMasterNoOp)):
+        finish_material_master(window,result);return True
     from .reference_master_workflow import ReferencedMasterResult, finish_referenced_master
     if isinstance(result, ReferencedMasterResult):
         finish_referenced_master(window, result)

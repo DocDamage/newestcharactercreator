@@ -47,6 +47,8 @@ def verify_saved_expression_master(store: ProjectStore, *, blender_exe: Path, wo
             or initial.revision != expected_revision or initial.master_blend != expected_master_blend):
         raise ProjectConflict('Project changed before prepared expression verification')
     check_cancel(cancel); metadata_sha = _digest(store.file, cancel)
+    from .skin_material_storage import registered_material_binding
+    material_binding = registered_material_binding(store, initial, cancel)
     library, receipt = registered_expression_source(store, initial, cancel)
     if initial.parts:
         verify_existing_hand(store, initial, blender_exe=blender_exe, worker_script=worker_script,
@@ -63,4 +65,6 @@ def verify_saved_expression_master(store: ProjectStore, *, blender_exe: Path, wo
     if store.load() != initial or _digest(store.file, cancel) != metadata_sha:
         raise ProjectConflict('Project changed during prepared expression verification')
     registered_expression_source(store, initial, cancel); check_cancel(cancel)
+    if registered_material_binding(store, initial, cancel) != material_binding:
+        raise ProjectStorageError('Material appearance binding changed during prepared expression verification')
     return checked

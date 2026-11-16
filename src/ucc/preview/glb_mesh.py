@@ -12,6 +12,7 @@ import struct
 from typing import Any
 
 from ucc.export.inspect_glb import GLBInspectionError, _parse_glb, inspect_glb
+from ucc.core.skin_material import SkinMaterialSpec
 
 Vec3 = tuple[float, float, float]
 Face = tuple[Vec3, Vec3, Vec3]
@@ -36,6 +37,8 @@ class PreviewMesh:
     skin_count: int
     animation_count: int
     warnings: tuple[str, ...]
+    normals: tuple[Face, ...] = ()
+    material: SkinMaterialSpec | None = None
 
     @property
     def sample_count(self) -> int:

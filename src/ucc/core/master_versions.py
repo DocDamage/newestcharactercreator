@@ -102,6 +102,7 @@ def stage_unverified_master(
     expected_project: CharacterProject | None = None,
     proposed_parts: tuple[PartInstance, ...] | None = None,
     proposed_expression: ExpressionState | None = None,
+    proposed_appearance: tuple[tuple[str, str], ...] | None = None,
     cancel: Event | None = None,
     before_project_save: Callable[[], None] | None = None,
 ) -> MasterRevision:
@@ -116,6 +117,10 @@ def stage_unverified_master(
         raise ValidationError("max_bytes must be an integer >= 16")
     if expected_project is not None and not isinstance(expected_project,CharacterProject):
         raise ValidationError('Expected master project snapshot must be character metadata')
+    if proposed_appearance is not None and (type(proposed_appearance) is not tuple
+            or any(type(row) is not tuple or len(row)!=2 or any(type(v) is not str for v in row) for row in proposed_appearance)
+            or len(dict(proposed_appearance))!=len(proposed_appearance)):
+        raise ValidationError('Master appearance must contain unique explicit text pairs')
     if proposed_parts is not None and (type(proposed_parts) is not tuple or any(
             not isinstance(part, PartInstance) or part.status != 'proposed' for part in proposed_parts)):
         raise ValidationError('Master staging accepts only explicit proposed part instances')
@@ -154,6 +159,8 @@ def stage_unverified_master(
         # Validate the entire replacement before installing any immutable file.
         # This is intent staging, never a claim that a part passed geometry QA.
         replace(original, parts=proposed_parts)
+    if proposed_appearance is not None:
+        replace(original, appearance=proposed_appearance)
     if proposed_expression is not None:
         if original.expression is not None:
             raise ValidationError('Existing facial controls must be verified as a no-op, not re-registered')
@@ -227,6 +234,7 @@ def stage_unverified_master(
             revision=original.revision + 1,
             schema_version=3 if proposed_expression is not None else original.schema_version,
             expression=proposed_expression if proposed_expression is not None else original.expression,
+            appearance=original.appearance if proposed_appearance is None else proposed_appearance,
         )
         if before_project_save is not None:
             before_project_save()

@@ -38,6 +38,10 @@ def apply_hand_revision(
     if type(selection) is not str or selection not in {'neutral','shorter','longer'}:
         raise ValidationError('Select neutral, shorter or longer from the registered hand library')
     initial=store.load()
+    from ucc.core.skin_material import APPEARANCE_KEY
+    if APPEARANCE_KEY in dict(initial.appearance) and (len(initial.parts)!=1 or
+            initial.parts[0].part_asset_id!='ucc-hand-v1-'+manifest_sha256+'-'+selection):
+        raise ValidationError('Changing this material-bound hand requires an atomic material binding revision; saved master unchanged')
     if (type(expected_revision) is not int or initial.project_id != expected_project_id
             or initial.revision != expected_revision or initial.master_blend != expected_master_blend):
         raise ProjectConflict('Project changed before hand revision preparation')

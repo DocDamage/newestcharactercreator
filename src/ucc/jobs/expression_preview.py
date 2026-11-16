@@ -12,6 +12,10 @@ from ucc.core.expressions import TARGETS
 from ucc.core.storage import ProjectStore
 from ucc.preview.expression_cache import read_expression_cache, read_json, validate_clip_report
 from ucc.preview.motion_cache import MotionCache
+from ucc.preview.expression_material import MaterialExpressionCache
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from .material_expression_preview import MaterialExpressionEvidence
 from .expression_keys import installed_expression_inputs
 from .expression_inspection import CheckedExpressionMaster
 from .expression_storage import check_cancel, safe_directory
@@ -24,7 +28,7 @@ from .runner import BlenderJobRunner
 
 @dataclass(frozen=True, slots=True)
 class ExpressionPreview:
-    cache: MotionCache
+    cache: MotionCache | MaterialExpressionCache
     project_id: str
     revision: int
     master_blend: str
@@ -38,6 +42,7 @@ class ExpressionPreview:
     stage_job_id: str
     reopen_job_id: str
     inspection: CheckedExpressionMaster
+    material_evidence: 'MaterialExpressionEvidence | None' = None
 
 
 def preview_saved_expressions(store: ProjectStore, *, blender_exe: Path, worker_script: Path,

@@ -12,7 +12,7 @@ class HandControls(QGroupBox):
         super().__init__('Left hand parts')
         self.manifest_sha256=None;self._context=None;self._current='neutral';self._can_apply=False
         layout=QVBoxLayout(self)
-        note=QLabel('Build two compatible hands from this saved character. Choose a hand and apply it. Original restores the starting hand while retaining body and face settings. Restore Original before changing body or face settings.')
+        note=QLabel('Build two compatible hands from this saved character. Choose a hand and apply it. Original restores the starting hand while retaining body and face settings. Supported body and face changes retain your compatible hand; otherwise restore Original first.')
         note.setWordWrap(True);layout.addWidget(note)
         self.build=QPushButton('Build compatible hands…');self.build.setObjectName('build_compatible_hands')
         self.build.setEnabled(False);self.build.clicked.connect(self.build_requested.emit);layout.addWidget(self.build)

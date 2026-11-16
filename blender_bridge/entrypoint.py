@@ -15,7 +15,25 @@ import bpy
 
 # Blender --python does not guarantee the repository parent is on sys.path.
 REPO_ROOT = Path(__file__).resolve().parents[1]
-if str(REPO_ROOT) not in sys.path:
+# Frozen archives carry checked Python source data for the external Blender
+# interpreter. The host root also contains Python-version-specific extension
+# modules: never put that directory on Blender's import path.
+if ((REPO_ROOT/'worker_support').exists() or (REPO_ROOT/'worker_support').is_symlink()
+        or (REPO_ROOT/'blender_bridge/payload_contract.py').exists()):
+    sys.dont_write_bytecode = True
+    from types import ModuleType
+    bridge_path=str(REPO_ROOT/'blender_bridge')
+    bridge_package=sys.modules.get('blender_bridge')
+    if bridge_package is None:
+        bridge_package=ModuleType('blender_bridge')
+        bridge_package.__path__=[bridge_path]
+        bridge_package.__package__='blender_bridge'
+        sys.modules['blender_bridge']=bridge_package
+    elif list(getattr(bridge_package,'__path__',()))!=[bridge_path]:
+        raise RuntimeError('An unrelated Blender bridge package was already imported')
+    from blender_bridge.payload_contract import activate_worker_payload
+    activate_worker_payload(REPO_ROOT)
+elif str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from blender_bridge.mpfb_service import (
@@ -69,6 +87,78 @@ OPERATIONS |= {'stage_mpfb_expression_keys', 'verify_mpfb_expression_keys'}
 OPERATIONS.add('inspect_mpfb_expression_keys')
 OPERATIONS |= {'stage_mpfb_expression_clip', 'verify_mpfb_expression_clip'}
 OPERATIONS.add('inspect_mpfb_neutral_master')
+OPERATIONS |= {'stage_mpfb_godot_candidate', 'verify_mpfb_godot_candidate'}
+OPERATIONS |= {'stage_native_godot_runtime', 'verify_native_godot_runtime'}
+OPERATIONS.add('sample_native_godot_runtime')
+OPERATIONS|={'stage_mpfb_skin_material','verify_mpfb_skin_material'}
+OPERATIONS|={'stage_mpfb_expression_normals','verify_mpfb_expression_normals'}
+OPERATIONS|={'stage_mpfb_sprite_sample','verify_mpfb_sprite_sample'}
+OPERATIONS|={'stage_mpfb_facial_sprites','verify_mpfb_facial_sprites'}
+OPERATIONS|={'stage_mpfb_unity_source','verify_mpfb_unity_source'}
+OPERATIONS|={'stage_mpfb_unity_runtime_source','verify_mpfb_unity_runtime_source'}
+
+
+def unity_source(job: dict,root: Path) -> dict:
+    activate_material_contract()
+    from blender_bridge.unity_source_workers import stage,verify
+    return (stage if job['operation']=='stage_mpfb_unity_source' else verify)(bpy,root,job)
+
+
+def unity_runtime_source(job: dict,root: Path) -> dict:
+    activate_material_contract()
+    from blender_bridge.unity_runtime_workers import stage,verify
+    return (stage if job['operation']=='stage_mpfb_unity_runtime_source' else verify)(bpy,root,job)
+
+
+def activate_material_contract() -> None:
+    if not (REPO_ROOT/'worker_support').exists():
+        source_root=REPO_ROOT/'src';contract=source_root/'ucc/core/skin_material.py'
+        if not contract.is_file() or contract.is_symlink() or contract.resolve()!=contract:
+            raise RuntimeError('Material worker contract sources are missing; use a complete worker payload or checkout')
+        if str(source_root) not in sys.path:sys.path.insert(0,str(source_root))
+
+
+def skin_material_revision(job: dict,root: Path) -> dict:
+    activate_material_contract()
+    from blender_bridge.skin_material_workers import stage_material,verify_material
+    action=stage_material if job['operation']=='stage_mpfb_skin_material' else verify_material
+    return action(bpy,root,job)
+
+
+def facial_sprites(job: dict,root: Path) -> dict:
+    activate_material_contract()
+    from blender_bridge.facial_sprite_workers import stage,verify
+    return (stage if job['operation']=='stage_mpfb_facial_sprites' else verify)(bpy,root,job)
+
+
+def sprite_sample(job: dict,root: Path) -> dict:
+    activate_material_contract()
+    from blender_bridge.sprite_workers import stage,verify
+    return (stage if job['operation']=='stage_mpfb_sprite_sample' else verify)(bpy,root,job)
+
+
+def native_godot_runtime(job: dict,root: Path) -> dict:
+    if not (REPO_ROOT/'worker_support').exists():
+        source_root=REPO_ROOT/'src'
+        source_contract=source_root/'ucc/export/godot_native_recipe.py'
+        if (not source_contract.is_file() or source_contract.is_symlink()
+                or source_contract.resolve()!=source_contract):
+            raise RuntimeError('Native worker contract sources are missing; use a complete worker payload or checkout')
+        core_path=str(source_root)
+        if core_path not in sys.path:sys.path.insert(0,core_path)
+    from blender_bridge.godot_runtime_workers import stage_native_runtime,verify_native_runtime
+    if job['operation']=='sample_native_godot_runtime':
+        from blender_bridge.godot_runtime_samples import sample_native_runtime
+        return sample_native_runtime(bpy,root,job)
+    action=stage_native_runtime if job['operation']=='stage_native_godot_runtime' else verify_native_runtime
+    return action(bpy,root,job)
+
+
+def mpfb_godot_candidate(job: dict, root: Path) -> dict:
+    from blender_bridge.godot_workers import stage_candidate
+    from blender_bridge.godot_verify import verify_candidate
+    action = stage_candidate if job['operation'] == 'stage_mpfb_godot_candidate' else verify_candidate
+    return action(bpy, root, job)
 
 
 def mpfb_neutral_master(job: dict, root: Path) -> dict:
@@ -82,6 +172,13 @@ def mpfb_expression_clip(job: dict, root: Path) -> dict:
         raise ValueError('Expression clip requires fixed staged candidate.blend')
     action = stage_clip if job['operation'] == 'stage_mpfb_expression_clip' else verify_clip
     return action(bpy, root, job['options'])
+
+
+def mpfb_expression_normals(job: dict,root: Path) -> dict:
+    activate_material_contract()
+    from blender_bridge.expression_normals import stage_normals,verify_normals
+    action=stage_normals if job['operation']=='stage_mpfb_expression_normals' else verify_normals
+    return action(bpy,root,job)
 
 
 def mpfb_expression_keys(job: dict, root: Path) -> dict:
@@ -272,7 +369,13 @@ def export_preview_glb(job: dict, root: Path) -> dict:
     """Export a static GLB from the staged .blend; never save the master."""
     source = member(root, job["input_project"])
     output = member(root, "preview.glb")
-    return export_static_glb(bpy, source, output)
+    options=job['options'];spec=None
+    if options:
+        activate_material_contract()
+        from ucc.core.skin_material import SkinMaterialSpec
+        if set(options)!={'owned_material_spec'}:raise ValueError('Unsupported static preview options')
+        spec=SkinMaterialSpec.from_dict(options['owned_material_spec'])
+    return export_static_glb(bpy, source, output,material_spec=spec)
 
 
 def verify_calibrated_bvh_chain(job: dict, root: Path) -> dict:
@@ -426,10 +529,27 @@ def main() -> int:
     try:
         action = {"inspect_environment": inspect_environment,
                   'inspect_mpfb_neutral_master': mpfb_neutral_master,
+                  'stage_mpfb_godot_candidate': mpfb_godot_candidate,
+                  'verify_mpfb_godot_candidate': mpfb_godot_candidate,
+                  'stage_native_godot_runtime': native_godot_runtime,
+                  'verify_native_godot_runtime': native_godot_runtime,
+                  'sample_native_godot_runtime': native_godot_runtime,
+                  'stage_mpfb_skin_material': skin_material_revision,
+                  'verify_mpfb_skin_material': skin_material_revision,
+                  'stage_mpfb_unity_source': unity_source,
+                  'verify_mpfb_unity_source': unity_source,
+                  'stage_mpfb_unity_runtime_source': unity_runtime_source,
+                  'verify_mpfb_unity_runtime_source': unity_runtime_source,
+                  'stage_mpfb_sprite_sample': sprite_sample,
+                  'stage_mpfb_facial_sprites': facial_sprites,
+                  'verify_mpfb_facial_sprites': facial_sprites,
+                  'verify_mpfb_sprite_sample': sprite_sample,
                   'stage_mpfb_face': mpfb_face,
                   'stage_mpfb_expression_keys': mpfb_expression_keys,
                   'stage_mpfb_expression_clip': mpfb_expression_clip,
                   'verify_mpfb_expression_clip': mpfb_expression_clip,
+                  'stage_mpfb_expression_normals':mpfb_expression_normals,
+                  'verify_mpfb_expression_normals':mpfb_expression_normals,
                   'inspect_mpfb_expression_keys': mpfb_expression_keys,
                   'verify_mpfb_expression_keys': mpfb_expression_keys,
                   'verify_mpfb_face': mpfb_face,

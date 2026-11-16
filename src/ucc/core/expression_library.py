@@ -64,7 +64,7 @@ def build_expression_receipt(library_sha256: str, source_master_sha256: str, mas
                               expression_keys_sha256: str) -> dict:
     if (not all(is_sha256(v) for v in (library_sha256, source_master_sha256, master_sha256,
             inspection_sha256, observation_sha256, expression_keys_sha256))
-            or type(operation) is not str or operation not in {'body_generation', 'body_refit', 'face_revision'}
+            or type(operation) is not str or operation not in {'body_generation', 'body_refit', 'face_revision', 'skin_material_revision'}
             or source_master_sha256 == master_sha256):
         raise ValidationError('Expression revision requires a genuine source/output transition and complete hashes')
     return {'schema_version': 1, 'policy': POLICY, 'library_sha256': library_sha256,
