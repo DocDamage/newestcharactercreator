@@ -53,6 +53,20 @@ class UnrealBindEvidenceTests(unittest.TestCase):
         self.args['stage_receipt_sha256']=write_json(path,value)
         with self.assertRaises(ValidationError):verify_unreal_bind(**self.args)
 
+    def test_sealed_clone_fbx_paths_can_differ_with_identical_source_hash(self):
+        path=self.args['reopened_receipt'];value=json.loads(path.read_text())
+        value['source_fbx_path']=str(self.root/'fresh-project'/'DerivedSources'/'character.fbx')
+        self.args['reopened_receipt_sha256']=write_json(path,value)
+        self.assertTrue(verify_unreal_bind(**self.args).saved_reopened_bind_verified)
+
+    def test_sealed_clone_fbx_paths_cannot_hide_different_source_hash(self):
+        path=self.args['reopened_receipt'];value=json.loads(path.read_text())
+        value['source_fbx_path']=str(self.root/'fresh-project'/'DerivedSources'/'character.fbx')
+        value['source_fbx_sha256']='b'*64
+        self.args['reopened_receipt_sha256']=write_json(path,value)
+        with self.assertRaisesRegex(ValidationError,'producer/source receipt identity differs'):
+            verify_unreal_bind(**self.args)
+
     def test_receipt_unverified_flag_cannot_be_promoted(self):
         path=self.args['stage_receipt'];value=json.loads(path.read_text());value['runtime_gpu_verified']=True
         self.args['stage_receipt_sha256']=write_json(path,value)

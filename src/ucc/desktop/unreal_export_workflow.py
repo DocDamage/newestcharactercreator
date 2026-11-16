@@ -53,7 +53,7 @@ class UnrealExportProgress(QObject):
         super().__init__(window)
         self.window = window
         self.cancel = cancel
-        self.dialog = QProgressDialog('Preparing local Unreal exportâ€¦', 'Cancel export', 0, 0, window)
+        self.dialog = QProgressDialog('Preparing local Unreal export...', 'Cancel export', 0, 0, window)
         self.dialog.setWindowTitle('Verifying private Unreal export')
         self.dialog.setWindowModality(Qt.WindowModality.NonModal)
         self.dialog.setMinimumDuration(0)
@@ -65,16 +65,16 @@ class UnrealExportProgress(QObject):
 
     @Slot(str)
     def display(self, phase):
-        text = PHASES.get(phase, 'Verifying private Unreal exportâ€¦')
+        text = PHASES.get(phase, 'Verifying private Unreal export...')
         if self.cancel.is_set():
-            text = 'Cancelling Unreal export; waiting for owned workers and rollbackâ€¦'
+            text = 'Cancelling Unreal export; waiting for owned workers and rollback...'
         self.dialog.setLabelText(text)
         self.window.statusBar().showMessage(text)
 
     @Slot()
     def request_cancel(self):
         self.cancel.set()
-        self.window.statusBar().showMessage('Cancelling Unreal export; waiting for owned workers and rollbackâ€¦')
+        self.window.statusBar().showMessage('Cancelling Unreal export; waiting for owned workers and rollback...')
 
     def close(self):
         self.dialog.hide()

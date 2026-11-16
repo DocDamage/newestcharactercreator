@@ -105,3 +105,15 @@ native stage evidence remain private and unmodified. Complete source/native
 fresh admission, final delivered-project verification and ordinary Unreal
 desktop/frozen acceptance remain open; successful compilation and stage capture
 alone do not close those gates.
+
+Attempt 03 passed both actual editor captures after the cache correction, then
+stopped at an incorrect cross-clone FBX-path equality check. Each capture already
+binds its exact local FBX path and identical source hash; the independent checker
+now compares content identity across clones while retaining both metadata
+validation and the caller's per-clone path binding. Different-content rejection
+and different-path acceptance regressions pass. All forty-six focused native
+checks pass. Host-only re-admission of the unchanged actual attempt-03 captures
+passes all thirteen finite domains with unchanged caps; the original checker,
+failed transaction and capture bytes are preserved. This re-admission does not
+convert the failed transaction into a published export. A coherent whole-export
+retry is still required before publication acceptance.

@@ -57,8 +57,14 @@ read-only reopen, four exact saved assets, 6,350 protected file bindings and
 fourteen rejected host observation faults. No live engine faults were injected.
 Production workflow 007 is in progress with separate source, engine/interface
 and independent-verification ownership; primary owns contracts, shared resource
-registration and the enclosing publication transaction. Current request/recipe
-tests pass; no production Unreal export/UI/package success is claimed yet.
+registration and the enclosing publication transaction. Actual production source
+jobs, observer compilation and separate native stage/fresh captures now run.
+Attempt 03 stopped on an incorrect cross-clone FBX-path equality check; after
+the narrow comparator correction, unchanged captures pass all thirteen finite
+gates under the existing caps. That host-only re-admission does not establish a
+published export. Complete production API, ordinary UI and matching frozen-app
+acceptance remain open. Local regression 599 passes 1,582 tests with fourteen
+existing skips; the subsequent native/path fixes have focused regressions.
 
 ## Requirement-to-evidence and remaining tasks
 

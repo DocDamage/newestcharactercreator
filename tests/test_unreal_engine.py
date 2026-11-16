@@ -7,6 +7,7 @@ import sys
 import tempfile
 import time
 import unittest
+from unittest.mock import patch
 from types import SimpleNamespace
 
 from ucc.core.errors import ProjectStorageError, ValidationError
@@ -105,3 +106,40 @@ class UnrealEngineTests(unittest.TestCase):
             with self.assertRaisesRegex(ProjectStorageError, '119-character'):
                 _private_cache(scripts)
             self.assertFalse((work/'d').exists())
+
+    def test_capture_rejects_other_clone_path_even_when_fbx_bytes_match(self):
+        from fixtures.unreal_contract_logic import request
+        from ucc.core.skin_material import SkinMaterialSpec
+        from ucc.jobs.unreal_engine import _capture, _write, CAPTURE_POLICY
+        from ucc.jobs.master_preview import _digest
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp).resolve(); project = root/'project'; (project/'Content').mkdir(parents=True)
+            fbx = project/'DerivedSources/character.fbx'; fbx.parent.mkdir()
+            fbx.write_bytes(b'HOST_ONLY_METADATA_FIXTURE_NOT_FBX')
+            other = root/'other-clone/DerivedSources/character.fbx'; other.parent.mkdir(parents=True)
+            other.write_bytes(fbx.read_bytes())
+            descriptor = root/'descriptor.json'; descriptor.write_text('{}')
+            profile = root/'profile.json'; profile.write_text('{}')
+            stage = root/'stage-receipt.json'; stage.write_text('{}')
+            req = request(); output = root/'reopened'
+            toolchain = SimpleNamespace(identity_sha256=req.toolchain_sha256, editor_exe=root/'UNIT_NO_EXECUTABLE.exe')
+            def rejected_worker_fixture(*_):
+                (output/'UnrealEditor.log').write_text("UNIT_TEST_ONLY_NOT_REAL_ENGINE\nInternalLoadLibrary: 'NullDrv'\n")
+                native = output/'native-observation.json'; native.write_text('{"UNIT_NOT_NATIVE_DATA":true}')
+                record = {name: None for name in CAPTURE_FIELDS}
+                record.update(schema_version=1, policy=CAPTURE_POLICY, state='CAPTURED_UNVERIFIED', mode='FRESH',
+                    job_id=req.job_id, native_observation_captured=True, request_sha256=req.sha256,
+                    toolchain_identity_sha256=req.toolchain_sha256, engine_profile_sha256=_digest(profile, None),
+                    source_descriptor_path=str(descriptor), source_descriptor_sha256=_digest(descriptor, None),
+                    source_fbx_path=str(other), source_fbx_sha256=_digest(other, None),
+                    native_observation_path=str(native), native_observation_sha256=_digest(native, None),
+                    engine_exe_sha256=req.unreal_executable_sha256, engine_build_sha256=req.unreal_build_version_sha256)
+                record.update({name: False for name in READINESS_FLAGS})
+                _write(output/'capture-receipt.json', record)
+            self.assertEqual(_digest(fbx, None), _digest(other, None))
+            with patch('ucc.jobs.unreal_engine._run', side_effect=rejected_worker_fixture) as run:
+                with self.assertRaisesRegex(ProjectStorageError, 'capture receipt differs'):
+                    _capture(project, output, 'FRESH', request=req, toolchain=toolchain,
+                        profile_path=profile, descriptor=descriptor, material_spec=SkinMaterialSpec((.4,.3,.2),.6),
+                        stage_receipt=stage, scripts=root, budget=None, deadline=time.monotonic()+10)
+                run.assert_called_once()

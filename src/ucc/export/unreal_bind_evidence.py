@@ -277,8 +277,10 @@ def verify_unreal_bind(source_reference: Path, source_normals: Path, native_obse
         stage=_json(contents[4]); fresh=_json(contents[5])
         _receipt(stage,'STAGE',native_observation,native_observation_sha256,request_sha256,toolchain_identity_sha256)
         _receipt(fresh,'FRESH',reopened_native_observation,reopened_native_observation_sha256,request_sha256,toolchain_identity_sha256)
+        # Each caller-sealed clone has its own FBX path; compare shared content
+        # hashes here while the engine host binds each path to its actual clone.
         for name in ('job_id','engine_profile_sha256','source_descriptor_path','source_descriptor_sha256',
-                     'source_fbx_path','source_fbx_sha256','observer_dll_sha256','observer_source_files','engine_exe_sha256','engine_build_sha256'):
+                     'source_fbx_sha256','observer_dll_sha256','observer_source_files','engine_exe_sha256','engine_build_sha256'):
             require(stage[name] == fresh[name], 'saved/reopened producer/source receipt identity differs')
         native=decode_native(_json(contents[2]),engine_version=engine_version,check=check)
         reopened=decode_native(_json(contents[3]),engine_version=engine_version,check=check)
