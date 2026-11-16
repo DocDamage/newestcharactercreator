@@ -1,0 +1,3 @@
+First-party editor-only native observation and static character project recipe.
+
+No engine/SDK code, original character, private source reference, native readback or compiled binaries are shipped in these resources. The observer never imports, rebuilds, repairs or saves mesh data. Its V2 output requires independent host admission. Shader compilation, GPU rendering, animation, PIE, player builds, visual quality and distribution rights remain separate gates. Compile only with the explicitly selected installed toolchain into an exclusive private project. The portable delivered project excludes verification plugins, Python scripts and caches.

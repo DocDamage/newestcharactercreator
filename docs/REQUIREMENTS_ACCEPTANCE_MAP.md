@@ -18,6 +18,9 @@ own actual application evidence; unit tests and CI status alone are insufficient
 | UNITY-A transaction | Accepted source 540, runtime source 575, engine/runtime 576 | Transaction worker: `jobs/unity_export*.py`, focused tests; coordinated optional verifier arguments | Exact project/revision/source/rights/material/executable/resource guards; one deadline/cancel; sealed enumerated payload; new-folder publication; final delivered-byte verification; rollback and fault evidence |
 | UNITY-B desktop | UNITY-A API | Desktop worker: Unity dialog/workflow, `desktop/window.py`, its two focused test modules | Explicit per-source rights and installed editor selection; new-folder destination; responsive progress/cancel; actionable errors; truthful completion through normal controls |
 | UNITY-C package | Integrated A/B, final source freeze | Verification worker: independent publication tests, package/Qt workflow checks, private package harness | Current resource-complete frozen executable performs actual desktop export; independently audited payload/evidence; owner launcher/package preserved |
+| UNREAL-007 source | Accepted finite original-source/native baseline 006 | Transaction worker: Unreal source preparation/reference/FBX metadata/worker and focused tests | Standard staged/fresh source jobs, original raw bone bases and complete source closure, explicit Unreal permissions, unchanged originals and no private baseline dependencies |
+| UNREAL-007 engine/interface | Accepted 006 and source contract | Desktop worker: first-party observer/toolchain/engine jobs, then Qt controls | Portable observer-free project, installed-tool preflight, source/native import and read-only reopen, final delivered-byte verification and ordinary desktop action |
+| UNREAL-007 independent admission | Same fixed profile/caps as 006 | Verification worker: bounded native decoder/math/material checks and fault tests | All thirteen source-derived gates, exact saved/reopened data, independent publication/package acceptance; no GPU or distribution inference |
 | Full requirements/integration | All batches | Primary: this map, acceptance/status/handoff, integration and GitHub | Review exact diff and evidence; maintain every open requirement; commit/push cadence; draft milestone PR; merge only after all acceptance/check gates |
 
 Agreed transaction API: `export_unity(store, *, request, destination,
@@ -43,9 +46,19 @@ audit pass all 62 delivered files, 356 images and 5,168,052 exact native positio
 byte comparisons while preserving source/master/history. Final streaming-guard
 regression590 passes 1,449 tests with 14 existing skips, including genuine Windows
 junction, nested-budget and traversal faults. Current normal frozen589 positive,
-collision and live cancellation plus independent audits pass locally. A/B/C are
-not merged; final remote-head checks remain pending. See the Unity record for
+collision and live cancellation plus independent audits pass locally. A/B are
+merged through PR69/70 after final-head checks and artifact audits. Package
+interval C remains open for the newly discovered receipt-cutoff correction. See the Unity record for
 precise scope and private evidence identifiers.
+
+Actual [Unreal baseline 006](acceptance/UCC-P1-UNREAL-001.md) now passes all
+thirteen finite native bind gates in installed Unreal 5.9, with a separate
+read-only reopen, four exact saved assets, 6,350 protected file bindings and
+fourteen rejected host observation faults. No live engine faults were injected.
+Production workflow 007 is in progress with separate source, engine/interface
+and independent-verification ownership; primary owns contracts, shared resource
+registration and the enclosing publication transaction. Current request/recipe
+tests pass; no production Unreal export/UI/package success is claimed yet.
 
 ## Requirement-to-evidence and remaining tasks
 
@@ -80,7 +93,7 @@ direct evidence. Requirements not fully evidenced are deliberately conservative.
 | MOTION-06 / 1, 7, 15.7 | Skeletal/physics/baked/AI-assisted secondary motion for hair/cape/wings/tail | Open: family-specific rigs, collision/interaction tests and reusable baked output. |
 | EXPORT-01 / 11.1, 11.6 | Source-bound profiles; geometry/rig/morph/material/texture/scale/axis/root tests; truthful generated/offline/engine states | Scoped: Godot static and Unity preparation. Open: complete representative animation and target-engine validation through final user outputs. |
 | EXPORT-02 / 11.2 | Godot GLB, skeleton/rest/skin/morph/material scene and idle/walk/attack playback | Scoped: [static Godot](acceptance/UCC-P1-EXPORT-002.md), actual app/package. Open: body motion/representative clips/root/scale and broader version coverage. |
-| EXPORT-03 / 11.3 | Unreal skeletal FBX, per-clip AnimSequences, morph/material/bounds, Preview/PIE; later Manny/IK mapping | Open: actual installed Unreal import/reopen/playback and fault acceptance; file generation alone is insufficient. |
+| EXPORT-03 / 11.3 | Unreal skeletal FBX, per-clip AnimSequences, morph/material/bounds, Preview/PIE; later Manny/IK mapping | Scoped: [actual private Unreal 5.9 static bind import/reopen](acceptance/UCC-P1-UNREAL-001.md), thirteen independent field gates and exact saved/native data. Open: production portable export/desktop/package, live engine faults, shader/GPU/usable clips/PIE/player, Manny/IK and wider compatibility. |
 | EXPORT-04 / 11.4 | Unity FBX, explicit Generic/Humanoid/Avatar choice, root/scale/morphs/clip playback | Scoped: [Unity](acceptance/UCC-P1-UNITY-001.md) source/bind/diagnostics, complete API and normal frozen589 private export/failure gates. Open: final remote checks/integration, Avatar/usable clips, player builds and full engine gate. |
 | EXPORT-05 / 11.4 | URP reference materials, Built-in fallback; explicit pipeline/version compatibility | Scoped: pinned Built-in Forward/D3D11 diagnostics only. Open: URP, lighting/material breadth, performance and supported release matrix; HDRP remains later explicit target. |
 | EXPORT-06 / 11.5 | Engine-neutral GLB/JSON/sprites; RPG Maker MZ layout preset; future Lumina adapter | Open: documented neutral handoff and MZ usage; Lumina deferred until schema supplied. Native Spine project writer is not promised; ordered layers/transforms/pivots are required. |
@@ -124,7 +137,7 @@ direct evidence. Requirements not fully evidenced are deliberately conservative.
 Worktree `ucc-godot-export/newestcharactercreator`, branch `feat/export-001-godot`,
 clean at `d40a04fd4b18dbf7913ccdf4c2ba3b9b0a2dccb8`; remote branch matches.
 Remote main is `2c03434c75034b8cfb810b0d38daeb00122f004e`. Eight earlier draft
-PRs #61–#68 remain open; they must not be recreated, discarded or silently merged.
+PRs #61Ã¢â‚¬â€œ#68 remain open; they must not be recreated, discarded or silently merged.
 Current branch descends from #68 (`3e23952`). No PR or workflow run exists for
 the checkpoint branch at inspection. Main has no branch-protection entry or
 ruleset returned; the user's explicit acceptance/check gates still apply.

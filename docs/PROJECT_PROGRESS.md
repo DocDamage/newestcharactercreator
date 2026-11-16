@@ -2,9 +2,19 @@
 
 The [complete requirements and acceptance map](REQUIREMENTS_ACCEPTANCE_MAP.md)
 tracks the locked blueprint, scoped evidence and every remaining feature area.
-The current coordinated batch connects Unity publication, its normal desktop
-action and actual frozen-app acceptance. Those gates remain open until their
-new transaction, application and package evidence is independently accepted.
+The Unity publication, normal desktop action and frozen-app acceptance are
+independently verified within their finite profile; final remote integration
+remains pending. The current implementation batch builds the normal portable
+Unreal workflow on the accepted actual static native baseline.
+
+Unreal baseline 006 passes all thirteen source-derived native field gates in
+installed Unreal 5.9, including exact fresh readback and four saved assets.
+Independent preservation and fourteen host observation faults pass; live engine
+faults were not injected. Production 007 now has closed source/toolchain/rights
+contracts and separately owned source, engine/interface and verification work.
+See [Unreal acceptance](acceptance/UCC-P1-UNREAL-001.md) for exact scope and open
+shader/GPU/animation/player/visual/distribution gates. Private proof assets are
+not copied wholesale as deliverables.
 
 Current transaction validation: actual complete private API export and independent
 persisted-evidence audit and current normal frozen desktop export/failure gates

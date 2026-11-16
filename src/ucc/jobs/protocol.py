@@ -33,6 +33,7 @@ SUPPORTED_OPERATIONS|={'stage_mpfb_sprite_sample','verify_mpfb_sprite_sample'}
 SUPPORTED_OPERATIONS|={'stage_mpfb_facial_sprites','verify_mpfb_facial_sprites'}
 SUPPORTED_OPERATIONS|={'stage_mpfb_unity_source','verify_mpfb_unity_source'}
 SUPPORTED_OPERATIONS|={'stage_mpfb_unity_runtime_source','verify_mpfb_unity_runtime_source'}
+SUPPORTED_OPERATIONS|={'stage_mpfb_unreal_source','verify_mpfb_unreal_source'}
 BODY_CONTACT_OPERATIONS = {'verify_fitted_body_contacts', 'verify_native_body_contacts', 'inspect_fitted_body_contacts', 'inspect_native_body_contacts'}
 BODY_CONTACT_OPERATIONS |= {'inspect_native_body_areas','verify_native_body_areas','inspect_fitted_body_areas','verify_fitted_body_areas'}
 BODY_CONTACT_OPERATIONS |= {'inspect_native_skin_inclusion','verify_native_skin_inclusion','inspect_fitted_skin_inclusion','verify_fitted_skin_inclusion'}
@@ -60,6 +61,9 @@ class JobRequest:
     protocol_version: int = PROTOCOL_VERSION
 
     def __post_init__(self) -> None:
+        if self.operation in {'stage_mpfb_unreal_source','verify_mpfb_unreal_source'}:
+            from ucc.export.unreal_blender_recipe import validate_job
+            validate_job(self.operation,self.input_project,self.options)
         if self.operation in {'stage_mpfb_unity_runtime_source','verify_mpfb_unity_runtime_source'}:
             from ucc.export.unity_runtime_source import validate_job
             validate_job(self.operation,self.input_project,self.options)
