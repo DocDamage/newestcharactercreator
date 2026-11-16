@@ -1,22 +1,29 @@
 # UCC development status — November 16, 2026
 
 Current integration: Unity transaction, desktop and private frozen-package slices
-are merged through PRs #69, #70 and #72 into `e7d1f2d3`. Their acceptance remains
-limited to the recorded human/static diagnostic profile. The separate Unreal
-PR #71 has local API/frozen evidence and four successful workflows; final Linux
-acceptance and integration remain open.
+(PRs #69, #70 and #72) and the verified Unreal 5.9 static workflow (PR #71)
+are merged into `feat/anim-007-plain-reference-edits` at `abb1becd`.
+Main remains `2c03434`; these changes have not been merged into main.
 
-The current independent batch is
-[registered private target actions](acceptance/UCC-P1-TARGET-ACTION-001.md),
-draft PR #73. Real private API preparation/save/reload and independent nine-worker,
-300-frame proof admission passed at `e42baf4`. Context/policy load negatives and
-local package construction also pass; normal frozen desktop acceptance remains
-open. A CI-only follow-up selects the canonical installed Python interpreter,
-retaining strict resource guards. This batch grants no engine, AI, redistribution
-or usable-clip status.
-The complete locked blueprint remains active. Earlier progress entries below
-are historical and do not supersede these current integration states.
+The current independent batch is [registered private target actions](acceptance/UCC-P1-TARGET-ACTION-001.md),
+draft PR #73. Product source `e42baf4` passed actual API preparation/save/reload,
+independent nine-worker/300-frame proof admission and normal frozen preparation.
+Frozen seeking, interior pause/hold, one-shot completion and explicit saved-record
+reload after restart passed; restart reload created no new worker jobs.
+An unsaved name edit cleared the stale preview and transport; independent final
+invalidation/restoration and live-cancellation acceptance remain open.
 
+At the `1b23bac` checkpoint, core, preflight, Qt and Windows-package workflows
+passed. Linux native jobs remain active; two jobs failed during official Blender
+download with HTTP 403 before tests. Preserve healthy jobs and retry only after
+the whole run is terminal. The CI-only interpreter correction preserved strict
+product guards. These results grant no engine-animation, AI, redistribution,
+human visual approval or usable-clip status.
+
+See [the November 16 checkpoint and complete remaining-work summary](CHECKPOINT_2026-11-16.md)
+and the [full requirement map](REQUIREMENTS_ACCEPTANCE_MAP.md). The complete
+locked blueprint remains active. Entries below are historical snapshots;
+this current state supersedes their older next-task and merge statements.
 
 **Normal Unity desktop/frozen acceptance (589):** The actual unchanged portable
 app passes explicit four-input rights review, installed editor/Blender selection,

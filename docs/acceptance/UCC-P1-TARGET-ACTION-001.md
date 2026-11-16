@@ -1,9 +1,12 @@
 # UCC-P1-TARGET-ACTION-001 — registered private target action
 
 Status: real private API preparation, immutable save and common saved reload
-were independently accepted at source checkpoint `e42baf4`. Normal frozen desktop
-acceptance and final CI remain open. This record does not establish a usable or
-shipping animation clip.
+were independently accepted at product source `e42baf4`. Normal frozen preparation,
+300-frame transport and explicit saved-record reload after restart also passed.
+The unsaved-edit invalidation observation is recorded, with final independent
+invalidation/restoration and live-cancellation acceptance still open. Final CI,
+combined integration and private packaged delivery remain open. This record does
+not establish a usable or shipping animation clip.
 
 The workflow uses an explicitly selected, attached source reference and the
 current saved neutral humanoid. It prepares a fresh private target Action,
@@ -49,14 +52,35 @@ Verified private scope:
   and three startup checks. The actual 401-file bundle stayed unchanged through
   a fresh independently observed startup. This is construction evidence only.
 
+Additional actual frozen-app results at the same unchanged product source:
+
+- Normal explicit Index/Measure/Attach and Prepare completed nine fresh native
+  workers and an immutable 46-file binding. Independent native proof admission
+  and the chronological process/metadata audit passed.
+- Seek, interior pause with a later stationary hold, and one-shot playback to
+  source frame 301 passed. This establishes transport behavior, not FPS performance.
+- The first app closed normally; all 35 observed process identities were absent.
+  Restart and explicit binding selection plus fresh consent reloaded the record
+  with the exact same 18 job directories and 34 request/result files.
+- An ordinary unsaved name edit cleared the stationary preview and transport.
+  Disk project and saved binding remain unchanged. Final independent checkpoint,
+  normal discard/restoration and live cancellation are not yet accepted.
+- Private screenshots were restricted to approved empty-app/control-only dialogs;
+  no private model, pose or render pixels were captured for AI inspection.
+
 Acceptance still required:
 
-- Exercise normal prepare, explicit reload after restart, one-shot transport,
-  current-context invalidation and live cancellation in the frozen application.
-- Pass relevant final-head regression, remote checks and artifact audits before
-  an acceptance-gated merge. Preserve the owner's existing launcher/package.
+- Independently checkpoint invalidation, restore the saved project through normal
+  discard/reopen controls, and exercise cancellation during a genuine owned
+  Blender body job. Preserve the existing binding; distinguish precommit failure
+  from postcommit historical retention.
+- Close/audit the second process tree, finish private ZIP/extraction/startup,
+  and archive the exact historic physical source/cache bytes before code changes.
+- Integrate the verified Unreal parent `abb1becd` after the frozen run is terminal;
+  resolve shared code/docs, run checks appropriate to the combined change, and
+  verify exact final-head CI/artifacts before any acceptance-gated merge.
 
 This is a dependency for remaining Godot body-motion work. The entire locked
 blueprint remains active, including ordinary-user, visual, contact/grasp,
 customization/output, 100 usable licensed clips, controlled AI, additional body
-families and release acceptance.
+families and full product/release acceptance.

@@ -13,24 +13,35 @@ own actual application evidence; unit tests and CI status alone are insufficient
 
 ## Current target-action batch
 
-Unity transaction, desktop and current private package slices were merged through
-PRs #69, #70 and #72 into verified integration `e7d1f2d3`. The separate Unreal
-candidate PR #71 has local API/frozen acceptance and four successful workflows;
-final Linux acceptance remains open. These are finite export profiles and do
-not close engine animation, player, visual or distribution requirements.
+Current integration: Unity transaction, desktop and private frozen-package slices
+(PRs #69, #70 and #72) and the verified Unreal 5.9 static workflow (PR #71)
+are merged into `feat/anim-007-plain-reference-edits` at `abb1becd`.
+Main remains `2c03434`; these changes have not been merged into main.
 
-The current dependency-ready batch is
-[registered private target actions](acceptance/UCC-P1-TARGET-ACTION-001.md),
-draft PR #73. Transaction owns preparation/storage/context and narrow existing
-worker guard seams; desktop owns explicit prepare/load and preview lifecycle;
-verification owns independent retained-proof admission and private actual audits.
-Primary owns contracts, integration, evidence review and Git. No worker commits.
-Actual private API preparation/save/reload and independent full retained-proof
-admission pass at `e42baf4`; normal frozen desktop and final CI acceptance remain
-open. Earlier batch details
-below are retained as historical context and superseded by these current states.
+The current independent batch is [registered private target actions](acceptance/UCC-P1-TARGET-ACTION-001.md),
+draft PR #73. Product source `e42baf4` passed actual API preparation/save/reload,
+independent nine-worker/300-frame proof admission and normal frozen preparation.
+Frozen seeking, interior pause/hold, one-shot completion and explicit saved-record
+reload after restart passed; restart reload created no new worker jobs.
+An unsaved name edit cleared the stale preview and transport; independent final
+invalidation/restoration and live-cancellation acceptance remain open.
 
-## Current batch and shared contracts
+At the `1b23bac` checkpoint, core, preflight, Qt and Windows-package workflows
+passed. Linux native jobs remain active; two jobs failed during official Blender
+download with HTTP 403 before tests. Preserve healthy jobs and retry only after
+the whole run is terminal. The CI-only interpreter correction preserved strict
+product guards. These results grant no engine-animation, AI, redistribution,
+human visual approval or usable-clip status.
+
+See [the November 16 checkpoint and complete remaining-work summary](CHECKPOINT_2026-11-16.md)
+and the [full requirement map](REQUIREMENTS_ACCEPTANCE_MAP.md). The complete
+locked blueprint remains active. Entries below are historical snapshots;
+this current state supersedes their older next-task and merge statements.
+
+## Historical Unity batch contracts
+
+The following contracts and batch observations are retained for provenance;
+Unity A/B/C and Unreal static integration are now accepted as stated above.
 
 | Task | Dependencies | Owner/files | Measurable exit |
 | --- | --- | --- | --- |
@@ -97,10 +108,10 @@ direct evidence. Requirements not fully evidenced are deliberately conservative.
 | MOTION-04 / 9.4, 15.4 | At least 100 usable licensed indexed clips; distinct preview/retarget/engine states, categories and policy tags | Open: count only accepted actual clips; 178 authored diagnostic states and 30 intake sources do not meet this target. |
 | MOTION-05 / 9.5 | Speed/reverse/trim, layer/mask/transition, key editing, per-joint overrides, facial curves, root visualization/onion skins | Open: full non-destructive timeline controls, new baked actions/cache and normal playback acceptance. |
 | MOTION-06 / 1, 7, 15.7 | Skeletal/physics/baked/AI-assisted secondary motion for hair/cape/wings/tail | Open: family-specific rigs, collision/interaction tests and reusable baked output. |
-| EXPORT-01 / 11.1, 11.6 | Source-bound profiles; geometry/rig/morph/material/texture/scale/axis/root tests; truthful generated/offline/engine states | Scoped: Godot static and Unity preparation. Open: complete representative animation and target-engine validation through final user outputs. |
+| EXPORT-01 / 11.1, 11.6 | Source-bound profiles; geometry/rig/morph/material/texture/scale/axis/root tests; truthful generated/offline/engine states | Scoped: Godot static, accepted Unity transaction/desktop/package, and Unreal 5.9 static import/export. Open: complete representative animation and target-engine validation through final user outputs. |
 | EXPORT-02 / 11.2 | Godot GLB, skeleton/rest/skin/morph/material scene and idle/walk/attack playback | Scoped: [static Godot](acceptance/UCC-P1-EXPORT-002.md), actual app/package. Open: body motion/representative clips/root/scale and broader version coverage. |
-| EXPORT-03 / 11.3 | Unreal skeletal FBX, per-clip AnimSequences, morph/material/bounds, Preview/PIE; later Manny/IK mapping | Open: actual installed Unreal import/reopen/playback and fault acceptance; file generation alone is insufficient. |
-| EXPORT-04 / 11.4 | Unity FBX, explicit Generic/Humanoid/Avatar choice, root/scale/morphs/clip playback | Scoped: [Unity](acceptance/UCC-P1-UNITY-001.md) source/bind/diagnostics, complete API and normal frozen589 private export/failure gates. Open: final remote checks/integration, Avatar/usable clips, player builds and full engine gate. |
+| EXPORT-03 / 11.3 | Unreal skeletal FBX, per-clip AnimSequences, morph/material/bounds, Preview/PIE; later Manny/IK mapping | Scoped: actual UE 5.9 static import/reopen, source/rig/morph/material parity, complete API and normal frozen positive/collision/live-cancel; PR #71 merged at abb1becd after all five workflows and artifact audits passed. Open: animation/AnimSequences, GPU/shader/Preview/PIE/player and human approval. |
+| EXPORT-04 / 11.4 | Unity FBX, explicit Generic/Humanoid/Avatar choice, root/scale/morphs/clip playback | Scoped: [Unity](acceptance/UCC-P1-UNITY-001.md) source/bind/diagnostics, complete API and normal frozen589 private export/failure gates. Open: Avatar/usable clips, player builds and full engine gate; the finite Unity transaction/desktop/package slices are merged. |
 | EXPORT-05 / 11.4 | URP reference materials, Built-in fallback; explicit pipeline/version compatibility | Scoped: pinned Built-in Forward/D3D11 diagnostics only. Open: URP, lighting/material breadth, performance and supported release matrix; HDRP remains later explicit target. |
 | EXPORT-06 / 11.5 | Engine-neutral GLB/JSON/sprites; RPG Maker MZ layout preset; future Lumina adapter | Open: documented neutral handoff and MZ usage; Lumina deferred until schema supplied. Native Spine project writer is not promised; ordered layers/transforms/pivots are required. |
 | RENDER-01 / 10.1 | Saved projection/yaw/pitch/roll/lens/scale/anchor/framing/shadow/alpha/lighting profiles; side/4/8/16/custom orbit/perspective | Scoped: fixed four/eight-direction output. Open: full camera profile controls/persistence, asymmetry-safe real left/right rendering and optional mirroring. |
@@ -131,14 +142,14 @@ direct evidence. Requirements not fully evidenced are deliberately conservative.
 | RIGHTS-02 / 13.3 | MPFB/Blender/Qt/Aseprite/model notices, redistribution obligations, expert review, distinct private/game/asset/creator distribution | Open: final software/content/legal review and intended distribution decision; no public release authorized. |
 | QA-01 / 13.4 | Missing/wrong tools/context, worker crash, rig/rest/morph/negative-scale faults and source-preserving recovery | Scoped: existing source/job/fault acceptance. Open: complete normal workflow matrix for every adapter. |
 | QA-02 / 13.4 | OOM/offline/node errors, removed drives/duplicate models/cloud consent, missing license, alpha/overflow, upgrade and network-storage faults | Open: all detailed blueprint rows need direct acceptance as features become dependency-ready. |
-| QA-03 / 16.1 | Unit/fuzz/integration/opt-in AI/engine/golden visual/safety/regression classes | Scoped: checkpoint 1,405 tests and private actual jobs. Open: missing Unicode/long-path/malformed data/visual/property tests and full final-head regression. |
+| QA-03 / 16.1 | Unit/fuzz/integration/opt-in AI/engine/golden visual/safety/regression classes | Scoped: historical checkpoint 1,405 total tests; current target-action suite 1,523 passed/14 skips and Unreal suite 1,587 passed/14 skips, plus private actual jobs. Open: missing Unicode/long-path/malformed data/visual/property tests and full final-head regression. |
 | QA-04 / 16.2 | Whole smoke matrix: generate/extreme morph/swap/A-T rig/viseme/actions/three engines/2D/restart/kill/offline AI | Open: end-to-end combined specimen acceptance; individual scoped records do not close this gate. |
 | QA-05 / 16.3 | Head-specific CI checks and independently inspected artifacts, no private/licensed content/model downloads in CI | Ongoing invariant. Open: current milestone draft PR and exact-head checks/artifact audits; never cancel healthy jobs on observer timeout. |
 | QA-06 / 14, 16.3 | Enforced lint/format, critical-area type checking, pytest and actual schema validation with appropriate dependency/version pinning | Open: audit configured tools and existing environment, wire missing quality gates without silent installation or unused dependencies. JSON parseability alone is not schema validation. |
-| RELEASE-01 / 15.7 | Current frozen Windows normal workflow, installer/updater/recovery, opt-in crash diagnostics, signing/channels if distributing | Scoped: Godot/sprite and current Unity589 normal portable app/export/collision/livecancel, exact ZIP/extraction/startup. Open: final integration and full installation/update/rollback/product acceptance. Owner launcher remains preserved. |
+| RELEASE-01 / 15.7 | Current frozen Windows normal workflow, installer/updater/recovery, opt-in crash diagnostics, signing/channels if distributing | Scoped: Godot/sprite, accepted Unity600 and Unreal601 portable export/collision/live-cancel plus private ZIP/extraction/startup; target-action preparation/transport/restart passes with remaining negatives open. Open: combined integration and full installation/update/rollback/product acceptance. Owner launcher remains preserved. |
 | RELEASE-02 / 1, 15.7, 16 | Visual/usability approval, performance/VRAM/broad hardware, engine/version/player builds, documentation and distribution decision | Open: final audit of every row and all explicit blueprint requirements; only then project completion. |
 
-## Integration and GitHub state at resumption
+## Historical integration and GitHub state at resumption
 
 Worktree `ucc-godot-export/newestcharactercreator`, branch `feat/export-001-godot`,
 clean at `d40a04fd4b18dbf7913ccdf4c2ba3b9b0a2dccb8`; remote branch matches.
