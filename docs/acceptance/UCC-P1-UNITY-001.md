@@ -467,3 +467,132 @@ syntax checks passed. The reviewed staged set contains first-party text/code
 only; private source assets, runtime vector data and renders remain outside Git.
 The owner explicitly authorized committing and pushing this checkpoint after
 the runtime step. This is a feature-branch checkpoint, not release approval.
+
+### Enclosing transaction and final delivered-payload admission (582)
+
+`export_unity` now connects the production source preparation, fresh original
+runtime-source reproduction, native Unity import/reopen and graphical runtime
+admission. Its closed request binds the exact saved revision, source hashes,
+explicit per-input private-use permissions and selected installed editor. The
+transaction protects first-party code/resources and executable identities plus
+the complete saved master, expression, hand, material and history ancestry,
+including byte-identical file replacement and directory redirects. One total
+deadline and cooperative cancellation extend through final publication checks.
+
+Delivery uses an explicit pinned file allowlist, independent expected copy hashes
+and canonical request/import-recipe validation. The saved character FBX, native
+mesh, rig, morphs, material, source-quad topology, saved scene/prefab and eleven
+first-party resources are retained. The original Blender master, purchased
+sources, import-only source reference/weight datasets, runtime vectors, images,
+caches and private command logs are excluded. Atomic exclusive directory rename
+publishes provisionally into a new destination. The graphical verifier then
+checks an identical copy of the actual published project while the transaction
+continuously guards the destination's complete sealed payload. Expected posed
+vectors remain on the host. The final receipt is written only after admission.
+Failure withdraws an exclusively owned destination into retained staging;
+externally replaced destinations are never adopted, overwritten or deleted.
+A withdrawn known-owned receipt loses its publication claim.
+
+Actual complete run 582 used a disposable copy of the original-authored prepared
+human on Blender 5.3.0 / MPFB 2.0.18 and Unity 6000.4.5f1. It passed every stage
+and published 62 files in 292.781 seconds. The final graphical Unity process
+exited successfully in 17.781 seconds; subsequent host validation checked every
+native observation and all 356 decoded image records. Maximum source-position
+difference remains 3.5255144365327526 micrometres; maximum normal difference is
+0.22018312759442304 degrees. All 5,168,052 before/after native vertex-position
+byte comparisons are exact. Source master, editable metadata and history are
+unchanged. This is one private original-authored specimen and a finite diagnostic
+profile, not shipping clips or broad engine compatibility.
+
+An independent persisted-evidence audit accepts the request/receipt/payload,
+source-stage and fresh-recompute proof chains, all three native import process
+outcomes, fresh saved-scene observation, actual D3D11 runtime outcome, complete
+native binary and image hashes/dimensions, all position-byte comparisons and
+eleven source resource identities. It reran no Blender/Unity geometry work.
+Private records are `unity-transaction582/summary.json` and
+`unity-transaction582-independent-audit.json` under the existing evidence root.
+Final receipt SHA-256:
+`39b72d27a315fd273a244c81b053a87469e38f8b4119662ee32846276d0e2998`.
+
+Focused filesystem/logic faults cover stale revision/review, changed source,
+proof, executable and first-party resource, byte-identical proof replacement,
+shared deadline/cancellation, exclusive rename collisions, altered stage/final
+outputs, verifier rejection, late receipt/journal failure and refusal to roll
+back an externally replaced destination. Additional actual Windows junction
+tests reject redirected export-parent and ancestral-proof directories while
+preserving both original and redirect targets. Small byte-marker fixtures are
+explicitly nonshipping and do not establish engine quality. Review also caught
+and fixed copy-race sealing, arbitrary recipe fields, stale withdrawn success
+receipts and journal-temp recovery without weakening checks. One earlier
+42-test combined run exposed a timing-sensitive test's 50 ms setup assumption;
+the corrected deterministic deadline test passes without production changes.
+
+Full required-Qt regression 584: 1,449 tests in 273.941 seconds, 1,435 passed and
+14 existing Windows symlink-privilege skips. Two genuine junction cases added
+after discovery passed separately. This regression covers the integrated
+development tree, including the co-developed desktop slice; it is not a claim
+about an untested remote PR head. Scanner 3/3, gate/license-policy 12/12,
+compile checks and diff whitespace checks pass. Normal source-desktop and
+frozen-executable export acceptance, final PR checks and merge remain pending.
+No dependency installation, source permission change, owner launcher/package
+replacement, public release, artist approval or player-build acceptance occurred.
+The [complete requirement map](../REQUIREMENTS_ACCEPTANCE_MAP.md) retains all
+later blueprint gates, including actual Unreal and usable engine animation.
+
+### Deadline classification and real-artifact publication faults (583–586)
+
+Publication fault replay reuses the actual accepted 582 preparation/import
+artifacts with explicit unchanged hashes and file identities. It substitutes
+only those preparation calls, never fabricates an engine result, and exercises
+the real copy/seal/rename/guard/rollback code. Seven scoped cases reject:
+raced-in destination, altered staging, altered published bytes, postpublication
+cancellation/deadline, identical proof replacement and altered private runtime
+source. No fresh graphical job runs in these failing replay cases; actual engine
+quality remains established separately by 582. The first 10-second deadline
+attempt expired before the harness's intended progress callback; its failed
+phase assertion and earlier four passing cases are retained. A continuation
+accepts the remaining three without repeating the four accepted cases.
+
+That investigation exposed a real diagnostic defect: a deadline expiring inside
+the shared hashing helper could report a generic saved-preview cancellation.
+The corrected public Unity boundary establishes one original absolute deadline,
+clamps it to any enclosing known budget, and distinguishes explicit user Event
+flags from nested budget expiry. Underlying exceptions and notes are retained.
+Failure journals record normalized reason/flags alongside the raw error;
+retained diagnostics paths reach the desktop. Cleanup preserves the original
+failure classification rather than reclassifying it when rollback takes time.
+
+Post-fix real-artifact replay 586 passes both nested-budget cases at the intended
+published-verification stage: deadline reports `total_deadline`, cancelled false
+and timed-out true; explicit user cancellation reports `user_cancel`, cancelled
+true and timed-out false. Both withdraw the exclusively owned output, preserve
+descriptor/history and every accepted artifact's hash/identity, and retain the
+raw cause. Private record: `unity-transaction-deadline586/summary.json`.
+Twelve transaction tests and twenty independent publication/payload tests pass
+on the corrected code, including initial/mid-hash expiry, nested budgets and
+genuine directory redirects. The earlier package 581 was closed before any
+export worker started; it is not post-fix or frozen-export acceptance. Package
+585 was rebuilt from the classification-corrected sources and passed its normal
+desktop export. Its evidence remains explicitly before the streaming guard fix.
+No new baseline engine-quality run is claimed by the fault
+replay, and no timeout or assertion was relaxed to grant acceptance.
+
+Post-classification-fix integrated required-Qt regression 586 passes all 1,454 tests:
+1,440 passed and 14 existing Windows symlink-privilege skips in 284.494 seconds.
+This includes the genuine junction and nested-budget tests. A subsequent
+independent review reproduced eager source-directory enumeration before budget
+and entry-limit checks. The corrected shared source/payload walk uses direct
+per-entry scanning, checks cancellation and shared entry limits before requesting
+another entry, rejects redirects and unlisted directories before descent, bounds
+depth, and rejects the 513th payload file before reading it. Ordinary actual 582
+seals remain exact: 39 source ancestry entries and 62 delivered files. Genuine
+Windows junction review confirms neither junction nor target is enumerated.
+Nine focused traversal tests pass; forty-one distinct transaction/publication/
+traversal tests are covered by the relevant passing focused runs.
+
+Final streaming-source integrated required-Qt regression 590: 1,463 total,
+1,449 passed and 14 existing Windows symlink-privilege skips in 263.324 seconds.
+No source changes follow this regression. The exact thirteen-file transaction
+slice passes independent text/privacy/dependency review. Matching current frozen
+package 589 desktop acceptance and final remote-head checks remain pending;
+no merge, general animation, player-build, artist or release claim is made.

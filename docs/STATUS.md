@@ -1,5 +1,21 @@
 # UCC development status — November 16, 2026
 
+**Latest Unity transaction (582–584):** The complete production API now stages,
+atomically publishes and graphically verifies the final sealed private Unity
+project. Actual original-authored specimen acceptance and an independent
+persisted-evidence audit pass: 62 delivered files, 178 states/two cameras,
+356 images, exact native position bytes, unchanged source/master/history.
+Final streaming-guard required-Qt regression: 1,449 passed / 14 existing skips in
+263.324 seconds, including genuine junction, nested-budget and traversal faults.
+The pre-streaming-fix frozen app passes its normal desktop export; current
+matching frozen export, PR checks
+and merge remain pending. Three workers retain separate transaction, desktop
+and independent verification/package ownership. Existing 540/575/576 evidence
+is preserved. The
+[requirements/acceptance map](REQUIREMENTS_ACCEPTANCE_MAP.md) keeps the complete
+locked blueprint active beyond this batch. Existing draft PRs #61–#68 and the
+owner launcher/package remain preserved.
+
 **Latest Unity progress (575–577):** Production runtime source capture and fresh
 Blender recomputation pass all 178 diagnostic states. The production graphical
 Unity verifier now independently admits both automatic-camera outputs: native

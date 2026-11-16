@@ -1,5 +1,16 @@
 # Project progress — November 16, 2026
 
+The [complete requirements and acceptance map](REQUIREMENTS_ACCEPTANCE_MAP.md)
+tracks the locked blueprint, scoped evidence and every remaining feature area.
+The current coordinated batch connects Unity publication, its normal desktop
+action and actual frozen-app acceptance. Those gates remain open until their
+new transaction, application and package evidence is independently accepted.
+
+Current transaction validation: actual complete private API export and independent
+persisted-evidence audit pass. Final streaming-guard integrated regression passes
+1,449 tests with 14 existing Windows symlink skips (1,463 total); current matching
+desktop/frozen export and final-head remote checks remain separate gates.
+
 The Universal Character Creator is a functional Windows alpha under active
 development. The locked blueprint remains the full target. A customizable
 humanoid and several real export paths are verified; the complete product is
@@ -43,8 +54,9 @@ installed for this work.
 
 Milestone 1 is substantially implemented but incomplete. Godot and sprite paths
 have actual app-level acceptance for their documented scope. Unity now has a
-verified production preparation/runtime path, but the complete guarded export
-transaction and desktop action are not connected. Unreal import acceptance has
+verified complete guarded API export transaction, including final delivered-byte
+graphical admission and source/history preservation. Its normal desktop and
+frozen-app acceptance remain pending. Unreal import acceptance has
 not been established. The owner's existing launcher/package is not silently
 replaced by development changes.
 
@@ -70,7 +82,7 @@ replaced by development changes.
    end-user usability and visual acceptance, documentation, source/license review
    and the intended private/public distribution decision.
 
-The immediate next task is Unity's atomic export transaction and desktop wiring.
+The immediate next task is Unity's normal desktop and frozen-app acceptance.
 The project has not reached a finished or generally engine-compatible release.
 
 Key evidence and limits:

@@ -30,7 +30,8 @@ class VerifiedUnityRuntime:
 
 
 def verify_unity_runtime(engine: PreparedUnityEngine,source: PreparedUnityRuntimeSource,*,request: UnityExportRequest,
-        unity_exe: Path,work: Path,guard: Callable[[],None],cancel: Event | None=None,timeout_s: float=900) -> VerifiedUnityRuntime:
+        unity_exe: Path,work: Path,guard: Callable[[],None],cancel: Event | None=None,timeout_s: float=900,
+        native_import_receipt: Path | None=None,published_files: dict[str,str] | None=None) -> VerifiedUnityRuntime:
     if (type(engine) is not PreparedUnityEngine or type(source) is not PreparedUnityRuntimeSource or type(request) is not UnityExportRequest
             or engine.request_sha256!=request.sha256 or source.request_sha256!=request.sha256
             or type(timeout_s) not in (int,float) or not math.isfinite(timeout_s) or not .05<=timeout_s<=3600):
@@ -42,9 +43,17 @@ def verify_unity_runtime(engine: PreparedUnityEngine,source: PreparedUnityRuntim
     remaining();guard()
     exe=regular_file(Path(unity_exe),Path(unity_exe).parent,512*1024*1024)
     if _digest(exe,budget)!=request.unity_executable_sha256:raise ValidationError('Unity runtime executable differs from the reviewed executable')
-    receipt=regular_file(engine.directory.parent/'native-import-receipt.json',engine.directory.parent,2*1024*1024)
+    receipt_path=engine.directory.parent/'native-import-receipt.json' if native_import_receipt is None else Path(native_import_receipt)
+    receipt=regular_file(receipt_path,receipt_path.parent,2*1024*1024)
     if _digest(receipt,budget)!=engine.receipt_sha256:raise ProjectStorageError('Unity native import receipt changed')
     saved=read_json(receipt,2*1024*1024)['saved_files']
+    if published_files is not None:
+        from .unity_export_payload import PRIVATE_INPUTS,engine_payload
+        expected={name:value for name,value in saved.items() if name not in PRIVATE_INPUTS}
+        if (type(published_files) is not dict or set(saved)!=engine_payload()|PRIVATE_INPUTS
+                or published_files!=expected):
+            raise ValidationError('Published Unity payload differs from the exact admitted native delivery inputs')
+        saved=dict(published_files)
     if tree_hashes(engine.directory,budget)!=saved:raise ProjectStorageError('Unity saved native inputs changed before runtime admission')
     scripts=bundled_unity_adapter_paths();files={n:regular_file(source.directory/n,source.directory,maximum) for n,maximum in FILES.items()}
     if any(_digest(path,budget)!=dict(source.files).get(name) for name,path in files.items()):raise ProjectStorageError('Original runtime source data changed')
