@@ -134,6 +134,43 @@ class RegisteredNativeInputsTests(unittest.TestCase):
         (self.runtime/"geometry.bin").write_bytes(b"SYNTHETIC_NOT_GEOMETRY")
         with self.assertRaises((ValidationError,ProjectStorageError)):self.admit()
 
+    def test_provenance_mutation_after_json_read_rejects_before_recipe(self):
+        from ucc.export.godot_candidate_contract import canonical_bytes
+        def changed(value):
+            result=canonical_bytes(value)
+            self.provenance.write_bytes(b"INVALID_NOT_JSON_AFTER_ADMITTED_READ")
+            return result
+        with patch(MODULE+"canonical_bytes",side_effect=changed):
+            with self.assertRaises(ProjectStorageError):self.admit()
+        self.assertFalse(self.builder.called)
+
+    def test_same_byte_provenance_replacement_during_json_read_rejects(self):
+        from ucc.export.godot_candidate_contract import canonical_bytes
+        def changed(value):
+            result=canonical_bytes(value)
+            replacement=self.provenance.with_suffix(".replacement")
+            replacement.write_bytes(self.provenance.read_bytes());replacement.replace(self.provenance)
+            return result
+        with patch(MODULE+"canonical_bytes",side_effect=changed):
+            with self.assertRaises(ProjectStorageError):self.admit()
+        self.assertFalse(self.builder.called)
+
+    def test_provenance_aba_path_change_cannot_replace_captured_parser_bytes(self):
+        original=b"INVALID_INITIAL_PROVENANCE_BYTES"
+        self.provenance.write_bytes(original);stamp=self.provenance.stat()
+        loads=json.loads
+        def changed(raw, **kwargs):
+            if raw==original.decode():
+                self.provenance.write_text('{"temporarily_valid":true}')
+                try:return loads(raw,**kwargs)
+                finally:
+                    self.provenance.write_bytes(original)
+                    os.utime(self.provenance,ns=(stamp.st_atime_ns,stamp.st_mtime_ns))
+            return loads(raw,**kwargs)
+        with patch(MODULE+"json.loads",side_effect=changed):
+            with self.assertRaises(ValidationError):self.admit()
+        self.assertFalse(self.builder.called)
+
     def test_worker_namespace_and_frozen_source_guards_reject_late_insertions(self):
         selected=self.admit();extra=self.f.script.parent/"unexpected.py";extra.write_text("# NONSHIPPING")
         with self.assertRaises(ProjectStorageError):selected["unchanged"]()

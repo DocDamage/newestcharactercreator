@@ -7,15 +7,22 @@ private native source inputs from a selected saved target binding while retainin
 all animation IDs and source policies. Two fresh Blender workers independently
 verify all 300 frames; source/data preservation, a live caller cancellation and
 a coherently rehashed saved material-slot fault pass within their recorded scope.
-The final cold-source run passes in 192.5015 seconds without creating caches.
-The required-Qt suite passes 1,736 tests: 1,722 passed and fourteen existing
-Windows privilege skips. Source launcher and complete worker-payload checks pass.
+The final cold-source case009 passes in 343.0198429 seconds without creating
+caches, including the reviewed same-buffer provenance fix. The required-Qt
+regression004 passes 1,739 tests: 1,725 passed and fourteen existing Windows
+privilege skips. Independent source/native/regression audits pass. Earlier
+launcher, worker-payload and negative checks retain their recorded identities.
 
 This is a private source-preparation API. It adds no GUI export, executes no
 Godot/runtime code and publishes no engine project. The six experimental runtime
 files stay outside Git; code provenance/delivery and full runtime acceptance
 remain separate. The acceptance record distinguishes final source and historical
 negative identities; exact-head publication gates are tracked separately.
+
+Fifteen superseded remote and fifteen local branch names are now pruned through
+ordinary deletions after exact-tip ancestry and dependency checks. All original
+tips remain on main and older checkout files are preserved. Unique source and
+retention development branches remain active.
 
 
 ## Verified consolidation - November 16, 2026

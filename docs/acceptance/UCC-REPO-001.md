@@ -55,6 +55,16 @@ preserve worktree files. Keep unique ongoing development branches, including
 registered Godot source preparation. Use ordinary deletions, verify advertised
 remote tips in the pre-push guard, and never force-delete unique work.
 
+Cleanup completed against main `a2ed82c068d8f34079167ae755ae3dc9b4edf940`:
+fifteen exact remote tips and fifteen local branch names were removed through
+ordinary atomic remote deletion and local `branch -d`. Every deleted tip remains
+a main ancestor; superseded PRs are closed and no open PR depends on those names.
+The temporary pre-push guard checked the real advertised tips and rejected a
+changed-tip negative probe. Older checkouts were detached at their same commits
+with tracked bytes unchanged. No worktree was removed, and unique ongoing
+registered-source/retention work is preserved. The private admission is
+reconciliation687d110/safe-prune002/prune001-admission.json.
+
 No dependency installation, licensing decision, private-asset upload, owner
 launcher replacement or public release occurs. Cold source checkouts can still
 reject embedded-Python cache creation at this consolidation head; the accepted

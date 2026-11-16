@@ -4,6 +4,8 @@ This reads an explicitly selected private code directory/provenance record. It
 never executes that code or grants private delivery, engine or distribution rights.
 """
 from dataclasses import dataclass
+from hashlib import sha256
+import json
 from pathlib import Path
 import re
 from typing import Callable
@@ -12,6 +14,7 @@ from ucc.core.errors import ProjectConflict, ProjectStorageError, ValidationErro
 from ucc.core.expression_library import canonical_digest
 from ucc.core.facial import validate_face_parameters
 from ucc.core.hand_parts import hand_selection, validate_hand_library_recipe
+from ucc.core.storage import _unique_project_fields, _nonfinite_project_number
 from ucc.export.godot_candidate_contract import canonical_bytes
 from ucc.export.godot_registered_native_recipe import build_registered_native_recipe
 from ucc.export.godot_runtime_contract import CODE_FILES
@@ -140,13 +143,29 @@ def admit_registered_native_production(store, runner, *, binding_sha256, databas
     implementation = _private_code(runtime_directory, cancel, bounded_check)
     provenance = protected(Path(runtime_code_provenance))
     regular_file(provenance, provenance.parent, 256 * 1024)
+    provenance_identity = identity(provenance)
     # Bounded metadata identity only, never code-provenance or licensing admission.
-    canonical_bytes(read_json(provenance, 256 * 1024))
+    # Parse and hash the SAME captured bytes: separate path reads allow ABA
+    # replacements to bind a digest of content that was never parsed.
+    with provenance.open("rb") as stream:
+        provenance_raw = stream.read(256 * 1024 + 1)
+    if not 2 <= len(provenance_raw) <= 256 * 1024:
+        raise ValidationError("Selected runtime provenance exceeds its metadata size bounds")
+    try:
+        provenance_value = json.loads(provenance_raw.decode("utf-8"),
+            object_pairs_hook=_unique_project_fields, parse_constant=_nonfinite_project_number)
+    except (ValueError, UnicodeError, RecursionError) as error:
+        raise ValidationError("Malformed selected runtime provenance JSON") from error
+    if type(provenance_value) is not dict:
+        raise ValidationError("Selected runtime provenance must be a JSON object")
+    canonical_bytes(provenance_value)
+    provenance_sha = sha256(provenance_raw).hexdigest()
+    if identity(provenance) != provenance_identity or _digest(provenance, cancel) != provenance_sha:
+        raise ProjectStorageError("Selected runtime provenance changed during metadata admission")
     bindings = {name: _digest(protected(path), cancel) for name, path in sources.items()}
     evidence_bindings = {name: _digest(protected(path), cancel) for name, path in evidence.items()}
     code_hashes = {name: _digest(path, cancel) for name, path in implementation.items()}
     code_lengths = {name: path.stat().st_size for name, path in implementation.items()}
-    provenance_sha = _digest(provenance, cancel)
     def recipe_for(current):
         return build_registered_native_recipe(current, expected_project_sha256, bindings,
             evidence_bindings, code_hashes, permissions, motion_asset_id, capability,
@@ -190,6 +209,8 @@ def admit_registered_native_production(store, runner, *, binding_sha256, databas
             raise ProjectStorageError("Loaded target input changed before registered native admission")
         expected[path] = digest
     authorities = ancestry((*expected, Path(runtime_directory), database))
+    if authorities[provenance] != provenance_identity:
+        raise ProjectStorageError("Selected runtime provenance identity changed before admission")
     authorities.update(dict(prepared.watched_identities))
     authorities[database] = (*identity(database)[:2], 0, 0)
     baseline = source_state(store, budget)

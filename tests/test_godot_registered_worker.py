@@ -105,7 +105,7 @@ class RegisteredWorkerTests(unittest.TestCase):
     def test_worker_validates_v2_binding_and_actual_code_lengths_before_admission(self):
         recipe = build_registered_native_recipe(**recipe_args())
         with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
+            root = Path(tmp).resolve()
             for name in INPUTS: (root / name).write_bytes(b"UNIT_ONLY_NOT_NATIVE")
             for name in recipe["implementation"]: (root / name).write_bytes(b"x" * 100)
             namespace, job, _ = self.checked(root, recipe, "stage_registered_native_godot_runtime")
@@ -137,7 +137,7 @@ class RegisteredWorkerTests(unittest.TestCase):
     def test_v1_code_length_behavior_is_unchanged(self):
         recipe = legacy_recipe()
         with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
+            root = Path(tmp).resolve()
             for name in set(INPUTS) | set(recipe["implementation"]):
                 (root / name).write_bytes(b"UNIT_ONLY_NOT_NATIVE")
             namespace, job, _ = self.checked(root, recipe, "stage_native_godot_runtime")
@@ -187,7 +187,7 @@ class RegisteredWorkerTests(unittest.TestCase):
 
     def test_report_reader_requires_explicit_v2_policy_without_broadening_v1(self):
         with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp); path = root / "native_stage.json"
+            root = Path(tmp).resolve(); path = root / "native_stage.json"
             raw = stage_report("a" * 64); raw["policy"] = POLICY
             path.write_bytes(canonical_bytes(raw)); digest = sha256(path.read_bytes()).hexdigest()
             with self.assertRaises(ValidationError):

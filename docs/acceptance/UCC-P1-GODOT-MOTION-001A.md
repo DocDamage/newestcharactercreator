@@ -6,6 +6,57 @@ regression pass within the finite scope below. Exact-head remote CI/artifact
 acceptance remains pending.
 This document does not approve a runtime, engine project, GUI export or release.
 
+## Current review follow-up: same-buffer provenance admission
+
+Review of `e7316be` reproduced a provenance parse/hash race, including an ABA
+replacement. The follow-up parses and hashes the same bounded captured bytes,
+rejects duplicate/nonfinite/nonobject metadata, and retains identity, subsequent
+path-hash and ancestor checks. Three focused mutation/replacement tests cover the
+faults; the complete input module passes 15 tests in 19.701 seconds. Both Windows
+Core CI lanes also exposed a noncanonical temporary-root fixture. All three
+worker-test roots now use resolve(); all ten worker tests pass in 0.136 seconds.
+Production canonical-path checks remain intact. Independent source review passes;
+replay of the original ABA fault rejects before recipe construction or any child.
+
+The current **case009** API and independent read-only audit both exit 0. The
+actual API takes 343.0198429 seconds, with exactly two fresh Blender workers,
+300 frames in each report, all 45 retained historical proofs and nine original
+producer identities, and all thirteen preservation checks passing. The cold
+947-file source and physical 1,051-file checkout match, including the provenance
+fix and both changed test files. No new caches or Godot/runtime execution occur.
+
+- Actual result SHA:
+  566d4cb2a7ee36dcb0fbb1e2b218cd30a7d4f91ff83653df4c3164dcf529a288.
+- Independent native admission SHA:
+  052f5fcc869d5da79427ea67a1e62e71ee85135e8e42b88d3a372a2efce5c629.
+- Cold source freeze SHA:
+  18dc97508cd348c64828e5a5dbbfa19bbc2f75a45f956c43bc9b4ebda12120ca.
+
+The final full required-Qt/offscreen **regression004** exits 0: **1,739 tests,
+1,725 passed, fourteen existing Windows symlink-privilege skips, no failures or
+errors**, in 662.621 seconds (664.547 wrapper seconds). Independent admission
+checks all unique ordered outcomes and exact prior skip IDs; all 1,051 physical
+files stay byte-identical, with the 947 logical files matching case009. This
+tests the fixed working source under parent HEAD e7316be; subsequent acceptance
+documentation changes do not alter that code/test identity.
+
+- Raw regression log SHA:
+  c24d8ca27b0437407b1c7ebf564e27e9b91e34406b04d530d4337152cc09cc40.
+- Per-test JSON SHA:
+  6e397c4cce62861d824f408ccdc5916e6b0afddf2cde64fad5fa5f261a9b96f8.
+- Private local gate: registered-godot-local-gate009/local-gate-admission001.json,
+  SHA 090f0648b5b9de84c9894e450113b1dad32227cf615ded34bdea28550b30655b.
+
+Full attempts002/003 were explicitly cancelled before further fixes and remain
+nonpassing records with unchanged source. Prepared cases006/007 never executed.
+Case008 failed before API/Blender execution when a passive CI monitor appended
+two unrelated evidence snapshots; existing bytes were unchanged. CI collection
+now uses a separate directory, and case009 preserves all earlier cases exactly.
+Earlier case005, full001, launcher/payload and actual003/004 negative evidence
+below retain their original source identities. None is relabelled as case009.
+The private local gate is accepted; new exact-head CI/artifact acceptance and
+integration remain pending.
+
 ## Behavior and boundary
 
 The legacy producer requires an unanimated project and NativeBodyPreview. The
@@ -32,9 +83,9 @@ the recipe, provenance-record identity, runtime input request, byte validation
 and final receipt. It publishes no engine directory and changes no project
 pointer. Caller-selected runtime code is copied and hashed as data, not executed.
 
-## Final-source positive acceptance (case005)
+## Earlier source positive acceptance (case005)
 
-The actual final-source API completed in 192.5015 seconds, exit 0. It launched
+The earlier source API completed in 192.5015 seconds, exit 0. It launched
 exactly the two new stage/reopen workers; each report covers all 300 frames.
 Exactly three job directories were created: metadata work plus two genuine
 workers. Independent read-only admission also exited 0. It re-read actual
@@ -172,9 +223,9 @@ are covered. Raw log SHA:
 Earlier 76/28/31-test groups overlap and are historical scoped results, not totals
 to add and not whole-application regression.
 
-## Complete local required-Qt regression
+## Earlier complete local required-Qt regression
 
-The full current suite ran once in a dedicated canonical Python 3.12.10 child
+The earlier suite ran once in a dedicated canonical Python 3.12.10 child
 with -B, UCC_REQUIRE_QT=1 and QT_QPA_PLATFORM=offscreen. It completed successfully:
 **1,736 tests, 1,722 passed, fourteen existing Windows symlink-privilege skips,
 zero failures and zero errors**, in 667.166 reported seconds (669.344 wrapper
@@ -205,7 +256,7 @@ It links the final005 actual source proof, independent native admission, origina
 LOCAL_SOURCE_ONLY_GATES_ACCEPTED_PENDING_PRIMARY_PUBLICATION_REVIEW. This local admission does not establish remote CI, a GUI/frozen export workflow,
 engine runtime or completion of the application blueprint.
 
-## Source launcher and worker payload
+## Earlier source launcher and worker payload
 
 After the full suite was terminal, the actual source launcher returned 0 with
 SELF_TEST_OK and all three checks: PROJECT_SAVE_REOPEN_OK, QT_WIDGETS_OK and
@@ -231,8 +282,9 @@ entrypoint/bootstrap, host protocol, job/result schemas and legacy report-reader
 boundaries change incrementally. New tests use isolated synthetic fixtures only.
 No assets, six private kernels, private evidence or dependency are added to Git.
 
-Pending: exact-head remote CI/artifact acceptance and integration. Local finite source,
-full regression, source-launcher and worker-payload gates now pass. A private wrapper performs one canonical
+Pending: new exact-head remote CI/artifact acceptance and integration. Current
+case009 source and regression004 gates pass; earlier launcher/payload checks
+retain their recorded identities. A private wrapper performs one canonical
 Python 3.12 -B required-Qt/offscreen full discovery, physical source inventories,
 raw log and structured per-test outcomes/actual skip reasons. Its terminal evidence and independent count/source audit now pass; the result
 is local regression acceptance, not remote-head or native-engine acceptance.
