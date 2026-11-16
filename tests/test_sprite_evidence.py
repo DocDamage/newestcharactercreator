@@ -11,7 +11,7 @@ class SpriteEvidenceTests(unittest.TestCase):
     def test_boolean_numeric_substitution_cannot_satisfy_saved_scene_proof(self):
         for key,value in (('schema_version',True),('verified_reopen',1),('saved_scene_rebuilt_or_repaired',0),('visual_quality_approved',0)):
             with self.subTest(key=key),tempfile.TemporaryDirectory() as tmp:
-                folder=Path(tmp);bindings={k:'a'*64 for k in ('master_sha256','recipe_sha256','scene_sha256')}
+                folder=Path(tmp).resolve();bindings={k:'a'*64 for k in ('master_sha256','recipe_sha256','scene_sha256')}
                 report,proof=incomplete_evidence_metadata(bindings);path=folder/'sprite_stage.json';path.write_text(json.dumps(report))
                 bindings['stage_sha256']=sha256(path.read_bytes()).hexdigest();proof['bindings']=bindings;proof[key]=value
                 (folder/'sprite_verification.json').write_text(json.dumps(proof))
