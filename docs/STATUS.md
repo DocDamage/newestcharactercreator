@@ -1,4 +1,4 @@
-# UCC development status â€” November 16, 2026
+# UCC development status - November 16, 2026
 
 **Unreal finite bind baseline accepted; production workflow in progress:**
 Installed Unreal 5.9 actually imports and separately reopens the original-authored
@@ -16,31 +16,33 @@ merged as `42b0a3d`; [PR #70](https://github.com/DocDamage/newestcharactercreato
 merged as `67acf003` into the verified integration branch. Both merge trees equal
 their accepted heads. All applicable final-head workflows and independently
 inspected Windows/Linux artifacts pass, including forty Linux JSON diagnostics.
-Eight historical draft PRs and active worktrees are preserved; no task branch
-has been pruned and no public release occurred. Packaged interval C remains open:
-independent new Unreal publication tests exposed a receipt-cutoff pattern also
-present in Unity, requiring a separate ownership/invalidation correction before
-closing current packaged-app acceptance. The earlier frozen589 positive and
-prepublication cancellation evidence retains its documented scope.
+Eight historical draft PRs and all three active worktrees are preserved. Package
+interval C also passes against fixed source `79920da9` and merges through
+[PR #72](https://github.com/DocDamage/newestcharactercreator/pull/72) as `e7d1f2d3`.
+The three fully merged inactive Unity task branches are pruned locally and
+remotely without force. No public release or owner-launcher replacement occurs.
 
-**Unreal production checkpoint:** Production source/toolchain/rights contracts,
-portable metadata, native admission, publication and Qt controls are implemented.
-Required-Qt regression 599 passes 1,582 tests with fourteen existing skips.
-Actual attempt 02 compiled the first-party observer and captured the real
-rig/morph/material mesh. Its first fresh editor failed before capture because
-of a private cache path limit; a scoped private-path correction passes fourteen
-engine tests. Complete actual export, native fresh admission, ordinary desktop
-and current Unreal frozen-app acceptance remain open. Failed attempts and
-unchanged source/package evidence are retained privately.
+**Unreal production API accepted within static scope:** Actual production
+Blender stage/fresh jobs, supported-toolchain observer compilation, native import,
+saved reopen, sealed publication and final delivered-project verification pass.
+Independent admission accepts all thirteen finite gates for both native reopen
+pairs; exact eleven-file delivery and all original/source/package/launcher
+preservation checks pass. The failed path-limit and clone-path attempts remain
+retained privately. Ordinary Unreal desktop and matching frozen-app workflows,
+final-head CI/artifact review and integration remain open. Shader/GPU, animation,
+player, artist and distribution gates remain separate.
 
-**Unity package correction:** Separate draft
-[PR #72](https://github.com/DocDamage/newestcharactercreator/pull/72) fixes the
-receipt-cutoff and journal ownership failures. All four final-head workflows
-pass. Its exact Windows artifact and extracted self-test pass independent
-inspection; the isolated local fixed-source C600 package also builds and passes
-startup checks. Actual normal desktop positive/collision/cancellation acceptance
-is underway before package interval C can close. The owner launcher remains
-unchanged.
+**Unity package correction accepted:** The current fixed C600 executable passes
+normal native export, existing-destination rejection and live Blender Cancel.
+Independent positive/negative audits accept images, native data, payload and
+preservation. All four final-head workflows and the exact Windows artifact pass;
+the private archive also passes exact extraction, source-bound payload validation,
+startup and independent archive inspection. The receipt/journal ownership fix,
+source snapshot and complete finite scope are recorded in the Unity acceptance
+document. The owner launcher and earlier packages remain unchanged.
+
+Earlier checkpoint snapshots below retain their original scope; current gates
+and integration state are recorded above.
 
 **Normal Unity desktop/frozen acceptance (589):** The actual unchanged portable
 app passes explicit four-input rights review, installed editor/Blender selection,
@@ -52,9 +54,10 @@ originals/package/owner launchers. The new private ZIP passes exact extraction a
 startup; no owner shortcut is replaced. The finite profile includes no shipping
 clips, artist/player or distribution approval. Test-only schema dependency and
 canonical temporary-fixture corrections are committed on both Unity branches;
-the final Linux retry and acceptance-gated integration remain open.
+the final Linux diagnostics and A/B integration were subsequently accepted
+through PRs #69 and #70. Current package interval C is tracked above.
 
-**Latest Unity transaction (582â€“584):** The complete production API now stages,
+**Earlier Unity transaction (582â€“584):** The complete production API now stages,
 atomically publishes and graphically verifies the final sealed private Unity
 project. Actual original-authored specimen acceptance and an independent
 persisted-evidence audit pass: 62 delivered files, 178 states/two cameras,
@@ -70,7 +73,7 @@ is preserved. The
 locked blueprint active beyond this batch. Existing draft PRs #61â€“#68 and the
 owner launcher/package remain preserved.
 
-**Latest Unity progress (575â€“577):** Production runtime source capture and fresh
+**Earlier Unity progress (575â€“577):** Production runtime source capture and fresh
 Blender recomputation pass all 178 diagnostic states. The production graphical
 Unity verifier now independently admits both automatic-camera outputs: native
 position bytes remain exact, maximum source-position difference is 3.526 Âµm,
@@ -79,7 +82,7 @@ contrast/margin checks, neutral return and camera/deformation distinction.
 The enclosing atomic export transaction, desktop action and frozen executable
 acceptance remain open. [Overall progress and remaining work](PROJECT_PROGRESS.md).
 
-**Latest Unity progress (554â€“571):** The production host now runs native import,
+**Earlier Unity progress (554â€“571):** The production host now runs native import,
 checks source parity independently (including triangle winding), attaches
 topology and verifies a fresh saved reopen. Live cancellation/deadline tests
 preserve sources. Strict checks exposed the raw importer weight clamp and a
@@ -90,7 +93,7 @@ Full regression: 1,387 passed / 14 existing skips; subsequent focused checks:
 workflow and frozen executable validation remain open. See
 [the acceptance record](acceptance/UCC-P1-UNITY-001.md).
 
-**Latest Unity progress (540â€“551):** Production Blender source staging and fresh
+**Earlier Unity progress (540â€“551):** Production Blender source staging and fresh
 master reopen passed. The explicit native importer now preserves every positive
 influence and persists the reviewed material, topology and runtime references.
 Fresh Unity reopen and 178-state/two-camera checks on the newly exported FBX pass

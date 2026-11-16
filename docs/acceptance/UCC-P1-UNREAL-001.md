@@ -117,3 +117,29 @@ passes all thirteen finite domains with unchanged caps; the original checker,
 failed transaction and capture bytes are preserved. This re-admission does not
 convert the failed transaction into a published export. A coherent whole-export
 retry is still required before publication acceptance.
+
+## Actual complete private API acceptance: attempt 04
+
+The coherent production transaction now completes through final publication and
+verification of a byte-identical copy of the delivered project. Actual standard
+Blender stage/fresh jobs, supported-toolchain observer compilation, Unreal import,
+separate saved reopen and published-project reopen all pass. Independent host
+admission accepts all thirteen finite domains for both reopen pairs; their native
+readback hashes match under the unchanged caps.
+
+The delivery contains exactly eleven files in four allowed directories: portable
+project/configuration, same-hash derived FBX, four native assets and bounded
+request/recipe/readme/receipt metadata. Verification plugins, private reference
+vectors/native observations, original Blender sources and caches are excluded.
+The independent audit rehashes all 183 retained artifacts, four explicit per-use
+permissions, 25 original files, 814 earlier package files, seven owner-launcher
+bindings and 454 first-party resources. All preserved groups remain unchanged.
+The maximum source-position error is 0.119162 micrometres and corner-normal error
+is 0.034225 degrees; these observations do not define new admission caps.
+
+Private evidence: `unreal-production007/api04`; summary `f7ccd61c…`, independent
+whole-API audit `f2f9f48d…`, primary scoped admission `afddb360…`. Earlier failures
+remain unmodified. Actual ordinary desktop and matching frozen-app positive,
+collision and live cancellation checks, final-head CI/artifact acceptance and
+integration remain open. Shader/GPU, animation, player, artist and distribution
+requirements are not established by this static API acceptance.

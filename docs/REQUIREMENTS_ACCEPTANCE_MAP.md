@@ -48,7 +48,10 @@ regression590 passes 1,449 tests with 14 existing skips, including genuine Windo
 junction, nested-budget and traversal faults. Current normal frozen589 positive,
 collision and live cancellation plus independent audits pass locally. A/B are
 merged through PR69/70 after final-head checks and artifact audits. Package
-interval C remains open for the newly discovered receipt-cutoff correction. See the Unity record for
+interval C now also passes with the fixed C600 normal native flow, independent
+positive/negative/archive audits and all four final-head checks; PR #72 merges
+`79920da9` as `e7d1f2d3`. Three fully merged inactive task branches are safely
+pruned; historical drafts and all active worktrees remain. See the Unity record for
 precise scope and private evidence identifiers.
 
 Actual [Unreal baseline 006](acceptance/UCC-P1-UNREAL-001.md) now passes all
@@ -62,8 +65,10 @@ jobs, observer compilation and separate native stage/fresh captures now run.
 Attempt 03 stopped on an incorrect cross-clone FBX-path equality check; after
 the narrow comparator correction, unchanged captures pass all thirteen finite
 gates under the existing caps. That host-only re-admission does not establish a
-published export. Complete production API, ordinary UI and matching frozen-app
-acceptance remain open. Local regression 599 passes 1,582 tests with fourteen
+published export. Coherent attempt 04 then completes the whole API transaction and final delivered
+project verification. Independent audits accept both thirteen-gate native pairs,
+exact eleven-file delivery and all preservation groups. Ordinary UI and matching
+frozen-app acceptance remain open. Local regression 599 passes 1,582 tests with fourteen
 existing skips; the subsequent native/path fixes have focused regressions.
 
 ## Requirement-to-evidence and remaining tasks
@@ -97,10 +102,10 @@ direct evidence. Requirements not fully evidenced are deliberately conservative.
 | MOTION-04 / 9.4, 15.4 | At least 100 usable licensed indexed clips; distinct preview/retarget/engine states, categories and policy tags | Open: count only accepted actual clips; 178 authored diagnostic states and 30 intake sources do not meet this target. |
 | MOTION-05 / 9.5 | Speed/reverse/trim, layer/mask/transition, key editing, per-joint overrides, facial curves, root visualization/onion skins | Open: full non-destructive timeline controls, new baked actions/cache and normal playback acceptance. |
 | MOTION-06 / 1, 7, 15.7 | Skeletal/physics/baked/AI-assisted secondary motion for hair/cape/wings/tail | Open: family-specific rigs, collision/interaction tests and reusable baked output. |
-| EXPORT-01 / 11.1, 11.6 | Source-bound profiles; geometry/rig/morph/material/texture/scale/axis/root tests; truthful generated/offline/engine states | Scoped: Godot static and Unity preparation. Open: complete representative animation and target-engine validation through final user outputs. |
+| EXPORT-01 / 11.1, 11.6 | Source-bound profiles; geometry/rig/morph/material/texture/scale/axis/root tests; truthful generated/offline/engine states | Scoped: Godot static, complete Unity diagnostic export and Unreal static API publication. Open: complete representative animation and target-engine validation through final user outputs. |
 | EXPORT-02 / 11.2 | Godot GLB, skeleton/rest/skin/morph/material scene and idle/walk/attack playback | Scoped: [static Godot](acceptance/UCC-P1-EXPORT-002.md), actual app/package. Open: body motion/representative clips/root/scale and broader version coverage. |
-| EXPORT-03 / 11.3 | Unreal skeletal FBX, per-clip AnimSequences, morph/material/bounds, Preview/PIE; later Manny/IK mapping | Scoped: [actual private Unreal 5.9 static bind import/reopen](acceptance/UCC-P1-UNREAL-001.md), thirteen independent field gates and exact saved/native data. Open: production portable export/desktop/package, live engine faults, shader/GPU/usable clips/PIE/player, Manny/IK and wider compatibility. |
-| EXPORT-04 / 11.4 | Unity FBX, explicit Generic/Humanoid/Avatar choice, root/scale/morphs/clip playback | Scoped: [Unity](acceptance/UCC-P1-UNITY-001.md) source/bind/diagnostics, complete API and normal frozen589 private export/failure gates. Open: final remote checks/integration, Avatar/usable clips, player builds and full engine gate. |
+| EXPORT-03 / 11.3 | Unreal skeletal FBX, per-clip AnimSequences, morph/material/bounds, Preview/PIE; later Manny/IK mapping | Scoped: [actual private Unreal 5.9 static bind import/reopen](acceptance/UCC-P1-UNREAL-001.md), thirteen independent field gates, complete portable API publication and exact delivered-copy native data. Open: normal frozen desktop/failure acceptance, final-head integration, live engine faults, shader/GPU/usable clips/PIE/player, Manny/IK and wider compatibility. |
+| EXPORT-04 / 11.4 | Unity FBX, explicit Generic/Humanoid/Avatar choice, root/scale/morphs/clip playback | Scoped: [Unity](acceptance/UCC-P1-UNITY-001.md) source/bind/diagnostics, complete API, corrected frozen600 private export/failure/archive gates and verified A/B/C integration. Open: Avatar/usable clips, player builds and full engine gate. |
 | EXPORT-05 / 11.4 | URP reference materials, Built-in fallback; explicit pipeline/version compatibility | Scoped: pinned Built-in Forward/D3D11 diagnostics only. Open: URP, lighting/material breadth, performance and supported release matrix; HDRP remains later explicit target. |
 | EXPORT-06 / 11.5 | Engine-neutral GLB/JSON/sprites; RPG Maker MZ layout preset; future Lumina adapter | Open: documented neutral handoff and MZ usage; Lumina deferred until schema supplied. Native Spine project writer is not promised; ordered layers/transforms/pivots are required. |
 | RENDER-01 / 10.1 | Saved projection/yaw/pitch/roll/lens/scale/anchor/framing/shadow/alpha/lighting profiles; side/4/8/16/custom orbit/perspective | Scoped: fixed four/eight-direction output. Open: full camera profile controls/persistence, asymmetry-safe real left/right rendering and optional mirroring. |

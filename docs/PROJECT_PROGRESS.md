@@ -4,8 +4,8 @@ The [complete requirements and acceptance map](REQUIREMENTS_ACCEPTANCE_MAP.md)
 tracks the locked blueprint, scoped evidence and every remaining feature area.
 The Unity publication, normal desktop action and frozen-app acceptance are
 independently verified within their finite profile; A/B merged through PRs
-#69 and #70. The separate receipt-cutoff correction and package interval C remain
-open under draft PR #72 despite passing final-head checks and artifact inspection. The current implementation batch builds the normal portable
+#69 and #70. The separate receipt-ownership correction and current package interval C also
+pass and merge through PR #72 after native failure checks and archive audits. The current implementation batch builds the normal portable
 Unreal workflow on the accepted actual static native baseline.
 
 Unreal baseline 006 passes all thirteen source-derived native field gates in
@@ -18,12 +18,15 @@ shader/GPU/animation/player/visual/distribution gates. Private proof assets are
 not copied wholesale as deliverables.
 
 Current Unity transaction evidence retains its finite scope. The isolated
-fixed-source C600 package passes construction and startup checks; its native
-desktop acceptance is underway. Current Unreal regression 599 passes 1,582 tests
+fixed-source C600 package passes normal native export, collision and live Cancel,
+independent positive/negative audits and private archive/extraction/startup checks. Current Unreal regression 599 passes 1,582 tests
 with fourteen existing Windows skips (1,596 total). Actual production attempt 02
 compiled the first-party observer and captured the real static mesh, then failed
 at fresh-editor startup on a private cache path limit. A scoped path correction
-passes fourteen focused engine tests; complete actual Unreal export remains open.
+passes focused engine tests. Coherent attempt 04 completes the whole API and
+final delivered-project verification; both native reopen pairs, exact eleven-file
+delivery and preservation pass independent audit. Normal Unreal desktop and
+matching frozen acceptance remain open.
 
 The Universal Character Creator is a functional Windows alpha under active
 development. The locked blueprint remains the full target. A customizable
@@ -66,20 +69,21 @@ installed for this work.
 
 ## Where the project stands
 
-Milestone 1 is substantially implemented but incomplete. Godot and sprite paths
-have actual app-level acceptance for their documented scope. Unity now has a
-verified complete guarded API export transaction, including final delivered-byte
-graphical admission and source/history preservation. Its normal desktop and
-current frozen-app workflow also pass within that finite private profile;
-remote check/merge gates remain open. Unreal import acceptance has
-not been established. The owner's existing launcher/package is not silently
-replaced by development changes.
+Milestone 1 remains incomplete. Godot and sprite paths have actual application
+acceptance within their documented scopes. Unity has complete guarded API and
+normal frozen desktop acceptance, and A/B integration has merged. Its separate
+receipt-ownership correction and current package interval C also pass and merge
+through PR #72; the three merged inactive Unity task branches are safely pruned. Unreal's production
+static API now passes import, fresh reopen, publication and actual delivered-copy
+verification with independent native admission. Its normal frozen desktop action
+and final-head integration gates remain open. Owner launchers and earlier
+packages are preserved.
 
 ## What remains to finish the locked blueprint
 
-1. Finish the first complete human workflow: connect Unity's verified stages to
-   the guarded export transaction, desktop controls and frozen app; verify real
-   Unreal imports; expand Godot/engine body-motion acceptance; resolve remaining
+1. Finish the first complete human workflow: close actual Unreal frozen
+   desktop/failure gates while preserving accepted Unity integration; expand
+   Godot/engine body-motion acceptance; resolve remaining
    contact/grasp/visual quality and recovery cases across the normal user flows.
 2. Complete character customization and output breadth: clothing, hair,
    accessories and compatibility/rig behavior; facial lip-sync/phonemes and
@@ -97,9 +101,9 @@ replaced by development changes.
    end-user usability and visual acceptance, documentation, source/license review
    and the intended private/public distribution decision.
 
-The immediate integration task is the required CI dependency correction and
-final-head checks, preserving healthy jobs. The next engine task is independent
-native Unreal source/bind admission on the same authored humanoid.
+The immediate integration tasks are final-head checks and artifact audits,
+preserving healthy jobs. The next complete workflow is normal private Unreal
+export through the matching frozen desktop, including collision and live cancel.
 The project has not reached a finished or generally engine-compatible release.
 
 Key evidence and limits:
@@ -113,10 +117,9 @@ Key evidence and limits:
 
 ## What remains to finish
 
-1. Finish Unity's enclosing export transaction: source/revision checks through
-   publication, atomic no-replace output, rollback, user-facing rights review,
-   desktop controls/error states and frozen-app verification.
-2. Complete actual Unreal export/import/reopen acceptance, and broader body-motion
+1. Preserve the accepted Unity transaction/desktop/package flow while extending
+   character and motion coverage; keep broader player/visual/release gates open.
+2. Complete current Unreal frozen desktop acceptance and broader body-motion
    import/playback across Godot, Unity and Unreal. Verify supported axes, rig
    families, blendshapes, materials and failures in each target.
 3. Finish the initial user workflow end to end: create, customize, swap parts,
@@ -136,8 +139,8 @@ Key evidence and limits:
    recovery acceptance, target-engine player builds, documentation and final
    dependency/source/distribution license review.
 
-The next task is complete production Unreal fresh/published native admission,
-while finishing the separate fixed-source Unity package acceptance.
+The next task is the matching Unreal frozen desktop export and failure checks,
+with the accepted Unity transaction and current package retained.
 The full blueprint remains active; this checkpoint does not claim project
 completion or public release readiness.
 
