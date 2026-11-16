@@ -122,6 +122,7 @@ def write_json(path,value):
 
 
 def write_inputs(directory: Path):
+    directory=Path(directory).resolve()
     source,normals,observation,spec=fixture_data()
     paths={name:directory/name for name in ['reference.json','normals.bin','native.json','reopened.json','stage.json','fresh.json']}
     source_sha=write_json(paths['reference.json'],source);paths['normals.bin'].write_bytes(normals)

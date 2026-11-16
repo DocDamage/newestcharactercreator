@@ -117,12 +117,19 @@ class UnrealPreparationTests(TestCase):
             self.assertEqual(len(f.calls), 1)
 
     def test_helper_or_selected_mpfb_change_blocks_fresh_worker(self):
-        for which in ('helper', 'data', 'executable'):
+        for which in ('helper', 'data', 'executable', 'fbx_source', 'fbx_bytecode', 'extra_source',
+                      'extra_bytecode', 'fbx_injected_bytecode', 'extra_injected_bytecode'):
             with self.subTest(which=which), TemporaryDirectory() as temp:
                 f = UnrealSourceFixture(Path(temp))
-                path = f.worker if which == 'helper' else f.exe if which == 'executable' else f.data/'UNIT_NOT_REAL_DATA'
+                path = {'helper':f.worker, 'executable':f.exe, 'data':f.data/'UNIT_NOT_REAL_DATA',
+                    'fbx_source':f.fbx_helpers/'export_fbx_bin.py',
+                    'fbx_bytecode':f.fbx_helpers/'__pycache__/export_fbx_bin.cpython-UNIT.pyc',
+                    'extra_source':f.extra_helpers/'node_shader_utils.py',
+                    'extra_bytecode':f.extra_helpers/'__pycache__/io_utils.cpython-UNIT.pyc',
+                    'fbx_injected_bytecode':f.fbx_helpers/'__pycache__/parse_fbx.cpython-UNIT.pyc',
+                    'extra_injected_bytecode':f.extra_helpers/'__pycache__/node_shader_utils.cpython-UNIT.pyc'}[which]
                 f.after_stage = lambda:path.write_bytes(b'changed')
-                with self.assertRaisesRegex(ProjectStorageError, 'helper or selected MPFB'):
+                with self.assertRaisesRegex(ProjectStorageError, 'helper|MPFB'):
                     self.run_case(f)
                 self.assertEqual(len(f.calls), 1)
 
@@ -176,3 +183,15 @@ class UnrealPreparationTests(TestCase):
             self.assertFalse(journal['export_published'])
             self.assertFalse((work/'preparation.tmp').exists())
             self.assertEqual(len(f.calls), 2)
+
+    def test_missing_selected_blender_helpers_fail_before_any_worker(self):
+        for kind in ('fbx_exporter', 'bpy_helper'):
+            with self.subTest(kind=kind), TemporaryDirectory() as temp, ExitStack() as stack:
+                f = UnrealSourceFixture(Path(temp))
+                missing = f.fbx_helpers/'export_fbx_bin.py' if kind == 'fbx_exporter' else f.extra_helpers/'node_shader_utils.py'
+                missing.unlink()
+                mocks = [stack.enter_context(active) for active in f.patches()]
+                with self.assertRaisesRegex(ProjectStorageError, 'Blender 5.3 FBX helpers are incomplete'):
+                    prepare_unreal_source(f.store, **f.options)
+                mocks[2].assert_not_called(); mocks[3].assert_not_called()
+                self.assertFalse(f.calls)

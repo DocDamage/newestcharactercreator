@@ -45,6 +45,58 @@ class PreparedUnrealSource:
         return value
 
 
+def _blender_helpers(executable: Path, cancel) -> dict:
+    """Seal only the selected Blender 5.3 FBX package and its Python helpers.
+
+    Include existing bytecode as well as source and freeze relevant namespace
+    entries, so an injected cache cannot replace a source module between jobs.
+    No installed vendor files are copied or executed by this host inspection.
+    """
+    scripts = executable.parent/'5.3/scripts'
+    fbx = scripts/'addons_core/io_scene_fbx'
+    extras = scripts/'modules/bpy_extras'
+    result = {}; counter = [0]
+    def canonical(path):
+        if (path.is_symlink() or getattr(path, 'is_junction', lambda:False)()
+                or path.resolve() != path
+                or any(p.is_symlink() or getattr(p, 'is_junction', lambda:False)() for p in path.parents)):
+            raise ProjectStorageError('Selected Blender 5.3 FBX helpers are redirected; restore the selected installed layout')
+    def record(path):
+        canonical(path)
+        if path.is_file():
+            protected_file(path); result[path] = identity(path)
+        elif path.is_dir():
+            result[path] = identity(path)
+        elif path.exists():
+            raise ProjectStorageError('Selected Blender 5.3 FBX helpers contain an unsupported entry')
+        else:
+            result[path] = None
+    for directory in (scripts.parent, scripts, scripts/'addons_core', scripts/'modules', fbx, extras):
+        canonical(directory)
+        if not directory.is_dir():
+            raise ProjectStorageError('Selected Blender 5.3 FBX helpers are missing; expected 5.3/scripts/addons_core/io_scene_fbx and modules/bpy_extras')
+        record(directory)
+    required_fbx = ('__init__.py', 'export_fbx_bin.py', 'encode_bin.py', 'parse_fbx.py',
+                    'fbx_utils.py', 'fbx_utils_threading.py', 'data_types.py', 'import_fbx.py')
+    required_extras = ('__init__.py', 'io_utils.py', 'node_shader_utils.py')
+    for path in [*(fbx/name for name in required_fbx), *(extras/name for name in required_extras)]:
+        canonical(path)
+        if not path.is_file():
+            raise ProjectStorageError('Selected Blender 5.3 FBX helpers are incomplete; restore io_scene_fbx and bpy_extras source helpers')
+    for path in bounded_paths(fbx, cancel, maximum_entries=4096, counter=counter):
+        record(path)
+    for name in required_extras:
+        record(extras/name)
+        record((extras/name).with_suffix('.pyc'))
+    cache = extras/'__pycache__'; record(cache)
+    if cache.is_dir():
+        stems = {Path(name).stem for name in required_extras}
+        for path in bounded_paths(cache, cancel, maximum_entries=4096, counter=counter):
+            if path != cache and path.is_file() and path.suffix == '.pyc' and path.name.split('.')[0] in stems:
+                record(path)
+    return result
+
+
 def prepare_unreal_source(store: ProjectStore, *, request: UnrealExportRequest,
         blender_exe: Path, worker_script: Path, mpfb_data_dir: Path,
         cancel: Event | None = None, timeout_s: float = 900) -> PreparedUnrealSource:
@@ -80,7 +132,9 @@ def _prepare(store, *, request, blender_exe, worker_script, mpfb_data_dir, cance
         raise ProjectConflict('Unreal source review is stale')
     executable = regular_file(Path(blender_exe), Path(blender_exe).parent, 512*1024*1024)
     worker = regular_file(Path(worker_script), Path(worker_script).parent, 256*1024)
-    protected = {store.file, *sources.values(), executable, *worker_dependency_files(worker)}
+    blender_helpers = _blender_helpers(executable, budget)
+    protected = {store.file, *sources.values(), executable, *worker_dependency_files(worker),
+                 *(path for path, value in blender_helpers.items() if value is not None and path.is_file())}
     # In a checkout the core is ordinary Python. In a frozen app its worker copy
     # belongs to the validated explicit worker payload; the enclosing transaction
     # also guards the selected application/toolchain binary.
@@ -103,6 +157,8 @@ def _prepare(store, *, request, blender_exe, worker_script, mpfb_data_dir, cance
     identities = {path:identity(path) for path in protected}
     def guard():
         remaining()
+        if _blender_helpers(executable, budget) != blender_helpers:
+            raise ProjectStorageError('Selected Blender 5.3 FBX helper source or bytecode closure changed')
         if store.load() != initial or source_snapshot(store, budget) != closure:
             raise ProjectConflict('Original Unreal source/proof/history changed during preparation')
         for path, expected in hashes.items():

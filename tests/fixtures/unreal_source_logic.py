@@ -20,6 +20,7 @@ def digest(path):
 
 class UnrealSourceFixture:
     def __init__(self, root: Path):
+        root = Path(root).resolve()
         self.root = root
         f = ReferenceMasterFixture(root, hand=False); self.store = f.store
         self.project = self.store.load()
@@ -37,6 +38,19 @@ class UnrealSourceFixture:
             permissions=tuple(replace(template.permissions[0], asset_id=s.asset_id, source_sha256=s.sha256)
                 for s in self.review.sources))
         self.exe = root/'UNIT_NOT_EXECUTABLE'; self.exe.write_bytes(b'UNIT_NOT_EXECUTABLE')
+        self.fbx_helpers = root/'5.3/scripts/addons_core/io_scene_fbx'
+        self.fbx_helpers.mkdir(parents=True)
+        for name in ('__init__.py','export_fbx_bin.py','encode_bin.py','parse_fbx.py','fbx_utils.py',
+                     'fbx_utils_threading.py','data_types.py','import_fbx.py'):
+            (self.fbx_helpers/name).write_bytes(b'UNIT_NOT_EXECUTED_BLENDER_HELPER')
+        self.extra_helpers = root/'5.3/scripts/modules/bpy_extras'
+        self.extra_helpers.mkdir(parents=True)
+        for name in ('__init__.py','io_utils.py','node_shader_utils.py'):
+            (self.extra_helpers/name).write_bytes(b'UNIT_NOT_EXECUTED_BPY_HELPER')
+        cache = self.fbx_helpers/'__pycache__'; cache.mkdir()
+        (cache/'export_fbx_bin.cpython-UNIT.pyc').write_bytes(b'UNIT_NOT_EXECUTED_BYTECODE')
+        cache = self.extra_helpers/'__pycache__'; cache.mkdir()
+        (cache/'io_utils.cpython-UNIT.pyc').write_bytes(b'UNIT_NOT_EXECUTED_BYTECODE')
         bridge = root/'bridge'; bridge.mkdir(); self.worker = bridge/'UNIT_NOT_WORKER.py'
         self.worker.write_bytes(b'UNIT_NOT_EXECUTED')
         self.data = root/'mpfb/data'; self.data.mkdir(parents=True)

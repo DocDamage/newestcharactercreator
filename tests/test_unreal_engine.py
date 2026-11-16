@@ -10,7 +10,8 @@ import unittest
 from types import SimpleNamespace
 
 from ucc.core.errors import ProjectStorageError, ValidationError
-from ucc.jobs.unreal_engine import project_files, DELIVERY_FILES, _run, prepare_unreal_engine, check_selected_compiler, CAPTURE_FIELDS
+from ucc.jobs.unreal_engine import (project_files, DELIVERY_FILES, _run, prepare_unreal_engine,
+    check_selected_compiler, CAPTURE_FIELDS, _private_cache, _verification_project)
 from ucc.export.unreal_contract import READINESS_FLAGS
 
 
@@ -74,3 +75,33 @@ class UnrealEngineTests(unittest.TestCase):
         for log in ('Available 14.44.35227 SDK10.0.26100.0',
             'Using Visual Studio 2022 14.51.36231 toolchain and Windows 10.0.26100.0 SDK'):
             with self.assertRaises(ProjectStorageError): check_selected_compiler(log, toolchain)
+
+    def test_private_ddc_uses_owned_short_root_without_changing_portable_config(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp).resolve(); portable = root/'portable'; portable.mkdir()
+            for name in DELIVERY_FILES:
+                path = portable/name; path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text('{}' if name.endswith('.uproject') else 'HOST_METADATA_FIXTURE')
+            scripts = root/'engine/scripts'; scripts.mkdir(parents=True)
+            before = project_files(portable)
+            clone = root/'fresh'
+            _verification_project(clone, before, {'portable_root': portable}, {}, None, scripts)
+            cache = scripts.parent/'d'
+            self.assertTrue(cache.is_dir())
+            self.assertLess(len(cache.as_posix().encode('utf-16-le'))//2, 119)
+            self.assertIn('Path="'+cache.as_posix()+'"', (clone/'Config/DefaultEngine.ini').read_text())
+            self.assertNotIn('%GAMEDIR%DerivedDataCache', (clone/'Config/DefaultEngine.ini').read_text())
+            self.assertEqual(before, project_files(portable))
+
+    def test_private_ddc_bound_counts_encoded_windows_characters(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp).resolve()
+            padding = 120 - len(root.as_posix().encode('utf-16-le'))//2 - 11
+            self.assertGreater(padding, 0)
+            work = root/('x'*padding+'\U00010400'*4)
+            scripts = work/'scripts'; scripts.mkdir(parents=True)
+            self.assertLess(len((work/'d').as_posix()), 119)
+            self.assertGreaterEqual(len((work/'d').as_posix().encode('utf-16-le'))//2, 119)
+            with self.assertRaisesRegex(ProjectStorageError, '119-character'):
+                _private_cache(scripts)
+            self.assertFalse((work/'d').exists())

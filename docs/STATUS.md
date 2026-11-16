@@ -23,16 +23,24 @@ present in Unity, requiring a separate ownership/invalidation correction before
 closing current packaged-app acceptance. The earlier frozen589 positive and
 prepublication cancellation evidence retains its documented scope.
 
-**Unreal production checkpoint:** Closed request/recipe, source jobs and portable
-header handling, bounded native verifier, first-party observer/toolchain builder,
-publication/rollback and desktop controls are implemented but actual 007 engine,
-GUI and frozen-app acceptance have not run. Scoped checks cover six contracts,
-twenty-five source cases, twelve engine/toolchain cases, forty-two native-core
-cases, nineteen new Qt cases plus seventeen Unity Qt regressions, and twenty-three
-publication cases across the recorded relevant runs. Receipt flush/first-hash,
-partial invalidation-write and journal-flush failures were reproduced and fixed;
-earlier failures are retained. This is a work-in-progress checkpoint, not an
-Unreal product-completion or package claim.
+**Unreal production checkpoint:** Production source/toolchain/rights contracts,
+portable metadata, native admission, publication and Qt controls are implemented.
+Required-Qt regression 599 passes 1,582 tests with fourteen existing skips.
+Actual attempt 02 compiled the first-party observer and captured the real
+rig/morph/material mesh. Its first fresh editor failed before capture because
+of a private cache path limit; a scoped private-path correction passes fourteen
+engine tests. Complete actual export, native fresh admission, ordinary desktop
+and current Unreal frozen-app acceptance remain open. Failed attempts and
+unchanged source/package evidence are retained privately.
+
+**Unity package correction:** Separate draft
+[PR #72](https://github.com/DocDamage/newestcharactercreator/pull/72) fixes the
+receipt-cutoff and journal ownership failures. All four final-head workflows
+pass. Its exact Windows artifact and extracted self-test pass independent
+inspection; the isolated local fixed-source C600 package also builds and passes
+startup checks. Actual normal desktop positive/collision/cancellation acceptance
+is underway before package interval C can close. The owner launcher remains
+unchanged.
 
 **Normal Unity desktop/frozen acceptance (589):** The actual unchanged portable
 app passes explicit four-input rights review, installed editor/Blender selection,

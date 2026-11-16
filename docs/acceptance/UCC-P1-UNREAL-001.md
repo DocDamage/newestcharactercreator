@@ -76,3 +76,32 @@ ordinary desktop and current frozen-app positive/failure flows, live engine
 faults, final-head CI/artifacts, and integration. Shader compilation, GPU
 deformation/rendering, animation clips, PIE/player, exact SDK pose-selection
 route, visual/artist approval and distribution review remain separate work.
+
+## Production checkpoint and actual integration attempts
+
+The first-party production workflow, portable FBX header handling, selected
+Blender-helper seals, thirteen-gate native verifier, publication rollback and
+Qt controls are implemented. Local regression 599 passes 1,582 tests with
+fourteen existing Windows skips (1,596 total). Focused tests cover receipt and
+journal flush failures, partial invalidation writes and cancellation during
+payload copying. These checks do not establish an actual export.
+
+Actual whole-API attempts use the original-authored source, standard fresh
+Blender jobs, installed supported compiler and new private destinations. Attempt
+01 passed source preparation but Unreal Build Tool rejected paths beyond its
+260-character limit before compilation. Shortening only private work paths
+resolved that failure. Attempt 02 compiled the bounded scalar-free observer and
+captured the actual static native mesh: 14,517 vertices, 26,756 triangles,
+163 bones and twelve morphs. Its first fresh editor failed at startup because
+its private cache root exceeded Unreal's 119-character limit, before the Python
+capture or independent admission ran. Original source/proofs/history, owner
+launchers, prior packages and frozen first-party resources remained unchanged.
+
+The next correction uses one short owned cache beneath the private engine job,
+checks the Windows UTF-16 path length and leaves portable configuration and the
+installed engine guard intact. Fourteen focused engine tests pass, including
+Unicode path bounds and unchanged portable bytes. Both failed attempts and
+native stage evidence remain private and unmodified. Complete source/native
+fresh admission, final delivered-project verification and ordinary Unreal
+desktop/frozen acceptance remain open; successful compilation and stage capture
+alone do not close those gates.

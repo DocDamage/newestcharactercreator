@@ -3,8 +3,9 @@
 The [complete requirements and acceptance map](REQUIREMENTS_ACCEPTANCE_MAP.md)
 tracks the locked blueprint, scoped evidence and every remaining feature area.
 The Unity publication, normal desktop action and frozen-app acceptance are
-independently verified within their finite profile; final remote integration
-remains pending. The current implementation batch builds the normal portable
+independently verified within their finite profile; A/B merged through PRs
+#69 and #70. The separate receipt-cutoff correction and package interval C remain
+open under draft PR #72 despite passing final-head checks and artifact inspection. The current implementation batch builds the normal portable
 Unreal workflow on the accepted actual static native baseline.
 
 Unreal baseline 006 passes all thirteen source-derived native field gates in
@@ -16,11 +17,13 @@ See [Unreal acceptance](acceptance/UCC-P1-UNREAL-001.md) for exact scope and ope
 shader/GPU/animation/player/visual/distribution gates. Private proof assets are
 not copied wholesale as deliverables.
 
-Current transaction validation: actual complete private API export and independent
-persisted-evidence audit and current normal frozen desktop export/failure gates
-pass. Final streaming-guard integrated regression passes 1,449 tests with 14
-existing Windows symlink skips (1,463 total); final remote-head checks and
-integration merges remain open.
+Current Unity transaction evidence retains its finite scope. The isolated
+fixed-source C600 package passes construction and startup checks; its native
+desktop acceptance is underway. Current Unreal regression 599 passes 1,582 tests
+with fourteen existing Windows skips (1,596 total). Actual production attempt 02
+compiled the first-party observer and captured the real static mesh, then failed
+at fresh-editor startup on a private cache path limit. A scoped path correction
+passes fourteen focused engine tests; complete actual Unreal export remains open.
 
 The Universal Character Creator is a functional Windows alpha under active
 development. The locked blueprint remains the full target. A customizable
@@ -133,7 +136,8 @@ Key evidence and limits:
    recovery acceptance, target-engine player builds, documentation and final
    dependency/source/distribution license review.
 
-The next task is the enclosing Unity export transaction and desktop workflow.
+The next task is complete production Unreal fresh/published native admission,
+while finishing the separate fixed-source Unity package acceptance.
 The full blueprint remains active; this checkpoint does not claim project
 completion or public release readiness.
 

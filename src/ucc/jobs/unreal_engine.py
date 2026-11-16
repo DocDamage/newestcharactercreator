@@ -95,6 +95,23 @@ def check_selected_compiler(build_log, toolchain):
         raise ProjectStorageError('Unreal build did not prove the selected supported VS2022 compiler and Windows SDK')
 
 
+def _private_cache(scripts: Path) -> Path:
+    """Keep the stock Windows DDC root below its 119 UTF-16-unit limit."""
+    if (not scripts.is_absolute() or not scripts.is_dir() or scripts.resolve() != scripts
+            or any(path.is_symlink() or getattr(path, 'is_junction', lambda: False)()
+                   for path in (scripts, *scripts.parents))):
+        raise ProjectStorageError('Unreal private scripts/cache parent is missing or redirected')
+    cache = scripts.parent/'d'
+    if len(cache.as_posix().encode('utf-16-le')) // 2 >= 119:
+        raise ProjectStorageError('Unreal private cache root exceeds the installed 119-character limit; use a shorter saved project location')
+    if cache.exists():
+        if not cache.is_dir() or cache.is_symlink() or getattr(cache, 'is_junction', lambda: False)() or cache.resolve() != cache:
+            raise ProjectStorageError('Unreal private cache directory was replaced or redirected')
+    else:
+        cache.mkdir(exist_ok=False)
+    return cache
+
+
 def _run(command, directory, budget, deadline):
     """Owned PID/tree only; no shell, raw engine diagnostics stay in private logs."""
     directory.mkdir(parents=True, exist_ok=True)
@@ -138,11 +155,12 @@ def _verification_project(directory, portable, resources, plugin_files, budget, 
     # Verification-only files are created in our new clone, never in delivered inputs.
     (directory/'Character.uproject').write_bytes(canonical_bytes(document))
     config = directory/'Config/DefaultEngine.ini'
+    cache = _private_cache(scripts)
     config.write_text(config.read_text()+
         '\n[/Script/PythonScriptPlugin.PythonScriptPluginSettings]\nbIsolateInterpreterEnvironment=True\n'
         '+AdditionalPaths=(Path="'+scripts.as_posix()+'")\n'
         '\n[DerivedDataCacheGraphs]\nUccPrivate=(UccLocal)\n[DerivedDataCacheStores]\n'
-        'UccLocal=(Type=FileSystem,ReadOnly=false,Path="%GAMEDIR%DerivedDataCache")\n', encoding='utf-8')
+        'UccLocal=(Type=FileSystem,ReadOnly=false,Path="'+cache.as_posix()+'")\n', encoding='utf-8')
 
 
 def _capture(project, output, mode, *, request, toolchain, profile_path, descriptor,
@@ -216,7 +234,7 @@ def prepare_unreal_engine(source: PreparedUnrealSource, *, request: UnrealExport
             or type(timeout_s) not in (int, float) or not math.isfinite(timeout_s) or not .05 <= timeout_s <= 3600):
         raise ValidationError('Unreal engine preparation requires sealed matching source, request and installed toolchain')
     deadline, _ = cancel_context(cancel, time.monotonic()+timeout_s); budget = _BudgetCancel(cancel, deadline)
-    work = source.workdir.parent/('unreal-engine-'+str(uuid4())); work.mkdir(exist_ok=False)
+    work = source.workdir.parent/('ue-'+uuid4().hex[:16]); work.mkdir(exist_ok=False)
     try:
         return _prepare(source, request, toolchain, work, budget, deadline, progress)
     except BaseException as error:
@@ -252,7 +270,7 @@ def _prepare(source, request, toolchain, work, budget, deadline, progress):
     _write(descriptor, {'schema_version': 1, 'policy': 'UCC_UNREAL_ENGINE_SOURCE_DESCRIPTOR_V1',
         'request_sha256': request.sha256, 'files': dict(source.files),
         'source_verification_sha256': source.verification_sha256, 'source_reference_supplied_to_engine': False})
-    project = work/'stage-project'; project.mkdir(); (project/'Content').mkdir()
+    project = work/'p'; project.mkdir(); (project/'Content').mkdir()
     (project/'Config').mkdir(); (project/'DerivedSources').mkdir()
     for name, target in (('project.uproject', 'Character.uproject'), ('DefaultEngine.ini', 'Config/DefaultEngine.ini')):
         _copy(adapters[name], project/target, protected[adapters[name]], budget)
@@ -266,10 +284,11 @@ def _prepare(source, request, toolchain, work, budget, deadline, progress):
         ('PythonScriptPlugin', 'EditorScriptingUtilities', 'SequencerScripting', 'Cascade', 'UccNativeObservation')]
     (project/'Character.uproject').write_bytes(canonical_bytes(document))
     config = project/'Config/DefaultEngine.ini'
+    cache = _private_cache(scripts)
     initial_config = config.read_text().replace('EditorStartupMap=/Game/UCC/CharacterScene', '').replace('GameDefaultMap=/Game/UCC/CharacterScene', '')
     config.write_text(initial_config+'\n[/Script/PythonScriptPlugin.PythonScriptPluginSettings]\nbIsolateInterpreterEnvironment=True\n'
         '+AdditionalPaths=(Path="'+scripts.as_posix()+'")\n\n[DerivedDataCacheGraphs]\nUccPrivate=(UccLocal)\n'
-        '[DerivedDataCacheStores]\nUccLocal=(Type=FileSystem,ReadOnly=false,Path="%GAMEDIR%DerivedDataCache")\n', encoding='utf-8')
+        '[DerivedDataCacheStores]\nUccLocal=(Type=FileSystem,ReadOnly=false,Path="'+cache.as_posix()+'")\n', encoding='utf-8')
     _copy(source.directory/'character.fbx', project/'DerivedSources/character.fbx', dict(source.files)['character.fbx'], budget)
     if progress: progress('OBSERVER_BUILD')
     command = [str(toolchain.dotnet), str(toolchain.ubt), 'UnrealEditor', 'Win64', 'Development',

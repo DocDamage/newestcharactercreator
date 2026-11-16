@@ -14,7 +14,8 @@ from ucc.export.unreal_contract import READINESS_FLAGS
 class UnrealBindEvidenceTests(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
-        self.args=write_inputs(Path(self.temp.name))
+        self.root=Path(self.temp.name).resolve()
+        self.args=write_inputs(self.root)
 
     def test_generated_finite_pair_has_only_bind_admission(self):
         result=verify_unreal_bind(**self.args)
@@ -70,7 +71,7 @@ class UnrealBindEvidenceTests(unittest.TestCase):
 
     def test_genuine_redirected_input_rejected_without_touching_target(self):
         import os
-        root=Path(self.temp.name);target=root/'original';target.mkdir()
+        root=self.root;target=root/'original';target.mkdir()
         original=self.args['source_reference'];moved=target/original.name;original.replace(moved)
         alias=root/'redirect'
         if os.name=='nt':
@@ -82,6 +83,21 @@ class UnrealBindEvidenceTests(unittest.TestCase):
             self.args['source_reference']=alias/moved.name
             with self.assertRaises(ValidationError):verify_unreal_bind(**self.args)
             self.assertEqual(moved.read_bytes(),before)
+        finally:
+            if os.name=='nt':os.rmdir(alias)
+            else:alias.unlink()
+
+    def test_fixture_resolves_temporary_directory_alias_before_writing(self):
+        import os
+        target=self.root/'fixture-target';target.mkdir();alias=self.root/'fixture-alias'
+        if os.name=='nt':
+            import _winapi
+            _winapi.CreateJunction(str(target),str(alias))
+        else:alias.symlink_to(target,target_is_directory=True)
+        try:
+            args=write_inputs(alias)
+            self.assertEqual(args['source_reference'].parent,target)
+            self.assertTrue(verify_unreal_bind(**args).saved_reopened_bind_verified)
         finally:
             if os.name=='nt':os.rmdir(alias)
             else:alias.unlink()
