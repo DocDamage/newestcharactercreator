@@ -1,5 +1,20 @@
 # UCC development status - November 16, 2026
 
+## Registered Godot inputs - local persistence checkpoint
+
+[UCC-P1-GODOT-MOTION-001B](acceptance/UCC-P1-GODOT-MOTION-001B.md) retains
+completed source preparation and explicitly reloads its exact UUID/manifest
+in a fresh process without new Blender or Godot jobs. Actual retain/restart,
+owned-catalog WAL revocation and cancellation during real copying pass with
+originals, permissions and project state preserved. The full required-Qt suite
+passes 1,772 tests: 1,758 passes and fourteen existing Windows privilege skips.
+Independent source, IO and full-regression audits pass within this finite scope.
+
+This is private input persistence. Runtime code remains data, all readiness
+flags stay false, and no engine project, GUI export or delivery is published.
+Commit-specific remote gates and integration remain pending; the preceding
+source-preparation PR #75 is also awaiting its final Linux gate.
+
 ## Registered Godot source preparation - local API checkpoint
 
 [UCC-P1-GODOT-MOTION-001A](acceptance/UCC-P1-GODOT-MOTION-001A.md) now prepares
