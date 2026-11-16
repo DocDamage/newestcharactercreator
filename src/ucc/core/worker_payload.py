@@ -21,6 +21,13 @@ UNITY_ADAPTER = SUPPORT + '/adapters/unity'
 UNITY_ADAPTER_FILES = frozenset({'UccNativeNormals.cs','UccNativeMeshIdentity.cs','UccQuadSourceData.cs',
     'UccQuadNormals.compute','UccNativeSkinWarmup.shader','Editor/UccSourceWeights.cs','Editor/UccUnityImport.cs',
     'Editor/UccUnityObservation.cs','Editor/UccUnityExportJobs.cs','UccUnityRuntimeObserver.cs','Editor/UccUnityRuntimeJob.cs'})
+UNREAL_ADAPTER = SUPPORT + '/adapters/unreal'
+UNREAL_ADAPTER_FILES = frozenset({'README.md', 'project.uproject', 'DefaultEngine.ini',
+    'capture_common.py', 'stage.py', 'reopen.py', 'UccNativeObservation.uplugin',
+    'Source/UccNativeObservation/UccNativeObservation.Build.cs',
+    'Source/UccNativeObservation/Public/UccNativeObservationLibrary.h',
+    'Source/UccNativeObservation/Private/UccNativeObservationLibrary.cpp',
+    'Source/UccNativeObservation/Private/UccNativeObservationModule.cpp'})
 
 
 class WorkerPayloadError(ValueError):
@@ -72,7 +79,8 @@ def validate_worker_payload(base: Path) -> tuple[Path, ...]:
                     or re.fullmatch(r'worker_support/ucc/(?:[a-z_][a-z_0-9]*/)*[a-z_][a-z_0-9]*\.py', relative)
                     or relative in {ADAPTER + '/' + name for name in ADAPTER_FILES}
                     or relative in {STATIC_ADAPTER + '/' + name for name in STATIC_ADAPTER_FILES}
-                    or relative in {UNITY_ADAPTER + '/' + name for name in UNITY_ADAPTER_FILES})
+                    or relative in {UNITY_ADAPTER + '/' + name for name in UNITY_ADAPTER_FILES}
+                    or relative in {UNREAL_ADAPTER + '/' + name for name in UNREAL_ADAPTER_FILES})
                 or type(record) is not dict or set(record) != {'bytes', 'sha256'}
                 or type(record['bytes']) is not int or not 0 <= record['bytes'] <= 2 * 1024 * 1024
                 or type(record['sha256']) is not str or not re.fullmatch(r'[0-9a-f]{64}', record['sha256'])):
@@ -88,6 +96,7 @@ def validate_worker_payload(base: Path) -> tuple[Path, ...]:
     required.update(ADAPTER + '/' + name for name in ADAPTER_FILES)
     required.update(STATIC_ADAPTER + '/' + name for name in STATIC_ADAPTER_FILES)
     required.update(UNITY_ADAPTER + '/' + name for name in UNITY_ADAPTER_FILES)
+    required.update(UNREAL_ADAPTER + '/' + name for name in UNREAL_ADAPTER_FILES)
     if not required <= names:
         raise WorkerPayloadError('Worker payload is incomplete')
     for name in raw['modules']:

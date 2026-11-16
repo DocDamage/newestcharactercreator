@@ -662,7 +662,7 @@ reviewed slice; final-head remote checks, integration merges and later complete
 Unity/blueprint gates remain open.
 
 
-## Receipt cutoff correction and package interval C — in progress
+## Receipt cutoff correction and package interval C — accepted
 
 Transaction PR #69 merged at `42b0a3d` and desktop PR #70 at `67acf003`.
 All final-head checks and inspected artifacts pass; integration trees match
@@ -683,7 +683,32 @@ All three new fault cases pass after reproducing their pre-fix failures; all
 filesystem fault tests with patched engine calls, not fresh engine-quality
 evidence. Original failures and independent proof remain private.
 
-Package interval C remains OPEN pending current fixed-source frozen executable
-acceptance, exact artifact/source audit and final-head checks. The owner launcher
-and older packages remain preserved. No public release, distribution licence
-approval, usable clip library or complete-project acceptance is implied.
+Package interval C now passes against fixed-source commit `79920da9`. The actual
+unmodified C600 frozen executable completes the normal rights/editor/new-folder/
+Blender controls and final published Unity GPU verification. Independent audits
+accept all 178 states, 356 images, 5,168,052 exact native position comparisons,
+the 62-file output and full source/proof chains. All 220 host modules plus main,
+204 worker files and eleven Unity resources match the isolated source snapshot.
+Existing-destination rejection creates no new job. Native live Cancel observes
+the owned current Blender process, produces `user_cancel` rather than timeout,
+leaves no destination, retains truthful diagnostics and preserves the positive
+output. This cancellation is before publication; it establishes no new live
+postpublication or graphical-Unity cancellation boundary. Originals, source
+snapshot, package and owner bindings remain unchanged; all owned processes exit.
+
+Private positive audit `7616714a…` and negative audit `c56a27d1…` are independently
+accepted. Current export receipt: `b56e50c2…`. The 403-file private archive passes
+exact extraction, source-bound worker validation and the extracted executable's
+three-check startup. A separate archive audit rechecks every ZIP/manifest/
+extracted hash and retained health receipt without repeating the engine work.
+Archive SHA-256: `7879b404b039ed486674d13827d3a7167b5a96061fbcb5f4d3bb05d25f60d8d1`.
+No owner launcher or earlier package is replaced.
+
+All four final-head workflows pass and the exact Windows CI artifact is
+independently inspected. No actionable reviews or conflicts remain. PR #72 merges
+as `e7d1f2d3`; its parents and tree exactly match accepted head `79920da9` on the
+verified `67acf003` integration. The three fully merged inactive Unity task
+branches are pruned locally and remotely without force; all active worktrees,
+eight historical draft PRs and private evidence remain. No public release,
+distribution licence approval, usable clip library or full-project completion is
+implied. The full locked blueprint stays active.

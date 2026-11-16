@@ -1,4 +1,53 @@
-# UCC development status — November 16, 2026
+# UCC development status - November 16, 2026
+
+**Unreal finite bind baseline accepted; production workflow in progress:**
+Installed Unreal 5.9 actually imports and separately reopens the original-authored
+rig/morph/material scene. All thirteen independent native gates pass, four saved
+assets and native readback remain exact, 6,350 protected bindings remain unchanged,
+and fourteen host observation-tamper cases reject. No live engine faults were
+injected. [The acceptance record](acceptance/UCC-P1-UNREAL-001.md) separates this
+finite evidence from the new portable export transaction, ordinary desktop and
+frozen-app workflow now being implemented. Shader/GPU, animation, player, artist
+and distribution gates remain open. No source/asset licence policy changes or
+dependency installation occurred.
+
+**Unity integration:** [PR #69](https://github.com/DocDamage/newestcharactercreator/pull/69)
+merged as `42b0a3d`; [PR #70](https://github.com/DocDamage/newestcharactercreator/pull/70)
+merged as `67acf003` into the verified integration branch. Both merge trees equal
+their accepted heads. All applicable final-head workflows and independently
+inspected Windows/Linux artifacts pass, including forty Linux JSON diagnostics.
+Eight historical draft PRs and all three active worktrees are preserved. Package
+interval C also passes against fixed source `79920da9` and merges through
+[PR #72](https://github.com/DocDamage/newestcharactercreator/pull/72) as `e7d1f2d3`.
+The three fully merged inactive Unity task branches are pruned locally and
+remotely without force. No public release or owner-launcher replacement occurs.
+
+**Unreal production API accepted within static scope:** Actual production
+Blender stage/fresh jobs, supported-toolchain observer compilation, native import,
+saved reopen, sealed publication and final delivered-project verification pass.
+Independent admission accepts all thirteen finite gates for both native reopen
+pairs; exact eleven-file delivery and all original/source/package/launcher
+preservation checks pass. The failed path-limit and clone-path attempts remain
+retained privately. The matching frozen601 normal desktop positive, collision
+and live Unreal cancellation also pass independent native/GUI/preservation
+audits and private archive inspection. Final-head CI/artifact review and
+integration remain open. Shader/GPU, animation,
+player, artist and distribution gates remain separate. Final local regression
+603 passes 1,587 tests with fourteen existing Windows skips. The collision-time
+process snapshot is explicitly qualified; direct rejection, retained inventory
+and preservation are verified.
+
+**Unity package correction accepted:** The current fixed C600 executable passes
+normal native export, existing-destination rejection and live Blender Cancel.
+Independent positive/negative audits accept images, native data, payload and
+preservation. All four final-head workflows and the exact Windows artifact pass;
+the private archive also passes exact extraction, source-bound payload validation,
+startup and independent archive inspection. The receipt/journal ownership fix,
+source snapshot and complete finite scope are recorded in the Unity acceptance
+document. The owner launcher and earlier packages remain unchanged.
+
+Earlier checkpoint snapshots below retain their original scope; current gates
+and integration state are recorded above.
 
 **Normal Unity desktop/frozen acceptance (589):** The actual unchanged portable
 app passes explicit four-input rights review, installed editor/Blender selection,
@@ -8,12 +57,12 @@ native position bytes. Existing-destination rejection and real live Blender
 cancellation pass through native UI with truthful diagnostics and preserved
 originals/package/owner launchers. The new private ZIP passes exact extraction and
 startup; no owner shortcut is replaced. The finite profile includes no shipping
-clips, artist/player or distribution approval. Transaction draft PR #69 is at
-`c85b52c`; core CI needs the already tested schema validator declared. Correction
-`3571b50` is held for that branch until its healthy Linux jobs finish. Desktop
-source is a separate slice; final remote checks and merges remain open.
+clips, artist/player or distribution approval. Test-only schema dependency and
+canonical temporary-fixture corrections are committed on both Unity branches;
+the final Linux diagnostics and A/B integration were subsequently accepted
+through PRs #69 and #70. Current package interval C is tracked above.
 
-**Latest Unity transaction (582–584):** The complete production API now stages,
+**Earlier Unity transaction (582â€“584):** The complete production API now stages,
 atomically publishes and graphically verifies the final sealed private Unity
 project. Actual original-authored specimen acceptance and an independent
 persisted-evidence audit pass: 62 delivered files, 178 states/two cameras,
@@ -26,19 +75,19 @@ and merge remain pending. Three workers retain separate transaction, desktop
 and independent verification/package ownership. Existing 540/575/576 evidence
 is preserved. The
 [requirements/acceptance map](REQUIREMENTS_ACCEPTANCE_MAP.md) keeps the complete
-locked blueprint active beyond this batch. Existing draft PRs #61–#68 and the
+locked blueprint active beyond this batch. Existing draft PRs #61â€“#68 and the
 owner launcher/package remain preserved.
 
-**Latest Unity progress (575–577):** Production runtime source capture and fresh
+**Earlier Unity progress (575â€“577):** Production runtime source capture and fresh
 Blender recomputation pass all 178 diagnostic states. The production graphical
 Unity verifier now independently admits both automatic-camera outputs: native
-position bytes remain exact, maximum source-position difference is 3.526 µm,
-and maximum normal difference is 0.220184°. All 356 images pass decoding,
+position bytes remain exact, maximum source-position difference is 3.526 Âµm,
+and maximum normal difference is 0.220184Â°. All 356 images pass decoding,
 contrast/margin checks, neutral return and camera/deformation distinction.
 The enclosing atomic export transaction, desktop action and frozen executable
 acceptance remain open. [Overall progress and remaining work](PROJECT_PROGRESS.md).
 
-**Latest Unity progress (554–571):** The production host now runs native import,
+**Earlier Unity progress (554â€“571):** The production host now runs native import,
 checks source parity independently (including triangle winding), attaches
 topology and verifies a fresh saved reopen. Live cancellation/deadline tests
 preserve sources. Strict checks exposed the raw importer weight clamp and a
@@ -49,7 +98,7 @@ Full regression: 1,387 passed / 14 existing skips; subsequent focused checks:
 workflow and frozen executable validation remain open. See
 [the acceptance record](acceptance/UCC-P1-UNITY-001.md).
 
-**Latest Unity progress (540–551):** Production Blender source staging and fresh
+**Earlier Unity progress (540â€“551):** Production Blender source staging and fresh
 master reopen passed. The explicit native importer now preserves every positive
 influence and persists the reviewed material, topology and runtime references.
 Fresh Unity reopen and 178-state/two-camera checks on the newly exported FBX pass
@@ -71,18 +120,18 @@ See [Unity feasibility](acceptance/UCC-P1-UNITY-001.md).
 The corrected native Player Loop exercises all 178 original-source rig/shape
 diagnostics with real Direct3D 11 vertex readback and images. A private GPU draw
 adapter now reconstructs geometric normals from native posed positions and the
-original quads: maximum observed error 0.191°, with every position byte preserved.
+original quads: maximum observed error 0.191Â°, with every position byte preserved.
 Direct edits to Unity's skinned buffer failed and remain recorded. This is a
 prototype, without product integration or saved-project adapter acceptance.
 The observed precision gate now includes input/operator transfer, source/native
 roundoff and transform-hierarchy formation: all 5,168,052 CPU/GPU comparisons
-pass the independent 50 µm cap. A real 100.076 µm GPU fault rejects even inside
+pass the independent 50 Âµm cap. A real 100.076 Âµm GPU fault rejects even inside
 the conservative arithmetic envelope. See the [numerical record](acceptance/UCC-P1-UNITY-001-NUMERICS.md).
 The first-party Unity runtime now persists its source-bound component and runs
 from fresh scene reopens without mesh/weight/axis/material repair. Automatic
 per-camera GPU checks cover all 178 states, two cameras, and a translated/rotated
 placement; native position bytes remain exact and normal error stays below
-0.225°. Root-space computation fixes a measured world-translation shading fault.
+0.225Â°. Root-space computation fixes a measured world-translation shading fault.
 Real saved topology/mesh faults reject; disable/re-enable restores ownership.
 Closed request/topology contracts are implemented. The standalone export
 transaction/UI, player builds, performance and broader rendering remain open;
@@ -90,7 +139,7 @@ no new frozen package. Regression 532: 1,378 passed, 14 existing skips, 217.466 
 
 **Latest animated facial sprite gate:** Saved strengths now drive the pinned
 25-frame/24 FPS loop, with separate explicit per-use source review. Real source
-desktop cases deliver 100/200 frames and exact 5×5 atlases; unmodified frozen build
+desktop cases deliver 100/200 frames and exact 5Ã—5 atlases; unmodified frozen build
 430 also passes the native Windows workflow. Audit 436 checks 400 delivered
 frames against 800 independent original-source/saved-Action rasters, geometry,
 normals, timelines and schemas. Real PNG/Action/coherent material-override and
@@ -316,7 +365,7 @@ between-frame corrective accuracy and packaging remain unfinished.
 
 Further private interaction measurements expose a limitation in that sampled
 prototype: all 897 neutral subframe queries remain below 1e-5 metres, but active
-facial controls produce 1.1–5.2 mm errors across the complete clip. Those
+facial controls produce 1.1â€“5.2 mm errors across the complete clip. Those
 integer-frame results therefore do not establish combined facial usability.
 A separate nonlinear GPU correction experiment now matches actual Blender
 references for all 2,397 temporal/facial cases within 9.611e-7 metres, with an
@@ -386,7 +435,7 @@ Windows skips remain. Guardrails pass all twelve checks.
 
 **Parent PR #67 current checkpoint:** exact head `43529a43ea17fc4e702cd1f6c2fd7d633a129103` passes Core, all four Qt matrix jobs, preflight and Windows packaging. Its fresh Windows package matches all 90 bridge sources and the actual extracted executable passes the three health checks. All seven Linux archives / 39 JSON records are independently accepted. All five workflows and the final-head Windows package pass; its complete final audit is separate from PR #68. Only confirmed official Blender HTTP 403 setup failures were retried after prior attempts became terminal. No healthy job was canceled or restarted. PR #67 remains draft and unmerged.
 
-**Accepted facial preview:** [UCC-P1-FACIAL-001](acceptance/UCC-P1-FACIAL-001.md) is technically accepted at `7db913e373c1147ea78f06408cc44c00e5d2669b` / draft PR #64. All five workflows and all four Linux archives / 24 diagnostic records are independently accepted. The Windows package's 87 bridge sources match that head and its actual extracted executable passes the three-check self-test. Local 915-test regression, original-only three-case expression integration, real desktop preparation/history/save/reopen/reset/cancellation, complete 25-frame GPU playback and stale-input invalidation pass. Strengths remain bounded to 0–0.5; full eyelid closure, human visual quality, speech and engine imports remain unapproved.
+**Accepted facial preview:** [UCC-P1-FACIAL-001](acceptance/UCC-P1-FACIAL-001.md) is technically accepted at `7db913e373c1147ea78f06408cc44c00e5d2669b` / draft PR #64. All five workflows and all four Linux archives / 24 diagnostic records are independently accepted. The Windows package's 87 bridge sources match that head and its actual extracted executable passes the three-check self-test. Local 915-test regression, original-only three-case expression integration, real desktop preparation/history/save/reopen/reset/cancellation, complete 25-frame GPU playback and stale-input invalidation pass. Strengths remain bounded to 0â€“0.5; full eyelid closure, human visual quality, speech and engine imports remain unapproved.
 
 **Current incremental work:** [UCC-P1-ANIM-007A](acceptance/UCC-P1-ANIM-007A.md) preserves existing V1 palm references and explicitly versions new declared-source precision; it is locally committed at `f77cf99`. [UCC-P1-ANIM-007B](acceptance/UCC-P1-ANIM-007B.md) adds an opt-in, closed V2 regional skin policy while retaining V1 defaults and its original smoothing class. Actual run/jump/death pass all 510 frames through 21 normal workers, independent saved/cache/surface reloads, and complete Windows GPU playback. Eight real rehashed saved-scene faults reject; old V1 idle/walk scenes reproduce all 480 frames. The original-only V2 gate now locally passes three generated body/face cases and all 900 frames, with independent binary-weight/mask/skin verification and ten actual saved/transaction faults. The required-Qt suite with this CI follow-up passes 935 tests: 921 passed and fourteen existing Windows skips. A fifth independent Linux suite retains only its aggregate summary. Draft PR #65 now targets exact head `9b07f0b75d5ce0f60d6b3e3d2f39a7f975819382`; its only change from `b873ed0` is the bounded regression job budget increase from 60 to 120 minutes. Core, Qt, preflight and Windows pass at that new head; its fresh package matches all 89 bridge sources and its extracted executable passes all three self-tests. All five Linux archives and all 29 diagnostic JSON records are now independently accepted; all five exact-head workflows pass. Historical `b873ed0` passed Core, Qt, preflight and Windows (all 89 bridge sources and the extracted executable); body-contact, symmetric-fit and native-fit archives independently pass all 16 records. That head's regression exceeded 60 minutes during expressions and regional failed official Blender setup, so complete acceptance was not achieved. All healthy jobs completed before pushing the new head; older results are not relabelled as new-head acceptance.
 
@@ -414,7 +463,7 @@ Windows skips remain. Guardrails pass all twelve checks.
 
 **Accepted customization:** [UCC-P1-CUSTOM-001](acceptance/UCC-P1-CUSTOM-001.md), one bounded persistent MPFB nose-width control, is technically accepted at `c67f672db34640120705a3780cf1c143a3d69804` / draft PR #62. All five workflows and four exact-head Linux archives / 22 diagnostic records are independently accepted. Its Windows package's 72 bridge sources match Git and the extracted executable passes SELF_TEST_OK. Local original-source builds/refit, 80 poses, seven rehashed faults, actual desktop/history/watchers and private owner-copy checks pass. It remains unmerged pending owner approval; facial animation and engine imports remain later work.
 
-**Repository:** PRs #24–#60 are merged. Main is `2c03434c75034b8cfb810b0d38daeb00122f004e`, with the exact file tree of fully verified `68d3c3a35a61ea4a6bebe5e4471202bbfadd4d3f`. Owner-authorized cleanup preserved history, a verified recovery bundle, the unique documentation branch and three local backup branches. Old feature branches were pruned. PR #61 targets main directly at `138047ae32617086e7817cf8f3e4d48ace225809`; PR #62 targets its branch at `c67f672db34640120705a3780cf1c143a3d69804`; PR #63 targets #62's branch at `4e9d03e12fba52ab87b6fb6b5c4c1001b4ca8182`. PR #64 targets #63's branch at `7db913e373c1147ea78f06408cc44c00e5d2669b`. PR #65 targets #64 at `9b07f0b75d5ce0f60d6b3e3d2f39a7f975819382`. All five remain draft/unmerged. Current follow-up development is `feat/anim-007-registered-clips`; its new API is not covered by PR #65 acceptance. The technical animation implementation and actual owner-launcher acceptance below are complete. Further merges require owner approval.
+**Repository:** PRs #24â€“#60 are merged. Main is `2c03434c75034b8cfb810b0d38daeb00122f004e`, with the exact file tree of fully verified `68d3c3a35a61ea4a6bebe5e4471202bbfadd4d3f`. Owner-authorized cleanup preserved history, a verified recovery bundle, the unique documentation branch and three local backup branches. Old feature branches were pruned. PR #61 targets main directly at `138047ae32617086e7817cf8f3e4d48ace225809`; PR #62 targets its branch at `c67f672db34640120705a3780cf1c143a3d69804`; PR #63 targets #62's branch at `4e9d03e12fba52ab87b6fb6b5c4c1001b4ca8182`. PR #64 targets #63's branch at `7db913e373c1147ea78f06408cc44c00e5d2669b`. PR #65 targets #64 at `9b07f0b75d5ce0f60d6b3e3d2f39a7f975819382`. All five remain draft/unmerged. Current follow-up development is `feat/anim-007-registered-clips`; its new API is not covered by PR #65 acceptance. The technical animation implementation and actual owner-launcher acceptance below are complete. Further merges require owner approval.
 
 **Accepted animation milestone:** [UCC-P1-ANIM-006AA](acceptance/UCC-P1-ANIM-006AA.md), explicit symmetric shoulder corrections over a verified legacy base. Implementation head `3f3310449b3fba290ec0bbfe464e637adbbaaae9` passes the 803-test local suite (789 passed, fourteen Windows symlink skips), independent Blender math and negative paths, the normal three-worker owned-clip fit, 15 decoded views, exact retention of 122 inactive base frames, a complete cache and two independent anatomical workers. All three guards cover 300 frames. Detected full-trunk crossing frames fall from 193 to zero; 46 fitted frames still have uncertain enclosure observations. Actual RTX 3060 playback drew all 300 frames in 10.078 seconds; six disposable bound-input changes cleared both previews. Original source/master/project bytes remain unchanged.
 
@@ -422,7 +471,7 @@ The separate original-source/real-MPFB attempt 03 also passes completely: 300 fr
 
 **CI accepted:** All five workflows pass on PR #61 documentation head `138047ae32617086e7817cf8f3e4d48ace225809`, implementation head `3f3310449b3fba290ec0bbfe464e637adbbaaae9` and final main `2c03434c75034b8cfb810b0d38daeb00122f004e`. The four PR #61 Linux archives contain 21 independently accepted JSON records (five each for regression/native-fit/body-contact, six for symmetric). Final-main's three Linux archives contain 15 independently accepted records. Exact-head Windows archives, all 67 feature / 64 main bridge sources and both actual extracted executable self-tests are accepted. Official Blender download HTTP 403 failures remain historical setup failures; only failed setup jobs were retried after each overall attempt terminated. Healthy suites were preserved. Official origin, strict checksums and all assertions remained unchanged. Private audit receipts live under `evidence/anim006aa/continuation-2026-11-13`.
 
-**Owner review available:** The actual `Review-Fitted-Animation.cmd` now loads the verified symmetric correction and opens **Fitted motion** by default, retaining the original comparison. The actual `.cmd → PowerShell → app` chain passed normal accepted-path startup with ten required watched inputs, all 300 GPU frames in 10.078 seconds, and eight bound-input mutations clearing both variants. Mutations used byte-identical disposable copies. A byte-verified V2 backup, actual rollback and exact symmetric reactivation all pass; wrappers, original source/master/project/license and accepted evidence remain unchanged. The normal startup test took 74.094 seconds, so cached evidence validation is still expensive. Screenshots stayed local; human visual/grasp, arbitrary-pack and engine quality remain unapproved. Private receipt: `evidence/anim006aa/continuation-2026-11-13/actual-cmd-verification-01/acceptance.json`.
+**Owner review available:** The actual `Review-Fitted-Animation.cmd` now loads the verified symmetric correction and opens **Fitted motion** by default, retaining the original comparison. The actual `.cmd â†’ PowerShell â†’ app` chain passed normal accepted-path startup with ten required watched inputs, all 300 GPU frames in 10.078 seconds, and eight bound-input mutations clearing both variants. Mutations used byte-identical disposable copies. A byte-verified V2 backup, actual rollback and exact symmetric reactivation all pass; wrappers, original source/master/project/license and accepted evidence remain unchanged. The normal startup test took 74.094 seconds, so cached evidence validation is still expensive. Screenshots stayed local; human visual/grasp, arbitrary-pack and engine quality remain unapproved. Private receipt: `evidence/anim006aa/continuation-2026-11-13/actual-cmd-verification-01/acceptance.json`.
 
 **Already accepted and merged:** [UCC-P1-ANIM-006Y](acceptance/UCC-P1-ANIM-006Y.md) and [UCC-P1-ANIM-006Z](acceptance/UCC-P1-ANIM-006Z.md) passed all five workflows at exact heads `265c17a49482169b91f7be763126f8e079eafc73` and `68d3c3a35a61ea4a6bebe5e4471202bbfadd4d3f`. Each set of three Linux archives and fifteen JSON domain records was independently accepted; exact Windows packages and local frozen executables passed. Z's normal integrated two-worker API passed all three 300-frame anatomical guards. No contact/grasp/visual quality or engine approval is implied.
 
@@ -438,7 +487,7 @@ The following records preserve earlier observations. Their stacked/unmerged and 
 
 **In review, stacked on #40:** [PR #41 / UCC-P1-ANIM-006G](acceptance/UCC-P1-ANIM-006G.md) corrects the measured hip trajectory across different origins. All five exact-head workflows passed. The actual breathing hip error drops from 13.42 mm to below 0.001 mm numerically; explicit legacy maps retain their previous rule. This does not itself repair walking edge strain or relax knee limits.
 
-**In review, stacked on #41:** [UCC-P1-ANIM-006H](acceptance/UCC-P1-ANIM-006H.md) adds explicit bound corrective skin on private copies, preserving MPFB's helper mask and original weights. Actual 300-frame walking and breathing previews pass unchanged deformation bounds and saved-copy checks; the application now requires a third Blender process to reproduce all corrected/raw frames. Walking's maximum original-master stretch is about 2.34×, below the unchanged 4× limit. Kneeling still rejects at its angle guard. This Blender modifier is not an engine-portable correction; visual/contact/engine approval and in-UCC animation playback remain unverified.
+**In review, stacked on #41:** [UCC-P1-ANIM-006H](acceptance/UCC-P1-ANIM-006H.md) adds explicit bound corrective skin on private copies, preserving MPFB's helper mask and original weights. Actual 300-frame walking and breathing previews pass unchanged deformation bounds and saved-copy checks; the application now requires a third Blender process to reproduce all corrected/raw frames. Walking's maximum original-master stretch is about 2.34Ã—, below the unchanged 4Ã— limit. Kneeling still rejects at its angle guard. This Blender modifier is not an engine-portable correction; visual/contact/engine approval and in-UCC animation playback remain unverified.
 
 **In review, stacked on #42:** [UCC-P1-ANIM-006I](acceptance/UCC-P1-ANIM-006I.md) adds full-surface cached skin playback inside UCC. A fresh Blender worker reopens the actual saved animation and exports every evaluated vertex plus pose-specific triangles; the app independently checks all frame hashes. Actual owner walking playback displayed all 300 frames in 10.031 seconds at 30 fps on the RTX 3060, with scrubbing and input-change invalidation. Source/master/project bytes remain unchanged. Precomputed playback does not establish live retargeting, contact quality or engine compatibility. All five exact-head CI workflows and the full Windows Blender regression passed.
 
@@ -466,13 +515,13 @@ The following records preserve earlier observations. Their stacked/unmerged and 
 
 **Ready for review, unmerged, PR #56, based on #55:** [UCC-P1-ANIM-006V](acceptance/UCC-P1-ANIM-006V.md) adds separate, SHA-bound closed-skin hand inclusion observations with explicit unknowns. Two fresh Blender processes reproduce all 300 owned source frames, and an actual MPFB buried-hand fault exposes the surface-crossing blind spot (zero hand/torso pairs, 3,138 nonzero hand faces). The complete local suite runs 672 tests (659 pass, 13 Windows symlink skips), plus fifteen earlier checks. The project-bound paired API passes all 600 original/fitted frames in 1,296.250 seconds, with fifteen new private renders at the later contact interval. The original-source fault is independently checked against exact solid angles; connected skin can cancel winding, so zero is not anatomical clearance. All five exact-head workflows and all three real Linux suites pass; all fifteen SHA-checked JSON diagnostics and domain assertions are independently verified. PR #56 is ready and remains unmerged. Existing contact guards and fit acceptance are unchanged; there is no new UI control, quality approval, dependency or asset upload.
 
-**Ready for review, unmerged, based on #54:** [PR #55 / UCC-P1-ANIM-006U](acceptance/UCC-P1-ANIM-006U.md) derives bounded wrist orientation from original-only measurements through a closed eight-hash worker operation. The actual nine-worker desktop action passes cleanly in 1,285.391 seconds and presents all 300 body-annotated fitted frames in 10.079 seconds: 243 actual candidate poses / 85 trials, opposite-arm flags 26→0 and body flags 193→164, with no new checked areas or per-hand pair increase. A separate fully rebound GPU replay also passes, including policy-change invalidation. All 656 local tests pass (643 pass, 13 Windows symlink skips), plus fifteen earlier checks and both real original-source proposal negatives. T's stable small-angle measurement fix is included; the fresh owned saved-scene/render/cache/body reproduction passes in 824.469 seconds with identical complete poses/skins/topology. The owner launcher loads this automatic correction and passes its GPU smoke. All five exact-head workflows, all three real Linux suites and all fifteen SHA-checked artifact JSON records pass; PR #55 is ready and unmerged. No production animation-quality or engine acceptance is claimed. Originals remain unchanged.
+**Ready for review, unmerged, based on #54:** [PR #55 / UCC-P1-ANIM-006U](acceptance/UCC-P1-ANIM-006U.md) derives bounded wrist orientation from original-only measurements through a closed eight-hash worker operation. The actual nine-worker desktop action passes cleanly in 1,285.391 seconds and presents all 300 body-annotated fitted frames in 10.079 seconds: 243 actual candidate poses / 85 trials, opposite-arm flags 26â†’0 and body flags 193â†’164, with no new checked areas or per-hand pair increase. A separate fully rebound GPU replay also passes, including policy-change invalidation. All 656 local tests pass (643 pass, 13 Windows symlink skips), plus fifteen earlier checks and both real original-source proposal negatives. T's stable small-angle measurement fix is included; the fresh owned saved-scene/render/cache/body reproduction passes in 824.469 seconds with identical complete poses/skins/topology. The owner launcher loads this automatic correction and passes its GPU smoke. All five exact-head workflows, all three real Linux suites and all fifteen SHA-checked artifact JSON records pass; PR #55 is ready and unmerged. No production animation-quality or engine acceptance is claimed. Originals remain unchanged.
 
-**Ready for review, unmerged, based on #53:** [PR #54 / UCC-P1-ANIM-006T](acceptance/UCC-P1-ANIM-006T.md) adds an explicit bounded target-hand local rotation policy with independent Rodrigues/quaternion implementations and full-sequence hand angular auditing. The owned 300-frame bandaging sequence passes actual saved-Action reproduction, fifteen decoded private renders and the independently reproduced full body-area guard: zero newly involved areas or per-hand pair increases, with body flags 193→164 and opposite-arm flags 26→0. All 300 fitted frames draw in UCC in 10.016 seconds; watched-policy edits clear both views. A separately generated original-source/real-MPFB gate passes all 300 poses, skin/topology/cache checks and rejects a rehashed saved hand-Action corruption. All 647 local tests pass (634 pass, 13 Windows symlink skips), plus all fifteen earlier preflight/guardrail checks. All five exact-head workflows, all three real Linux suites and all fifteen SHA-checked artifact JSON records pass; PR #54 remains unmerged. Automatic orientation search and production animation quality are not claimed; originals remain unchanged.
+**Ready for review, unmerged, based on #53:** [PR #54 / UCC-P1-ANIM-006T](acceptance/UCC-P1-ANIM-006T.md) adds an explicit bounded target-hand local rotation policy with independent Rodrigues/quaternion implementations and full-sequence hand angular auditing. The owned 300-frame bandaging sequence passes actual saved-Action reproduction, fifteen decoded private renders and the independently reproduced full body-area guard: zero newly involved areas or per-hand pair increases, with body flags 193â†’164 and opposite-arm flags 26â†’0. All 300 fitted frames draw in UCC in 10.016 seconds; watched-policy edits clear both views. A separately generated original-source/real-MPFB gate passes all 300 poses, skin/topology/cache checks and rejects a rehashed saved hand-Action corruption. All 647 local tests pass (634 pass, 13 Windows symlink skips), plus all fifteen earlier preflight/guardrail checks. All five exact-head workflows, all three real Linux suites and all fifteen SHA-checked artifact JSON records pass; PR #54 remains unmerged. Automatic orientation search and production animation quality are not claimed; originals remain unchanged.
 
-**In review, based on #52:** [PR #53 / UCC-P1-ANIM-006S](acceptance/UCC-P1-ANIM-006S.md) moves stable body-area checks into bounded candidate search. An eight-hash proposal must freshly reproduce the complete independently checked original area baseline before testing actual disposable poses. Finer sampling, exact-pose query reuse and failed-frame learning preserve all existing limits; complete final interval verification always runs fresh. The actual desktop action rejects the owned candidate at the 1,024-pose budget before baking, retaining original GPU playback and all original bytes. The final local suite runs 636 tests (623 pass, 13 Windows symlink skips); both real original-source proposal negatives pass. A separate 468-pose coarse feasibility experiment finds no safe tested offset in frames 16–23. S does not repair the clip. All five final-head workflows and all three Linux suites pass; all three five-JSON artifacts were independently downloaded, SHA-checked and inspected. PR #53 is ready for review and remains unmerged.
+**In review, based on #52:** [PR #53 / UCC-P1-ANIM-006S](acceptance/UCC-P1-ANIM-006S.md) moves stable body-area checks into bounded candidate search. An eight-hash proposal must freshly reproduce the complete independently checked original area baseline before testing actual disposable poses. Finer sampling, exact-pose query reuse and failed-frame learning preserve all existing limits; complete final interval verification always runs fresh. The actual desktop action rejects the owned candidate at the 1,024-pose budget before baking, retaining original GPU playback and all original bytes. The final local suite runs 636 tests (623 pass, 13 Windows symlink skips); both real original-source proposal negatives pass. A separate 468-pose coarse feasibility experiment finds no safe tested offset in frames 16â€“23. S does not repair the clip. All five final-head workflows and all three Linux suites pass; all three five-JSON artifacts were independently downloaded, SHA-checked and inspected. PR #53 is ready for review and remains unmerged.
 
-**In development, based on #51:** [UCC-P1-ANIM-006R](acceptance/UCC-P1-ANIM-006R.md) audits stable evaluated polygon identities across changing triangulation and guards automatic fitting against newly involved hand/body surface areas or per-hand pair increases. Actual owned-clip intake and independent reproduction verify all 600 observations and correctly reject the earlier candidate: it reduces aggregate crossings but introduces stable contact faces in source frames 16–23. Original files remain unchanged. Previously prepared manual comparison remains available for review. The actual seven-job desktop action rejects that trade before publication and retains original GPU playback with a plain explanation. An original-source/real-MPFB positive guard and both real rehashed-report negatives pass. All five final-head workflows and all three Linux suites pass; all three five-JSON artifacts were independently downloaded, SHA-checked and inspected. PR #52 is ready for review and remains unmerged. No body-contact repair or production animation approval is claimed.
+**In development, based on #51:** [UCC-P1-ANIM-006R](acceptance/UCC-P1-ANIM-006R.md) audits stable evaluated polygon identities across changing triangulation and guards automatic fitting against newly involved hand/body surface areas or per-hand pair increases. Actual owned-clip intake and independent reproduction verify all 600 observations and correctly reject the earlier candidate: it reduces aggregate crossings but introduces stable contact faces in source frames 16â€“23. Original files remain unchanged. Previously prepared manual comparison remains available for review. The actual seven-job desktop action rejects that trade before publication and retains original GPU playback with a plain explanation. An original-source/real-MPFB positive guard and both real rehashed-report negatives pass. All five final-head workflows and all three Linux suites pass; all three five-JSON artifacts were independently downloaded, SHA-checked and inspected. PR #52 is ready for review and remains unmerged. No body-contact repair or production animation approval is claimed.
 
 **In review, stacked on #49:** [PR #50 / UCC-P1-ANIM-006P](acceptance/UCC-P1-ANIM-006P.md) adds a local measured-contact fitting action. A generic bounded grid search derives a target-arm trajectory from the actual original contact interval, then requires saved-Action reproduction, targeted renders and a full verified playback cache. The owned 300-frame clip passes the complete application API and actual GPU comparison, reducing checked opposite-arm crossing frames from 26 to zero while retaining all original bytes and existing safety limits. No hand-written policy is required. Two real original-source/MPFB negatives reject absent and fabricated contacts. All five final-head workflows and both Linux suites pass; downloaded JSON artifact hashes and diagnostics were independently checked. PR #50 is ready for review and remains unmerged. Grasp/visual approval and engine portability remain unverified.
 
@@ -487,12 +536,12 @@ The following records preserve earlier observations. Their stacked/unmerged and 
 | Existing-master MPFB body refit | [PR #29 real integration #43101713245](https://github.com/DocDamage/newestcharactercreator/actions/runs/43101713245) passed real TargetService/HumanService refit, preserved 163-bone rig and 19,158 weighted vertices, retained prior master | Owner Windows runtime; visual fit and source asset variants |
 | Static GLB viewer | Qt orbit/pan/zoom and bounded geometry reader tested on Windows/Linux | Textures, GPU rendering, rig animation and full viewport editing |
 | **Refitted** shape-baked GLB preview (PR #29) | [Real integration #43101713245](https://github.com/DocDamage/newestcharactercreator/actions/runs/43101713245) baked evaluated MPFB morphs into private static GLB (26,756 source triangles; 1,912 sampled) and detected changed geometry | Windows Blender visual review, PBR materials, engine imports |
-| **Saved-master skin pose response (PR #29)** | [Real integration #43101713245](https://github.com/DocDamage/newestcharactercreator/actions/runs/43101713245): rotated weighted head bone by 20°, 4,451 mesh vertices moved (max 0.0549627 Blender local units); two independent subprocesses agreed and restored the pose | Actual animation clip playback, skinning quality, IK and retargeting |
+| **Saved-master skin pose response (PR #29)** | [Real integration #43101713245](https://github.com/DocDamage/newestcharactercreator/actions/runs/43101713245): rotated weighted head bone by 20Â°, 4,451 mesh vertices moved (max 0.0549627 Blender local units); two independent subprocesses agreed and restored the pose | Actual animation clip playback, skinning quality, IK and retargeting |
 | Crash-safe project revisions | Immutable SHA-addressed masters, revision-checked atomic metadata save/backup, cancellation, stale-project checks and content hash validation | User-machine durability testing with large/custom assets |
 | PySide6 and Windows portable app | [PR #29 source/Qt/Windows CI](https://github.com/DocDamage/newestcharactercreator/actions/runs/43101713379) passed frozen EXE startup, bundled worker checks and metadata roundtrip | Owner Windows display/DPI, GPU interaction, real Blender installation |
 | Blender keyframed timeline (PR #30) | [Real Linux integration #43105088396](https://github.com/DocDamage/newestcharactercreator/actions/runs/43105088396) keyed a real Blender Action at frames 1/13/25, sampled 1/7/13/19/25; 4,451 vertices moved at intermediate/peak frames and baseline returned on frame 25; two independent subprocesses agreed | User-selected animation clip intake, animated UCC viewport, retargeting, engine import |
 | Local BVH source-driven rig motion (PR #31) | [Actual Blender/MPFB #43108579117](https://github.com/DocDamage/newestcharactercreator/actions/runs/43108579117) used original 25-frame BVH rotation values for the exact named head bone, moved 4,451 evaluated vertices on intermediate frames, matched two worker runs and retained unmodified source/master/project bytes | Full-body bone/rest-pose calibration, external Fab/BVH licensing, quality review, in-app animated viewport and engine import |
-| Two-bone BVH parent/rest-axis chain (PR #32) | [Actual Blender/MPFB #43116913629](https://github.com/DocDamage/newestcharactercreator/actions/runs/43116913629) measured exact neck03 → head parent link, real converted rest-direction cosine 0.9949, **4,451 actual weighted vertices moved by each bone independently** and matching five-frame source motion across two Blender processes | Bone-roll/rest rotation calibration, purchased user clip playback, realistic motion quality, Windows Blender runtime, actual engine exports |
+| Two-bone BVH parent/rest-axis chain (PR #32) | [Actual Blender/MPFB #43116913629](https://github.com/DocDamage/newestcharactercreator/actions/runs/43116913629) measured exact neck03 â†’ head parent link, real converted rest-direction cosine 0.9949, **4,451 actual weighted vertices moved by each bone independently** and matching five-frame source motion across two Blender processes | Bone-roll/rest rotation calibration, purchased user clip playback, realistic motion quality, Windows Blender runtime, actual engine exports |
 | Animation catalog / bone name matching | Private BVH/glTF metadata intake, named mapping candidates | Real user clip mapping, playback in UCC, 100 tested clips |
 | Local AI / sprite support | Opt-in localhost ComfyUI concept handling; PNG atlas generation and validation | Local model runtime, AI mesh synthesis, 2D rendering from current 3D human |
 | Godot / Unity / Unreal | GLB structural inspections and export blockers | Actual engine import, skinning, animation playback, export rights |
@@ -513,6 +562,6 @@ The [merged main Linux smoke #43099005719](https://github.com/DocDamage/newestch
 
 ## Completed UCC-P1-ANIM-005 automated gate (PR #34 merged)
 
-Merged [PR #34](https://github.com/DocDamage/newestcharactercreator/pull/34) introduces explicit source/target naming for a directly connected 3–8-joint chain and a real Blender **full-frame evaluated skin motion** gate. The worker records quaternion/mesh discontinuity bounds and preserves a **private** SHA-checked Blender Action review copy. The user must visually inspect that copy in Blender; creating it does **not** approve animation quality. The first CI fixture is an original, non-shipping three-bone motion derived from measured MPFB rig geometry, not a Fab clip. [Implementation and operator guide](integration/explicit-mapped-bvh-review.md) and [acceptance contract](acceptance/UCC-P1-ANIM-005.md).
+Merged [PR #34](https://github.com/DocDamage/newestcharactercreator/pull/34) introduces explicit source/target naming for a directly connected 3â€“8-joint chain and a real Blender **full-frame evaluated skin motion** gate. The worker records quaternion/mesh discontinuity bounds and preserves a **private** SHA-checked Blender Action review copy. The user must visually inspect that copy in Blender; creating it does **not** approve animation quality. The first CI fixture is an original, non-shipping three-bone motion derived from measured MPFB rig geometry, not a Fab clip. [Implementation and operator guide](integration/explicit-mapped-bvh-review.md) and [acceptance contract](acceptance/UCC-P1-ANIM-005.md).
 
-**All five workflows passed on PR #34’s final head; PR #34 is merged. This does not grant visual or external-asset acceptance.** Actual authorized external full-body BVH, manual visual quality approval, independent arbitrary-rig bone-roll compatibility, Windows runtime and game-engine imports remain explicitly **unverified**.
+**All five workflows passed on PR #34â€™s final head; PR #34 is merged. This does not grant visual or external-asset acceptance.** Actual authorized external full-body BVH, manual visual quality approval, independent arbitrary-rig bone-roll compatibility, Windows runtime and game-engine imports remain explicitly **unverified**.
