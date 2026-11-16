@@ -596,3 +596,67 @@ No source changes follow this regression. The exact thirteen-file transaction
 slice passes independent text/privacy/dependency review. Matching current frozen
 package 589 desktop acceptance and final remote-head checks remain pending;
 no merge, general animation, player-build, artist or release claim is made.
+
+### Normal desktop and current frozen application (589)
+
+The normal File action now offers private Unity character export for a saved,
+prepared material-bound human. Source/proof review and installed-editor hashing
+run in cancellable background jobs. Every exact source needs an unchecked-by-
+default per-use authorization and a recorded review note. The user selects the
+installed Unity editor, an unused destination and installed Blender. A single
+bounded export budget includes data discovery and the transaction. Real stage
+progress and Cancel stay responsive; history and project edits remain locked.
+Worker completion verifies the full payload before a bounded UI receipt/context
+check. Errors preserve rollback notes and the actual retained diagnostics path.
+Seventeen focused real-Qt checks cover review, queued handoff, heartbeat,
+permissions, stale contexts, progress, completion and cancellation behavior.
+
+Actual unmodified frozen build 589 executes this workflow through native desktop
+controls on a disposable original-authored human. Four explicit rights reviews,
+editor/destination/Blender selection, nine actual packaged Blender jobs, three
+native Unity import/reopen processes and final graphical admission pass. Source
+Python paths are removed from the launch environment; the MPFB profile is explicit.
+OS process observations bind the frozen app to its actual Blender/Unity children
+and packaged worker path. No worker/backend results are substituted. The UI
+reports the published project and finite diagnostic scope truthfully.
+
+An independent persisted audit checks all source/native/runtime proof chains,
+all 356 image hashes and dimensions, all 5,168,052 native position-byte comparisons,
+the complete 62-file delivery and unchanged original/project/package inventories.
+All eleven Unity resources and all 219 bundled host modules plus the entry point
+match the frozen sources. Receipt SHA-256:
+`ce017bd164679b0ccc70a223df5deda0d5b17614dcf5edb0787c482c41d72e1c`.
+
+Two actual native UI failure gates pass independently. Choosing the existing
+published destination reports an actionable error without creating another job
+or touching its output. A separate live Cancel test observes the current owned
+Blender process during runtime-source preparation, clicks Cancel export, verifies
+worker exit, `user_cancel` rather than deadline, no destination/publication, and
+the exact retained workdir in the visible error. Cancellation occurs before
+publication; it does not claim a new live graphical-Unity cancellation test or
+GUI postpublication rollback. The separately retained host/replay gates cover
+their documented scopes. All original/project/package bytes, six owner launcher/
+review files and the older 439 archive remain unchanged.
+
+Private records: `frozen-unity-ui589/summary.json`,
+`frozen-unity-ui589-independent-audit.json`, and
+`frozen-unity-ui589-negative-independent-audit.json`. The app and all owned
+children are terminal. The new private portable ZIP contains 409 files and
+passes exact extraction/payload validation plus the extracted executable's
+three-check self-test. Archive SHA-256:
+`ef9f58af3cba1339c956389b1a933771e45340290e767d33b5ec05a52a1b120d`.
+This preserves the owner package/launcher and grants no public distribution.
+
+Transaction commit `c85b52c` is pushed in draft PR #69 against the verified #68
+parent branch. Its preflight, four Qt checks and Windows workflow pass; the exact
+remote Windows artifact is independently audited against that head (207 bundled
+host modules, 204 worker files, eleven Unity resources and extracted startup).
+That head predates the desktop slice, so its package is not Unity UI evidence.
+Core CI exposes five missing-`jsonschema` errors, and native-fit setup received
+official Blender HTTP 403 before tests. The declared test-only 4.26.0 dependency
+matches the existing locally tested MIT package; runtime dependencies remain
+empty and nothing is installed locally. Correction commit `3571b50` is retained
+for the transaction PR until healthy integration jobs finish, avoiding workflow
+concurrency cancellation. Desktop/frozen evidence is ready for its separate
+reviewed slice; final-head remote checks, integration merges and later complete
+Unity/blueprint gates remain open.

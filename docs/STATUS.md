@@ -1,5 +1,18 @@
 # UCC development status — November 16, 2026
 
+**Normal Unity desktop/frozen acceptance (589):** The actual unchanged portable
+app passes explicit four-input rights review, installed editor/Blender selection,
+new-folder export, nine packaged Blender jobs and complete final Unity graphical
+admission. Independent audits accept the 62-file output, all 356 images and exact
+native position bytes. Existing-destination rejection and real live Blender
+cancellation pass through native UI with truthful diagnostics and preserved
+originals/package/owner launchers. The new private ZIP passes exact extraction and
+startup; no owner shortcut is replaced. The finite profile includes no shipping
+clips, artist/player or distribution approval. Transaction draft PR #69 is at
+`c85b52c`; core CI needs the already tested schema validator declared. Correction
+`3571b50` is held for that branch until its healthy Linux jobs finish. Desktop
+source is a separate slice; final remote checks and merges remain open.
+
 **Latest Unity transaction (582–584):** The complete production API now stages,
 atomically publishes and graphically verifies the final sealed private Unity
 project. Actual original-authored specimen acceptance and an independent
@@ -7,8 +20,8 @@ persisted-evidence audit pass: 62 delivered files, 178 states/two cameras,
 356 images, exact native position bytes, unchanged source/master/history.
 Final streaming-guard required-Qt regression: 1,449 passed / 14 existing skips in
 263.324 seconds, including genuine junction, nested-budget and traversal faults.
-The pre-streaming-fix frozen app passes its normal desktop export; current
-matching frozen export, PR checks
+The current matching frozen app also passes its normal desktop export and
+failure gates; final PR checks
 and merge remain pending. Three workers retain separate transaction, desktop
 and independent verification/package ownership. Existing 540/575/576 evidence
 is preserved. The

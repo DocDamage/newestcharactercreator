@@ -42,8 +42,9 @@ Current API evidence: actual complete transaction582 and independent persisted
 audit pass all 62 delivered files, 356 images and 5,168,052 exact native position
 byte comparisons while preserving source/master/history. Final streaming-guard
 regression590 passes 1,449 tests with 14 existing skips, including genuine Windows
-junction, nested-budget and traversal faults. A is not merged; current B/C acceptance and
-final-head remote checks remain pending. See the Unity acceptance record for
+junction, nested-budget and traversal faults. Current normal frozen589 positive,
+collision and live cancellation plus independent audits pass locally. A/B/C are
+not merged; final remote-head checks remain pending. See the Unity record for
 precise scope and private evidence identifiers.
 
 ## Requirement-to-evidence and remaining tasks
@@ -80,7 +81,7 @@ direct evidence. Requirements not fully evidenced are deliberately conservative.
 | EXPORT-01 / 11.1, 11.6 | Source-bound profiles; geometry/rig/morph/material/texture/scale/axis/root tests; truthful generated/offline/engine states | Scoped: Godot static and Unity preparation. Open: complete representative animation and target-engine validation through final user outputs. |
 | EXPORT-02 / 11.2 | Godot GLB, skeleton/rest/skin/morph/material scene and idle/walk/attack playback | Scoped: [static Godot](acceptance/UCC-P1-EXPORT-002.md), actual app/package. Open: body motion/representative clips/root/scale and broader version coverage. |
 | EXPORT-03 / 11.3 | Unreal skeletal FBX, per-clip AnimSequences, morph/material/bounds, Preview/PIE; later Manny/IK mapping | Open: actual installed Unreal import/reopen/playback and fault acceptance; file generation alone is insufficient. |
-| EXPORT-04 / 11.4 | Unity FBX, explicit Generic/Humanoid/Avatar choice, root/scale/morphs/clip playback | Scoped: [Unity](acceptance/UCC-P1-UNITY-001.md) source/bind/diagnostics. Open now: UNITY-A/B/C. Later: Avatar/usable clips, player builds and full engine gate. |
+| EXPORT-04 / 11.4 | Unity FBX, explicit Generic/Humanoid/Avatar choice, root/scale/morphs/clip playback | Scoped: [Unity](acceptance/UCC-P1-UNITY-001.md) source/bind/diagnostics, complete API and normal frozen589 private export/failure gates. Open: final remote checks/integration, Avatar/usable clips, player builds and full engine gate. |
 | EXPORT-05 / 11.4 | URP reference materials, Built-in fallback; explicit pipeline/version compatibility | Scoped: pinned Built-in Forward/D3D11 diagnostics only. Open: URP, lighting/material breadth, performance and supported release matrix; HDRP remains later explicit target. |
 | EXPORT-06 / 11.5 | Engine-neutral GLB/JSON/sprites; RPG Maker MZ layout preset; future Lumina adapter | Open: documented neutral handoff and MZ usage; Lumina deferred until schema supplied. Native Spine project writer is not promised; ordered layers/transforms/pivots are required. |
 | RENDER-01 / 10.1 | Saved projection/yaw/pitch/roll/lens/scale/anchor/framing/shadow/alpha/lighting profiles; side/4/8/16/custom orbit/perspective | Scoped: fixed four/eight-direction output. Open: full camera profile controls/persistence, asymmetry-safe real left/right rendering and optional mirroring. |
@@ -115,7 +116,7 @@ direct evidence. Requirements not fully evidenced are deliberately conservative.
 | QA-04 / 16.2 | Whole smoke matrix: generate/extreme morph/swap/A-T rig/viseme/actions/three engines/2D/restart/kill/offline AI | Open: end-to-end combined specimen acceptance; individual scoped records do not close this gate. |
 | QA-05 / 16.3 | Head-specific CI checks and independently inspected artifacts, no private/licensed content/model downloads in CI | Ongoing invariant. Open: current milestone draft PR and exact-head checks/artifact audits; never cancel healthy jobs on observer timeout. |
 | QA-06 / 14, 16.3 | Enforced lint/format, critical-area type checking, pytest and actual schema validation with appropriate dependency/version pinning | Open: audit configured tools and existing environment, wire missing quality gates without silent installation or unused dependencies. JSON parseability alone is not schema validation. |
-| RELEASE-01 / 15.7 | Current frozen Windows normal workflow, installer/updater/recovery, opt-in crash diagnostics, signing/channels if distributing | Scoped: earlier Godot/sprite frozen app only. Open: UNITY-C and full installation/update/rollback/product acceptance. Preserve owner launcher until replacement verified. |
+| RELEASE-01 / 15.7 | Current frozen Windows normal workflow, installer/updater/recovery, opt-in crash diagnostics, signing/channels if distributing | Scoped: Godot/sprite and current Unity589 normal portable app/export/collision/livecancel, exact ZIP/extraction/startup. Open: final integration and full installation/update/rollback/product acceptance. Owner launcher remains preserved. |
 | RELEASE-02 / 1, 15.7, 16 | Visual/usability approval, performance/VRAM/broad hardware, engine/version/player builds, documentation and distribution decision | Open: final audit of every row and all explicit blueprint requirements; only then project completion. |
 
 ## Integration and GitHub state at resumption

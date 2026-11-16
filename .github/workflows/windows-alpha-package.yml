@@ -10,6 +10,7 @@ on:
       - 'src/ucc/jobs/**'
       - 'blender_bridge/**'
       - 'engine_adapters/godot/**'
+      - 'engine_adapters/unity/**'
       - 'ci/build_worker_payload.py'
       - 'src/ucc/animations/**'
       - 'src/ucc/ai/**'
@@ -63,6 +64,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Qt diagnostic tests failed' }
           python -m unittest discover -s tests -p 'test_motion_qt.py' -v
           if ($LASTEXITCODE -ne 0) { throw 'Cached motion transport tests failed' }
+          python -m unittest discover -s tests -p 'test_unity_export_dialog.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Unity per-use review dialog tests failed' }
+          python -m unittest discover -s tests -p 'test_unity_export_desktop.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Unity desktop export workflow tests failed' }
       - name: Freeze windowed desktop application
         shell: pwsh
         run: |
