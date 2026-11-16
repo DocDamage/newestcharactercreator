@@ -136,6 +136,17 @@ native/context fixtures are isolated under tests/fixtures and explicitly marked;
 they are not the actual source/retention proof. Existing native validators run
 against the genuine case009 output in the real IO cases above.
 
+## CI budget follow-up
+
+Initial commit dc64348's Windows Core Python 3.12 job reached the configured
+twelve-minute job ceiling while passing the existing Unreal export guard tests.
+Its remaining legacy/schema steps did not run; the cancellation is retained as
+nonpassing evidence. The other three Core lanes passed. A follow-up raises only
+the Core matrix job ceiling to twenty minutes, covering setup, full discovery
+and the earlier guardrail suites. Test commands, matrix, dependencies, assertions
+and production deadlines remain unchanged. The local full/IO records above keep
+their original identities; new exact-head remote acceptance remains pending.
+
 ## Limits, dependencies and next action
 
 The same exact four source permissions from author record379 and seven code
