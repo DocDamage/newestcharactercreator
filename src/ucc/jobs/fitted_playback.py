@@ -28,6 +28,7 @@ from .runner import BlenderJobRunner
 from .native_body import NativeBodyPreview
 from .native_fit import NativeFitPreview
 from .native_playback import NativePlayback,prepare_native_playback
+from .native_registered_limits import require_manual_native_source
 
 
 @dataclass(frozen=True,slots=True)
@@ -62,6 +63,7 @@ def prepare_fitted_comparison(store: ProjectStore,preview: NativeFitPreview,*,so
                               permission: LicensePolicy,blender_exe: Path,worker_script: Path,
                               cancel: Event | None=None,timeout_s: float=300) -> FittedComparison:
     """Use both guarded production coordinators; never publish a partial pair."""
+    require_manual_native_source(preview.original_preview)
     options=dict(source_fbx=source_fbx,permission=permission,blender_exe=blender_exe,
                  worker_script=worker_script,cancel=cancel,timeout_s=timeout_s)
     original=prepare_native_playback(store,preview.original_preview,**options)
@@ -72,6 +74,7 @@ def prepare_fitted_comparison(store: ProjectStore,preview: NativeFitPreview,*,so
 def prepare_fitted_playback(store: ProjectStore,preview: NativeFitPreview,*,source_fbx: Path,
                             permission: LicensePolicy,blender_exe: Path,worker_script: Path,
                             cancel: Event | None=None,timeout_s: float=300) -> FittedPlayback:
+    require_manual_native_source(preview.original_preview)
     allowed,reason=permission.allow('local_preview')
     if not allowed:raise AssetPolicyError(reason)
     def check_cancel():

@@ -1,5 +1,5 @@
 """Project/revision/license-bound cached animation preparation on private copies."""
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from hashlib import sha256
 import json
 from pathlib import Path
@@ -18,6 +18,8 @@ from .native_evidence import bound_file, read_native_timeline
 from .native_skin_evidence import validate_reopen_report
 from .protocol import JobRequest
 from .runner import BlenderJobRunner
+from .native_source_authority import NativeSourceAuthority, NativeProofReceipt, NativeProofCapture
+from .target_action_context import operation_budget
 
 
 @dataclass(frozen=True,slots=True)
@@ -30,11 +32,14 @@ class NativePlayback:
     job_id: str
     private_manifest: str
     surface_verification_job_id: str=""
+    source_authority: NativeSourceAuthority | None=None
+    proof_receipt: NativeProofReceipt | None=None
 
 
-def prepare_native_playback(store: ProjectStore, preview: NativeBodyPreview, *, source_fbx: Path,
+def _prepare_native_playback(store: ProjectStore, preview: NativeBodyPreview, *, source_fbx: Path,
                             permission: LicensePolicy, blender_exe: Path, worker_script: Path,
-                            cancel: Event | None=None, timeout_s: float=300, source_guard=None) -> NativePlayback:
+                            cancel: Event | None=None, timeout_s: float=300, source_guard=None,
+                            _source_authority=None, _proof=None) -> NativePlayback:
     allowed,reason=permission.allow("local_preview")
     if not allowed:raise AssetPolicyError(reason)
     def check_cancel():
@@ -52,6 +57,10 @@ def prepare_native_playback(store: ProjectStore, preview: NativeBodyPreview, *, 
     bindings=dict(report.get("bindings",{}))
     if bindings.get("source_sha256")!=preview.source_sha256 or bindings.get("master_sha256")!=master_sha:
         raise ValidationError("Animation preview identity differs")
+    if _proof is not None:
+        for path in (folder/'target_timeline.json', folder/'review_motion.blend',
+                     folder/'source_snapshot.json', Path(preview.mapping_profile_used)):
+            _proof.before(path)
     timeline=bound_file(folder,report["timeline"],"target_timeline.json",64*1024*1024,cancel_check=check_cancel)
     review=bound_file(folder,report["visual_review_blend"],"review_motion.blend",512*1024*1024,cancel_check=check_cancel)
     snapshot=folder/"source_snapshot.json";profile_path=Path(preview.mapping_profile_used)
@@ -65,6 +74,12 @@ def prepare_native_playback(store: ProjectStore, preview: NativeBodyPreview, *, 
     try:source=json.loads(payload,object_pairs_hook=_pairs)
     except (ValueError,UnicodeError,RecursionError) as error:raise ValidationError("Invalid animation snapshot JSON") from error
     validate_snapshot(source,preview.source_sha256,cancel_check=check_cancel)
+    if _source_authority is not None:
+        _source_authority.require_snapshot(source, bindings['snapshot_sha256'])
+        for path, expected_hash in ((snapshot, bindings['snapshot_sha256']),
+                (profile_path, map_sha), (timeline, report['timeline']['sha256']),
+                (review, report['visual_review_blend']['sha256'])):
+            _proof.admit(path, expected_hash)
     data,_=read_native_timeline(folder,report,source,profile,bindings,cancel_check=check_cancel)
     options={**bindings,"review_sha256":report["visual_review_blend"]["sha256"],"timeline_sha256":report["timeline"]["sha256"]}
     staged={"candidate.blend":master,"review_motion.blend":review,"target_timeline.json":timeline,
@@ -92,7 +107,9 @@ def prepare_native_playback(store: ProjectStore, preview: NativeBodyPreview, *, 
     surface_report=None;surface_job_id=""
     if "surface_review" in result.details:
         record=result.details["surface_review"]
+        if _proof is not None: _proof.before(output/'motion_contacts.json')
         contact=bound_file(output,record,"motion_contacts.json",16*1024*1024,cancel_check=check_cancel)
+        if _proof is not None: _proof.admit(contact, record['sha256'])
         check=JobRequest.new("verify_native_surface_review",input_project="candidate.blend",
             options={**options,"surface_review_sha256":record["sha256"]})
         if source_guard is not None: source_guard()
@@ -104,6 +121,48 @@ def prepare_native_playback(store: ProjectStore, preview: NativeBodyPreview, *, 
             if (verify_folder/name).is_symlink() or not (verify_folder/name).is_file() or _digest(verify_folder/name,cancel)!=digest:
                 raise ProjectStorageError("Surface verifier changed staged originals")
         surface_report=verified.details;surface_job_id=check.job_id
+    if _proof is not None:
+        _proof.before(output/'motion_skin.json')
+        _proof.before(output/'motion_skin.bin')
     cache=read_motion_cache(output,result.details,options,data,cancel_check=check_cancel,profile=profile,surface_verification=surface_report)
+    if _proof is not None:
+        _proof.admit(output/'motion_skin.json', result.details['manifest']['sha256'])
+        _proof.admit(output/'motion_skin.bin', sha256(cache.packed).hexdigest())
     unchanged()
     return NativePlayback(project.project_id,project.revision,master_sha,preview.source_sha256,cache,request.job_id,str(output/"motion_skin.json"),surface_job_id)
+
+
+def prepare_native_playback(store: ProjectStore, preview: NativeBodyPreview, *, source_fbx: Path,
+        permission: LicensePolicy, blender_exe: Path, worker_script: Path,
+        cancel: Event | None=None, timeout_s: float=300, source_guard=None) -> NativePlayback:
+    options = dict(source_fbx=source_fbx, permission=permission, blender_exe=blender_exe,
+                   worker_script=worker_script, cancel=cancel, timeout_s=timeout_s, source_guard=source_guard)
+    authority = getattr(preview, 'source_authority', None)
+    if authority is None:
+        return _prepare_native_playback(store, preview, **options)
+    if type(authority) is not NativeSourceAuthority:
+        raise ValidationError('Registered playback source authority type differs')
+    authority.require_source(source_fbx, permission)
+    if (preview.source_sha256 != authority.source_sha256
+            or type(preview.proof_receipt) is not NativeProofReceipt):
+        raise ValidationError('Registered playback requires its original admitted body proof receipt')
+    with operation_budget(cancel, timeout_s) as budget:
+        proof = NativeProofCapture(budget, previous=preview.proof_receipt)
+
+        def guarded():
+            budget.check()
+            if source_guard is not None: source_guard()
+            proof.check()
+            authority.guard(cancel=budget.cancel, timeout_s=budget.remaining())
+            budget.check()
+
+        guarded()
+        options.update(cancel=budget.cancel, timeout_s=budget.remaining(), source_guard=guarded,
+                       _source_authority=authority, _proof=proof)
+        result = _prepare_native_playback(store, preview, **options)
+        receipt = proof.seal()
+        authority.guard(cancel=budget.cancel, timeout_s=budget.remaining())
+        if not receipt.identities_current():
+            raise ProjectStorageError('Playback proof changed at final source permission fence')
+        budget.check()
+        return replace(result, source_authority=authority, proof_receipt=receipt)

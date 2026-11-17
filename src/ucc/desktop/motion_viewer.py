@@ -20,8 +20,9 @@ from .motion_gpu import SkinRenderer
 class MotionCanvas(QOpenGLWidget):
     failed=Signal(str)
 
-    def __init__(self,cache: MotionCache,parent=None):
+    def __init__(self,cache: MotionCache,parent=None,*,paint_guard=None):
         super().__init__(parent)
+        self._paint_guard=paint_guard
         format=QSurfaceFormat();format.setVersion(3,3);format.setProfile(QSurfaceFormat.CoreProfile)
         format.setDepthBufferSize(24);self.setFormat(format)
         self.cache=cache;self.frame=0;self.renderer=None;self.error=""
@@ -47,6 +48,12 @@ class MotionCanvas(QOpenGLWidget):
             self.error=error;self.failed.emit(error)
 
     def paintGL(self):
+        guard=getattr(self,'_paint_guard',None)
+        if guard is not None:
+            try:
+                if not guard():raise ValidationError('Registered source authority changed')
+            except Exception as error:
+                self._fail(str(error));return
         if self.renderer is None or self.error:return
         try:
             dpr=self.devicePixelRatioF()
@@ -164,11 +171,17 @@ class MotionViewer(QWidget):
 
     def show_cache(self,cache: MotionCache):
         self.clear();self.cache=cache;self._base_cache=cache;self.clock=PlaybackClock(cache.frame_count,cache.fps,loop=self.loop.isChecked())
-        self.canvas=MotionCanvas(cache,self);self.canvas.failed.connect(self._failed)
+        self.canvas=self._make_canvas(cache);self._connect_canvas(self.canvas)
         self.layout.insertWidget(1,self.canvas,1)
         self.scrub.setRange(0,cache.frame_count-1);self._enable(True)
         self.status.setText(f"Verified cached motion: {cache.frame_count} frames at {cache.fps:g} fps • {cache.vertex_count:,} visible vertices • {cache.triangle_count:,} triangles")
         self._present()
+
+    def _make_canvas(self,cache: MotionCache):
+        return MotionCanvas(cache,self)
+
+    def _connect_canvas(self,canvas):
+        canvas.failed.connect(self._failed)
 
     def show_comparison(self,original: MotionCache,fitted: MotionCache):
         if (original.frame_count!=fitted.frame_count or original.fps!=fitted.fps or

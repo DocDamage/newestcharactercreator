@@ -49,6 +49,9 @@ def start_native_body(window):
     profile=Path(pane.native_body_profile.text()) if pane.native_body_profile.text().strip() else None
     include_hands=pane.native_include_hands.isChecked()
     store=window.controller.store
+    if (getattr(window,'_registered_native_binding',None) is not None
+            or getattr(window,'_registered_native_pending',None) is not None):
+        window._clear_native_review()
     cancel=Event()
     window._native_review=None
     pane.open_native_animation.setEnabled(False);pane.open_native_renders.setEnabled(False)
@@ -88,6 +91,8 @@ def native_result_text(result):
 
 def open_native_result(window, *, rendered=False):
     result=getattr(window,"_native_review",None)
+    if getattr(result,'source_authority',None) is not None:
+        window._error('Private-open actions are unavailable for registered native playback; validate through its guarded viewer');return
     if result is None or result.worker_report is None:
         window._error("Complete a private FBX body preview first");return
     try:
@@ -107,6 +112,9 @@ def open_native_result(window, *, rendered=False):
 
 def start_native_playback(window):
     result=getattr(window,"_native_review",None)
+    if getattr(result,'source_authority',None) is not None:
+        from .registered_native_workflow import start_registered_native_playback
+        start_registered_native_playback(window);return
     if window.jobs.busy:window._error("Another local task is still running");return
     if result is None or window.controller.store is None or window.controller.dirty:
         window._error("Complete a private FBX preview on the saved character first");return

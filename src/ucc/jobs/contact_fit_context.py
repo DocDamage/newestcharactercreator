@@ -15,6 +15,7 @@ from .native_fit_evidence import read_json_record
 from .cached_job_evidence import cached_job_details
 from .native_body import NativeBodyPreview
 from .native_playback import NativePlayback
+from .native_registered_limits import require_manual_native_source
 
 
 @dataclass(frozen=True,slots=True)
@@ -30,6 +31,7 @@ class ContactFitContext:
 
 def contact_context(store: ProjectStore,preview: NativeBodyPreview,playback: NativePlayback,*,source_fbx: Path,
                     cancel: Event | None=None,cancel_check=lambda:None,require_crossings: bool=True) -> ContactFitContext:
+    require_manual_native_source(preview, playback)
     cancel_check();project=store.load()
     if project.master_blend is None:raise ValidationError('Contact fitting requires a saved character master')
     master,master_sha=_master_file(store,project.master_blend)
