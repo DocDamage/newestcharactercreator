@@ -1,3 +1,43 @@
+## Registered clip diagnostics — source acceptance checkpoint (November 17, 2026)
+
+E PR #79 merged normally as `25e6fa3277219a5dc91757b4f0e6376b4737e45e`, with
+the exact accepted tree. Its ten applicable fresh-main checks pass. The obsolete
+E local/remote branches were pruned; the detached proof checkout preserves all
+1,003 raw files. Earlier E draft/pending notices below are historical checkpoints.
+
+[UCC-P1-MOTION-DIAGNOSTIC-001](acceptance/UCC-P1-MOTION-DIAGNOSTIC-001.md)
+adds selected registered-clip **position-only diagnostics**. The current-source
+API and independent numerical/lineage audit pass (`c75800e70d0c` / `ced0ba096db8`),
+with all twelve preservation flags true and no subprocess execution. Root-head
+and source-hip travel remain distinct; raw and hip-translation-only endpoint
+gaps issue no automatic loop, gait, walking or usable-action verdict.
+
+Full required-Qt regression and its independent audit pass on the 1,015-file
+source freeze: **1,959 tests, 1,945 passed and fourteen unchanged privilege skips**.
+All earlier E full-suite IDs are retained, plus its later security test and
+56 F additions. The full-run preservation claim covers its 60 raw roots and
+listed files/catalog namespace; the separate actual API protects 76 prior cases.
+Fresh-process reload and one fresh-budget guard now pass independent audit
+(`210d31c8173b` / `7a668d1c60e4`): the report matches the primary, inspection takes
+16.516 s, 112.172 s elapse after return before the 16.312-second guard, and all
+81 prior cases remain preserved. Normal source GUI restart (`e0c983830d17` /
+`2e8200541ff8`) passes finite report/cleanup/preservation admission after the
+primary confirms known QA writers were closed. Its actual diagnostic busy stage
+and review-completion predicates are observed; no source-review BUSY polling,
+independent thread-affinity or broad BASE/OS-quiescence proof is claimed. Initial
+GUI57580 remains qualified for overlap; its historical admission is unchanged.
+
+Committed implementation `f2657595` is source-verified. Required Qt diagnostic
+suites are wired into desktop/package CI; publication review and exact final-head
+CI/artifact/generic-startup evidence are recorded separately with the PR and
+private publication metadata. This checkpoint does not assert future check
+results. Normal packaged diagnostic feature execution remains **UNVERIFIED**.
+The initial API result remains guard-called-false; the separate fresh-process
+result supplies the guard proof. No dependency, engine-use, AI, redistribution or
+shipping grant is added; all broader approval flags remain false.
+
+---
+
 ## Saved Godot preview viewer — current checkpoint (November 17, 2026)
 
 [UCC-P1-GODOT-MOTION-001E](acceptance/UCC-P1-GODOT-MOTION-001E.md) adds explicit
