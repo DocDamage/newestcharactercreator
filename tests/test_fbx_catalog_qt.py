@@ -2,6 +2,8 @@
 import os
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 from pathlib import Path
+from hashlib import sha256
+import json
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -15,6 +17,8 @@ except ImportError as error:
     QT_IMPORT_ERROR = str(error)
 
 from ucc.animations.catalog import AnimationCatalog
+from ucc.animations.metadata import AnimationMetadataError
+from ucc.animations.source_clip_clock import SourceClipClock
 from ucc.jobs.runner import WorkerFailure
 from ucc.library.provenance import AssetPolicyError, LicensePolicy
 
@@ -28,7 +32,7 @@ class FbxCatalogQtTests(unittest.TestCase):
 
     def setUp(self):
         temporary = tempfile.TemporaryDirectory(); self.addCleanup(temporary.cleanup)
-        self.root = Path(temporary.name); self.database = self.root/'catalog.db'
+        self.root = Path(temporary.name).resolve(); self.database = self.root/'catalog.db'
         self.controller = DesktopController(); self.controller.create(self.root/'character', 'Catalog test')
         self.window = MainWindow(self.controller); self.addCleanup(self.window.deleteLater)
         self.source = self.root/'source.fbx'; self.source.write_bytes(b'SYNTHETIC_QT_NOT_FBX')
@@ -59,11 +63,14 @@ class FbxCatalogQtTests(unittest.TestCase):
         with AnimationCatalog(self.database) as catalog: self.assertFalse(catalog.library.get('unit-source').policy.reviewed)
 
     def test_reviewed_fbx_uses_captured_policy_source_jobs_and_cancellation(self):
-        with patch('ucc.desktop.animation_catalog.measure_catalog_fbx', return_value={'unit-result': True}) as measure:
+        clock = SourceClipClock(2, 301, 300, 30.)
+        with patch('ucc.desktop.animation_catalog.measure_catalog_fbx', return_value={'unit-result': True}) as measure, \
+                patch.object(AnimationCatalog, 'source_clock', return_value=clock):
             self.pane.index.click(); kind, operation, kwargs = self.queued.pop()
             self.assertEqual(kind, 'fbx_catalog'); self.assertIn('cancel', kwargs)
             result = operation()
             self.assertEqual(result['source'], {'unit-result': True})
+            self.assertEqual(result['source_clock'], clock.to_dict())
             self.assertEqual(len(result['catalog']), 1)
             self.assertEqual(measure.call_args.args, (self.database, 'unit-source'))
             self.assertIs(measure.call_args.kwargs['cancel'], kwargs['cancel'])
@@ -113,11 +120,95 @@ class FbxCatalogQtTests(unittest.TestCase):
                   'clips': [{'name': 'Source Action', 'frame_count': 300, 'fps': 30.}]}
         second = {**source, 'asset_id': 'second'}
         self.window._work_kind = 'fbx_catalog'
-        self.window._job_success({'source': source, 'catalog': [source, second]})
+        self.window._job_success({'source': source, 'catalog': [source, second],
+                                 'source_clock': SourceClipClock(2,301,300,30.).to_dict()})
         self.assertEqual(self.pane.catalog.rowCount(), 2)
         self.assertEqual(self.controller.require_project(), project)
         self.assertIn('No animation was applied', self.window.log.toPlainText())
         self.assertIn('unverified', self.window.log.toPlainText())
+
+    def test_real_stored_receipt_clock_is_added_to_normal_result_and_displayed_without_rebasing(self):
+        from fixtures.fbx_snapshot_contract import snapshot, report
+        project = self.controller.require_project()
+        def measured(database, asset_id, **_):
+            # NONSHIPPING source snapshot fixture: no Blender/FBX execution proof.
+            with AnimationCatalog(database) as catalog:
+                entry = catalog.library.get(asset_id)
+                data = snapshot(); data['source_sha256'] = sha256(self.source.read_bytes()).hexdigest()
+                data.update(first_frame=11,last_frame=14,fps=60.)
+                for i,row in enumerate(data['frames']):row['frame']=11+i
+                payload=json.dumps(data).encode()
+                intake={**report(data,payload),'first_frame':11,'last_frame':14,'fps':60.,
+                        'two_workers_agree':True,'source_bytes_unchanged':True,'policy':entry.policy.to_dict()}
+                catalog.record_fbx_intake(asset_id,data,intake,expected_entry=entry)
+                return catalog.get(asset_id).to_dict()
+        with patch('ucc.desktop.animation_catalog.measure_catalog_fbx',side_effect=measured):
+            self.pane.index.click();kind,operation,_=self.queued.pop();result=operation()
+        expected=SourceClipClock(11,14,4,60.)
+        self.assertEqual(result['source_clock'],expected.to_dict())
+        self.assertNotIn('source_clock',result['source'])
+        with AnimationCatalog(self.database,read_only=True) as catalog:
+            receipt=catalog.db.execute('SELECT receipt_json FROM animation_fbx_intakes').fetchone()[0]
+            self.assertEqual(catalog.source_clock('unit-source'),expected)
+            self.assertEqual(catalog.get('unit-source').to_dict(),result['source'])
+            self.assertEqual(catalog.db.execute('SELECT receipt_json FROM animation_fbx_intakes').fetchone()[0],receipt)
+        self.window._work_kind=kind;self.window._job_success(result)
+        self.errors.assert_not_called()
+        text=self.window.log.toPlainText()
+        self.assertIn('source frames: 11–14',text)
+        self.assertIn('Sample span: 0.050000 s; nominal sample coverage: 0.066667 s (4 samples)',text)
+        self.assertIn('stored measured-source metadata only',text)
+        self.assertIn('No animation was applied',text)
+        self.assertEqual(self.controller.require_project(),project)
+
+    def test_missing_post_measurement_clock_fails_instead_of_inventing_an_origin(self):
+        with patch('ucc.desktop.animation_catalog.measure_catalog_fbx',return_value={'unit-result':True}), \
+                patch.object(AnimationCatalog,'source_clock',return_value=None):
+            self.pane.index.click();_,operation,_=self.queued.pop()
+            with self.assertRaisesRegex(AnimationMetadataError,'source clock'):operation()
+        self.assertNotIn('Indexed',self.window.log.toPlainText())
+
+    def test_worker_failure_propagates_before_any_clock_read(self):
+        with patch('ucc.desktop.animation_catalog.measure_catalog_fbx',side_effect=WorkerFailure('Synthetic worker failed')), \
+                patch.object(AnimationCatalog,'source_clock') as clock:
+            self.pane.index.click();_,operation,_=self.queued.pop()
+            with self.assertRaisesRegex(WorkerFailure,'Synthetic worker failed'):operation()
+            clock.assert_not_called()
+
+    def test_cancel_during_clock_read_returns_no_completion_and_retains_catalog_record(self):
+        self.pane.index.click();_,operation,kwargs=self.queued.pop()
+        def captured_clock(_asset_id):
+            kwargs['cancel'].set()
+            return SourceClipClock(2,301,300,30.)
+        with patch('ucc.desktop.animation_catalog.measure_catalog_fbx',return_value={'unit-result':True}), \
+                patch.object(AnimationCatalog,'source_clock',side_effect=captured_clock):
+            with self.assertRaisesRegex(WorkerFailure,'completed catalog records are retained'):operation()
+        self.assertNotIn('Indexed',self.window.log.toPlainText())
+        with AnimationCatalog(self.database) as catalog:self.assertIsNotNone(catalog.get('unit-source'))
+
+    def test_cancel_after_measure_skips_clock_read_and_retains_completed_record_scope(self):
+        self.pane.index.click();_,operation,kwargs=self.queued.pop()
+        def completed_measure(*_args,**_kwargs):
+            kwargs['cancel'].set()
+            return {'unit-result':True}
+        with patch('ucc.desktop.animation_catalog.measure_catalog_fbx',side_effect=completed_measure), \
+                patch.object(AnimationCatalog,'source_clock') as clock:
+            with self.assertRaisesRegex(WorkerFailure,'completed catalog records are retained'):operation()
+            clock.assert_not_called()
+        self.assertNotIn('Indexed',self.window.log.toPlainText())
+
+    def test_malformed_completion_clock_uses_normal_error_without_replacing_catalog_or_log(self):
+        from ucc.desktop.animation_catalog import finish_index
+        source={'asset_id':'unit-source','clips':[{'name':'Synthetic','frame_count':300,'fps':30.}]}
+        good=SourceClipClock(2,301,300,30.).to_dict()
+        for raw in (None,{**good,'source_first_frame':True},{**good,'schema_version':True},
+                    {**good,'sample_span_s':float('nan')},{**good,'frame_count':299},
+                    {**good,'evidence_scope':'FRESH_ENGINE_APPROVAL'}):
+            self.errors.reset_mock();self.window.log.setPlainText('Previous source result')
+            finish_index(self.window,{'source':source,'catalog':[source],'source_clock':raw})
+            self.assertEqual(self.window.log.toPlainText(),'Previous source result')
+            self.assertEqual(self.pane.catalog.rowCount(),0)
+            self.assertIn('Source-clock display did not complete',self.errors.call_args.args[0])
 
 
 if __name__ == '__main__': unittest.main()

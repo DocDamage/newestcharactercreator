@@ -16,6 +16,7 @@ from ucc.animations.metadata import (
     AnimationInspection, AnimationMetadataError, ClipMetadata, inspect_animation_file,
 )
 from ucc.core.errors import ValidationError
+from ucc.animations.source_clip_clock import SourceClipClock
 from ucc.library.provenance import AssetEntry, AssetLibrary, AssetPolicyError, LicensePolicy
 
 
@@ -230,6 +231,71 @@ class AnimationCatalog:
         return IndexedAnimation(entry.asset_id, entry.sha256, row[0], row[1], row[2],
                                 tuple(json.loads(row[3])), tuple(clips),
                                 tuple(json.loads(row[4])), _policy_rights(entry.policy))
+
+    def source_clock(self, asset_id: str) -> SourceClipClock | None:
+        """Checked stored FBX timing, not fresh bytes or permission approval.
+
+        Missing/non-FBX/unmeasured sources return None. A measured source must
+        retain a coherent receipt. Only catalog metadata is read in one snapshot.
+        """
+        self.db.execute('SAVEPOINT ucc_source_clock')
+        try:
+            return self._stored_source_clock(asset_id)
+        finally:
+            self.db.execute('RELEASE ucc_source_clock')
+
+    def _stored_source_clock(self, asset_id: str) -> SourceClipClock | None:
+        from ucc.animations.catalog_clip import MAX_RECEIPT_BYTES, checked_receipt
+
+        identity = self.db.execute("""SELECT typeof(format),length(CAST(format AS BLOB)),substr(format,1,32),
+            typeof(status),length(CAST(status AS BLOB)),substr(status,1,64)
+            FROM animation_sources WHERE asset_id=?""", (asset_id,)).fetchone()
+        if identity is None:
+            return None
+        if (identity[0] != 'text' or type(identity[1]) is not int or not 0 < identity[1] <= 32
+                or identity[3] != 'text' or type(identity[4]) is not int or not 0 < identity[4] <= 64):
+            raise AnimationMetadataError('Malformed source clock format/status')
+        if identity[2] != 'fbx':
+            return None
+        receipt_size = self.db.execute("""SELECT typeof(receipt_json),
+            length(CAST(receipt_json AS BLOB)) FROM animation_fbx_intakes
+            WHERE asset_id=?""", (asset_id,)).fetchone()
+        clip_sizes = self.db.execute("""SELECT typeof(metadata_json),
+            length(CAST(metadata_json AS BLOB)) FROM animation_clips
+            WHERE asset_id=? LIMIT 2""", (asset_id,)).fetchall()
+        if receipt_size is None:
+            if identity[5] == 'REQUIRES_CONVERSION' and not clip_sizes:
+                return None
+            raise AnimationMetadataError('Measured FBX has no source clock receipt')
+        sizes = [receipt_size, *clip_sizes]
+        source_sizes = self.db.execute("""SELECT typeof(bone_names_json),
+            length(CAST(bone_names_json AS BLOB)),typeof(warnings_json),
+            length(CAST(warnings_json AS BLOB)) FROM animation_sources
+            WHERE asset_id=?""", (asset_id,)).fetchone()
+        entry_sizes = self.db.execute("""SELECT typeof(license_json),
+            length(CAST(license_json AS BLOB)),typeof(source_path),
+            length(CAST(source_path AS BLOB)) FROM asset_sources
+            WHERE asset_id=?""", (asset_id,)).fetchone()
+        if entry_sizes is None:
+            return None
+        sizes += [(source_sizes[0], source_sizes[1]), (source_sizes[2], source_sizes[3])]
+        entry_valid = all(kind == 'text' and type(size) is int and 0 < size <= 128*1024
+                          for kind, size in ((entry_sizes[0], entry_sizes[1]),
+                                             (entry_sizes[2], entry_sizes[3])))
+        if (len(clip_sizes) != 1 or not entry_valid
+                or any(kind != 'text' or type(size) is not int or not 0 < size <= MAX_RECEIPT_BYTES
+                       for kind, size in sizes)):
+            raise AnimationMetadataError('Source clock metadata is missing, oversized or not text')
+        try:
+            indexed = self.get(asset_id)
+            raw = self.db.execute('SELECT receipt_json FROM animation_fbx_intakes WHERE asset_id=?',
+                                  (asset_id,)).fetchone()[0]
+            receipt = checked_receipt(indexed, raw, indexed.sha256)
+        except (ValueError, TypeError, KeyError, RecursionError, UnicodeError, OverflowError) as error:
+            raise AnimationMetadataError('Malformed stored source clock metadata') from error
+        observed = receipt['observation']
+        return SourceClipClock(observed['first_frame'], observed['last_frame'],
+                               observed['frame_count'], observed['fps'])
 
     def list_sources(self) -> tuple[IndexedAnimation, ...]:
         ids = self.db.execute("SELECT asset_id FROM animation_sources ORDER BY asset_id").fetchall()

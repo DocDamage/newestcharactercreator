@@ -6,6 +6,8 @@ from threading import Event
 from PySide6.QtWidgets import QFileDialog
 
 from ucc.animations.catalog import AnimationCatalog
+from ucc.animations.metadata import AnimationMetadataError
+from ucc.animations.source_clip_clock import SourceClipClock
 from ucc.core.errors import UCCError
 from ucc.jobs.fbx_catalog import measure_catalog_fbx
 from ucc.jobs.runner import WorkerFailure
@@ -61,17 +63,40 @@ def start_index(window, file: str, asset_id: str, provider: str, license_name: s
             catalog.index_file(asset_id, source, policy)
         result = measure_catalog_fbx(database, asset_id, blender_exe=executable, worker_script=worker,
             jobs_root=jobs_root, cancel=cancel)
+        if cancel.is_set():
+            raise WorkerFailure('FBX source-clock display cancelled; completed catalog records are retained')
         with AnimationCatalog(database) as catalog:
             rows = [item.to_dict() for item in catalog.list_sources()]
-        return {'source': result, 'catalog': rows}
+            clock = catalog.source_clock(asset_id)
+            if clock is None:
+                raise AnimationMetadataError('Measured FBX has no checked stored source clock')
+        clock_data = clock.to_dict()
+        if cancel.is_set():
+            raise WorkerFailure('FBX source-clock display cancelled; completed catalog records are retained')
+        return {'source': result, 'catalog': rows, 'source_clock': clock_data}
 
     window._submit('fbx_catalog', measured, cancel=cancel)
 
 
 def finish_index(window, result: dict) -> None:
-    source = result['source']; clip, = source['clips']
+    try:
+        source = result['source']; clip, = source['clips']
+        raw = result['source_clock']
+        clock = SourceClipClock(raw['source_first_frame'], raw['source_last_frame'], raw['frame_count'], raw['fps'])
+        if (type(raw['schema_version']) is not int or raw != clock.to_dict()
+                or type(clip['frame_count']) is not int or type(clip['fps']) not in (int, float)
+                or (clip['frame_count'], clip['fps']) != (clock.frame_count, clock.fps)):
+            raise AnimationMetadataError('Stored source clock differs from the measured clip')
+    except (AnimationMetadataError, KeyError, TypeError, ValueError, OverflowError) as error:
+        window._error('Source-clock display did not complete. Existing catalog records are retained. '
+                      'Refresh the catalog before selecting this source. ' + str(error))
+        return
     window.animations.display_catalog(result['catalog'])
     window.log.setPlainText(f"Indexed {source['asset_id']}: {clip['name']}\n"
         f"Complete source clip: {clip['frame_count']} frames at {clip['fps']:g} fps.\n"
+        f'Stored Blender-imported source frames: {clock.source_first_frame}–{clock.source_last_frame}.\n'
+        f'Sample span: {clock.sample_span_s:.6f} s; nominal sample coverage: '
+        f'{clock.nominal_coverage_s:.6f} s ({clock.frame_count} samples).\n'
+        'Clock display uses checked stored measured-source metadata only.\n'
         'Two independent Blender runs agree; the original source is unchanged.\n'
         'No animation was applied to the character. Character preview, visual quality and engine import remain unverified.')

@@ -1,3 +1,23 @@
+## Measured source clock admission - H
+
+[UCC-P1-MOTION-SOURCE-ADMISSION-001](acceptance/UCC-P1-MOTION-SOURCE-ADMISSION-001.md)
+adds a checked stored source-clock accessor and explicit frame-origin, sample-span,
+and nominal-coverage readout to existing FBX indexing. Clip, receipt and project
+binding identities remain unchanged. Local selected regression passes **84 tests,
+zero skips** with required Qt. Two actual Blender 5.3 workers agree on one private
+Motifect source, frames 1–300 at 30 fps; fresh-process read-only reopen passes.
+The final clock-only check repeats no native measurement.
+
+The user's Fab acquisition attestation is recorded. Existing per-source local
+preview policy remains unchanged; AI input, raw redistribution, and engine use
+remain blocked. The pack's AI-generated provenance remains recorded. Private
+source/snapshots stay outside Git. Source preview, retargeting, usable-motion
+quality, engines and normal packaged feature flow remain unverified for H.
+Publication CI is separate from these local results. Next: review this admitted
+source on its own skeleton before any source-to-target mapping.
+
+---
+
 ## Registered preview frame windows - G source checkpoint
 
 F PR #80 is closed at merge `d9f5bfb7bceafe20775649fb6edd3c1b35a0a5de`;
