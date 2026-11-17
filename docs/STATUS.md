@@ -1,3 +1,42 @@
+## Registered native full-skin playback — K local checkpoint
+
+[UCC-P1-NATIVE-SKIN-PLAYBACK-001](acceptance/UCC-P1-NATIVE-SKIN-PLAYBACK-001.md)
+carries catalog source/policy authority through native body and full-skin cache
+workers and guards desktop rendering, transport and invalidation. The selected
+required-Qt gate passes 229 tests: 228 pass plus one existing Windows privilege
+skip; all 55 new tests, including 29 Qt cases, pass without skips.
+
+J's separately accepted five real workers provide the body lineage. K001's two
+new Blender 5.3 cache/surface workers and independent 300-frame CPU cache audit
+pass, but its overall GUI transaction remains failed at the source-150 draw wait,
+with cause unproven. K002's zero-native diagnostic subsequently observes source
+1/150 original renderer submissions without changing product sources. K003's
+separate zero-native retained-cache gate passes normal seek/play/pause/final dwell
+and matching original renderer submissions at source 1/150/300. Real static and
+playing WAL policy revocations clear renderer/cache/clock/authority and the normal
+registered menu rejects reopening before native launch. Independent replay verifies
+only the selected local-preview flag changed in held WAL. All originals, complete
+owned baseline and frozen source files remain unchanged.
+
+L001 separately accepts a fresh normal source session, without typed-result
+restoration or producer replacement. The public project-open/menu/cache controls
+run seven fresh Blender workers; independent source/FK/reopen/surface validation,
+all 300 CPU cache frames, observed original renderer source150/300 submissions,
+normal transport and cleanup pass. The optional source-intake-observer DTO list is
+empty on the public route, so the auditor derives source IDs from the pinned real
+launch/request/result records. Its initial mistaken DTO assumption remains an
+unaccepted audit attempt; no native jobs or product source were repeated. The
+1,028-byte Windows diagnostic is qualified, while all seven native stderr files
+are empty. Final regression completes 2,118 tests: 2,104 pass and fourteen existing
+Windows privilege skips, with no failures/errors. Preflight and all three actual
+source-launcher self-tests pass. Frozen-package feature flow, persistent cache
+reload, global catalog onboarding and exact-head remote/package acceptance remain
+pending. No all-300 GPU/FPS, appearance/contact,
+usable-action, engine or export acceptance is claimed. No dependency, rights,
+installation or cloud-upload changes occurred. Next: publish and audit the exact-head PR/package before merge and pruning.
+
+---
+
 ## Private measured source skeleton - I
 
 [UCC-P1-SOURCE-SKELETON-PREVIEW-001](acceptance/UCC-P1-SOURCE-SKELETON-PREVIEW-001.md)
