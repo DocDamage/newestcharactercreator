@@ -1,5 +1,25 @@
 # UCC development status - November 16, 2026
 
+## Registered Godot debug draw - local acceptance checkpoint
+
+[UCC-P1-GODOT-MOTION-001D](acceptance/UCC-P1-GODOT-MOTION-001D.md) draws
+verified frames 1, 150 and 300 from the accepted body diagnostic with a first-party
+adapter. Actual Godot 4.7.1 Mobile/Vulkan passes assigned positions/UV/indices,
+the explicit normal-format limit and three private 512-pixel viewport captures.
+Caller cancellation and both independent native audits pass. Full required-Qt
+regression and independent audit pass: 1,853 tests, 1,839 passed and fourteen
+unchanged Windows privilege skips. All 984 tested source files are preserved.
+
+The draw uses no GLB, skeleton or private correction program. It remains a
+source-only private debug view; appearance/artist approval, packaged execution,
+GUI, delivery, performance/VRAM and shipping remain open. Exact-head D remote
+checks are pending. Source, retention and numerical PRs #75/#76/#77 merged at
+`66bd2db` / `5d521cc` / `f3b1fb6`; all three branches were pruned with proof
+worktrees preserved. Main `f3b1fb6` passed its three applicable fresh workflows.
+Earlier pending notices below are historical checkpoints. Next task: reopen
+saved previews from the existing registered-clip dialog with current rights checks.
+
+
 ## Registered Godot body300 - local numerical checkpoint
 
 [UCC-P1-GODOT-MOTION-001C](acceptance/UCC-P1-GODOT-MOTION-001C.md) adds a

@@ -1,0 +1,8 @@
+config_version=5
+
+[application]
+config/name="UCC private body300 debug draw"
+config/features=PackedStringArray("4.7", "Mobile")
+
+[rendering]
+renderer/rendering_method="mobile"
