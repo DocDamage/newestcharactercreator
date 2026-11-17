@@ -102,7 +102,7 @@ class BlenderChecksumReceiptTests(unittest.TestCase):
         for forbidden in ('--insecure', 'extension install', 'tar -xf', 'run_mpfb_smoke.py'):
             self.assertNotIn(forbidden, receipt)
         domain = text.split('  verify-mpfb-linux:', 1)[1]
-        self.assertIn('if: ${{ !inputs.checksum_receipt_only }}', domain)
+        self.assertIn('if: ${{ !inputs.checksum_receipt_only && !inputs.archive_cache_only }}', domain)
         self.assertIn('fail-fast: false', domain)
         self.assertIn('suite: [regression, native-fit, body-contacts, symmetric-fit, regional-skin, source-references, reference-creator]', domain)
         self.assertIn('sha256sum --check --strict', domain)

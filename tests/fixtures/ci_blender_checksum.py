@@ -8,3 +8,6 @@ SYNTHETIC_MANIFEST = (
     SYNTHETIC_SHA + "  blender-5.3.0-linux-x64.tar.xz\n"
     + "c" * 64 + "  blender-5.3.0-windows-x64.zip\n"
 ).encode("ascii")
+
+# Opaque INVENTED non-shipping bytes, not a Blender tar or integration fixture.
+SYNTHETIC_ARCHIVE = b"INVENTED archive-cache parser bytes; no executable or asset\n"
