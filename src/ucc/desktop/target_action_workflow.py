@@ -16,9 +16,10 @@ from ucc.core.storage import MAX_JSON_BYTES, ProjectStore
 from .generation import bundled_worker_path
 from .target_action_dialog import TargetActionDialog
 from .target_action_preview import _small_digest, publish_target_action
+from .godot_saved_preview_workflow import KINDS as SAVED_GODOT_KINDS
 
 
-KINDS = frozenset({'target_action_review', 'target_action_mapping', 'target_action_prepare', 'target_action_load'})
+KINDS = frozenset({'target_action_review', 'target_action_mapping', 'target_action_prepare', 'target_action_load'}) | SAVED_GODOT_KINDS
 PHASES = {
     'SOURCE_REVIEW': 'Checking the exact registered source and local preview permission...',
     'NEUTRAL_MASTER': 'Independently checking the saved neutral character...',
@@ -63,6 +64,8 @@ class SavedTargetActionRetained(ProjectStorageError):
 
 
 def refresh_target_action(window) -> None:
+    from .godot_saved_preview_workflow import refresh_saved_godot_preview
+    refresh_saved_godot_preview(window)
     action = getattr(window, 'target_action_action', None)
     if action is not None:
         ready = (window.controller.has_project and window.controller.store is not None
@@ -229,9 +232,15 @@ def _chosen(window, dialog):
     context = window._target_action_context
     try:
         _current(window, context)
-        if (choice.operation not in {'prepare', 'load'} or choice.clip_id != review.source.clip_id
+        if (choice.operation not in {'prepare', 'load', 'godot_saved'} or choice.clip_id != review.source.clip_id
                 or not choice.local_preview_confirmed):
             raise ValidationError('Confirm the exact reviewed source for this private preview')
+        if choice.operation == 'godot_saved':
+            from .godot_saved_preview_workflow import start_saved_godot_preview
+            start_saved_godot_preview(window, context, review, choice.binding_sha256)
+            return
+        from .godot_saved_preview_workflow import clear_saved_godot_preview
+        clear_saved_godot_preview(window, 'Another target preview was selected')
         executable = None
         worker = None
         if choice.operation == 'prepare':
@@ -272,6 +281,10 @@ def _chosen(window, dialog):
 
 
 def finish_target_action(window, result) -> None:
+    if window._work_kind in SAVED_GODOT_KINDS:
+        from .godot_saved_preview_workflow import finish_saved_godot_preview
+        finish_saved_godot_preview(window, result)
+        return
     kind = window._work_kind
     dialog = getattr(window, '_target_action_dialog', None)
     if kind in {'target_action_review', 'target_action_mapping'}:
@@ -329,6 +342,10 @@ def _close_progress(window):
 
 
 def target_action_error(window, error: str) -> None:
+    if window._work_kind in SAVED_GODOT_KINDS:
+        from .godot_saved_preview_workflow import saved_godot_preview_error
+        saved_godot_preview_error(window, error)
+        return
     _close_progress(window)
     dialog = getattr(window, '_target_action_dialog', None)
     if dialog is not None and window._work_kind in {'target_action_review', 'target_action_mapping'}:

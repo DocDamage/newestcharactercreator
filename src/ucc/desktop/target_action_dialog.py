@@ -79,6 +79,7 @@ class TargetActionDialog(QDialog):
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Cancel)
         self.prepare = buttons.addButton('Prepare new private preview', QDialogButtonBox.ButtonRole.ActionRole)
         self.load = buttons.addButton('Load selected saved preview', QDialogButtonBox.ButtonRole.ActionRole)
+        self.godot_saved = buttons.addButton('Open saved Godot preview...', QDialogButtonBox.ButtonRole.ActionRole)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
         self.clips.currentTextChanged.connect(self._source_changed)
@@ -88,6 +89,7 @@ class TargetActionDialog(QDialog):
         self.consent.toggled.connect(self._refresh)
         self.prepare.clicked.connect(lambda: self._choose('prepare'))
         self.load.clicked.connect(lambda: self._choose('load'))
+        self.godot_saved.clicked.connect(lambda: self._choose('godot_saved'))
         self._refresh()
 
     def _source_changed(self, clip_id):
@@ -157,13 +159,14 @@ class TargetActionDialog(QDialog):
         valid_purpose = bool(purpose and all(c.isprintable() for c in purpose))
         self.prepare.setEnabled(bool(consent and self.mapping_sha256 and valid_purpose))
         self.load.setEnabled(bool(consent and self.bindings.currentData()))
+        self.godot_saved.setEnabled(bool(consent and self.bindings.currentData()))
 
     def _choose(self, operation: str):
-        button = self.prepare if operation == 'prepare' else self.load
+        button = {'prepare': self.prepare, 'load': self.load, 'godot_saved': self.godot_saved}[operation]
         if not button.isEnabled():
             return
         self.choice = TargetActionChoice(
-            operation, self.clips.currentText(), self.bindings.currentData() if operation == 'load' else None,
+            operation, self.clips.currentText(), self.bindings.currentData() if operation in {'load', 'godot_saved'} else None,
             Path(self.mapping.text()) if operation == 'prepare' else None,
             self.mapping_sha256 if operation == 'prepare' else None,
             self.purpose.text().strip(), self.consent.isChecked())
