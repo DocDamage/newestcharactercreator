@@ -22,6 +22,7 @@ on:
       - 'tests/test_target_action_dialog.py'
       - 'tests/test_target_action_desktop.py'
       - 'tests/test_target_action_preview_window.py'
+      - 'tests/test_registered_native*_qt.py'
       - 'tests/test_godot_saved_preview*.py'
       - 'tests/test_target_action_diagnostic*.py'
       - 'pyproject.toml'
@@ -33,6 +34,7 @@ on:
       - 'src/ucc/jobs/target_action_diagnostic*.py'
       - 'src/ucc/preview/playback_window.py'
       - 'tests/test_target_action_preview_window.py'
+      - 'tests/test_registered_native*_qt.py'
       - '.github/workflows/windows-alpha-package.yml'
       - 'src/ucc/desktop/**'
       - 'pyproject.toml'
@@ -76,6 +78,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Qt diagnostic tests failed' }
           python -m unittest discover -s tests -p 'test_motion_qt.py' -v
           if ($LASTEXITCODE -ne 0) { throw 'Cached motion transport tests failed' }
+          python -m unittest discover -s tests -p 'test_registered_native_workflow_qt.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Registered native selection and cancellation tests failed' }
+          python -m unittest discover -s tests -p 'test_registered_native_playback_qt.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Registered native skin authority and lifetime tests failed' }
           python -m unittest discover -s tests -p 'test_unity_export_dialog.py' -v
           if ($LASTEXITCODE -ne 0) { throw 'Unity per-use review dialog tests failed' }
           python -m unittest discover -s tests -p 'test_unity_export_desktop.py' -v

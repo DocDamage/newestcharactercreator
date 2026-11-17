@@ -144,6 +144,9 @@ class MainWindow(QMainWindow):
         from .source_skeleton_workflow import start_source_skeleton
         self.source_skeleton_action = self._action(
             view_menu, 'Preview selected source skeleton...', '', lambda: start_source_skeleton(self))
+        from .registered_native_workflow import start_registered_native_body
+        self.registered_native_action = self._action(view_menu,
+            'Test selected registered FBX on saved character...', '', lambda: start_registered_native_body(self))
         self.mesh_toggle = self.mesh_dock.toggleViewAction()
         view_menu.addAction(self.mesh_toggle)
         help_menu = self.menuBar().addMenu("&Help")
@@ -190,6 +193,8 @@ class MainWindow(QMainWindow):
         self.animations.native_animation_open_requested.connect(lambda:open_native_result(self))
         self.animations.native_renders_open_requested.connect(lambda:open_native_result(self,rendered=True))
         self.animations.native_playback_requested.connect(lambda:start_native_playback(self))
+        from .registered_native_binding import clear_registered_native
+        self.animations.catalog.currentCellChanged.connect(lambda *_:clear_registered_native(self))
         self.animations.local_preview_review.toggled.connect(lambda _checked:self._clear_native_review())
         self.animations.native_include_hands.toggled.connect(lambda _checked:self._clear_native_review())
         for field in (self.animations.selected,self.animations.native_body_profile,self.animations.provider,self.animations.license,self.animations.uri):
@@ -228,6 +233,11 @@ class MainWindow(QMainWindow):
         if self._native_review is not None and (state.dirty or state.revision!=self._native_review.revision or
                 self.controller.require_project().project_id!=self._native_review.project_id):
             self._clear_native_review()
+        pending = getattr(self, '_registered_native_pending', None)
+        if pending is not None and (state.dirty or self.controller.store is not pending.store
+                or self.controller.require_project() != pending.project):
+            from .registered_native_binding import clear_registered_native
+            clear_registered_native(self)
         self.character.display(state)
         from .skin_material_workflow import refresh_skin_material
         refresh_skin_material(self)
@@ -277,6 +287,8 @@ class MainWindow(QMainWindow):
         self.mesh_dock.hide()
 
     def _clear_native_review(self) -> None:
+        from .registered_native_binding import clear_registered_native
+        clear_registered_native(self)
         self._motion_input_identities={}
         self._native_review=None
         self._native_playback=None
@@ -393,6 +405,7 @@ class MainWindow(QMainWindow):
         self.tools.setEnabled(not busy)
         self.mesh_action.setEnabled(not busy)
         self.source_skeleton_action.setEnabled(not busy)
+        self.registered_native_action.setEnabled(not busy)
         if busy:
             from .source_skeleton_workflow import clear_source_skeleton
             clear_source_skeleton(self, cancel_pending=False)
@@ -482,6 +495,9 @@ class MainWindow(QMainWindow):
         if busy and self._work_kind == 'source_skeleton':
             self.cancel_generation_action.setEnabled(True)
             self.statusBar().showMessage('Measuring the selected private source skeleton in Blender...')
+        if busy and self._work_kind in {'registered_native_body','registered_native_playback'}:
+            self.cancel_generation_action.setEnabled(True)
+            self.statusBar().showMessage('Validating registered source rights and private native skin...')
         if not busy:
             resume_target_action(self)
 
@@ -502,6 +518,11 @@ class MainWindow(QMainWindow):
             resume_unreal_source_review(self)
 
     def _job_success(self, result: object) -> None:
+        from .registered_native_workflow import RegisteredNativeCompletion, finish_registered_native
+        if (isinstance(result, RegisteredNativeCompletion)
+                or self._work_kind in {'registered_native_body','registered_native_playback'}):
+            finish_registered_native(self,result)
+            return
         if self._work_kind == 'source_skeleton':
             from .source_skeleton_workflow import finish_source_skeleton
             finish_source_skeleton(self, result)
@@ -824,6 +845,11 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Local operation completed; review results above")
 
     def _job_error(self, error: str) -> None:
+        if self._work_kind in {'registered_native_body','registered_native_playback'}:
+            from .registered_native_binding import clear_registered_native
+            clear_registered_native(self)
+            self._error(error)
+            return
         if self._work_kind == 'source_skeleton':
             from .source_skeleton_workflow import source_skeleton_error
             source_skeleton_error(self, error)

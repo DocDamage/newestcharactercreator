@@ -1,9 +1,10 @@
 """Project-bound native body preview: imports, two FK workers, private evidence."""
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from threading import Event
 from typing import Callable
 import json
+import re
 
 from ucc.animations.fbx_snapshot import read_snapshot
 from ucc.animations.native_profile import read_native_profile
@@ -19,6 +20,8 @@ from .native_skin_evidence import validate_reopen_report
 from ucc.animations.native_skin_policy import BOUND_V1, CORRECTIVE_POLICIES
 from .protocol import JobRequest
 from .runner import BlenderJobRunner
+from .native_source_authority import NativeSourceAuthority, NativeProofReceipt, NativeProofCapture
+from .target_action_context import operation_budget
 
 
 @dataclass(frozen=True,slots=True)
@@ -37,16 +40,19 @@ class NativeBodyPreview:
     private_reopen_job_id: str = ""
     reopen_evidence: dict | None = None
     source_intake_worker_job_ids: tuple[str, ...] = ()
+    source_authority: NativeSourceAuthority | None = None
+    proof_receipt: NativeProofReceipt | None = None
 
     @property
     def retargeting_verified(self): return False
 
 
-def preview_native_body(store: ProjectStore, *, source_fbx: Path, mapping_profile: Path | None=None,
+def _preview_native_body(store: ProjectStore, *, source_fbx: Path, mapping_profile: Path | None=None,
                         blender_exe: Path, worker_script: Path, permission: LicensePolicy,
                         expected_project_id: str, expected_revision: int, expected_master_blend: str,
                         cancel: Event | None=None, timeout_s: float=300, include_hands: bool=False, skin_policy: str | None=None,
-                        source_intake_observer: Callable | None=None, source_guard=None) -> NativeBodyPreview:
+                        source_intake_observer: Callable | None=None, source_guard=None,
+                        _source_authority=None, _proof=None) -> NativeBodyPreview:
     if source_intake_observer is not None and not callable(source_intake_observer):
         raise ValidationError('Native source intake observer must be callable')
     allowed,reason=permission.allow("local_preview")
@@ -83,15 +89,21 @@ def preview_native_body(store: ProjectStore, *, source_fbx: Path, mapping_profil
     if source_intake_observer is not None and (len(intake_ids)!=2 or len(set(intake_ids))!=2):
         raise ValidationError('Native source observer did not capture two distinct actual workers')
     snapshot_path=Path(intake["private_snapshot"])
+    if _proof is not None: _proof.before(snapshot_path)
     source,_=read_snapshot(snapshot_path.parent,intake,intake["source_sha256"],cancel_check=check_cancel)
     snapshot_sha=intake["snapshot"]["sha256"]
+    if _source_authority is not None:
+        _source_authority.require_snapshot(source, snapshot_sha)
+        _proof.admit(snapshot_path, snapshot_sha)
     if mapping_profile is None:
         generated=measured_body_profile(source,intake["source_sha256"],snapshot_sha,master_sha,include_hands=include_hands,skin_policy=skin_policy or BOUND_V1)
         mapping_profile=snapshot_path.parent/"native_mapping.json"
         if mapping_profile.exists() or mapping_profile.is_symlink():raise ValidationError("Refuse to replace an automatic native body map")
         with mapping_profile.open("x",encoding="utf-8") as stream:
             json.dump(generated,stream,ensure_ascii=False,allow_nan=False,separators=(",",":"))
+    if _proof is not None: _proof.before(mapping_profile)
     profile,mapping_sha=read_native_profile(mapping_profile,intake["source_sha256"],snapshot_sha,master_sha)
+    if _proof is not None: _proof.admit(mapping_profile, mapping_sha)
     bindings={"source_sha256":intake["source_sha256"],"snapshot_sha256":snapshot_sha,
               "mapping_sha256":mapping_sha,"master_sha256":master_sha}
     runner=BlenderJobRunner(blender_exe,store.root/".ucc-jobs",worker_script)
@@ -115,9 +127,17 @@ def preview_native_body(store: ProjectStore, *, source_fbx: Path, mapping_profil
             raise ProjectStorageError("Native worker folder is redirected")
         for name,digest in (("candidate.blend",master_sha),("source_snapshot.json",snapshot_sha),("native_mapping.json",mapping_sha)):
             path=folder/name
+            if _proof is not None: _proof.before(path)
             if path.is_symlink() or not path.is_file() or _digest(path,cancel)!=digest:
                 raise ProjectStorageError("Native staged input changed during Blender evaluation")
+            if _proof is not None: _proof.admit(path, digest)
+        if _proof is not None:
+            _proof.before(folder/'target_timeline.json')
+            _proof.before(folder/'review_motion.blend')
         data,path=read_native_timeline(folder,result.details,source,profile,bindings,cancel_check=check_cancel)
+        if _proof is not None:
+            _proof.admit(path, result.details['timeline']['sha256'])
+            _proof.admit(folder/'review_motion.blend', result.details['visual_review_blend']['sha256'])
         if run==0:
             if result.details.get("private_review_renders") is None:raise ValidationError("Native first worker did not render private skin views")
             first_data,first_report,first_folder,first_path=data,result.details,folder,path
@@ -148,8 +168,10 @@ def preview_native_body(store: ProjectStore, *, source_fbx: Path, mapping_profil
         hashes={"candidate.blend":master_sha,"review_motion.blend":reopen_bindings["review_sha256"],
                 "target_timeline.json":reopen_bindings["timeline_sha256"],"source_snapshot.json":snapshot_sha,"native_mapping.json":mapping_sha}
         for name,digest in hashes.items():
+            if _proof is not None: _proof.before(reopen_folder/name)
             if (reopen_folder/name).is_symlink() or not (reopen_folder/name).is_file() or _digest(reopen_folder/name,cancel)!=digest:
                 raise ProjectStorageError("Native reopen changed staged evidence")
+            if _proof is not None: _proof.admit(reopen_folder/name, digest)
         validate_reopen_report(result.details,reopen_bindings,first_data)
         reopen_id=request.job_id;reopened=result.details
         bound_file(first_folder,first_report["timeline"],"target_timeline.json",64*1024*1024,cancel_check=check_cancel)
@@ -158,3 +180,50 @@ def preview_native_body(store: ProjectStore, *, source_fbx: Path, mapping_profil
     unchanged()
     return NativeBodyPreview(project.project_id,project.revision,master_sha,intake["source_sha256"],first_data,
                              str(action),review,str(first_path),tuple(ids),str(mapping_profile),first_report,reopen_id,reopened,tuple(intake_ids))
+
+
+def preview_native_body(store: ProjectStore, *, source_fbx: Path, mapping_profile: Path | None=None,
+        blender_exe: Path, worker_script: Path, permission: LicensePolicy,
+        expected_project_id: str, expected_revision: int, expected_master_blend: str,
+        cancel: Event | None=None, timeout_s: float=300, include_hands: bool=False,
+        skin_policy: str | None=None, source_intake_observer: Callable | None=None,
+        source_guard=None, source_authority: NativeSourceAuthority | None=None) -> NativeBodyPreview:
+    options = dict(source_fbx=source_fbx, mapping_profile=mapping_profile, blender_exe=blender_exe,
+        worker_script=worker_script, permission=permission, expected_project_id=expected_project_id,
+        expected_revision=expected_revision, expected_master_blend=expected_master_blend,
+        cancel=cancel, timeout_s=timeout_s, include_hands=include_hands, skin_policy=skin_policy,
+        source_intake_observer=source_intake_observer, source_guard=source_guard)
+    if source_authority is None:
+        return _preview_native_body(store, **options)
+    if type(source_authority) is not NativeSourceAuthority:
+        raise ValidationError('Registered native source authority type differs')
+    if (type(expected_master_blend) is not str
+            or re.fullmatch(r'master/versions/[0-9a-f]{64}\.blend', expected_master_blend) is None):
+        raise ValidationError('Registered native preview requires the saved content-addressed master path')
+    source_authority.require_source(source_fbx, permission)
+    with operation_budget(cancel, timeout_s) as budget:
+        proof = NativeProofCapture(budget)
+        metadata = proof.before(store.root/'project.ucc.json')
+        master = proof.before(store.root/expected_master_blend)
+        proof.admit(metadata, _digest(metadata, budget.cancel))
+        proof.admit(master, _digest(master, budget.cancel))
+        proof.before(source_authority.source_path)
+        proof.admit(source_authority.source_path, source_authority.source_sha256)
+
+        def guarded():
+            budget.check()
+            if source_guard is not None: source_guard()
+            proof.check()
+            source_authority.guard(cancel=budget.cancel, timeout_s=budget.remaining())
+            budget.check()
+
+        guarded()
+        options.update(cancel=budget.cancel, timeout_s=budget.remaining(), source_guard=guarded,
+                       _source_authority=source_authority, _proof=proof)
+        result = _preview_native_body(store, **options)
+        receipt = proof.seal()
+        source_authority.guard(cancel=budget.cancel, timeout_s=budget.remaining())
+        if not receipt.identities_current():
+            raise ProjectStorageError('Native proof changed at final source permission fence')
+        budget.check()
+        return replace(result, source_authority=source_authority, proof_receipt=receipt)

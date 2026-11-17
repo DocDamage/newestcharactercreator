@@ -12,6 +12,7 @@ from ucc.library.provenance import LicensePolicy,AssetPolicyError
 from ucc.preview.surface_review import SurfaceReview
 from .master_preview import _master_file,_digest
 from .native_body import NativeBodyPreview
+from .native_registered_limits import require_manual_native_source
 from .native_evidence import bound_file,read_native_timeline
 from .native_fit_evidence import read_json_record,validate_fit_stage,rest_parents,read_fitted_timeline
 from .native_fit_renders import verify_fit_renders
@@ -49,6 +50,7 @@ def fit_native_preview(store: ProjectStore,preview: NativeBodyPreview,*,source_f
                        permission: LicensePolicy,blender_exe: Path,worker_script: Path,
                        cancel: Event | None=None,timeout_s: float=300,
                        base_preview: NativeFitPreview | None=None) -> NativeFitPreview:
+    require_manual_native_source(preview, getattr(base_preview, 'original_preview', None))
     allowed,reason=permission.allow('local_preview')
     if not allowed:raise AssetPolicyError(reason)
     def check_cancel():

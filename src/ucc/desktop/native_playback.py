@@ -11,6 +11,8 @@ from .motion_inputs import watch_inputs,directory_changed
 
 
 def publish_playback(window,result):
+    if getattr(result,'source_authority',None) is not None:
+        raise ValidationError('Registered playback requires its original guarded completion')
     controller=window.controller;preview=window._native_review
     if not controller.has_project or controller.store is None or preview is None or controller.dirty:
         raise ValidationError("Character or animation selection changed; prepared motion stays private")
@@ -21,6 +23,12 @@ def publish_playback(window,result):
             source.is_symlink() or _digest(source)!=result.source_sha256 or
             _digest(controller.master_path())!=result.master_sha256):
         raise ValidationError("Saved character or source changed before playback publication")
+    from .registered_native_viewer import RegisteredNativeViewer
+    if isinstance(window.motion_viewer,RegisteredNativeViewer):
+        window.motion_viewer.clear()
+        window.removeDockWidget(window.motion_dock)
+        window.motion_dock.hide();window.motion_dock.deleteLater()
+        window.motion_viewer=None
     if window.motion_viewer is None:
         window.motion_viewer=MotionViewer()
         from .contact_fit import start_contact_fit
@@ -32,8 +40,11 @@ def publish_playback(window,result):
         window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea,window.motion_dock)
         window.mesh_action.parent().addAction(window.motion_dock.toggleViewAction())
         window._motion_watcher=QFileSystemWatcher(window)
-        window._motion_watcher.fileChanged.connect(lambda _path:window._clear_native_review())
-        window._motion_watcher.directoryChanged.connect(lambda path:directory_changed(window,path))
+        watcher=window._motion_watcher
+        window._motion_watcher.fileChanged.connect(lambda _path:
+            window._clear_native_review() if _manual_watch_current(window,watcher) else None)
+        window._motion_watcher.directoryChanged.connect(lambda path:
+            directory_changed(window,path) if _manual_watch_current(window,watcher) else None)
     watcher=window._motion_watcher
     watcher.blockSignals(True)
     old=watcher.files()+watcher.directories()
@@ -84,3 +95,10 @@ def publish_comparison(window,original,fitted):
         'The source frame, camera and playback clock are shared. Focus resets when switching.\n'
         'Fitting changes target motion; it does not change the source animation or character master.\n'
         'Only hand/opposite-arm surface crossings were checked. Grasp, visual and engine quality remain unapproved.')
+
+
+def _manual_watch_current(window,watcher):
+    """Old queued manual notifications cannot invalidate a newer registered route."""
+    return (window._motion_watcher is watcher
+        and getattr(window,'_registered_native_binding',None) is None
+        and getattr(window,'_registered_native_pending',None) is None)
