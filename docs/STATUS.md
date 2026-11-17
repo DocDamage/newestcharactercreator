@@ -7,8 +7,8 @@ acceptance. All three displayed frame hashes match the saved native draw.
 The audited required-Qt suite passes **1,902 tests: 1,888 passed and fourteen
 unchanged Windows privilege skips**, on the 1,002-file source freeze.
 
-The later CI/security-test-only delta passes **50 scoped Qt tests, zero skips**,
-in 8.866 s with production source unchanged. The 1,902-test full result above
+The CI/security-test delta passes **50 saved-preview tests, zero skips**,
+in 10.496 s after fixture canonicalization (18 Qt and 32 pure tests), with production source unchanged. The 1,902-test full result above
 belongs to the earlier freeze; no later full-suite rerun is claimed.
 
 Actual source GUI cancellation and its independent audit pass.

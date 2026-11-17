@@ -79,6 +79,7 @@ class SavedPreviewWorkflowTests(unittest.TestCase):
 
     def loaded(self, path):
         from ucc.jobs.godot_candidate_inputs import identity
+        path = path.resolve()
         return replace(synthetic_loaded(),watch_paths=(path,path.parent),
                        watched_identities=((path,identity(path)),(path.parent,identity(path.parent))))
 
