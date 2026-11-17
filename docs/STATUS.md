@@ -1,3 +1,30 @@
+## Private measured source skeleton - I
+
+[UCC-P1-SOURCE-SKELETON-PREVIEW-001](acceptance/UCC-P1-SOURCE-SKELETON-PREVIEW-001.md)
+adds guarded front/side bone-segment playback before character mapping. The
+selected regression completes 156 tests: 155 pass plus one unchanged Windows
+privilege skip; all 51 new tests and all 58 selected Qt tests pass without skips.
+The strict wrapper's actual exit 1 remains qualified, with independent admission.
+
+Normal desktop I002 passes with two Blender 5.3 workers, source frames 1–300 at
+30 fps, play/pause/seek/final dwell and cleanup. Owned-WAL policy revocation clears
+playback and blocks reopening before any new native process. Independent audit
+checks all 300 world endpoint buffers and observed painter hash parity; the
+retained trace cannot independently reconstruct 2D projections without canvas
+dimensions. The 897-byte Windows diagnostic is qualified despite actual exit 0.
+I001 remains failed/unknown GUI after its audit-URI error; only its harness changed
+for I002. No global onboarding, appearance, target/skin, quality, engine or normal
+packaged feature acceptance is claimed. Private poses stay outside Git.
+
+H PR #82 merged as `a09564baa55a52bcf0592238bc0581e5b49b9161`; ten standard PR
+and fresh-main checks pass. Its local/remote branch was pruned with all 1,023 raw
+proof files unchanged in the retained detached checkout. Experimental smoke
+checks remain separately qualified: official archive HTTP 403 failures and long
+unfinished jobs are not described as passed. Next: use the existing native-body
+preview path to verify this eligible source family against the saved MPFB master.
+
+---
+
 ## Measured source clock admission - H
 
 [UCC-P1-MOTION-SOURCE-ADMISSION-001](acceptance/UCC-P1-MOTION-SOURCE-ADMISSION-001.md)

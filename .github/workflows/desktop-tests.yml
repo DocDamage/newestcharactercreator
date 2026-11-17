@@ -9,6 +9,7 @@ on:
       - 'src/ucc/animations/target_action_diagnostic*.py'
       - 'src/ucc/animations/catalog*.py'
       - 'src/ucc/animations/source_clip_clock.py'
+      - 'src/ucc/animations/source_skeleton.py'
       - 'src/ucc/export/**'
       - 'tests/test_*qt.py'
       - 'tests/fixtures/**'
@@ -62,6 +63,10 @@ jobs:
         run: python -m unittest discover -s tests -p test_desktop_qt.py -v
       - name: Run measured FBX indexing and source clock readout (real Qt)
         run: python -m unittest discover -s tests -p test_fbx_catalog_qt.py -v
+      - name: Run measured source skeleton transport (real Qt)
+        run: python -m unittest discover -s tests -p test_source_skeleton_qt.py -v
+      - name: Run source skeleton consent and lifetime workflow (real Qt)
+        run: python -m unittest discover -s tests -p test_source_skeleton_workflow_qt.py -v
       - name: Run facial intent, save, history and cancellation controls (no skips)
         run: python -m unittest discover -s tests -p test_face_qt.py -v
       - name: Run actual GLB mesh viewport widget tests (no skips)
