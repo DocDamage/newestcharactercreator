@@ -137,5 +137,24 @@ class SavedPreviewWorkflowTests(unittest.TestCase):
                 self.assertIsNone(getattr(window,'_godot_saved_loaded',None))
 
 
+    def test_conservative_directory_signal_rejects_equal_size_restored_mtime_tamper(self):
+        from ucc.desktop.target_action_preview import _stamp
+        with tempfile.TemporaryDirectory() as raw:
+            path=Path(raw).resolve()/'proof';path.write_bytes(b'first')
+            loaded=self.loaded(path);window=self.window(loaded)
+            with patch.object(flow,'_current'):
+                flow.finish_saved_godot_preview(window,loaded)
+                watcher=window._godot_saved_watcher
+                original=path.stat();stamp=_stamp(path)
+                path.write_bytes(b'other')
+                os.utime(path,ns=(original.st_atime_ns,original.st_mtime_ns))
+                self.assertEqual(_stamp(path),stamp)
+                self.assertNotEqual(path.read_bytes(),b'first')
+                watcher.directoryChanged.emit(str(path.parent))
+                self.assertIsNone(window._godot_saved_loaded)
+                self.assertIsNone(window._godot_saved_viewer.current_frame)
+                self.assertTrue(window._godot_saved_viewer.image_label.pixmap().isNull())
+
+
 if __name__ == '__main__':
     unittest.main()

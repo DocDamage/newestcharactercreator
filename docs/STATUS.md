@@ -1,3 +1,36 @@
+## Saved Godot preview viewer — current checkpoint (November 17, 2026)
+
+[UCC-P1-GODOT-MOTION-001E](acceptance/UCC-P1-GODOT-MOTION-001E.md) adds explicit
+saved-proof reopening to the registered-clip dialog. Source loader/restart,
+normal source GUI/restart, and owned-catalog WAL revocation have independent
+acceptance. All three displayed frame hashes match the saved native draw.
+The audited required-Qt suite passes **1,902 tests: 1,888 passed and fourteen
+unchanged Windows privilege skips**, on the 1,002-file source freeze.
+
+The later CI/security-test-only delta passes **50 scoped Qt tests, zero skips**,
+in 8.866 s with production source unchanged. The 1,902-test full result above
+belongs to the earlier freeze; no later full-suite rerun is claimed.
+
+Actual source GUI cancellation and its independent audit pass.
+The exact Windows artifact passes structure inspection and the generic executable
+self-test. Normal packaged attempt002 observed real proof selection, fresh policy
+confirmation, frame1 status/success log and clean close; all nine after-check
+preservation flags and the bounded-flow independent audit pass. The admission
+binds 277 packaged modules plus the entry point to frozen and Git source.
+Packaged frame150/300 switching and packaged pixel hashes remain **unverified**;
+all-three-frame pixel proof is from the separate source GUI. No private pixels
+were captured. Earlier packaged attempt001 remains feature-unreached/unaccepted.
+Source GUI checks use an explicitly qualified owned catalog and Qt nonnative
+choosers. Conservative parent notifications may clear a valid view; reopen to
+revalidate. A stat-only notification filter was rejected, preserving fail-closed checks.
+No appearance/artist, performance/VRAM, delivery or shipping approval follows.
+
+D PR #78 merged at `03c9dd5`. E remains draft PR #79; ten checks pass at
+implementation head `f64a6f8`. Final documentation-head checks and integration
+remain pending. Earlier notices below are retained historical checkpoints.
+
+---
+
 # UCC development status - November 16, 2026
 
 ## Registered Godot debug draw - local acceptance checkpoint

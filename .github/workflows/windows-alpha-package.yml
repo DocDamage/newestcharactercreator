@@ -21,6 +21,7 @@ on:
       - 'tests/test_desktop_entrypoint.py'
       - 'tests/test_target_action_dialog.py'
       - 'tests/test_target_action_desktop.py'
+      - 'tests/test_godot_saved_preview*.py'
       - 'pyproject.toml'
       - '.github/workflows/windows-alpha-package.yml'
   push:
@@ -29,6 +30,7 @@ on:
       - '.github/workflows/windows-alpha-package.yml'
       - 'src/ucc/desktop/**'
       - 'pyproject.toml'
+      - 'tests/test_godot_saved_preview*.py'
 
 permissions:
   contents: read
@@ -75,6 +77,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Target private-preview review tests failed' }
           python -m unittest discover -s tests -p 'test_target_action_desktop.py' -v
           if ($LASTEXITCODE -ne 0) { throw 'Target saved-load and preview lifetime tests failed' }
+          python -m unittest discover -s tests -p 'test_godot_saved_preview_widget.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Saved Godot captured-image widget tests failed' }
+          python -m unittest discover -s tests -p 'test_godot_saved_preview_workflow.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Saved Godot consent and viewer lifetime tests failed' }
           python -m unittest discover -s tests -p 'test_unreal_export_dialog.py' -v
           if ($LASTEXITCODE -ne 0) { throw 'Unreal per-use review dialog tests failed' }
           python -m unittest discover -s tests -p 'test_unreal_export_desktop.py' -v
