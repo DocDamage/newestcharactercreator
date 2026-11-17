@@ -58,10 +58,10 @@ def _policy_rights(policy: LicensePolicy) -> dict[str, str]:
 class AnimationCatalog:
     """Optional tables inside a local AssetLibrary database (non-destructive)."""
 
-    def __init__(self, database_path: str | Path, *, read_only: bool = False):
-        self.library = AssetLibrary(database_path, read_only=read_only)
+    def __init__(self, database_path: str | Path, *, read_only: bool = False, require_existing: bool = False):
+        self.library = AssetLibrary(database_path, read_only=read_only, require_existing=require_existing)
         self.db = self.library.db
-        if read_only:
+        if read_only or require_existing:
             try:
                 self.library._require_table('animation_sources',
                     ('asset_id', 'format', 'status', 'fingerprint', 'bone_names_json', 'warnings_json'))

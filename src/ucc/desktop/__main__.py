@@ -88,11 +88,22 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--self-test", action="store_true", help="Exercise actual Qt and metadata roundtrip")
     parser.add_argument("--self-test-report", type=Path, metavar="FILE",
                         help="Write a new JSON test report to this path (never overwrite)")
+    parser.add_argument('--catalog', type=Path, metavar='FILE',
+                        help='Use an existing local catalog for this session; Index controls may update it')
     args = parser.parse_args(argv)
+    if args.catalog is not None and (args.self_test or args.self_test_report is not None):
+        parser.error('--catalog cannot be combined with self-test options')
     if args.self_test_report is not None and not args.self_test:
         parser.error("--self-test-report requires --self-test")
     if args.self_test:
         return _self_test(args.self_test_report)
+    if args.catalog is not None:
+        from ucc.core.errors import ValidationError
+        from .catalog_location import existing_catalog_path
+        try:
+            args.catalog = existing_catalog_path(args.catalog)
+        except ValidationError as error:
+            parser.error('--catalog: '+str(error))
     try:
         from PySide6.QtWidgets import QApplication
         from ucc.desktop.window import MainWindow
@@ -104,7 +115,13 @@ def main(argv: list[str] | None = None) -> int:
     app = QApplication.instance() or QApplication(sys.argv)
     app.setOrganizationName("UCC")
     app.setApplicationName("Universal Character Creator")
-    window = MainWindow()
+    if args.catalog is not None:
+        try:
+            window = MainWindow(catalog_path=args.catalog)
+        except ValidationError as error:
+            parser.error('--catalog: '+str(error))
+    else:
+        window = MainWindow()
     window.show()
     return app.exec()
 

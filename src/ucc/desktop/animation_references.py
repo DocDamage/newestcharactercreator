@@ -39,7 +39,7 @@ def start_reference(window, *, remove: bool = False) -> None:
             if row < 0 or pane.catalog.item(row, 0) is None:
                 raise ValidationError('Select one measured FBX source from the catalog')
             asset_id = pane.catalog.item(row, 0).text()
-            with AnimationCatalog(database) as catalog:
+            with AnimationCatalog(database, **({'read_only': True} if getattr(window, '_catalog_override', None) is not None else {})) as catalog:
                 entry = catalog.library.get(asset_id); indexed = catalog.get(asset_id)
                 if (entry is None or indexed is None or indexed.source_format != 'fbx'
                         or indexed.status != 'METADATA_EXTRACTED' or len(indexed.clips) != 1

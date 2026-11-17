@@ -48,8 +48,11 @@ from .animation_results import format_bvh_motion_evidence
 class MainWindow(QMainWindow):
     """Actual metadata editor, asset inspector, atlas packer, and local read-only probes."""
 
-    def __init__(self, controller: DesktopController | None = None) -> None:
+    def __init__(self, controller: DesktopController | None = None, *, catalog_path: Path | None = None) -> None:
+        from .catalog_location import existing_catalog_path
+        selected_catalog = existing_catalog_path(catalog_path) if catalog_path is not None else None
         super().__init__()
+        self._catalog_override = selected_catalog  # Explicit, session-only; never persisted.
         self.controller = controller if controller is not None else DesktopController()
         self.setWindowTitle("Universal Character Creator — development desktop")
         self.resize(1030, 740)
@@ -377,8 +380,10 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage("Opening saved master in external Blender")
         self._apply(execute)
 
-    @staticmethod
-    def _catalog_path() -> Path:
+    def _catalog_path(self) -> Path:
+        if self._catalog_override is not None:
+            from .catalog_location import existing_catalog_path
+            return existing_catalog_path(self._catalog_override)
         base = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppLocalDataLocation)
         if not base:
             raise ValidationError("No local application data folder available")
@@ -957,7 +962,10 @@ class MainWindow(QMainWindow):
         store = self.controller.store
         snapshot = self.controller.require_project()
         cancel = Event()
-        database = self._catalog_path() if snapshot.animations else None
+        try:
+            database = self._catalog_path() if snapshot.animations else None
+        except (UCCError, OSError, ValueError) as error:
+            self._error(str(error)); return
         if snapshot.animations: self._clear_preview()
         self._submit(
             "generate_humanoid",
@@ -1021,7 +1029,10 @@ class MainWindow(QMainWindow):
             self._blender_executable = executable
         cancel = Event()
         store = self.controller.store
-        database = self._catalog_path() if snapshot.animations else None
+        try:
+            database = self._catalog_path() if snapshot.animations else None
+        except (UCCError, OSError, ValueError) as error:
+            self._error(str(error)); return
         if snapshot.animations: self._clear_preview()
         self._submit(
             "body_refit",
@@ -1357,7 +1368,7 @@ class MainWindow(QMainWindow):
 
     def refresh_catalog(self) -> None:
         def job() -> list[dict]:
-            with AnimationCatalog(self._catalog_path()) as catalog:
+            with AnimationCatalog(self._catalog_path(), **({'read_only': True} if self._catalog_override is not None else {})) as catalog:
                 return [item.to_dict() for item in catalog.list_sources()]
         self._submit("catalog", job)
 

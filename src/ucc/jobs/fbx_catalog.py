@@ -12,14 +12,14 @@ from ucc.jobs.runner import WorkerFailure
 
 def measure_catalog_fbx(database_path: Path, asset_id: str, *, blender_exe: Path,
                         worker_script: Path, jobs_root: Path, cancel: Event | None = None,
-                        timeout_s: float = 300) -> dict:
+                        timeout_s: float = 300, require_existing: bool = False) -> dict:
     """Register source metadata only; never attach an Action or edit a project."""
     def check_cancel():
         if cancel is not None and cancel.is_set():
             raise WorkerFailure('FBX catalog measurement cancelled; catalog metadata unchanged')
 
     check_cancel()
-    with AnimationCatalog(database_path) as catalog:
+    with AnimationCatalog(database_path, require_existing=require_existing) as catalog:
         entry = catalog.library.get(asset_id)
         indexed = catalog.get(asset_id)
         if entry is None or indexed is None or indexed.source_format != 'fbx':

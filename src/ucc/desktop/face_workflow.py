@@ -66,7 +66,10 @@ def start_face(window):
             window._error('Choose an existing installed Blender executable'); return
         window._blender_executable = executable
     store = window.controller.store
-    database = window._catalog_path() if snapshot.animations else None
+    try:
+        database = window._catalog_path() if snapshot.animations else None
+    except (UCCError, OSError, ValueError) as error:
+        window._error(str(error)); return
     cancel = Event()
     window._clear_preview()
     window._submit('face_revision', lambda: apply_face_from_desktop(

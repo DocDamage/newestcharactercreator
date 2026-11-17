@@ -101,27 +101,33 @@ def _sha256(path: Path) -> str:
 
 
 class AssetLibrary:
-    def __init__(self, db_path: str | Path, *, read_only: bool = False):
-        if type(read_only) is not bool:
-            raise AssetPolicyError("Catalog read_only must be a boolean")
+    def __init__(self, db_path: str | Path, *, read_only: bool = False, require_existing: bool = False):
+        if type(read_only) is not bool or type(require_existing) is not bool:
+            raise AssetPolicyError("Catalog read_only and require_existing must be booleans")
         self.path = Path(db_path).expanduser()
         if self.path.is_symlink():
             raise AssetPolicyError("Catalog path cannot be a symlink")
         self.read_only = read_only
-        if read_only:
+        if read_only or require_existing:
+            # Existing writers use mode=rw on this same connection. Validate
+            # before any DDL or journal-mode change; never create or migrate.
             if not self.path.is_file():
-                raise AssetPolicyError("Select an existing catalog for read-only verification")
+                raise AssetPolicyError("Select an existing catalog for schema verification")
             try:
-                self.db = sqlite3.connect(self.path.resolve(strict=True).as_uri()+"?mode=ro", uri=True)
+                mode = 'ro' if read_only else 'rw'
+                self.db = sqlite3.connect(self.path.resolve(strict=True).as_uri()+"?mode="+mode, uri=True)
             except sqlite3.Error as error:
-                raise AssetPolicyError("Stored catalog cannot be opened for read-only verification") from error
+                raise AssetPolicyError("Stored catalog cannot be opened for existing-schema verification") from error
             try:
-                self.db.execute("PRAGMA query_only = ON")
+                if read_only:
+                    self.db.execute("PRAGMA query_only = ON")
                 version = self.db.execute("PRAGMA user_version").fetchone()[0]
                 if version != 1:
-                    raise AssetPolicyError("Read-only catalog requires supported schema version 1; no migration performed")
+                    raise AssetPolicyError("Existing catalog requires supported schema version 1; no migration performed")
                 self._require_table("asset_sources", ("asset_id", "source_path", "content_sha256",
                     "size_bytes", "license_json", "indexed_utc"))
+                if not read_only:
+                    self.db.execute('PRAGMA foreign_keys = ON')
             except (sqlite3.Error, AssetPolicyError) as error:
                 self.db.close()
                 if isinstance(error, AssetPolicyError):

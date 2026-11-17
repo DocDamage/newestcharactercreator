@@ -57,6 +57,12 @@ class MeasuredFbxCatalogTests(unittest.TestCase):
             return measure_catalog_fbx(self.db, 'original', blender_exe=Path('unused'),
                 worker_script=Path('unused'), jobs_root=self.jobs, **kwargs)
 
+    def test_explicit_existing_mode_reaches_the_measurement_writer_connection(self):
+        with patch('ucc.jobs.fbx_catalog.AnimationCatalog', wraps=AnimationCatalog) as catalog:
+            result = self.invoke(require_existing=True)
+        catalog.assert_called_once_with(self.db, require_existing=True)
+        self.assertEqual(result['asset_id'], 'original')
+
     def assert_unmeasured(self):
         with AnimationCatalog(self.db) as catalog:
             indexed = catalog.get('original')

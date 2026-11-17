@@ -1,3 +1,27 @@
+## Explicit session catalog — source acceptance checkpoint
+
+[UCC-P1-SESSION-CATALOG-001](acceptance/UCC-P1-SESSION-CATALOG-001.md) adds
+`--catalog FILE` for an existing catalog selected for this app session. Startup
+performs no SQL. Refresh is read-only; indexing validates the existing supported
+schema on its own connection before writing. Invalid, redirected, shared, missing
+or unrelated database files fail without falling back to the default library or
+changing another database. Existing default-catalog behavior remains available.
+
+Full required-Qt validation passes 2,142 tests: 2,128 passes and fourteen exact
+prior Windows privilege skips, with no failures/errors. All 24 additions pass
+without skips. Preflight, actual source startup and independent source/result
+auditing pass. Remote CI and normal frozen feature verification are pending.
+
+Native playback PR #84 is merged as
+`5cd76014d4915013d6e1895be9109cb3c3f3ce5e`, with the exact tested tree.
+All ten standard PR checks and its actual extracted Windows executable's three
+startup checks pass; 294 host modules and 224 payload files were inspected.
+Fresh-main standard checks and the separately monitored experimental Linux
+suites remain pending at this checkpoint. No experimental success is implied.
+Source cold-start and retained-cache acceptance below have finite recorded scope.
+
+---
+
 ## Registered native full-skin playback — K local checkpoint
 
 [UCC-P1-NATIVE-SKIN-PLAYBACK-001](acceptance/UCC-P1-NATIVE-SKIN-PLAYBACK-001.md)
