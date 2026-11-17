@@ -21,6 +21,7 @@ on:
       - 'tests/test_desktop_entrypoint.py'
       - 'tests/test_target_action_dialog.py'
       - 'tests/test_target_action_desktop.py'
+      - 'tests/test_target_action_preview_window.py'
       - 'tests/test_godot_saved_preview*.py'
       - 'tests/test_target_action_diagnostic*.py'
       - 'pyproject.toml'
@@ -30,6 +31,8 @@ on:
     paths:
       - 'src/ucc/animations/target_action_diagnostic*.py'
       - 'src/ucc/jobs/target_action_diagnostic*.py'
+      - 'src/ucc/preview/playback_window.py'
+      - 'tests/test_target_action_preview_window.py'
       - '.github/workflows/windows-alpha-package.yml'
       - 'src/ucc/desktop/**'
       - 'pyproject.toml'
@@ -81,6 +84,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Target private-preview review tests failed' }
           python -m unittest discover -s tests -p 'test_target_action_desktop.py' -v
           if ($LASTEXITCODE -ne 0) { throw 'Target saved-load and preview lifetime tests failed' }
+          python -m unittest discover -s tests -p 'test_target_action_preview_window.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Registered preview window control tests failed' }
           python -m unittest discover -s tests -p 'test_godot_saved_preview_widget.py' -v
           if ($LASTEXITCODE -ne 0) { throw 'Saved Godot captured-image widget tests failed' }
           python -m unittest discover -s tests -p 'test_godot_saved_preview_workflow.py' -v
