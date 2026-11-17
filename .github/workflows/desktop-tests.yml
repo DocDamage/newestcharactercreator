@@ -6,6 +6,7 @@ on:
       - 'src/ucc/core/**'
       - 'src/ucc/preview/**'
       - 'src/ucc/jobs/**'
+      - 'src/ucc/animations/target_action_diagnostic*.py'
       - 'src/ucc/export/**'
       - 'tests/test_*qt.py'
       - 'tests/fixtures/**'
@@ -16,6 +17,7 @@ on:
       - 'tests/test_target_action_dialog.py'
       - 'tests/test_target_action_desktop.py'
       - 'tests/test_godot_saved_preview*.py'
+      - 'tests/test_target_action_diagnostic*.py'
       - 'tests/test_unreal_export_dialog.py'
       - 'tests/test_unreal_export_desktop.py'
       - 'pyproject.toml'
@@ -85,6 +87,12 @@ jobs:
         run: python -m unittest discover -s tests -p test_godot_saved_preview_widget.py -v
       - name: Run saved Godot consent and viewer lifetime tests (real Qt, no skips)
         run: python -m unittest discover -s tests -p test_godot_saved_preview_workflow.py -v
+      - name: Run registered clip diagnostic report tests (real Qt, no skips)
+        run: python -m unittest discover -s tests -p test_target_action_diagnostic_dialog.py -v
+      - name: Run diagnostic watch, consent and lifetime tests (real Qt, no skips)
+        run: python -m unittest discover -s tests -p test_target_action_diagnostic_workflow.py -v
+      - name: Run diagnostic desktop routing and cancellation tests (real Qt, no skips)
+        run: python -m unittest discover -s tests -p test_target_action_diagnostic_integration.py -v
       - name: Run Unreal per-use review dialog tests (real Qt, no skips)
         run: python -m unittest discover -s tests -p test_unreal_export_dialog.py -v
       - name: Run Unreal desktop static export workflow tests (real Qt, no engine claim)

@@ -257,6 +257,8 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Universal Character Creator — " + state.name + (" *" if state.dirty else ""))
 
     def _clear_preview(self) -> None:
+        from .target_action_diagnostic_workflow import clear_target_action_diagnostic
+        clear_target_action_diagnostic(self)
         from .godot_saved_preview_workflow import clear_saved_godot_preview
         clear_saved_godot_preview(self)
         from .target_action_preview import clear_target_action_preview
@@ -466,6 +468,7 @@ class MainWindow(QMainWindow):
                 'target_action_load': 'Validating the explicitly selected saved target preview...',
                 'godot_saved_review': 'Reviewing the selected saved Godot proof and source policies...',
                 'godot_saved_load': 'Validating saved Godot frames and the current source binding...',
+                'target_action_diagnostic': 'Inspecting position-only diagnostics for the selected saved clip...',
             }[self._work_kind])
         if not busy:
             resume_target_action(self)
