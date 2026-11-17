@@ -5,6 +5,7 @@ import math
 
 from ucc.animations.fbx_catalog import POLICY, WARNING
 from ucc.animations.source_rest_frames import is_sha256
+from ucc.animations.source_clip_clock import SourceClipClock
 from ucc.animations.metadata import AnimationMetadataError, ClipMetadata
 from ucc.library.provenance import LicensePolicy
 
@@ -24,6 +25,12 @@ class VerifiedCatalogClip:
     first_frame: int
     last_frame: int
     clip: ClipMetadata
+
+    @property
+    def source_clock(self) -> SourceClipClock:
+        """Timing of this source reference, without target-clock coercion."""
+        return SourceClipClock(self.first_frame, self.last_frame,
+                               self.clip.frame_count, self.clip.fps)
 
     @property
     def target_preview_verified(self) -> bool:
