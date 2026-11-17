@@ -37,7 +37,11 @@ class ProducedNativeRuntimeInputs:
     reopen_job_id: str
 
 
-def _report(folder: Path,filename: str,expected_sha: str,request_sha: str,status: str,check) -> dict:
+def _report(folder: Path,filename: str,expected_sha: str,request_sha: str,status: str,check,
+            *, expected_policy: str=POLICY) -> dict:
+    from ucc.export.godot_registered_native_recipe import POLICY as REGISTERED_POLICY
+    if expected_policy not in {POLICY, REGISTERED_POLICY}:
+        raise ValidationError('Unsupported native production report policy')
     path=regular_file(folder/filename,folder,4*1024*1024)
     if not _hash(expected_sha) or _digest(path,None)!=expected_sha:raise ValidationError('Native producer report SHA differs')
     report=read_json(path,4*1024*1024)
@@ -47,7 +51,7 @@ def _report(folder: Path,filename: str,expected_sha: str,request_sha: str,status
     fields|=({'source_names','fps','numpy_version','files','export_optimize_animation_size'} if filename=='native_stage.json'
         else {'native_stage_sha256','saved_output_rebuilt_or_repaired'})
     morphs=report.get('morphs')
-    if (set(report)!=fields or type(report.get('schema_version')) is not int or report['schema_version']!=1 or report.get('policy')!=POLICY or report.get('status')!=status
+    if (set(report)!=fields or type(report.get('schema_version')) is not int or report['schema_version']!=1 or report.get('policy')!=expected_policy or report.get('status')!=status
             or report.get('recipe_sha256')!=request_sha or report.get('frame_count')!=300
             or type(report.get('frame_count')) is not int or not _hash(report.get('master_state_sha256'))
             or report.get('raw_copy_weight_policy')!='EXACT_ORIGINAL_SOURCE_WEIGHTS_V1'

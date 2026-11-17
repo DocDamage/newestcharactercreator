@@ -65,7 +65,9 @@
         "stage_mpfb_unity_source",
         "verify_mpfb_unity_source",
         "stage_mpfb_unity_runtime_source",
-        "verify_mpfb_unity_runtime_source"
+        "verify_mpfb_unity_runtime_source",
+        "stage_registered_native_godot_runtime",
+        "verify_registered_native_godot_runtime"
       ]
     },
     "status": {
@@ -1289,6 +1291,96 @@
               "verification_sha256": {
                 "type": "string",
                 "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "stage_registered_native_godot_runtime"
+          },
+          "status": {
+            "const": "ok"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "details": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "policy",
+              "status",
+              "native_stage_sha256",
+              "frame_count",
+              "engine_import_verified"
+            ],
+            "properties": {
+              "policy": {
+                "const": "MPFB_REGISTERED_TARGET_RUNTIME_SOURCE_V2"
+              },
+              "status": {
+                "const": "REAL_NATIVE_RUNTIME_SOURCE_STAGED_NOT_ENGINE_VERIFIED"
+              },
+              "native_stage_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "frame_count": {
+                "const": 300
+              },
+              "engine_import_verified": {
+                "const": false
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "verify_registered_native_godot_runtime"
+          },
+          "status": {
+            "const": "ok"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "details": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "policy",
+              "status",
+              "native_verification_sha256",
+              "frame_count",
+              "engine_import_verified"
+            ],
+            "properties": {
+              "policy": {
+                "const": "MPFB_REGISTERED_TARGET_RUNTIME_SOURCE_V2"
+              },
+              "status": {
+                "const": "FRESH_NATIVE_RUNTIME_SOURCE_AND_SAVED_OUTPUT_VERIFIED"
+              },
+              "native_verification_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "frame_count": {
+                "const": 300
+              },
+              "engine_import_verified": {
+                "const": false
               }
             }
           }

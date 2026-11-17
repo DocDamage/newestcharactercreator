@@ -27,6 +27,7 @@ SUPPORTED_OPERATIONS.add('inspect_mpfb_neutral_master')
 SUPPORTED_OPERATIONS |= {'stage_mpfb_godot_candidate', 'verify_mpfb_godot_candidate'}
 SUPPORTED_OPERATIONS |= {'stage_native_godot_runtime', 'verify_native_godot_runtime'}
 SUPPORTED_OPERATIONS.add('sample_native_godot_runtime')
+SUPPORTED_OPERATIONS |= {'stage_registered_native_godot_runtime', 'verify_registered_native_godot_runtime'}
 SUPPORTED_OPERATIONS|={'stage_mpfb_skin_material','verify_mpfb_skin_material'}
 SUPPORTED_OPERATIONS|={'stage_mpfb_expression_normals','verify_mpfb_expression_normals'}
 SUPPORTED_OPERATIONS|={'stage_mpfb_sprite_sample','verify_mpfb_sprite_sample'}
@@ -98,6 +99,9 @@ class JobRequest:
         if self.operation in {'stage_native_godot_runtime','verify_native_godot_runtime','sample_native_godot_runtime'}:
             from ucc.export.godot_native_recipe import validate_native_job
             validate_native_job(self.operation,self.input_project,self.options)
+        if self.operation in {'stage_registered_native_godot_runtime','verify_registered_native_godot_runtime'}:
+            from ucc.export.godot_registered_native_recipe import validate_registered_native_job
+            validate_registered_native_job(self.operation,self.input_project,self.options)
         if self.operation in {'stage_mpfb_godot_candidate', 'verify_mpfb_godot_candidate'}:
             from ucc.export.godot_blender_recipe import validate_job
             validate_job(self.operation, self.input_project, self.options)
