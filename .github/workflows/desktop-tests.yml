@@ -16,6 +16,7 @@ on:
       - 'tests/test_unity_export_desktop.py'
       - 'tests/test_target_action_dialog.py'
       - 'tests/test_target_action_desktop.py'
+      - 'tests/test_target_action_preview_window.py'
       - 'tests/test_godot_saved_preview*.py'
       - 'tests/test_target_action_diagnostic*.py'
       - 'tests/test_unreal_export_dialog.py'
@@ -83,6 +84,8 @@ jobs:
         run: python -m unittest discover -s tests -p test_target_action_dialog.py -v
       - name: Run target saved-load and preview lifetime tests (no Blender claim)
         run: python -m unittest discover -s tests -p test_target_action_desktop.py -v
+      - name: Run bounded registered preview window controls (real Qt, no skips)
+        run: python -m unittest discover -s tests -p test_target_action_preview_window.py -v
       - name: Run saved Godot captured-image widgets (real Qt, no skips)
         run: python -m unittest discover -s tests -p test_godot_saved_preview_widget.py -v
       - name: Run saved Godot consent and viewer lifetime tests (real Qt, no skips)

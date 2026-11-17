@@ -1,28 +1,130 @@
 """Adopt a validated private cache without lending native-edit controls to it."""
 from hashlib import sha256
 from pathlib import Path
+import time
+from typing import Callable
 
-from PySide6.QtCore import QFileSystemWatcher, Qt, QTimer
-from PySide6.QtWidgets import QDockWidget
+from PySide6.QtCore import QEvent, QFileSystemWatcher, QObject, Qt, QTimer
+from PySide6.QtGui import QCloseEvent
+from PySide6.QtWidgets import QDockWidget, QHBoxLayout, QLabel, QMainWindow, QPushButton, QSpinBox, QWidget
 
 from ucc.core.errors import ProjectConflict, ProjectStorageError, UCCError, ValidationError
 from ucc.core.expression_library import canonical_digest
 from ucc.core.storage import MAX_JSON_BYTES
+from ucc.preview.playback_window import PlaybackWindow, WindowPlaybackClock
+from ucc.preview.motion_cache import MotionCache
 from .motion_viewer import MotionViewer
 
 
 class TargetActionViewer(MotionViewer):
     """Use the existing transport, guarding activation and its live authority."""
-    def __init__(self, guard, parent=None):
+    def __init__(self, guard: Callable[[], bool], parent: QWidget | None = None):
         super().__init__(parent)
         self.guard = guard
         self.guard_timer = QTimer(self)
         self.guard_timer.setInterval(500)
         self.guard_timer.timeout.connect(self._guard_playing)
         self.loop.setChecked(False)
+        self.review_window: PlaybackWindow | None = None
+        self.target_start = QSpinBox()
+        self.target_end = QSpinBox()
+        for control in (self.target_start, self.target_end):
+            control.setRange(1, 300)
+        self.target_end.setValue(300)
+        bounds = QHBoxLayout()
+        for title, control in (('Target start', self.target_start), ('Target end', self.target_end)):
+            label = QLabel(title)
+            label.setTextFormat(Qt.TextFormat.PlainText)
+            bounds.addWidget(label); bounds.addWidget(control)
+        self.layout.addLayout(bounds)
+        self.apply_window = QPushButton('Apply review window')
+        self.go_start = QPushButton('Go to window start')
+        actions = QHBoxLayout()
+        actions.addWidget(self.apply_window); actions.addWidget(self.go_start)
+        self.layout.addLayout(actions)
+        self.window_status = QLabel('No review window loaded.')
+        self.window_status.setTextFormat(Qt.TextFormat.PlainText)
+        self.window_status.setWordWrap(True)
+        self.layout.addWidget(self.window_status)
+        self.apply_window.clicked.connect(self.apply_review_window)
+        self.go_start.clicked.connect(self.go_to_window_start)
+        self._enable(False)
+
+    def _enable(self, enabled: bool) -> None:
+        super()._enable(enabled)
+        self.loop.setEnabled(False)
+        if hasattr(self, 'target_start'):
+            for control in (self.target_start, self.target_end, self.apply_window, self.go_start):
+                control.setEnabled(enabled)
+            if self.review_window is not None and self.review_window.is_static:
+                self.play.setEnabled(False)
+
+    def show_cache(self, cache: MotionCache) -> None:
+        if cache.frame_count != 300 or cache.fps != 30 or cache.source_first_frame != 2:
+            raise ValidationError('Review windows require the complete registered 300-frame cache')
+        super().show_cache(cache)
+        self.review_window = PlaybackWindow()
+        self.clock = WindowPlaybackClock(self.review_window)
+        self._window_label()
+        self._present()
+
+    def _authorized(self) -> bool:
+        try:
+            if self.clock is not None and self.guard():
+                return True
+        except (UCCError, OSError, ValueError):
+            pass
+        self.clear()
+        return False
+
+    def _window_label(self) -> None:
+        window = self.review_window
+        self.window_status.setText(
+            f'Review only: target {window.target_first_frame}–{window.target_last_frame}; '
+            f'source {window.source_first_frame_selected}–{window.source_last_frame_selected}. '
+            f'{window.sample_count} samples; sample span {window.sample_span_s:.6f} s; '
+            f'nominal sample coverage {window.nominal_coverage_s:.6f} s. '
+            'The original 300-frame cache and saved Action remain unchanged.')
+
+    def apply_review_window(self) -> None:
+        if not self._authorized():
+            return
+        try:
+            window = PlaybackWindow(self.target_start.value(), self.target_end.value())
+            clock = WindowPlaybackClock(window)
+        except (ValidationError, ValueError) as error:
+            self.window_status.setText('Review window was not applied: ' + str(error))
+            return
+        # GUI callbacks are serialized. Stop the old clock before replacing it;
+        # queued timeout/paint events subsequently read only this new frame.
+        self.timer.stop(); self.guard_timer.stop()
+        self.review_window = window; self.clock = clock
+        self.scrub.blockSignals(True)
+        self.scrub.setRange(window.first_index, window.last_index)
+        self.scrub.setValue(window.first_index)
+        self.scrub.blockSignals(False)
+        self.play.setEnabled(not window.is_static and not self._gpu_failed)
+        self._window_label()
+        self._present()
+
+    def go_to_window_start(self) -> None:
+        if not self._authorized():
+            return
+        self.timer.stop(); self.guard_timer.stop()
+        self.clock.reset(time.monotonic())
+        self._present()
+
+    def _loop_changed(self, checked):
+        if checked:
+            self.loop.blockSignals(True); self.loop.setChecked(False); self.loop.blockSignals(False)
+        if self.clock is not None:
+            self.clock.loop = False
 
     def toggle(self):
-        if self.clock is not None and not self.guard():
+        if not self._authorized():
+            return
+        if self.review_window is not None and self.review_window.is_static:
+            self.timer.stop(); self.guard_timer.stop()
             return
         super().toggle()
         if self.clock is not None and self.clock.playing:
@@ -31,9 +133,26 @@ class TargetActionViewer(MotionViewer):
             self.guard_timer.stop()
 
     def seek(self, frame):
-        if self.clock is not None and not self.guard():
+        if not self._authorized():
+            return
+        if self.review_window is not None and not self.review_window.contains_index(frame):
+            self.window_status.setText('Select a frame inside the applied review window.')
             return
         super().seek(frame)
+
+    def _present(self):
+        if self.clock is None:
+            return
+        window = getattr(self, 'review_window', None)
+        if window is not None and not window.contains_index(self.clock.frame):
+            self._failed('A frame outside the applied review window was refused')
+            return
+        super()._present()
+        if window is not None:
+            frame = self.clock.frame
+            self.position.setText(f'Source frame {frame + self.cache.source_first_frame} • '
+                f'target {frame + 1} / 300 • window {frame - window.first_index + 1} / '
+                f'{window.sample_count} • window elapsed {(frame - window.first_index) / self.clock.fps:.3f} s')
 
     def tick(self):
         super().tick()
@@ -42,15 +161,40 @@ class TargetActionViewer(MotionViewer):
 
     def _guard_playing(self):
         if self.clock is not None and self.clock.playing:
-            self.guard()
+            self._authorized()
 
     def clear(self):
         self.guard_timer.stop()
+        self.review_window = None
         super().clear()
+        if hasattr(self, 'target_start'):
+            self.target_start.setValue(1); self.target_end.setValue(300)
+            self.window_status.setText('No review window loaded.')
 
     def _failed(self, error):
-        self.guard_timer.stop()
+        self.clear()
         super()._failed(error)
+
+    def closeEvent(self, event: QCloseEvent) -> None:
+        self.clear()
+        super().closeEvent(event)
+
+
+class _TargetActionDock(QDockWidget):
+    """Closing the preview or its owner releases existing cache authority."""
+    def __init__(self, title: str, owner: QMainWindow):
+        super().__init__(title, owner)
+        self._owner = owner
+        owner.installEventFilter(self)
+
+    def closeEvent(self, event: QCloseEvent) -> None:
+        clear_target_action_preview(self._owner)
+        super().closeEvent(event)
+
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
+        if watched is self._owner and event.type() == QEvent.Type.Close:
+            clear_target_action_preview(self._owner)
+        return super().eventFilter(watched, event)
 
 
 def _small_digest(path: Path, maximum: int) -> str:
@@ -272,7 +416,7 @@ def publish_target_action(window, context, review, result, *, selected_binding: 
         _check_context(window, context, review, result)
         if getattr(window, '_target_action_viewer', None) is None:
             viewer = TargetActionViewer(lambda: _active_guard(window))
-            dock = QDockWidget('Registered clip — private one-shot target preview', window)
+            dock = _TargetActionDock('Registered clip — private one-shot target preview', window)
             dock.setObjectName('RegisteredTargetActionPreviewDock')
             dock.setWidget(viewer)
             window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dock)

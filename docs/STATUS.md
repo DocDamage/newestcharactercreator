@@ -1,3 +1,40 @@
+## Registered preview frame windows - G source checkpoint
+
+F PR #80 is closed at merge `d9f5bfb7bceafe20775649fb6edd3c1b35a0a5de`;
+all ten fresh-main checks pass and ordinary local/remote feature pruning preserves
+the clean detached F proof checkout's 1,407 raw files. Earlier pending notices
+below remain historical.
+
+[UCC-P1-MOTION-RANGE-REVIEW-001](acceptance/UCC-P1-MOTION-RANGE-REVIEW-001.md)
+source commit `57720597a28f84fa62b1bbf16fcda9a63c309c52` matches the tested
+1,019-file public freeze. Inclusive target windows keep the original300-frame
+cache and absolute indices, static Play disabled, final-sample dwell, separate
+sample-span/coverage labels and existing current-source/catalog guards.
+
+Full required-Qt regression and independent audit pass: **1,992 tests = 1,978
+passed + fourteen unchanged privilege skips**,599.683s (`d909da896991` /
+`aed8c8a556c2`). All F1,959 IDs remain, plus33G tests. Lean preservation covers
+raw A-F checkouts/G source, original p186/four-role379 inputs and global
+MAIN/logical state through owned replays; it is not an81historical-case claim.
+Earlier selected172 unittest was171PASS+1oldskip while its outer runner exited1
+for blanket skip rejection; that qualified result is not relabelled.
+
+Three normal source GUI flows exit0: positive158, static-WAL6 and playing-WAL10
+observed original renderer submissions. Normal range/pause/resume/hold/queued
+Apply/static/close cleanup and selected-policy restriction/blocked reopen are
+recorded with all9immutable flags true. The owned restricted catalog's mutation
+and checkpoint are explicit exceptions. Exact independent three-case admission
+passes (`7a09aaa3d4b6`); the genuine flows also preserve the owned p186 copy. All retained648B stderr
+streams are qualified despite actual0/noTimeout; no clean-stderr/cause claim.
+
+Final-head CI/artifact/generic-startup are separate publication metadata, not
+future successes asserted here. Normal packaged G feature remains **UNVERIFIED**.
+No images/geometry emission, GPU readback, all76rendered/FPS/performance, engine,
+gait/loop/usable, delivery/shipping or broader approval is claimed. NoAI379
+private-local-preview limits and originals remain unchanged.
+
+---
+
 ## Registered clip diagnostics — source acceptance checkpoint (November 17, 2026)
 
 E PR #79 merged normally as `25e6fa3277219a5dc91757b4f0e6376b4737e45e`, with
