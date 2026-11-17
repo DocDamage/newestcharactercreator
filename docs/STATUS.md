@@ -1,5 +1,24 @@
 # UCC development status - November 16, 2026
 
+## Registered Godot body300 - local numerical checkpoint
+
+[UCC-P1-GODOT-MOTION-001C](acceptance/UCC-P1-GODOT-MOTION-001C.md) adds a
+source-only private diagnostic using retained inputs and matching actual native
+references. Installed Godot 4.7.1 Mobile/Vulkan passes all 300 neutral-face
+integer frames, geometry/normal limits and exact UV correspondence. Actual
+caller cancellation and independent audits pass. The full required-Qt suite
+passes 1,813 tests: 1,799 passed and fourteen unchanged Windows privilege skips.
+All 972 tested source files and protected native evidence remain unchanged.
+
+This verifies hidden-mesh numerical output. Visual/material approval,
+performance/VRAM bounds, packaged API, GUI, delivery and shipping remain open;
+all broader readiness flags stay false. No private kernels enter Git.
+Exact-head C publication gates remain pending. Source-preparation PR #75 merged
+at `66bd2db`; retention PR #76 awaits its final Linux body artifact. Earlier
+pending notices below describe historical local checkpoints. Next task: draw
+accepted corrected output privately and retain viewport evidence.
+
+
 ## Registered Godot inputs - local persistence checkpoint
 
 [UCC-P1-GODOT-MOTION-001B](acceptance/UCC-P1-GODOT-MOTION-001B.md) retains
@@ -12,8 +31,8 @@ Independent source, IO and full-regression audits pass within this finite scope.
 
 This is private input persistence. Runtime code remains data, all readiness
 flags stay false, and no engine project, GUI export or delivery is published.
-Commit-specific remote gates and integration remain pending; the preceding
-source-preparation PR #75 is also awaiting its final Linux gate.
+At this historical local checkpoint, commit-specific remote gates and integration
+were pending. See the current integration status above.
 
 ## Registered Godot source preparation - local API checkpoint
 
