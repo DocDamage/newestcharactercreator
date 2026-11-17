@@ -11,12 +11,19 @@ Full required-Qt validation passes 2,142 tests: 2,128 passes and fourteen exact
 prior Windows privilege skips, with no failures/errors. All 24 additions pass
 without skips. Preflight, actual source startup and independent source/result
 auditing pass. Remote CI and normal frozen feature verification are pending.
+The first normal frozen `--catalog` launch reveals a relative-import failure that
+the generic self-test misses; it starts no Blender jobs. An absolute import,
+standalone-entry regression and bounded actual frozen CLI validation correct the
+gap. The affected 99-test gate passes with one unchanged Windows privilege skip;
+rebuilt package and normal frozen UI acceptance are still pending.
 
 Native playback PR #84 is merged as
 `5cd76014d4915013d6e1895be9109cb3c3f3ce5e`, with the exact tested tree.
 All ten standard PR checks and its actual extracted Windows executable's three
 startup checks pass; 294 host modules and 224 payload files were inspected.
-Fresh-main standard checks and the separately monitored experimental Linux
+All ten fresh-main standard checks also pass. Its ordinary local/remote branch
+is pruned; the detached proof checkout retains all 1,045 files unchanged and a
+verified recovery bundle is saved. Separately monitored experimental Linux
 suites remain pending at this checkpoint. No experimental success is implied.
 Source cold-start and retained-cache acceptance below have finite recorded scope.
 

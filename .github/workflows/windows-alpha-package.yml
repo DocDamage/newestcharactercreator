@@ -137,6 +137,22 @@ jobs:
           if ($health.status -ne 'SELF_TEST_OK') { throw 'Frozen self-test did not pass' }
           if ($health.checks.Count -ne 3) { throw 'Frozen self-test did not exercise project, Qt widgets and bundled Blender bridge' }
           Write-Output 'FROZEN_QT_AND_PROJECT_ROUNDTRIP_VERIFIED'
+          # Exercise the real standalone --catalog entry point, not only imports
+          # through python -m. Invalid selection must exit before creating a GUI.
+          $catalogPath = Join-Path $PWD 'build/absent-catalog-for-validation.sqlite3'
+          if (Test-Path -LiteralPath $catalogPath) { throw 'Negative catalog fixture unexpectedly exists' }
+          $catalogArgs = '--catalog "' + $catalogPath + '"'
+          $catalogProcess = Start-Process -FilePath $exe -ArgumentList $catalogArgs -PassThru -WindowStyle Hidden `
+            -RedirectStandardOutput "$PWD/build/catalog-validation.stdout.log" `
+            -RedirectStandardError "$PWD/build/catalog-validation.stderr.log"
+          if (-not $catalogProcess.WaitForExit(30000)) {
+            $catalogProcess.Kill($true)
+            [void]$catalogProcess.WaitForExit(10000)
+            throw 'Frozen --catalog validation hung or displayed an exception dialog'
+          }
+          if ($catalogProcess.ExitCode -ne 2) { throw "Frozen --catalog invalid selection returned $($catalogProcess.ExitCode)" }
+          if (Test-Path -LiteralPath $catalogPath) { throw 'Frozen --catalog created the missing database' }
+          Write-Output 'FROZEN_EXPLICIT_CATALOG_VALIDATION_VERIFIED'
       - name: Retain self-test JSON on failure for diagnosis
         if: failure()
         uses: actions/upload-artifact@v4

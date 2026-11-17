@@ -61,3 +61,26 @@ after this gate. Remote exact-head CI, packaged startup and actual frozen featur
 acceptance remain pending.
 This slice does not claim persistent playback restoration, Blender
 animation, visual quality or engine acceptance.
+
+## Frozen entry-point regression and correction
+
+The first package at `f5de01a3b73f9ee923d835c88ed978a9c0653427` passes its
+generic three-check self-test and code/resource audit, but its actual normal
+`--catalog` launch fails before opening the editor. The standalone frozen script
+has no package context; a relative import raises `ImportError`. The actual
+executable exits 1 after closing its error dialog. Zero Blender jobs start.
+Independent failure auditing preserves all 243 project files, catalog bytes,
+original sources and all 409 bundle files. This is a failed feature gate.
+
+Use the absolute package import. A new `runpy.run_path(..., run_name='__main__')`
+regression reproduces the original exception before the fix and passes afterward
+with a real existing catalog, mocked event loop and an assertion against startup
+SQL. It also passes with site packages disabled. The affected 99-test gate passes
+98 tests with one unchanged Windows privilege skip, and source startup passes.
+Windows packaging now invokes the real frozen `--catalog` branch with a missing
+catalog: it must exit 2 within 30 seconds and must not create the database.
+
+Evidence is retained in `session-catalog-frozen-import-fix001/` and
+`native-skin-frozen-catalog-001-failure-audit001/`. The earlier harness JSON-parser
+failure occurred before any app launch and is retained separately. A rebuilt
+exact-head package and a fresh genuine frozen UI flow remain pending.

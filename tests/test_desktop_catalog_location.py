@@ -3,6 +3,7 @@ import contextlib
 import io
 import os
 from pathlib import Path
+import runpy
 import subprocess
 import sys
 import tempfile
@@ -72,6 +73,27 @@ class SessionCatalogLocationTests(unittest.TestCase):
 
 
 class SessionCatalogCliTests(unittest.TestCase):
+    def test_standalone_entrypoint_forwards_catalog_without_a_package_context(self):
+        from ucc.animations.catalog import AnimationCatalog
+        with tempfile.TemporaryDirectory() as directory:
+            selected = Path(directory).resolve()/'existing catalog.db'
+            with AnimationCatalog(selected): pass
+            entrypoint = Path(__file__).resolve().parents[1]/'src/ucc/desktop/__main__.py'
+            app = Mock(); app.exec.return_value = 17
+            application = Mock(); application.instance.return_value = app
+            window = Mock()
+            modules = {'PySide6.QtWidgets': SimpleNamespace(QApplication=application),
+                       'ucc.desktop.window': SimpleNamespace(MainWindow=window)}
+            with patch.dict(sys.modules, modules), \
+                    patch.object(sys, 'argv', [str(entrypoint), '--catalog', str(selected)]), \
+                    patch('sqlite3.connect', side_effect=AssertionError('Startup SQL forbidden')), \
+                    self.assertRaises(SystemExit) as result:
+                runpy.run_path(str(entrypoint), run_name='__main__')
+            self.assertEqual(result.exception.code, 17)
+            window.assert_called_once_with(catalog_path=selected)
+            window.return_value.show.assert_called_once_with()
+            app.exec.assert_called_once_with()
+
     def test_invalid_options_exit_before_launch_or_self_test(self):
         with patch('ucc.desktop.__main__._self_test', side_effect=AssertionError('Self-test must not run')), \
                 patch('ucc.desktop.catalog_location.existing_catalog_path', side_effect=AssertionError('Path must not be inspected')), \

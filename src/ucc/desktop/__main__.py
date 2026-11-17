@@ -99,7 +99,7 @@ def main(argv: list[str] | None = None) -> int:
         return _self_test(args.self_test_report)
     if args.catalog is not None:
         from ucc.core.errors import ValidationError
-        from .catalog_location import existing_catalog_path
+        from ucc.desktop.catalog_location import existing_catalog_path
         try:
             args.catalog = existing_catalog_path(args.catalog)
         except ValidationError as error:
