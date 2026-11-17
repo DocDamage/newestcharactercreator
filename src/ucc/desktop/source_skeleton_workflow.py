@@ -99,10 +99,10 @@ def start_source_skeleton(window) -> None:
         window._blender_executable = executable
     try:
         worker = bundled_worker_path()
+        database = window._catalog_path()
     except (UCCError, OSError, ValueError) as error:
         window._error(str(error)); return
     clear_source_skeleton(window)
-    database = window._catalog_path()
     store = window.controller.store
     cancel = Event()
     token = object()

@@ -61,6 +61,8 @@ jobs:
         run: python -c "from PySide6.QtWidgets import QApplication; from ucc.desktop.window import MainWindow"
       - name: Run real offscreen Qt widgets
         run: python -m unittest discover -s tests -p test_desktop_qt.py -v
+      - name: Run explicit session catalog selection (real Qt)
+        run: python -m unittest discover -s tests -p test_session_catalog_qt.py -v
       - name: Run measured FBX indexing and source clock readout (real Qt)
         run: python -m unittest discover -s tests -p test_fbx_catalog_qt.py -v
       - name: Run measured source skeleton transport (real Qt)

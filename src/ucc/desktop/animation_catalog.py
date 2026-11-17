@@ -22,10 +22,14 @@ def start_index(window, file: str, asset_id: str, provider: str, license_name: s
     if not file or not asset_id or not provider or not uri:
         window._error('Choose a source and enter an asset ID, provider and actual source URI'); return
     source = Path(file)
-    database = window._catalog_path()
+    try:
+        database = window._catalog_path()
+    except (UCCError, OSError, ValueError) as error:
+        window._error(str(error)); return
+    existing_options = {'require_existing': True} if getattr(window, '_catalog_override', None) is not None else {}
     if source.suffix.lower() != '.fbx' or not window.animations.local_preview_review.isChecked():
         def metadata_only():
-            with AnimationCatalog(database) as catalog:
+            with AnimationCatalog(database, **existing_options) as catalog:
                 return catalog.index_file(asset_id, source, LicensePolicy(provider, license_name, uri)).to_dict()
         window._submit('index', metadata_only)
         return
@@ -55,17 +59,17 @@ def start_index(window, file: str, asset_id: str, provider: str, license_name: s
     def measured():
         if cancel.is_set():
             raise WorkerFailure('FBX catalog indexing cancelled; previous catalog retained')
-        with AnimationCatalog(database) as catalog:
+        with AnimationCatalog(database, **existing_options) as catalog:
             previous = catalog.library.get(asset_id)
             if previous is not None and previous.policy != policy:
                 raise AssetPolicyError('This asset ID has a different saved license review. '
                                        'Keep it unchanged and choose a new asset ID for the reviewed source.')
             catalog.index_file(asset_id, source, policy)
         result = measure_catalog_fbx(database, asset_id, blender_exe=executable, worker_script=worker,
-            jobs_root=jobs_root, cancel=cancel)
+            jobs_root=jobs_root, cancel=cancel, **existing_options)
         if cancel.is_set():
             raise WorkerFailure('FBX source-clock display cancelled; completed catalog records are retained')
-        with AnimationCatalog(database) as catalog:
+        with AnimationCatalog(database, **({'read_only': True} if existing_options else {})) as catalog:
             rows = [item.to_dict() for item in catalog.list_sources()]
             clock = catalog.source_clock(asset_id)
             if clock is None:
