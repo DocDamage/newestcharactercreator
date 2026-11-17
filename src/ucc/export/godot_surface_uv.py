@@ -71,8 +71,11 @@ def verify_corner_uvs(polygons: Sequence[Sequence[int]], corner_uvs: Sequence[Se
         'maximum_uv_component_error':maximum,'uv_limit':LIMIT,'material_appearance_verified':False,'engine_import_verified':False}
 
 
-def read_glb_uvs(path: Path,bind: Sequence[Sequence[float]]) -> tuple[list,list,list]:
+def read_glb_uvs(path: Path,bind: Sequence[Sequence[float]],*,expected_sha256:str|None=None) -> tuple[list,list,list]:
     reader = _DenseSkin(path)
+    if expected_sha256 is not None:
+        if sha256(reader.raw).hexdigest()!=expected_sha256:
+            raise ValidationError('GLB UV parser buffer differs from admitted source SHA')
     try:
         doc = reader.document; primitive = doc['meshes'][0]['primitives'][0]; attributes = primitive['attributes']
         def key(point):return struct.pack('<3f',*(0. if value==0 else value for value in point))
