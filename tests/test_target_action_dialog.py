@@ -75,6 +75,23 @@ class TargetActionDialogTests(unittest.TestCase):
         self.assertIsNone(d.choice.mapping_profile)
         self.assertIsNone(d.choice.mapping_sha256)
 
+    def test_diagnostics_requires_explicit_binding_and_fresh_consent_without_new_mapping(self):
+        d = self.dialog
+        self.assertFalse(d.diagnostics.isEnabled())
+        d.consent.setChecked(True)
+        self.assertFalse(d.diagnostics.isEnabled())
+        d.bindings.setCurrentIndex(1)
+        self.assertTrue(d.diagnostics.isEnabled())
+        d.set_busy(True)
+        self.assertFalse(d.diagnostics.isEnabled())
+        d.set_busy(False)
+        d.diagnostics.click()
+        self.assertEqual(d.choice.operation, 'diagnostics')
+        self.assertEqual(d.choice.binding_sha256, 'b'*64)
+        self.assertTrue(d.choice.local_preview_confirmed)
+        self.assertIsNone(d.choice.mapping_profile)
+        self.assertIsNone(d.choice.mapping_sha256)
+
     def test_changing_registered_source_discards_old_review_map_and_permission(self):
         d = self.dialog
         requested = []
@@ -92,6 +109,7 @@ class TargetActionDialogTests(unittest.TestCase):
         self.assertFalse(d.prepare.isEnabled())
         self.assertFalse(d.load.isEnabled())
         d.set_review(self.review, (self.saved,))
+        self.assertFalse(d.diagnostics.isEnabled())
         self.assertIsNone(d.review, 'Late review for another source must not be adopted')
 
     def test_busy_disables_choices_and_actions(self):

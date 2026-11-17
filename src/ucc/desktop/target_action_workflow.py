@@ -17,9 +17,10 @@ from .generation import bundled_worker_path
 from .target_action_dialog import TargetActionDialog
 from .target_action_preview import _small_digest, publish_target_action
 from .godot_saved_preview_workflow import KINDS as SAVED_GODOT_KINDS
+from .target_action_diagnostic_workflow import KINDS as DIAGNOSTIC_KINDS
 
 
-KINDS = frozenset({'target_action_review', 'target_action_mapping', 'target_action_prepare', 'target_action_load'}) | SAVED_GODOT_KINDS
+KINDS = frozenset({'target_action_review', 'target_action_mapping', 'target_action_prepare', 'target_action_load'}) | SAVED_GODOT_KINDS | DIAGNOSTIC_KINDS
 PHASES = {
     'SOURCE_REVIEW': 'Checking the exact registered source and local preview permission...',
     'NEUTRAL_MASTER': 'Independently checking the saved neutral character...',
@@ -29,6 +30,11 @@ PHASES = {
     'PERSISTING': 'Saving the immutable private target preview...',
     'RECORD_COMMITTED': 'Private target Action saved; validating preview loading...',
     'COMPLETE': 'Saved record returned; checking the current desktop selection...',
+    'TARGET_DIAGNOSTIC_SOURCE_REVIEW': 'Checking current local-preview rights for the selected clip...',
+    'TARGET_DIAGNOSTIC_CAPTURE': 'Reading the complete saved clip proof...',
+    'TARGET_DIAGNOSTIC_MEASURE': 'Measuring position-only root and endpoint diagnostics...',
+    'TARGET_DIAGNOSTIC_FINAL_GUARD': 'Rechecking current proof and catalog authority...',
+    'TARGET_DIAGNOSTIC_COMPLETE': 'Checking the diagnostic report against the current selection...',
 }
 if TYPE_CHECKING:
     from ucc.jobs.target_action import TargetActionSourceReview, TargetActionSummary
@@ -64,6 +70,8 @@ class SavedTargetActionRetained(ProjectStorageError):
 
 
 def refresh_target_action(window) -> None:
+    from .target_action_diagnostic_workflow import refresh_target_action_diagnostic
+    refresh_target_action_diagnostic(window)
     from .godot_saved_preview_workflow import refresh_saved_godot_preview
     refresh_saved_godot_preview(window)
     action = getattr(window, 'target_action_action', None)
@@ -232,9 +240,16 @@ def _chosen(window, dialog):
     context = window._target_action_context
     try:
         _current(window, context)
-        if (choice.operation not in {'prepare', 'load', 'godot_saved'} or choice.clip_id != review.source.clip_id
+        if (choice.operation not in {'prepare', 'load', 'godot_saved', 'diagnostics'} or choice.clip_id != review.source.clip_id
                 or not choice.local_preview_confirmed):
             raise ValidationError('Confirm the exact reviewed source for this private preview')
+        if choice.operation == 'diagnostics':
+            from .target_action_diagnostic_workflow import start_target_action_diagnostic
+            start_target_action_diagnostic(window, context, review, choice.binding_sha256,
+                                           local_preview_confirmed=choice.local_preview_confirmed)
+            return
+        from .target_action_diagnostic_workflow import clear_target_action_diagnostic
+        clear_target_action_diagnostic(window, 'Another target preview was selected')
         if choice.operation == 'godot_saved':
             from .godot_saved_preview_workflow import start_saved_godot_preview
             start_saved_godot_preview(window, context, review, choice.binding_sha256)
@@ -281,6 +296,10 @@ def _chosen(window, dialog):
 
 
 def finish_target_action(window, result) -> None:
+    if window._work_kind in DIAGNOSTIC_KINDS:
+        from .target_action_diagnostic_workflow import finish_target_action_diagnostic
+        finish_target_action_diagnostic(window, result)
+        return
     if window._work_kind in SAVED_GODOT_KINDS:
         from .godot_saved_preview_workflow import finish_saved_godot_preview
         finish_saved_godot_preview(window, result)
@@ -342,6 +361,10 @@ def _close_progress(window):
 
 
 def target_action_error(window, error: str) -> None:
+    if window._work_kind in DIAGNOSTIC_KINDS:
+        from .target_action_diagnostic_workflow import target_action_diagnostic_error
+        target_action_diagnostic_error(window, error)
+        return
     if window._work_kind in SAVED_GODOT_KINDS:
         from .godot_saved_preview_workflow import saved_godot_preview_error
         saved_godot_preview_error(window, error)

@@ -34,7 +34,7 @@ class TargetActionDialog(QDialog):
         self._busy = False
         layout = QVBoxLayout(self)
         description = QLabel(
-            'Prepare a private saved target Action or explicitly reopen one saved binding. '
+            'Prepare a private saved target Action, reopen one saved binding, or inspect its diagnostic measurements. '
             'Playback runs once: source frames 2–301 correspond to target frames 1–300. '
             'The editable master and source-only registration stay unchanged. '
             'Editing, usable-action quality, visual quality and engine use remain unapproved.')
@@ -76,6 +76,8 @@ class TargetActionDialog(QDialog):
         self.status.setTextFormat(Qt.TextFormat.PlainText)
         self.status.setWordWrap(True)
         layout.addWidget(self.status)
+        self.diagnostics = QPushButton('Inspect selected clip diagnostics...')
+        layout.addWidget(self.diagnostics)
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Cancel)
         self.prepare = buttons.addButton('Prepare new private preview', QDialogButtonBox.ButtonRole.ActionRole)
         self.load = buttons.addButton('Load selected saved preview', QDialogButtonBox.ButtonRole.ActionRole)
@@ -90,6 +92,7 @@ class TargetActionDialog(QDialog):
         self.prepare.clicked.connect(lambda: self._choose('prepare'))
         self.load.clicked.connect(lambda: self._choose('load'))
         self.godot_saved.clicked.connect(lambda: self._choose('godot_saved'))
+        self.diagnostics.clicked.connect(lambda: self._choose('diagnostics'))
         self._refresh()
 
     def _source_changed(self, clip_id):
@@ -160,13 +163,15 @@ class TargetActionDialog(QDialog):
         self.prepare.setEnabled(bool(consent and self.mapping_sha256 and valid_purpose))
         self.load.setEnabled(bool(consent and self.bindings.currentData()))
         self.godot_saved.setEnabled(bool(consent and self.bindings.currentData()))
+        self.diagnostics.setEnabled(bool(consent and self.bindings.currentData()))
 
     def _choose(self, operation: str):
-        button = {'prepare': self.prepare, 'load': self.load, 'godot_saved': self.godot_saved}[operation]
+        button = {'prepare': self.prepare, 'load': self.load, 'godot_saved': self.godot_saved,
+                  'diagnostics': self.diagnostics}[operation]
         if not button.isEnabled():
             return
         self.choice = TargetActionChoice(
-            operation, self.clips.currentText(), self.bindings.currentData() if operation in {'load', 'godot_saved'} else None,
+            operation, self.clips.currentText(), self.bindings.currentData() if operation in {'load', 'godot_saved', 'diagnostics'} else None,
             Path(self.mapping.text()) if operation == 'prepare' else None,
             self.mapping_sha256 if operation == 'prepare' else None,
             self.purpose.text().strip(), self.consent.isChecked())
