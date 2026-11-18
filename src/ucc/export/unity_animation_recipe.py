@@ -14,6 +14,7 @@ FPS = 30
 VIRTUAL_FRAME = SOURCE_FRAMES + 1
 VERTICES = 13380
 BONES = 163
+CORNERS = 53512
 INPUT_FILES = {
     'candidate.blend': 'master_sha256',
     'review_motion.blend': 'review_sha256',
@@ -28,6 +29,11 @@ REFERENCES = {
     'unity_animated_corrected_normals.f32': SOURCE_FRAMES * VERTICES * 3 * 4,
     'unity_animated_world_bones.f32': SOURCE_FRAMES * BONES * 16 * 4,
 }
+CORRECTION_INPUTS = {
+    'neighbor_ranges.u32': VERTICES * 8, 'neighbors.u32': CORNERS * 4,
+    'corners.u32': CORNERS * 16, 'offsets_vec4.f32': CORNERS * 16,
+    'corner_ranges.u32': VERTICES * 8, 'corner_indices.u32': CORNERS * 4,
+}
 FBX = 'animated_character.fbx'
 BIND = 'unity_animated_bind.json'
 WEIGHTS = 'source_weights.json'
@@ -35,7 +41,7 @@ STAGE_REPORT = 'unity_animated_source_stage.json'
 VERIFY_REPORT = 'unity_animated_source_verification.json'
 FBX_SNAPSHOT = 'unity_animated_fbx_readback.json'
 OUTPUT_LIMITS = {FBX: 256 * 1024**2, BIND: 64 * 1024**2, WEIGHTS: 8 * 1024**2,
-                 STAGE_REPORT: 64 * 1024, **REFERENCES}
+                 STAGE_REPORT: 64 * 1024, **REFERENCES, **CORRECTION_INPUTS}
 
 
 def output_option(name: str) -> str:

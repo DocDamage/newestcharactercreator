@@ -91,7 +91,7 @@ print('ISOLATED_PURE_CONTRACT_IMPORTS_OK')
         self.assertEqual(REGISTERED_CORRECTION_FILES, correction_names)
         self.assertEqual(REGISTERED_BODY_FILES, body_names)
         self.assertEqual(REGISTERED_PLAYBACK_FILES, playback_names)
-        self.assertEqual(self.manifest['schema_version'], 2)
+        self.assertEqual(self.manifest['schema_version'], 3)
         source_root = ROOT/'engine_adapters/godot'
         cases = (
             ('registered_correction', REGISTERED_CORRECTION_ADAPTER, correction_names,
@@ -150,13 +150,16 @@ print('ISOLATED_PURE_CONTRACT_IMPORTS_OK')
         from ucc.core.worker_payload import REGISTERED_BODY_ADAPTER, REGISTERED_BODY_FILES
         from ucc.core.worker_payload import REGISTERED_CORRECTION_ADAPTER, REGISTERED_CORRECTION_FILES
         from ucc.core.worker_payload import REGISTERED_PLAYBACK_ADAPTER, REGISTERED_PLAYBACK_FILES
+        from ucc.core.worker_payload import UNITY_REGISTERED_ANIMATION_ADAPTER, UNITY_REGISTERED_ANIMATION_FILES
         from ucc.jobs.worker_resources import bundled_registered_body_paths, bundled_registered_correction_paths
         from ucc.jobs.worker_resources import bundled_registered_playback_paths
+        from ucc.jobs.worker_resources import bundled_unity_registered_animation_paths
 
         groups = (
             (REGISTERED_BODY_ADAPTER, REGISTERED_BODY_FILES, bundled_registered_body_paths),
             (REGISTERED_CORRECTION_ADAPTER, REGISTERED_CORRECTION_FILES, bundled_registered_correction_paths),
             (REGISTERED_PLAYBACK_ADAPTER, REGISTERED_PLAYBACK_FILES, bundled_registered_playback_paths),
+            (UNITY_REGISTERED_ANIMATION_ADAPTER, UNITY_REGISTERED_ANIMATION_FILES, bundled_unity_registered_animation_paths),
         )
         with patch.object(sys, 'frozen', True, create=True), patch.object(
             sys, '_MEIPASS', str(self.payload), create=True,
@@ -171,6 +174,11 @@ print('ISOLATED_PURE_CONTRACT_IMPORTS_OK')
                             locator()
                     finally:
                         target.write_bytes(original)
+
+            unity = bundled_unity_registered_animation_paths()
+            for name in UNITY_REGISTERED_ANIMATION_FILES:
+                self.assertEqual(unity[name], self.payload/UNITY_REGISTERED_ANIMATION_ADAPTER/name)
+                self.assertEqual(unity[name].read_bytes(), (ROOT/'engine_adapters/unity/registered_animation'/name).read_bytes())
 
             legacy = json.loads(json.dumps(self.manifest))
             legacy.update(schema_version=1, policy='UCC_WORKER_PAYLOAD_V1')

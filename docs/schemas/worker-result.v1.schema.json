@@ -1081,7 +1081,13 @@
                   "unity_animated_raw_positions.f32",
                   "unity_animated_corrected_positions.f32",
                   "unity_animated_corrected_normals.f32",
-                  "unity_animated_world_bones.f32"
+                  "unity_animated_world_bones.f32",
+                  "neighbor_ranges.u32",
+                  "neighbors.u32",
+                  "corners.u32",
+                  "offsets_vec4.f32",
+                  "corner_ranges.u32",
+                  "corner_indices.u32"
                 ],
                 "properties": {
                   "animated_character.fbx": {
@@ -1113,6 +1119,30 @@
                     "pattern": "^[0-9a-f]{64}$"
                   },
                   "unity_animated_world_bones.f32": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "neighbor_ranges.u32": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "neighbors.u32": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "corners.u32": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "offsets_vec4.f32": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "corner_ranges.u32": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "corner_indices.u32": {
                     "type": "string",
                     "pattern": "^[0-9a-f]{64}$"
                   }
@@ -1164,7 +1194,13 @@
                   "unity_animated_raw_positions.f32",
                   "unity_animated_corrected_positions.f32",
                   "unity_animated_corrected_normals.f32",
-                  "unity_animated_world_bones.f32"
+                  "unity_animated_world_bones.f32",
+                  "neighbor_ranges.u32",
+                  "neighbors.u32",
+                  "corners.u32",
+                  "offsets_vec4.f32",
+                  "corner_ranges.u32",
+                  "corner_indices.u32"
                 ],
                 "properties": {
                   "animated_character.fbx": {
@@ -1196,6 +1232,30 @@
                     "pattern": "^[0-9a-f]{64}$"
                   },
                   "unity_animated_world_bones.f32": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "neighbor_ranges.u32": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "neighbors.u32": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "corners.u32": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "offsets_vec4.f32": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "corner_ranges.u32": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "corner_indices.u32": {
                     "type": "string",
                     "pattern": "^[0-9a-f]{64}$"
                   }

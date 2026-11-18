@@ -1,0 +1,127 @@
+// First-party port of the registered Godot position correction only.
+// The source topology and tangent-space bind offsets use the Godot basis.
+#pragma kernel Gather
+#pragma kernel Smooth
+#pragma kernel Corners
+#pragma kernel Combine
+#pragma kernel Scatter
+
+ByteAddressBuffer _Native;
+RWByteAddressBuffer _Owned;
+StructuredBuffer<uint> _FirstNative;
+StructuredBuffer<uint> _NativeSource;
+
+StructuredBuffer<uint2> _NeighborRanges;
+StructuredBuffer<uint> _Neighbors;
+StructuredBuffer<uint4> _Corners;
+StructuredBuffer<float4> _BindOffsets;
+StructuredBuffer<uint2> _CornerRanges;
+StructuredBuffer<uint> _CornerOrder;
+
+StructuredBuffer<float4> _SmoothInput;
+RWStructuredBuffer<float4> _SmoothOutput;
+RWStructuredBuffer<float4> _ContributionsOut;
+StructuredBuffer<float4> _ContributionsIn;
+RWStructuredBuffer<float4> _CorrectedOut;
+StructuredBuffer<float4> _CorrectedIn;
+
+int _SourceCount;
+int _NativeCount;
+int _CornerCount;
+
+// Both admitted layouts have position at byte 0 of the 40-byte float32 stream.
+static const uint Stride = 40;
+
+float Sum3(float3 value)
+{
+    precise float sum = (value.x + value.y) + value.z;
+    return sum;
+}
+
+float3 Unit(float3 value)
+{
+    float length = sqrt(Sum3(value * value));
+    return length > 0.0 ? value / length : float3(0, 0, 0);
+}
+
+[numthreads(64, 1, 1)]
+void Gather(uint3 invocation : SV_DispatchThreadID)
+{
+    uint id = invocation.x;
+    if (id >= (uint)_SourceCount)
+        return;
+    float3 position = asfloat(_Native.Load3(_FirstNative[id] * Stride));
+    // Unity is (-Blender.x, Blender.z, -Blender.y). Godot retains Blender.x.
+    _SmoothOutput[id] = float4(-position.x, position.yz, 1.0);
+}
+
+[numthreads(64, 1, 1)]
+void Smooth(uint3 invocation : SV_DispatchThreadID)
+{
+    uint id = invocation.x;
+    if (id >= (uint)_SourceCount)
+        return;
+    uint2 range = _NeighborRanges[id];
+    float3 center = _SmoothInput[id].xyz;
+    precise float3 sum = 0;
+    for (uint i = 0; i < range.y; ++i)
+        sum += _SmoothInput[_Neighbors[range.x + i]].xyz - center;
+    precise float3 smoothed = center + sum * (0.5 / (float)max(range.y, 1u));
+    _SmoothOutput[id] = float4(smoothed, 0.0);
+}
+
+[numthreads(64, 1, 1)]
+void Corners(uint3 invocation : SV_DispatchThreadID)
+{
+    uint id = invocation.x;
+    if (id >= (uint)_CornerCount)
+        return;
+    uint3 ids = _Corners[id].xyz;
+    float3 left = Unit(_SmoothInput[ids.x].xyz - _SmoothInput[ids.y].xyz);
+    float3 right = Unit(_SmoothInput[ids.y].xyz - _SmoothInput[ids.z].xyz);
+    if (!any(abs(left - right) > 1.1920928955078125e-6))
+    {
+        _ContributionsOut[id] = 0;
+        return;
+    }
+    float weight = acos(clamp(Sum3(left * right), -1.0, 1.0));
+    float3 normal = Unit(cross(left, right));
+    float3 axis = Unit(left + right);
+    float3 other = cross(normal, axis);
+    float3 offset = _BindOffsets[id].xyz;
+    precise float3 displacement = (axis * offset.x + other * offset.y) + normal * offset.z;
+    _ContributionsOut[id] = float4(displacement, weight);
+}
+
+[numthreads(64, 1, 1)]
+void Combine(uint3 invocation : SV_DispatchThreadID)
+{
+    uint id = invocation.x;
+    if (id >= (uint)_SourceCount)
+        return;
+    uint2 range = _CornerRanges[id];
+    precise float total = 0;
+    for (uint i = 0; i < range.y; ++i)
+        total += _ContributionsIn[_CornerOrder[range.x + i]].w;
+    precise float3 position = _SmoothInput[id].xyz;
+    if (total > 0.0)
+    {
+        for (uint i = 0; i < range.y; ++i)
+        {
+            float4 item = _ContributionsIn[_CornerOrder[range.x + i]];
+            position += item.xyz * (item.w / total);
+        }
+    }
+    _CorrectedOut[id] = float4(position, 1.0);
+}
+
+[numthreads(64, 1, 1)]
+void Scatter(uint3 invocation : SV_DispatchThreadID)
+{
+    uint id = invocation.x;
+    if (id >= (uint)_NativeCount)
+        return;
+    float3 position = _CorrectedIn[_NativeSource[id]].xyz;
+    // Preserve the other native attributes for the separate geometric normal pass.
+    _Owned.Store3(id * Stride, asuint(float3(-position.x, position.yz)));
+}

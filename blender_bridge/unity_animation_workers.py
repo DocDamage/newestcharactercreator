@@ -8,7 +8,7 @@ import numpy as np
 
 from blender_bridge.fbx_source import inspect_fbx_source
 from blender_bridge.godot_outputs import write_json
-from blender_bridge.godot_runtime_geometry import sampled_mesh
+from blender_bridge.godot_runtime_geometry import binding_arrays, capture_binding, sampled_mesh
 from blender_bridge.godot_runtime_source import character_state
 from blender_bridge.godot_source import pose_values
 from blender_bridge.native_corrective import NAME, POLICY as SKIN_POLICY
@@ -20,7 +20,7 @@ from ucc.core.target_action import TargetActionBinding
 from ucc.core.target_action_format import MAX_BYTES as MAX_BINDING_BYTES
 from ucc.export.godot_candidate_contract import canonical_bytes
 from ucc.export.unity_animation_recipe import (
-    BIND, BONES, FBX, FBX_SNAPSHOT, FPS, INPUT_FILES, OUTPUT_LIMITS, POLICY, REFERENCES, SOURCE_FRAMES,
+    BIND, BONES, CORRECTION_INPUTS, FBX, FBX_SNAPSHOT, FPS, INPUT_FILES, OUTPUT_LIMITS, POLICY, REFERENCES, SOURCE_FRAMES,
     STAGE, STAGE_REPORT, VERIFY_REPORT, VIRTUAL_FRAME, WEIGHTS, output_option, source_report,
     validate_binding, validate_job,
 )
@@ -115,6 +115,20 @@ def _references(bpy, root, native_options, state, *, write):
     return human, rig, first, {name: value.hexdigest() for name, value in hashes.items()}
 
 
+def _correction_inputs(bpy, root, human, rig, *, write: bool) -> dict[str, str]:
+    arrays = binding_arrays(capture_binding(bpy, human, rig, human.modifiers[NAME]))
+    result = {}
+    for name, exact_bytes in CORRECTION_INPUTS.items():
+        payload = arrays[name].tobytes()
+        if len(payload) != exact_bytes:
+            raise ValueError('Unity corrective operands differ from the exact source topology')
+        if write:
+            with (root/name).open('xb') as stream:
+                stream.write(payload)
+        result[name] = sha256(payload).hexdigest()
+    return result
+
+
 @contextmanager
 def _bind_donor(bpy, human):
     donor = human.copy()
@@ -133,6 +147,7 @@ def stage(bpy, root: Path, job: dict) -> dict:
     _unused(root, OUTPUT_LIMITS)
     options, state, native_options = _context(bpy, root, job)
     human, rig, first, references = _references(bpy, root, native_options, state, write=True)
+    references.update(_correction_inputs(bpy, root, human, rig, write=True))
     scene = bpy.context.scene
 
     def check_virtual_endpoint():
@@ -205,7 +220,9 @@ def verify(bpy, root: Path, job: dict) -> dict:
     files = {name: _file(root/name, maximum, options[output_option(name)])
              for name, maximum in OUTPUT_LIMITS.items()}
     human, rig, _, references = _references(bpy, root, native_options, state, write=False)
-    if any(files[name] != expected or (root/name).stat().st_size != REFERENCES[name] for name, expected in references.items()):
+    references.update(_correction_inputs(bpy, root, human, rig, write=False))
+    if any(files[name] != expected or (root/name).stat().st_size != OUTPUT_LIMITS[name]
+           for name, expected in references.items()):
         raise ValueError('Unity raw or corrected source references differ after reopening the registered Action')
     with _bind_donor(bpy, human) as donor:
         bind, weights = animated_reference(bpy, donor, rig, master_sha=options['master_sha256'],

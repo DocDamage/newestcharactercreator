@@ -6,6 +6,7 @@ from ucc.core.errors import ValidationError
 from ucc.core.worker_payload import validate_worker_payload, WorkerPayloadError, SUPPORT, ADAPTER, ADAPTER_FILES
 from ucc.core.worker_payload import STATIC_ADAPTER
 from ucc.core.worker_payload import UNITY_ADAPTER,UNITY_ADAPTER_FILES
+from ucc.core.worker_payload import UNITY_REGISTERED_ANIMATION_ADAPTER, UNITY_REGISTERED_ANIMATION_FILES
 from ucc.core.worker_payload import UNREAL_ADAPTER,UNREAL_ADAPTER_FILES
 from ucc.core.worker_payload import (
     REGISTERED_BODY_ADAPTER, REGISTERED_BODY_FILES,
@@ -109,6 +110,29 @@ def bundled_unity_adapter_paths() -> dict[str,Path]:
     files={name:root/name for name in sorted(UNITY_ADAPTER_FILES)}
     if any(path.is_symlink() or not path.is_file() or path.resolve()!=path or not 0<path.stat().st_size<=256*1024 for path in files.values()):
         raise ValidationError('Unity adapter resources are missing, redirected or oversized')
+    return files
+
+
+def bundled_unity_registered_animation_paths() -> dict[str, Path]:
+    """Resolve the animated importer and only the static scripts shared with it."""
+    shared = bundled_unity_adapter_paths()
+    if getattr(sys, 'frozen', False):
+        base = Path(sys._MEIPASS)
+        root = base/UNITY_REGISTERED_ANIMATION_ADAPTER
+        files = {name: root/name for name in sorted(UNITY_REGISTERED_ANIMATION_FILES)}
+        try:
+            available = set(validate_worker_payload(base))
+        except (WorkerPayloadError, OSError) as error:
+            raise ValidationError('Bundled Unity animation resources are incomplete or changed') from error
+        if not set(files.values()).issubset(available):
+            raise ValidationError('This package lacks the Unity animation importer')
+    else:
+        root = Path(__file__).resolve().parents[3]/'engine_adapters/unity/registered_animation'
+        files = {name: root/name for name in sorted(UNITY_REGISTERED_ANIMATION_FILES)}
+    if any(path.is_symlink() or not path.is_file() or path.resolve() != path
+           or not 0 < path.stat().st_size <= 256 * 1024 for path in files.values()):
+        raise ValidationError('Unity animation adapter resources are missing, redirected or oversized')
+    files.update({name: shared[name] for name in ('Editor/UccSourceWeights.cs', 'UccNativeMeshIdentity.cs')})
     return files
 
 

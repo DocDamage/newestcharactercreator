@@ -33,6 +33,8 @@ class UnityAnimationAuthorization:
             raise ValidationError('Unity animation needs master, expression, motion and any used part permission')
         for permission in self.permissions:
             permission.require_engine('unity')
+            if permission.policy.ai_input_allowed or permission.policy.redistribute_source_allowed:
+                raise ValidationError('Choose Unity permissions scoped to private local rendering')
 
 
 def load_unity_animation_authorization(path: Path) -> UnityAnimationAuthorization:

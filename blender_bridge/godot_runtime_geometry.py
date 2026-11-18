@@ -92,19 +92,29 @@ def capture_binding(bpy: Any, human: Any, rig: Any, modifier: Any) -> dict:
             'face_ids':face_ids,'face_ranges':np.asarray(ranges,dtype=np.uint32),'offsets':offsets}
 
 
-def write_binding(root: Path, data: dict) -> None:
-    def write(name: str, values: np.ndarray) -> None:
-        with (root/name).open('xb') as stream:values.tofile(stream)
+def binding_arrays(data: dict) -> dict[str, np.ndarray]:
+    arrays = {}
     count=len(data['rest']);current=data['current'];links=[[] for _ in range(count)]
     for a,b in data['edges']:links[a].append(int(b));links[b].append(int(a))
     def packed(rows: list[list[int]],prefix: str,name: str) -> None:
         cursor=0;ranges=[];flat=[]
         for row in rows:ranges.append((cursor,len(row)));flat.extend(row);cursor+=len(row)
-        write(prefix+'_ranges.u32',np.asarray(ranges,dtype='<u4'));write(name,np.asarray(flat,dtype='<u4'))
+        arrays[prefix+'_ranges.u32'] = np.asarray(ranges,dtype='<u4')
+        arrays[name] = np.asarray(flat,dtype='<u4')
     packed(links,'neighbor','neighbors.u32');links=[[] for _ in range(count)]
     for corner,vertex in enumerate(current):links[vertex].append(corner)
     packed(links,'corner','corner_indices.u32')
-    write('corners.u32',np.column_stack((data['previous'],current,data['following'],np.zeros(len(current),dtype=np.int32))).astype('<u4'))
-    offsets=np.ones((len(current),4),dtype='<f4');offsets[:,:3]=data['offsets'];write('offsets_vec4.f32',offsets)
-    write('face_ranges.u32',data['face_ranges'].astype('<u4'));write('face_vertices.u32',current.astype('<u4'))
-    write('face_ids.u32',data['face_ids'].astype('<u4'))
+    arrays['corners.u32'] = np.column_stack(
+        (data['previous'],current,data['following'],np.zeros(len(current),dtype=np.int32))).astype('<u4')
+    offsets=np.ones((len(current),4),dtype='<f4');offsets[:,:3]=data['offsets']
+    arrays['offsets_vec4.f32'] = offsets
+    arrays['face_ranges.u32'] = data['face_ranges'].astype('<u4')
+    arrays['face_vertices.u32'] = current.astype('<u4')
+    arrays['face_ids.u32'] = data['face_ids'].astype('<u4')
+    return arrays
+
+
+def write_binding(root: Path, data: dict) -> None:
+    for name, values in binding_arrays(data).items():
+        with (root/name).open('xb') as stream:
+            values.tofile(stream)

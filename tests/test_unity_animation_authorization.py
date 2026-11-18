@@ -53,3 +53,8 @@ class UnityAnimationAuthorizationTests(TestCase):
         self.document['permissions'][1] = self.document['permissions'][0]
         with self.assertRaises(ValidationError):
             self.load()
+
+    def test_source_redistribution_permission_is_outside_private_scope(self):
+        self.document['permissions'][0]['policy']['redistribute_source_allowed'] = True
+        with self.assertRaises(ValidationError):
+            self.load()

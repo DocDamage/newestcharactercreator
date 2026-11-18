@@ -4643,7 +4643,13 @@
               "unity_animated_raw_positions_f32_sha256",
               "unity_animated_corrected_positions_f32_sha256",
               "unity_animated_corrected_normals_f32_sha256",
-              "unity_animated_world_bones_f32_sha256"
+              "unity_animated_world_bones_f32_sha256",
+              "neighbor_ranges_u32_sha256",
+              "neighbors_u32_sha256",
+              "corners_u32_sha256",
+              "offsets_vec4_f32_sha256",
+              "corner_ranges_u32_sha256",
+              "corner_indices_u32_sha256"
             ],
             "properties": {
               "master_sha256": {
@@ -4703,6 +4709,30 @@
                 "pattern": "^[0-9a-f]{64}$"
               },
               "unity_animated_world_bones_f32_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "neighbor_ranges_u32_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "neighbors_u32_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "corners_u32_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "offsets_vec4_f32_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "corner_ranges_u32_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "corner_indices_u32_sha256": {
                 "type": "string",
                 "pattern": "^[0-9a-f]{64}$"
               }

@@ -10,7 +10,7 @@ from ucc.core.target_action_format import checked_sha
 from ucc.export.godot_candidate_contract import canonical_bytes
 from ucc.export.godot_registered_binding import project_registered_native_proofs
 from ucc.export.unity_animation_recipe import (
-    FBX, FBX_SNAPSHOT, INPUT_FILES, OUTPUT_LIMITS, POLICY, REFERENCES, STAGE, VERIFY, VERIFY_REPORT,
+    CORRECTION_INPUTS, FBX, FBX_SNAPSHOT, INPUT_FILES, OUTPUT_LIMITS, POLICY, REFERENCES, STAGE, VERIFY, VERIFY_REPORT,
     output_option, source_report, validate_binding,
 )
 from .expression_storage import safe_directory
@@ -121,7 +121,8 @@ def prepare_unity_animation_source(store: ProjectStore, *, authorization: UnityA
                 raise ValidationError('Unity animation worker returned an incomplete artifact inventory')
             for name, digest in files.items():
                 actual, length = hash_file(folder/name, OUTPUT_LIMITS[name], budget)
-                if actual != digest or not length or (name in REFERENCES and length != REFERENCES[name]):
+                if (actual != digest or not length
+                        or (name in REFERENCES or name in CORRECTION_INPUTS) and length != OUTPUT_LIMITS[name]):
                     raise ProjectStorageError('Unity animation worker artifact differs from its exact report')
 
         runner = BlenderJobRunner(blender, safe_directory(store, '.ucc-jobs', create=True), worker)
