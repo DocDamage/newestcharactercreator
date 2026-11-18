@@ -5,12 +5,13 @@ import json
 import sqlite3
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import call, patch
 from threading import Event
 import time
 
 from fixtures.target_action_logic import TargetFixture
 from ucc.core.errors import ProjectConflict, ProjectStorageError, ValidationError
+from ucc.jobs import target_action_context
 from ucc.jobs.godot_candidate_inputs import identity
 from ucc.jobs.skin_material_preparation import _BudgetCancel
 from ucc.jobs.target_action import (load_target_action, list_target_action_bindings,
@@ -144,6 +145,52 @@ class TargetActionStorageTests(unittest.TestCase):
                 expected_database_identity=identity(self.f.database)[:2],
                 expected_parent_identity=identity(self.f.database.parent)[:2])
         self.assertLess(time.monotonic()-start,1.)
+
+    def test_transient_sqlite_fault_retries_one_whole_catalog_snapshot(self):
+        selected = (self.f.database, self.f.review.source.asset_id, self.f.clip_id)
+        fresh = ('a'*64, {'UNIT_ROW_FROM_FRESH_SNAPSHOT': ('unchanged source',)})
+        for code in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED, sqlite3.SQLITE_INTERRUPT,
+                     sqlite3.SQLITE_BUSY_SNAPSHOT):
+            with self.subTest(code=code):
+                fault = sqlite3.OperationalError('UNIT transient snapshot fault')
+                fault.sqlite_errorcode = code
+                with patch.object(target_action_context, '_catalog_rows_once', side_effect=[fault, fresh]) as read:
+                    self.assertIs(target_action_context._catalog_rows(*selected), fresh)
+                self.assertEqual(read.call_args_list, [call(*selected), call(*selected)])
+
+    def test_persistent_sqlite_fault_stops_after_two_complete_snapshot_attempts(self):
+        selected = (self.f.database, self.f.review.source.asset_id, self.f.clip_id)
+        first = sqlite3.OperationalError('UNIT first interruption')
+        first.sqlite_errorcode = sqlite3.SQLITE_INTERRUPT
+        second = sqlite3.OperationalError('UNIT second interruption')
+        second.sqlite_errorcode = sqlite3.SQLITE_INTERRUPT
+        with patch.object(target_action_context, '_catalog_rows_once', side_effect=[first, second]) as read:
+            with self.assertRaisesRegex(ProjectStorageError, 'bounded metadata query') as failure:
+                target_action_context._catalog_rows(*selected)
+        self.assertIs(failure.exception.__cause__, second)
+        self.assertEqual(read.call_args_list, [call(*selected), call(*selected)])
+
+    def test_nontransient_sqlite_and_semantic_errors_are_not_retried(self):
+        selected = (self.f.database, self.f.review.source.asset_id, self.f.clip_id)
+        corrupt = sqlite3.OperationalError('UNIT malformed database')
+        corrupt.sqlite_errorcode = sqlite3.SQLITE_CORRUPT
+        unknown = sqlite3.OperationalError('UNIT no SQLite status')
+        wrong_type = sqlite3.DatabaseError('UNIT non-operational status')
+        wrong_type.sqlite_errorcode = sqlite3.SQLITE_BUSY
+        for fault in (corrupt, unknown, wrong_type):
+            with self.subTest(fault=str(fault)):
+                with patch.object(target_action_context, '_catalog_rows_once', side_effect=fault) as read:
+                    with self.assertRaises(ProjectStorageError) as failure:
+                        target_action_context._catalog_rows(*selected)
+                self.assertIs(failure.exception.__cause__, fault)
+                read.assert_called_once_with(*selected)
+
+        semantic = ValidationError('UNIT selected catalog row is invalid')
+        with patch.object(target_action_context, '_catalog_rows_once', side_effect=semantic) as read:
+            with self.assertRaises(ValidationError) as failure:
+                target_action_context._catalog_rows(*selected)
+        self.assertIs(failure.exception, semantic)
+        read.assert_called_once_with(*selected)
 
     def test_clean_wal_read_coordination_stabilizes_namespace_without_ignoring_rows(self):
         writer=sqlite3.connect(self.f.database)
