@@ -89,38 +89,81 @@ silently relocated by rollback.
   file edits/additions. The combined negative gate uses F1–F4 plus this fresh
   follow-up; the old F5 verdict is not relabeled.
 
-## Desktop source acceptance and remaining publication gates
+## Desktop, frozen application and merged publication — November 17, 2026
 
 The selected broad API/desktop/provenance gate passes 124 tests without skips.
-After receipt/ownership corrections, the changed focused slice passes 42 tests
-without skips, followed by eight actual Qt callback tests after the final token
-check. These overlapping selected counts are not additive and do not replace the
-final full suite. The dialog's sixteen tests cover explicit consents, full-snapshot
-retention, stable request UUID, source offsets, invalid ranges, stale origin/context,
-busy state, picker cancellation and fixed copy-only matte. The workflow tests use
-real QThreads with isolated native API doubles, not Blender acceptance.
+The later changed slice passes 42 and the final callback selection eight. These
+overlapping counts are not additive. The workflow tests use real QThreads with
+isolated native API doubles, not Blender acceptance. After the accessibility
+correction, the dialog has eighteen tests, including actual Qt accessible-tree
+and keyboard Tab/Space checks after busy-state recovery. Every actual source
+grant is a standalone named checkbox beside its full read-only SHA. Focused test selections overlap and are not additive.
 
-The final required-Qt full run passes **2,258 tests: 2,244 passes and fourteen
-exact existing Windows privilege skips**, with no failures/errors. All 2,201 prior
-IDs are retained. All 57 additions pass without skips: 24 CI tests (16 archive
-cache and 8 checksum receipt) and 33 body-feature tests (13 desktop/delivery,
-16 dialog, 3 provenance and 1 target-dialog case). Selected gate totals are not
-counts of new tests. All 1,084 public files stayed unchanged through the run.
-Preflight passes with its expected negative exit, and source startup passes all
-three self-checks. The full validation completes in 935.906 seconds.
+The final required-Qt full run passes **2,260 tests: 2,246 passes and fourteen
+exact existing Windows privilege skips**, with no failures/errors. All prior
+2,258 IDs remain and the two new accessibility tests pass without skips. The
+fresh run also preserves all 1,084 public files, passes preflight with its
+expected negative case and all three source startup checks. The preceding
+2,258-test run remains accepted in its historical scope: 2,244 passes,
+fourteen skips, all 2,201 prior IDs retained and 57 additions (24 CI and 33 body
+feature). Its 1,084 public files stayed unchanged, preflight passed with the
+expected negative exit, and all three source startup checks passed.
 
-Actual frozen desktop body rendering, exact-head Windows package audit,
-body-feature PR checks and fresh-main checks remain pending. Source Qt tests and
-private API-native acceptance do not substitute for that ordinary packaged flow.
+Actual frozen GUI004 passes independent post-audit
+`4a58f4478e5044ff63b4b95dd8752d5a6b5d937f52bf2373985d69b8cf7c0352`.
+The ordinary public desktop route selected the existing saved binding, reviewed
+the local qualified origin, collected separate per-source grants, and rendered
+target frames 147–154 (source 148–155), four directions at 256px. Four actual
+Blender workers exit 0. Independent checks accept 32 decoded RGBA images,
+32 matching crops in one atlas sheet, 300 retained cache frames and 600 fresh
+timeline observations. Originals, the prepared project, catalog and history, all 1,084 public source files and all 413 package files are preserved.
+All 3,318 non-cache profile files and the 3,319-file namespace remain exact;
+the approved opaque 156-byte generated cache differs only at gzip MTIME bytes
+4–7. No runtime cache decoding or blanket exclusion is authorized.
 
-PR #85 and its ten standard checks are merged. The separate public archive-cache
-PR #86 is merged, its ten fresh-main standard checks pass, and its ordinary
-feature branch is pruned with the 1,057-file proof checkout retained. Main's
-experimental suites remain separately pending; no experimental success follows
-from those standard checks. These earlier changes are not body-feature or
-desktop-native acceptance substitutes.
+Four observed OS console helpers are separately authenticated by exact canonical
+image/hash, pinned diagnostic and signer evidence, and live validated Blender
+parentage. Each naturally exits 109. Helpers are neither Blender workers nor
+app hosts; their actual codes remain 109. No forced cleanup or general nonzero
+worker acceptance follows from this narrow observer policy.
+
+PR #87 merged as `e72b5cba37b187bc283ac82d8ecf3cc28cea31ea`; its tree is identical
+to accepted feature head `a2ec2dbfe1f3e3990eed5934e62bea83e79fb978`.
+All seventeen applicable PR checks pass. The merged-main Windows package passes
+independent audit `9d1d1fa0b104534f9baa927f131de4e020658ab7ff5726bf20cb4f75df280797`
+and its actual executable passes three startup checks. All 304 host source hashes
+and 228 raw worker files match the accepted feature head. Of 413 bundle files,
+411 are byte-identical; the executable and `base_library.zip` container differ,
+while all 155 raw archive members are identical. This establishes the audited
+code-equivalence/startup scope. The actual accepted feature-head normal UI run
+was not repeated against the main package.
+
+Fresh-main standard verification passes all ten checks (four core, four Qt,
+preflight and the automatic Windows package), independently admitted as
+`b657f8d51e0e65fdd493e76b6f845bc7998e95d3604936e4b4bcbbc4df73190d`.
+Fresh-main experimental verification remains running. The source-reference
+domain has separate five-record/cache-proof acceptance; success for all seven
+domains on main is not claimed at this checkpoint.
+The ordinary feature branch is pruned locally and remotely after main standard
+and package acceptance, using an expected-head deletion lease. A verified Git
+recovery bundle and the exact 1,084-file accepted raw source snapshot are retained
+before further authorized development reuses the checkout.
+
+PR #85 and separate archive-cache PR #86 remain merged within their recorded
+scopes. PR #86's ten fresh-main standard checks and ordinary branch pruning are
+accepted, preserving its 1,057-file proof checkout. Those earlier acceptances
+are not substitutes for the body-feature native or desktop evidence above.
 
 ## Historical qualifications
+
+- GUI001 and GUI002 remain incomplete with zero native workers. GUI001 exposed
+  inaccessible embedded table checkboxes in actual Windows accessibility; the
+  correction introduced standalone named controls and real Qt accessibility and
+  keyboard regressions. Incomplete observations are not native acceptance.
+- GUI003 remains failed after one observed native worker. Its unexpected child
+  was not identified and its incomplete-cleanup qualification remains. The
+  separate asset-free console-helper diagnostic and later GUI004 success do not
+  retrospectively identify that child or repair the old cleanup record.
 
 - Actual001 completed four native workers, but host admission rejected Blender's
   exact float32 renderer constant. The host expectation was corrected narrowly;

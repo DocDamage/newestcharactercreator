@@ -1,3 +1,47 @@
+# Project progress — November 17, 2026
+
+The registered body-sprite API and desktop slice is merged through PR #87,
+`e72b5cba37b187bc283ac82d8ecf3cc28cea31ea`, with the exact accepted feature tree.
+Its seventeen applicable PR checks pass. Final required-Qt validation passes
+2,260 tests (2,246 passes, fourteen unchanged Windows privilege skips).
+
+Actual frozen GUI004 independently passes the ordinary desktop workflow and
+four real Blender workers for 32 private 256px images, matching atlas crops,
+full-motion verification and preservation. The merged-main package passes
+startup and code-equivalence auditing; normal main-package UI execution was
+not repeated. GUI001/GUI002 remain incomplete with zero native workers and
+GUI003 remains failed after one worker with an unidentified-child/cleanup gap.
+The later successful run does not rewrite those outcomes.
+
+Fresh-main standard verification passes all ten checks (four core, four Qt,
+preflight and the automatic Windows package), independently admitted as
+`b657f8d51e0e65fdd493e76b6f845bc7998e95d3604936e4b4bcbbc4df73190d`.
+Fresh-main experimental verification remains running. The source-reference
+domain has separate five-record/cache-proof acceptance; success for all seven
+domains on main is not claimed at this checkpoint.
+The ordinary feature branch is pruned locally and remotely after main standard
+and package acceptance, using an expected-head deletion lease. A verified Git
+recovery bundle and the exact 1,084-file accepted raw source snapshot are retained
+before further authorized development reuses the checkout.
+
+The single next product task is **UCC-P1-USABLE-IDLE-001**: independently author
+one original idle for the existing humanoid, admit its own permitted source and
+explicit mapping, reuse registered-action preparation/cache/playback, verify
+root/loop/feet/hands/save-reopen behavior, and obtain human visual approval.
+Breathing diagnostics are not renamed idle; protected motion is not an AI
+reference, and sprite grants supply no new engine rights.
+
+The full locked blueprint remains unfinished. Seven usable basic actions,
+animated delivery in all three engines, the later 100-clip/mixed-rig milestone,
+complete anatomy/attachments/facial/sprite workflows, controlled AI and other
+families, usability/performance/recovery and release/legal requirements remain
+open. Origin records are declarations rather than proof of authorship or grants.
+The prior private-metadata incident remains recorded and overall zero emission
+is false. No artist, usable-action, engine or distribution approval is inferred.
+See [current status](STATUS.md) and the [body sample acceptance record](acceptance/UCC-P1-BODY-SPRITE-SAMPLE-001.md).
+Earlier entries below are historical checkpoints.
+
+---
 # Project progress — November 16, 2026
 
 ## Verified consolidation - November 16, 2026
