@@ -4,8 +4,9 @@ from hashlib import sha256
 import math
 from pathlib import Path
 import tempfile
+from types import SimpleNamespace
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from blender_bridge.idle_authoring_math import (
     body_axes,cross,dot,hand_anatomy,periodic_amplitudes,periodic_derivatives,
@@ -16,7 +17,7 @@ from blender_bridge.idle_authoring_policy import (
     payload,private_bytes,write_document,
 )
 from blender_bridge.idle_authoring_verify import _max_difference,wrapped_velocity_residual
-from blender_bridge.idle_authoring_scene import digit_flex_degrees
+from blender_bridge.idle_authoring_scene import digit_flex_degrees, export_original_idle_fbx
 from tests.fixtures.idle_authoring_bridge import BODY,HANDS,METACARPALS,PHALANGES,identity,rotated,staged_inspection
 from ucc.core.authored_idle import baseline_spec,periodic_spec
 from ucc.core.target_action_format import canonical_bytes
@@ -152,6 +153,65 @@ class OriginalIdleBoundaryTests(unittest.TestCase):
             for raw in (b'{"x":NaN}',b'{"x":1,"x":2}',b'{"x":1e999}',b'{ "x":1}'):
                 (root/'evidence.json').write_bytes(raw)
                 with self.assertRaises(ValueError):document(root,'evidence.json',sha256(raw).hexdigest())
+
+
+class IdleFbxExportTests(unittest.TestCase):
+    def setUp(self):
+        directory=tempfile.TemporaryDirectory();self.addCleanup(directory.cleanup)
+        self.root=Path(directory.name).resolve()
+        self.scene=SimpleNamespace(frame_current=1,frame_start=1,frame_end=300,
+            render=SimpleNamespace(fps=30,fps_base=1.))
+        self.scene.frame_set=lambda frame: setattr(self.scene,'frame_current',frame)
+        rest=identity();rest=[rest[i:i+4] for i in range(0,16,4)]
+        self.bone=SimpleNamespace(rotation_mode='QUATERNION',location=(0.,0.,0.),scale=(1.,1.,1.),
+            matrix=deepcopy(rest),bone=SimpleNamespace(matrix_local=rest),
+            keyframe_insert=Mock(return_value=True),keyframe_delete=Mock(return_value=True))
+        self.rig=SimpleNamespace(type='ARMATURE',matrix_world=rest,pose=SimpleNamespace(bones=[self.bone]),
+            animation_data=SimpleNamespace(action=object()),hide_set=Mock(),select_set=Mock())
+        class Objects(list):
+            active=None
+        self.export=Mock(return_value={'FINISHED'})
+        self.bpy=SimpleNamespace(
+            context=SimpleNamespace(scene=self.scene,view_layer=SimpleNamespace(objects=Objects([self.rig]),update=Mock())),
+            ops=SimpleNamespace(export_scene=SimpleNamespace(fbx=self.export)))
+
+    def export_idle(self):
+        with patch('blender_bridge.idle_authoring_scene.check_action'):
+            export_original_idle_fbx(self.bpy,self.root,self.rig)
+
+    def test_export_bakes_only_scene_bounds_from_neutral_frame_zero(self):
+        def observe(**options):
+            self.assertEqual(self.scene.frame_current,0)
+            self.assertEqual((self.scene.frame_start,self.scene.frame_end),(1,300))
+            self.assertEqual(self.bone.rotation_quaternion,(1.,0.,0.,0.))
+            self.assertEqual(options['object_types'],{'ARMATURE'})
+            self.assertFalse(options['bake_anim_use_all_actions'])
+            self.assertFalse(options['bake_anim_use_nla_strips'])
+            return {'FINISHED'}
+        self.export.side_effect=observe
+        self.export_idle()
+        self.bone.keyframe_insert.assert_called_once_with('rotation_quaternion',frame=0)
+        self.bone.keyframe_delete.assert_called_once_with('rotation_quaternion',frame=0)
+        self.assertEqual(self.scene.frame_current,1)
+
+    def test_changed_rest_or_nonunit_channel_rejects_before_export(self):
+        self.bone.matrix[0][3]=.01
+        with self.assertRaisesRegex(AuthoredIdleError,'default pose differs'):
+            self.export_idle()
+        self.bone.matrix[0][3]=0.
+        self.bone.scale=(2.,1.,1.)
+        with self.assertRaisesRegex(AuthoredIdleError,'default pose differs'):
+            self.export_idle()
+        self.export.assert_not_called()
+        self.assertEqual(self.bone.keyframe_delete.call_count,2)
+        self.assertEqual(self.scene.frame_current,1)
+
+    def test_export_failure_removes_temporary_keys_and_restores_frame(self):
+        self.export.return_value={'CANCELLED'}
+        with self.assertRaisesRegex(AuthoredIdleError,'did not export'):
+            self.export_idle()
+        self.bone.keyframe_delete.assert_called_once_with('rotation_quaternion',frame=0)
+        self.assertEqual(self.scene.frame_current,1)
 
 
 if __name__=='__main__':unittest.main()

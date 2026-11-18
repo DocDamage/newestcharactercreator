@@ -166,10 +166,20 @@ def bake_and_save(bpy, root, human, rig, recipe, request):
     require(not output.exists(), 'Refuse to overwrite an idle review scene')
     require(bpy.ops.wm.save_as_mainfile(filepath=str(output),compress=False,copy=True)=={'FINISHED'},
             'Blender did not save the actual owned idle review')
-    for obj in bpy.context.view_layer.objects:obj.select_set(False)
-    rig.hide_set(False);rig.select_set(True);bpy.context.view_layer.objects.active=rig
+    export_original_idle_fbx(bpy,root,rig)
+
+
+def export_original_idle_fbx(bpy, root, rig):
+    """Export neutral FBX Model defaults with the untouched 300-sample animation take."""
+    scene=bpy.context.scene
+    action=rig.animation_data.action
+    check_action(rig,action)
+    require((scene.frame_start,scene.frame_end,scene.render.fps,scene.render.fps_base)==(1,300,30,1.),
+            'Idle FBX requires the exact review scene clock')
     fbx=canonical_path(root,'original_idle.fbx')
     require(not fbx.exists(), 'Refuse to overwrite an original idle source')
+    for obj in bpy.context.view_layer.objects:obj.select_set(False)
+    rig.hide_set(False);rig.select_set(True);bpy.context.view_layer.objects.active=rig
     options={'check_existing':False,'use_selection':True,'object_types':{'ARMATURE'},'global_scale':1.,
         'apply_unit_scale':True,'apply_scale_options':'FBX_SCALE_NONE','use_space_transform':True,
         'bake_space_transform':False,'use_custom_props':False,'add_leaf_bones':False,
@@ -178,7 +188,35 @@ def bake_and_save(bpy, root, human, rig, recipe, request):
         'bake_anim_use_nla_strips':False,'bake_anim_use_all_actions':False,
         'bake_anim_force_startend_keying':True,'bake_anim_step':1.,'bake_anim_simplify_factor':0.,
         'path_mode':'STRIP','embed_textures':False,'batch_mode':'OFF','axis_forward':'-Z','axis_up':'Y'}
-    require(bpy.ops.export_scene.fbx(filepath=str(fbx),**options)=={'FINISHED'},
-            'Blender did not export the actual original armature-only FBX')
     require(not any(o.select_get() for o in bpy.context.view_layer.objects if o.type=='MESH'),
             'Idle source unexpectedly selected mesh geometry for export')
+    # Armature-only FBX has no skin bind pose. Blender writes Model defaults
+    # from the evaluated current frame after baking the separate scene range.
+    # Frame 0 supplies neutral defaults without changing the saved review or take.
+    current=scene.frame_current
+    armature_world=values(rig.matrix_world)
+    inserted=[]
+    try:
+        for bone in rig.pose.bones:
+            require(bone.rotation_mode=='QUATERNION', 'Idle FBX requires quaternion pose channels')
+            bone.rotation_quaternion=(1.,0.,0.,0.)
+            require(bone.keyframe_insert('rotation_quaternion',frame=0) is True,
+                    'Blender did not insert the temporary neutral FBX key')
+            inserted.append(bone)
+        scene.frame_set(0);bpy.context.view_layer.update()
+        require(scene.frame_current==0 and values(rig.matrix_world)==armature_world,
+                'Idle FBX neutral default evaluation changed the armature object')
+        for bone in rig.pose.bones:
+            pose,rest=values(bone.matrix),values(bone.bone.matrix_local)
+            require(tuple(bone.location)==(0.,0.,0.) and tuple(bone.scale)==(1.,1.,1.)
+                    and max(abs(a-b) for a,b in zip(pose,rest))<=1e-6,
+                    'Idle FBX default pose differs from the neutral rest rig')
+        require(bpy.ops.export_scene.fbx(filepath=str(fbx),**options)=={'FINISHED'},
+                'Blender did not export the actual original armature-only FBX')
+    finally:
+        try:
+            removed=[bone.keyframe_delete('rotation_quaternion',frame=0) for bone in inserted]
+            require(all(removed), 'Blender did not remove the temporary neutral FBX keys')
+        finally:
+            scene.frame_set(current);bpy.context.view_layer.update()
+    check_action(rig,action)
