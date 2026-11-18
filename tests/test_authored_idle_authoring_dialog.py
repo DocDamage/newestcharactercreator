@@ -7,6 +7,7 @@ import unittest
 from unittest.mock import patch
 
 from ucc.core.authored_idle import CLEAR_IDLE_PROFILE, PROFILE
+from ucc.core.errors import ValidationError
 from ucc.core.target_action_format import canonical_bytes
 from ucc.jobs.authored_idle_policy import FLAGS, POLICY
 from ucc.jobs.authored_idle_sources import IdleAuthoringSource
@@ -136,3 +137,28 @@ class AuthoredIdleAuthoringDialogTests(unittest.TestCase):
         dialog.create_button.click()
         self.assertEqual(dialog.choice.proof_destination, self.root/'separate proof')
         self.assertFalse(dialog.choice.proof_destination.exists())
+
+    def test_walk_requires_source_notes_recipe_and_preview_with_no_idle_controls(self):
+        self.dialog = AuthoredIdleAuthoringDialog(self.sources[:2], walk=True)
+        self.addCleanup(self.dialog.deleteLater)
+        self.policies = self.policies[:2]
+        self.assertEqual(self.dialog.windowTitle(), 'Create private original walk')
+        self.assertIsNone(self.dialog.profile)
+        self.assertIsNone(self.dialog.write_proof)
+        self.assertIsNone(self.dialog.proof_name)
+        self.assertIn('walk', self.dialog.recipe.text())
+        self.make_ready()
+        self.dialog.purpose.setText('Review this local walk')
+        for control in (self.dialog.recipe, self.dialog.preview, *(row.confirm for row in self.dialog.rows)):
+            control.setChecked(False)
+            self.assertFalse(self.dialog.create_button.isEnabled())
+            control.setChecked(True)
+        self.dialog.create_button.click()
+        self.assertEqual(self.dialog.result(), QDialog.DialogCode.Accepted)
+        self.assertIsNone(self.dialog.choice.proof_destination)
+        self.assertEqual(self.dialog.choice.profile, PROFILE)
+        self.assertEqual(self.dialog.choice.purpose, 'Review this local walk')
+
+    def test_walk_cannot_review_an_installed_part(self):
+        with self.assertRaisesRegex(ValidationError, 'no installed parts'):
+            AuthoredIdleAuthoringDialog(self.sources, walk=True)

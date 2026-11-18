@@ -2,20 +2,24 @@
 from dataclasses import replace
 import os
 from pathlib import Path
+import sys
 import tempfile
+from threading import Event
 import time
 from types import SimpleNamespace
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 
 from fixtures.authored_idle_host import HostFixture
+from fixtures.authored_idle_contract import saved_project
 from ucc.animations.catalog import AnimationCatalog
+from ucc.core.authored_idle import PROFILE
 from ucc.core.errors import ProjectStorageError
 
 try:
-    from PySide6.QtWidgets import QApplication
+    from PySide6.QtWidgets import QApplication, QFileDialog
     from ucc.desktop.window import MainWindow
 except ImportError:
     QApplication = None
@@ -136,3 +140,112 @@ class AuthoredIdleDesktopTests(unittest.TestCase):
         self.assertEqual(proof.call_args.kwargs['expected_receipt_sha256'], output.receipt_sha256)
         self.assertIn('candidate saved', self.window.log.toPlainText())
         self.assertIn('NONSHIPPING proof failure', self.window.log.toPlainText())
+
+    def ready_walk_dialog(self):
+        from ucc.desktop.authored_idle_authoring_workflow import WALK_SOURCE_REVIEW
+
+        self.window.authored_walk_action.trigger()
+        self.assertEqual(self.window._work_kind, WALK_SOURCE_REVIEW)
+        self.wait_for_jobs()
+        dialog = self.window._authored_idle_dialog
+        self.assertEqual(dialog.windowTitle(), 'Create private original walk')
+        row, = dialog.rows
+        with patch.object(QFileDialog, 'getOpenFileName', return_value=(str(self.f.policy), '')):
+            row.choose.click()
+        row.confirm.setChecked(True)
+        row.note.setText(self.f.inspection.permissions[0].note)
+        dialog.purpose.setText('NONSHIPPING private walk workflow fixture')
+        dialog.recipe.setChecked(True)
+        dialog.preview.setChecked(True)
+        with patch.object(QFileDialog, 'getExistingDirectory', return_value=str(self.f.destination.path.parent)):
+            dialog.choose_parent.click()
+        dialog.candidate_name.setText(self.f.destination.path.name)
+        self.window._blender_executable = self.f.blender
+        self.assertTrue(dialog.create_button.isEnabled())
+        return dialog
+
+    def test_walk_menu_dispatches_walk_with_exact_review_and_no_idle_proof(self):
+        from ucc.desktop.authored_idle_authoring_workflow import AUTHOR_WALK
+
+        self.assertTrue(self.window.authored_walk_action.isEnabled())
+        self.assertIn('original walk', self.window.authored_walk_action.text())
+        output = SimpleNamespace(directory=self.f.destination.path, receipt_sha256='a'*64,
+                                 fbx_path=self.f.destination.path/'original_walk.fbx',
+                                 review_path=self.f.destination.path/'authored_walk_review.blend',
+                                 snapshot_sha256='b'*64)
+        author = Mock(return_value=output)
+        with patch.dict(sys.modules, {'ucc.jobs.authored_walk': SimpleNamespace(author_original_walk=author)}), \
+             patch('ucc.jobs.authored_idle.author_original_idle') as idle, \
+             patch('ucc.jobs.authored_idle_loop_proof.publish_authored_idle_loop_proof') as proof, \
+             patch('ucc.desktop.authored_idle_authoring_workflow.bundled_worker_path', return_value=self.f.worker):
+            dialog = self.ready_walk_dialog()
+            author.assert_not_called()
+            dialog.create_button.click()
+            self.assertEqual(self.window._work_kind, AUTHOR_WALK)
+            self.wait_for_jobs()
+        idle.assert_not_called()
+        proof.assert_not_called()
+        author.assert_called_once()
+        self.assertIs(author.call_args.args[0], self.window.controller.store)
+        sent = author.call_args.kwargs
+        self.assertEqual(sent['inspection_request'].permissions, self.f.inspection.permissions)
+        self.assertEqual(sent['inspection_request'].profile, PROFILE)
+        self.assertEqual(sent['inspection_request'].purpose, 'NONSHIPPING private walk workflow fixture')
+        self.assertEqual(sent['source_policy_records'], self.f.records)
+        self.assertEqual(sent['database_path'], self.catalog)
+        self.assertEqual(sent['destination'], self.f.destination)
+        self.assertEqual(sent['worker_script'], self.f.worker)
+        self.assertIsNone(self.window._authored_idle_context)
+        self.assertIn('Private original walk candidate saved', self.window.log.toPlainText())
+        self.assertIn(output.receipt_sha256, self.window.log.toPlainText())
+
+    def test_walk_action_part_gate_preserves_idle_menu_and_stops_direct_invocation(self):
+        from ucc.desktop.authored_idle_authoring_workflow import start_authored_walk_authoring
+
+        store = self.window.controller.store
+        project = self.window.controller.require_project()
+        store.save(replace(project, parts=saved_project(hand=True).parts, revision=project.revision + 1),
+                   expected_revision=project.revision)
+        self.window.controller.open(store.root)
+        self.window.refresh_project()
+        self.assertFalse(self.window.authored_walk_action.isEnabled())
+        self.assertTrue(self.window.authored_idle_action.isEnabled())
+        with patch.object(self.window, '_error') as error, \
+             patch('ucc.jobs.authored_idle.inspect_idle_authoring_sources') as review:
+            start_authored_walk_authoring(self.window)
+        review.assert_not_called()
+        self.assertFalse(self.window.jobs.busy)
+        self.assertIn('no installed parts', error.call_args.args[0])
+
+    def test_cancelled_walk_review_clears_context_and_keeps_idle_available(self):
+        self.window.authored_walk_action.trigger()
+        self.wait_for_jobs()
+        dialog = self.window._authored_idle_dialog
+        self.assertIsNone(dialog.choice)
+        dialog.reject()
+        self.assertIsNone(self.window._authored_idle_context)
+        self.assertTrue(self.window.authored_idle_action.isEnabled())
+        self.assertTrue(self.window.authored_walk_action.isEnabled())
+
+    def test_cancel_running_walk_routes_cooperatively_and_keeps_candidate_unpublished(self):
+        dialog = self.ready_walk_dialog()
+        seen = Event()
+
+        def author(_store, *, cancel, **_options):
+            if cancel.wait(3):
+                seen.set()
+            raise ProjectStorageError('NONSHIPPING cooperative author cancellation')
+
+        with patch.dict(sys.modules, {'ucc.jobs.authored_walk': SimpleNamespace(author_original_walk=author)}), \
+             patch('ucc.desktop.authored_idle_authoring_workflow.bundled_worker_path', return_value=self.f.worker), \
+             patch.object(self.window, '_error') as error:
+            dialog.create_button.click()
+            self.assertTrue(self.window.cancel_generation_action.isEnabled())
+            self.assertIn('walk', self.window._target_action_progress_dialog.windowTitle())
+            self.window.cancel_generation_action.trigger()
+            self.assertIn('original walk', self.window.statusBar().currentMessage())
+            self.wait_for_jobs()
+        self.assertTrue(seen.is_set())
+        error.assert_not_called()
+        self.assertIsNone(self.window._authored_idle_context)
+        self.assertFalse(self.f.destination.path.exists())

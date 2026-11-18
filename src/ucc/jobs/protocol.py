@@ -9,6 +9,7 @@ from uuid import UUID, uuid4
 from ucc.core.errors import ValidationError
 from ucc.core.models import safe_relative_path
 from ucc.core.authored_idle_job import OPERATIONS as AUTHORED_IDLE_OPERATIONS
+from ucc.core.authored_walk_job import OPERATIONS as AUTHORED_WALK_OPERATIONS
 from ucc.export.unity_animation_recipe import OPERATIONS as UNITY_ANIMATION_OPERATIONS
 from ucc.export.unreal_animation_recipe import OPERATIONS as UNREAL_ANIMATION_OPERATIONS
 from .phenotype import validate_macro_parameters
@@ -49,6 +50,7 @@ BODY_CONTACT_OPERATIONS |= {kind+'_'+variant+'_complete_anatomical_safety' for k
 SUPPORTED_OPERATIONS |= BODY_CONTACT_OPERATIONS
 MAX_REQUEST_BYTES = 256 * 1024
 SUPPORTED_OPERATIONS |= AUTHORED_IDLE_OPERATIONS
+SUPPORTED_OPERATIONS |= AUTHORED_WALK_OPERATIONS
 
 
 def _check_json(data: object) -> None:
@@ -73,6 +75,9 @@ class JobRequest:
             raise ValidationError('Worker operation must be a string')
         if self.operation in AUTHORED_IDLE_OPERATIONS:
             from ucc.core.authored_idle_job import validate_job
+            validate_job(self.operation, self.input_project, self.options)
+        if self.operation in AUTHORED_WALK_OPERATIONS:
+            from ucc.core.authored_walk_job import validate_job
             validate_job(self.operation, self.input_project, self.options)
         if self.operation in {'stage_registered_body_sprites','verify_registered_body_sprites'}:
             from ucc.core.body_sprites import validate_job

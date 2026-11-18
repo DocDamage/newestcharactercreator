@@ -153,10 +153,13 @@ class MainWindow(QMainWindow):
         self.target_action_action = self._action(
             character_menu, 'Prepare registered clip preview...', '', lambda: start_target_action(self))
         self.target_action_action.setEnabled(False)
-        from .authored_idle_authoring_workflow import start_authored_idle_authoring
+        from .authored_idle_authoring_workflow import start_authored_idle_authoring, start_authored_walk_authoring
         self.authored_idle_action = self._action(
             character_menu, 'Create private original idle…', '', lambda: start_authored_idle_authoring(self))
         self.authored_idle_action.setEnabled(False)
+        self.authored_walk_action = self._action(
+            character_menu, 'Create private original walk…', '', lambda: start_authored_walk_authoring(self))
+        self.authored_walk_action.setEnabled(False)
         view_menu = self.menuBar().addMenu("&View")
         self.mesh_action = self._action(view_menu, "&Preview local GLB model...", "Ctrl+Shift+M", self.open_mesh_preview)
         self.preview_master_action = self._action(
@@ -528,6 +531,8 @@ class MainWindow(QMainWindow):
                 'target_action_idle_visual_decision': 'Rechecking the current idle and saving your visual decision...',
                 'authored_idle_source_review': 'Reviewing the exact saved MPFB authoring sources...',
                 'authored_idle_author': 'Authoring and independently reopening the private original idle...',
+                'authored_walk_source_review': 'Reviewing the exact saved MPFB sources for original walk...',
+                'authored_walk_author': 'Authoring and independently reopening the private original walk...',
                 'godot_saved_review': 'Reviewing the selected saved Godot proof and source policies...',
                 'godot_saved_load': 'Validating saved Godot frames and the current source binding...',
                 'target_action_diagnostic': 'Inspecting position-only diagnostics for the selected saved clip...',
@@ -1252,14 +1257,15 @@ class MainWindow(QMainWindow):
 
     def cancel_generation(self) -> None:
         if self.jobs.cancel():
-            from .authored_idle_authoring_workflow import KINDS as IDLE_AUTHORING_KINDS
+            from .authored_idle_authoring_workflow import KINDS as ORIGINAL_AUTHORING_KINDS, WALK_KINDS
             from .private_target_copy_workflow import KIND as PRIVATE_TARGET_COPY
             from .target_action_workflow import KINDS
             if self._work_kind == PRIVATE_TARGET_COPY:
                 self.statusBar().showMessage('Cancellation requested. Waiting for the target copy to stop.')
                 return
-            if self._work_kind in IDLE_AUTHORING_KINDS:
-                self.statusBar().showMessage('Cancellation requested. Waiting for the original idle operation to stop.')
+            if self._work_kind in ORIGINAL_AUTHORING_KINDS:
+                motion = 'walk' if self._work_kind in WALK_KINDS else 'idle'
+                self.statusBar().showMessage(f'Cancellation requested. Waiting for the original {motion} operation to stop.')
                 return
             if self._work_kind in KINDS:
                 self.statusBar().showMessage('Cancellation requested; waiting for target-preview work to stop. Saved records may remain retained.')
