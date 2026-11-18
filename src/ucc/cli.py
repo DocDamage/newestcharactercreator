@@ -71,6 +71,33 @@ def _prepare_godot_animation(args: argparse.Namespace) -> dict:
     }
 
 
+def _export_unreal_animation(args: argparse.Namespace) -> dict:
+    from ucc.core.errors import ValidationError
+    from ucc.jobs.export_destination import plan_destination
+    from ucc.jobs.godot_registered_runtime_files import hash_file
+    from ucc.jobs.target_action_context import Budget
+    from ucc.jobs.unreal_animation_authorization import load_unreal_animation_authorization
+    from ucc.jobs.unreal_animation_export import export_unreal_animation
+
+    authorization_sha = hash_file(args.authorization, 256 * 1024, Budget(None, 5))[0]
+    authorization = load_unreal_animation_authorization(args.authorization, expected_sha256=authorization_sha)
+    store = ProjectStore(args.project)
+    worker = Path(__file__).resolve().parents[2]/'blender_bridge/entrypoint.py'
+
+    def guard() -> None:
+        if load_unreal_animation_authorization(args.authorization, expected_sha256=authorization_sha) != authorization:
+            raise ValidationError('The selected local Unreal authorization changed')
+
+    published = export_unreal_animation(store, authorization=authorization, database_path=args.database,
+        blender_exe=args.blender, worker_script=worker, unreal_exe=args.unreal,
+        unreal_executable_sha256=args.unreal_sha256, destination=plan_destination(args.destination, store.root),
+        authorization_guard=guard, timeout_s=args.timeout,
+        progress=lambda phase: print(phase, file=sys.stderr, flush=True))
+    return {'status': 'PRIVATE_UNREAL_ANIMATION_EXPORTED_AND_REOPENED',
+            'directory': str(published.directory), 'receipt_sha256': published.receipt_sha256,
+            'engine_project_exported': True, 'distribution_review_complete': False}
+
+
 def _export_unity_animation(args: argparse.Namespace) -> dict:
     from ucc.core.errors import ValidationError
     from ucc.jobs.export_destination import plan_destination
@@ -152,6 +179,16 @@ def main(argv: list[str] | None = None) -> int:
     export_unity.add_argument("--unity-sha256", required=True, help="Reviewed local Unity editor SHA-256")
     export_unity.add_argument("--destination", required=True, type=Path)
     export_unity.add_argument("--timeout", default=2400., type=float, help="Total local deadline in seconds")
+    export_unreal = sp.add_parser("export-unreal-animation",
+        help="Verify and export one saved animation to a new private Unreal project")
+    export_unreal.add_argument("project", type=Path)
+    export_unreal.add_argument("--authorization", required=True, type=Path)
+    export_unreal.add_argument("--database", required=True, type=Path)
+    export_unreal.add_argument("--blender", required=True, type=Path)
+    export_unreal.add_argument("--unreal", required=True, type=Path, help="Installed Unreal 5.9.0 editor")
+    export_unreal.add_argument("--unreal-sha256", required=True, help="Reviewed local Unreal editor SHA-256")
+    export_unreal.add_argument("--destination", required=True, type=Path)
+    export_unreal.add_argument("--timeout", default=2700., type=float, help="Total local deadline in seconds")
     index_anim = sp.add_parser("index-animation", help="Index one explicitly chosen animation with fail-closed provenance")
     index_anim.add_argument("file", type=Path)
     index_anim.add_argument("--database", type=Path, required=True, help="Private local SQLite catalog")
@@ -229,6 +266,8 @@ def main(argv: list[str] | None = None) -> int:
             data = _prepare_godot_animation(args)
         elif args.command == "export-unity-animation":
             data = _export_unity_animation(args)
+        elif args.command == "export-unreal-animation":
+            data = _export_unreal_animation(args)
         elif args.command == "index-animation":
             if args.policy_file is not None:
                 policy_data = json.loads(args.policy_file.read_text(encoding="utf-8"))

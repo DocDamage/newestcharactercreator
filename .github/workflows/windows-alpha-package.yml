@@ -28,6 +28,7 @@ on:
       - 'tests/test_godot_saved_preview*.py'
       - 'tests/test_godot_animation_export_desktop.py'
       - 'tests/test_unity_animation_export_desktop.py'
+      - 'tests/test_unreal_animation_export_desktop.py'
       - 'tests/test_target_action_diagnostic*.py'
       - 'pyproject.toml'
       - '.github/workflows/windows-alpha-package.yml'
@@ -98,6 +99,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Unity desktop export workflow tests failed' }
           python -m unittest discover -s tests -p 'test_unity_animation_export_desktop.py' -v
           if ($LASTEXITCODE -ne 0) { throw 'Private Unity animation export workflow tests failed' }
+          python -m unittest discover -s tests -p 'test_unreal_animation_export_desktop.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Private Unreal animation export workflow tests failed' }
           python -m unittest discover -s tests -p 'test_export_compatibility_report.py' -v
           if ($LASTEXITCODE -ne 0) { throw 'Export compatibility report tests failed' }
           python -m unittest discover -s tests -p 'test_target_action_dialog.py' -v

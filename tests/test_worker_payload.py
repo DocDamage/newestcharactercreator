@@ -91,7 +91,7 @@ print('ISOLATED_PURE_CONTRACT_IMPORTS_OK')
         self.assertEqual(REGISTERED_CORRECTION_FILES, correction_names)
         self.assertEqual(REGISTERED_BODY_FILES, body_names)
         self.assertEqual(REGISTERED_PLAYBACK_FILES, playback_names)
-        self.assertEqual(self.manifest['schema_version'], 3)
+        self.assertEqual(self.manifest['schema_version'], 4)
         source_root = ROOT/'engine_adapters/godot'
         cases = (
             ('registered_correction', REGISTERED_CORRECTION_ADAPTER, correction_names,
@@ -157,6 +157,9 @@ print('ISOLATED_PURE_CONTRACT_IMPORTS_OK')
         from ucc.jobs.worker_resources import bundled_registered_playback_paths
         from ucc.jobs.worker_resources import bundled_unity_registered_animation_paths
         from ucc.jobs.worker_resources import bundled_unity_registered_correction_paths
+        from ucc.core.worker_payload import (UNREAL_REGISTERED_ANIMATION, UNREAL_REGISTERED_ANIMATION_FILES,
+            UNREAL_REGISTERED_PREVIEW, UNREAL_REGISTERED_PREVIEW_FILES)
+        from ucc.jobs.worker_resources import bundled_unreal_registered_paths
 
         groups = (
             (REGISTERED_BODY_ADAPTER, REGISTERED_BODY_FILES, bundled_registered_body_paths),
@@ -165,6 +168,8 @@ print('ISOLATED_PURE_CONTRACT_IMPORTS_OK')
             (UNITY_REGISTERED_ANIMATION_ADAPTER, UNITY_REGISTERED_ANIMATION_FILES, bundled_unity_registered_animation_paths),
             (UNITY_REGISTERED_ANIMATION_ADAPTER, {UNITY_REGISTERED_CORRECTION_BINDING}, bundled_unity_registered_correction_paths),
             (UNITY_REGISTERED_CORRECTION_ADAPTER, UNITY_REGISTERED_CORRECTION_FILES, bundled_unity_registered_correction_paths),
+            (UNREAL_REGISTERED_ANIMATION, UNREAL_REGISTERED_ANIMATION_FILES, bundled_unreal_registered_paths),
+            (UNREAL_REGISTERED_PREVIEW, UNREAL_REGISTERED_PREVIEW_FILES, bundled_unreal_registered_paths),
         )
         with patch.object(sys, 'frozen', True, create=True), patch.object(
             sys, '_MEIPASS', str(self.payload), create=True,
@@ -184,6 +189,9 @@ print('ISOLATED_PURE_CONTRACT_IMPORTS_OK')
             for name in UNITY_REGISTERED_ANIMATION_FILES:
                 self.assertEqual(unity[name], self.payload/UNITY_REGISTERED_ANIMATION_ADAPTER/name)
                 self.assertEqual(unity[name].read_bytes(), (ROOT/'engine_adapters/unity/registered_animation'/name).read_bytes())
+            unreal = bundled_unreal_registered_paths()
+            for name in UNREAL_REGISTERED_PREVIEW_FILES:
+                self.assertEqual(unreal['UccRegisteredPreview/'+name], self.payload/UNREAL_REGISTERED_PREVIEW/name)
 
             legacy = json.loads(json.dumps(self.manifest))
             legacy.update(schema_version=1, policy='UCC_WORKER_PAYLOAD_V1')

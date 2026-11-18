@@ -11,6 +11,14 @@ from .unreal_native_data import require,finite,integer,f32
 IDENTITY = tuple(tuple(float(i == j) for j in range(4)) for i in range(4))
 
 
+def expected_bone_name(source: str) -> str:
+    """Legacy FBX import's verified namespace, punctuation and space rules."""
+    name = source.rsplit(':', 1)[-1]
+    for character in '.,/`%':
+        name = name.replace(character, '_')
+    return name.strip().replace(' ', '-')
+
+
 def matrix(values):
     require(len(values) == 16, "matrix dimensions differ")
     return tuple(tuple(finite(values[i*4+j]) for j in range(4)) for i in range(4))

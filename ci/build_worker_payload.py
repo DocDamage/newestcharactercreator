@@ -87,9 +87,15 @@ def build_payload(repo: Path, destination: Path) -> dict:
         sources[UNITY_REGISTERED_ANIMATION_ADAPTER+'/'+name] = repo/'engine_adapters/unity/registered_animation'/name
     for name in UNITY_REGISTERED_CORRECTION_FILES:
         sources[UNITY_REGISTERED_CORRECTION_ADAPTER+'/'+name] = repo/'engine_adapters/unity/registered_correction'/name
-    from ucc.core.worker_payload import UNREAL_ADAPTER,UNREAL_ADAPTER_FILES
+    from ucc.core.worker_payload import (UNREAL_ADAPTER, UNREAL_ADAPTER_FILES,
+        UNREAL_REGISTERED_ANIMATION, UNREAL_REGISTERED_ANIMATION_FILES,
+        UNREAL_REGISTERED_PREVIEW, UNREAL_REGISTERED_PREVIEW_FILES)
     for name in UNREAL_ADAPTER_FILES:
         sources[UNREAL_ADAPTER+'/'+name] = repo/'engine_adapters/unreal'/name
+    for root, names in ((UNREAL_REGISTERED_ANIMATION, UNREAL_REGISTERED_ANIMATION_FILES),
+                        (UNREAL_REGISTERED_PREVIEW, UNREAL_REGISTERED_PREVIEW_FILES)):
+        for name in names:
+            sources[root+'/'+name] = repo/'engine_adapters/unreal'/root.rsplit('/', 1)[1]/name
     sources['blender_bridge/payload_contract.py'] = src / 'ucc/core/worker_payload.py'
     snapshots = {}
     for relative, path in sources.items():
@@ -103,7 +109,7 @@ def build_payload(repo: Path, destination: Path) -> dict:
             shutil.copy2(path, target)
             if sha256(target.read_bytes()).hexdigest() != snapshots[relative]['sha256']:
                 raise ValueError('Worker source changed during payload staging')
-        manifest = {'schema_version': 3, 'policy': POLICY, 'files': snapshots,
+        manifest = {'schema_version': 4, 'policy': POLICY, 'files': snapshots,
             'modules': sorted(modules), 'engine_import_verified': False, 'distribution_license_review_complete': False}
         (temporary / 'worker_support/payload.v1.json').write_text(json.dumps(manifest, sort_keys=True, separators=(',', ':')) + '\n', encoding='utf-8')
         for relative, path in sources.items():

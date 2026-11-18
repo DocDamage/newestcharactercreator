@@ -169,3 +169,29 @@ def bundled_unreal_adapter_paths() -> dict[str,Path]:
            or not 0<path.stat().st_size<=256*1024 for path in files.values()):
         raise ValidationError('Unreal adapter sources are missing, redirected or oversized')
     return files
+
+
+def bundled_unreal_registered_paths() -> dict[str, Path]:
+    """Return the closed source inventories for the editor and portable runtime plugins."""
+    from ucc.core.worker_payload import (
+        UNREAL_REGISTERED_ANIMATION, UNREAL_REGISTERED_ANIMATION_FILES,
+        UNREAL_REGISTERED_PREVIEW, UNREAL_REGISTERED_PREVIEW_FILES,
+    )
+
+    groups = (('UccNativeAnimation', UNREAL_REGISTERED_ANIMATION, UNREAL_REGISTERED_ANIMATION_FILES),
+              ('UccRegisteredPreview', UNREAL_REGISTERED_PREVIEW, UNREAL_REGISTERED_PREVIEW_FILES))
+    frozen = getattr(sys, 'frozen', False)
+    base = Path(sys._MEIPASS) if frozen else Path(__file__).resolve().parents[3]/'engine_adapters/unreal'
+    files = {f'{plugin}/{name}': base/(relative if frozen else relative.rsplit('/', 1)[1])/name
+             for plugin, relative, names in groups for name in sorted(names)}
+    if frozen:
+        try:
+            available = set(validate_worker_payload(base))
+        except (WorkerPayloadError, OSError) as error:
+            raise ValidationError('Bundled Unreal animation adapters are incomplete or changed') from error
+        if not set(files.values()).issubset(available):
+            raise ValidationError('This package lacks the registered Unreal animation adapters')
+    if any(path.is_symlink() or not path.is_file() or path.resolve() != path
+           or not 0 < path.stat().st_size <= 256 * 1024 for path in files.values()):
+        raise ValidationError('Registered Unreal adapter resources are missing, redirected or oversized')
+    return files

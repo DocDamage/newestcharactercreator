@@ -1,0 +1,11 @@
+{
+  "FileVersion": 3,
+  "Version": 1,
+  "VersionName": "1",
+  "FriendlyName": "UCC registered animated character preview",
+  "CanContainContent": false,
+  "EnabledByDefault": false,
+  "SupportedTargetPlatforms": ["Win64"],
+  "Plugins": [{"Name": "ProceduralMeshComponent", "Enabled": true}],
+  "Modules": [{"Name": "UccRegisteredPreview", "Type": "Runtime", "LoadingPhase": "Default"}]
+}

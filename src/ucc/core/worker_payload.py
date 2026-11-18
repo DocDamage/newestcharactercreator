@@ -10,9 +10,10 @@ from pathlib import Path, PurePosixPath
 import re
 import sys
 
-POLICY = 'UCC_WORKER_PAYLOAD_V3'
+POLICY = 'UCC_WORKER_PAYLOAD_V4'
 LEGACY_POLICY = 'UCC_WORKER_PAYLOAD_V1'
 GODOT_ANIMATION_POLICY = 'UCC_WORKER_PAYLOAD_V2'
+UNITY_ANIMATION_POLICY = 'UCC_WORKER_PAYLOAD_V3'
 ADAPTER_FILES = frozenset({'validate.gd', 'configure.gd', 'clay.gdshader', 'project.godot'})
 SUPPORT = 'worker_support'
 MANIFEST = 'payload.v1.json'
@@ -45,6 +46,20 @@ UNREAL_ADAPTER_FILES = frozenset({'README.md', 'project.uproject', 'DefaultEngin
     'Source/UccNativeObservation/Public/UccNativeObservationLibrary.h',
     'Source/UccNativeObservation/Private/UccNativeObservationLibrary.cpp',
     'Source/UccNativeObservation/Private/UccNativeObservationModule.cpp'})
+UNREAL_REGISTERED_ANIMATION = UNREAL_ADAPTER + '/registered_animation'
+UNREAL_REGISTERED_PREVIEW = UNREAL_ADAPTER + '/registered_preview'
+UNREAL_REGISTERED_ANIMATION_FILES = frozenset({'UccNativeAnimation.uplugin',
+    'Source/UccNativeAnimation/UccNativeAnimation.Build.cs',
+    *('Source/UccNativeAnimation/Private/'+name for name in (
+        'UccNativeAnimation.h', 'UccNativeAnimationCommandlet.h', 'UccNativeAnimationCommandlet.cpp',
+        'UccNativeAnimationImport.cpp', 'UccNativeAnimationObserve.cpp',
+        'UccNativeAnimationPreviewStage.cpp', 'UccNativeAnimationPreviewVerify.cpp'))})
+UNREAL_REGISTERED_PREVIEW_FILES = frozenset({'UccRegisteredPreview.uplugin',
+    'Source/UccRegisteredPreview/UccRegisteredPreview.Build.cs',
+    *('Source/UccRegisteredPreview/Public/'+name for name in (
+        'UccRegisteredPreviewActor.h', 'UccRegisteredCorrection.h')),
+    *('Source/UccRegisteredPreview/Private/'+name for name in (
+        'UccRegisteredPreviewActor.cpp', 'UccRegisteredPreviewModule.cpp', 'UccRegisteredCorrection.cpp'))})
 
 
 class WorkerPayloadError(ValueError):
@@ -81,7 +96,8 @@ def validate_worker_payload(base: Path) -> tuple[Path, ...]:
     if (type(raw) is not dict or set(raw) != {'schema_version', 'policy', 'files', 'modules',
             'engine_import_verified', 'distribution_license_review_complete'}
             or type(raw['schema_version']) is not int
-            or (raw['schema_version'], raw['policy']) not in ((1, LEGACY_POLICY), (2, GODOT_ANIMATION_POLICY), (3, POLICY))
+            or (raw['schema_version'], raw['policy']) not in ((1, LEGACY_POLICY), (2, GODOT_ANIMATION_POLICY),
+                (3, UNITY_ANIMATION_POLICY), (4, POLICY))
             or raw['engine_import_verified'] is not False
             or raw['distribution_license_review_complete'] is not False
             or type(raw['files']) is not dict or not 10 <= len(raw['files']) <= 512
@@ -99,6 +115,9 @@ def validate_worker_payload(base: Path) -> tuple[Path, ...]:
         groups.extend(((UNITY_REGISTERED_ANIMATION_ADAPTER, UNITY_REGISTERED_ANIMATION_FILES |
                         {UNITY_REGISTERED_CORRECTION_BINDING}),
                        (UNITY_REGISTERED_CORRECTION_ADAPTER, UNITY_REGISTERED_CORRECTION_FILES)))
+    if raw['schema_version'] >= 4:
+        groups.extend(((UNREAL_REGISTERED_ANIMATION, UNREAL_REGISTERED_ANIMATION_FILES),
+                       (UNREAL_REGISTERED_PREVIEW, UNREAL_REGISTERED_PREVIEW_FILES)))
     resources = {root + '/' + name for root, files in groups for name in files}
     paths = []
     for relative, record in raw['files'].items():

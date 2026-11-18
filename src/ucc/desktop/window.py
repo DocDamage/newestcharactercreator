@@ -126,6 +126,10 @@ class MainWindow(QMainWindow):
         from .unreal_export_workflow import start_unreal_export
         self.unreal_export_action=self._action(menu,'Export private Unreal character…','',lambda:start_unreal_export(self))
         self.unreal_export_action.setEnabled(False)
+        from .unreal_animation_export_workflow import start_unreal_animation_export
+        self.unreal_animation_export_action = self._action(menu, 'Export private animated Unreal project…', '',
+            lambda: start_unreal_animation_export(self))
+        self.unreal_animation_export_action.setEnabled(False)
         from .sprite_workflow import start_sprite
         self.sprite_export_action=self._action(menu,'Render character sprite sample…','',lambda:start_sprite(self))
         self.sprite_export_action.setEnabled(False)
@@ -278,6 +282,8 @@ class MainWindow(QMainWindow):
         refresh_unity_animation_export(self)
         from .unreal_export_workflow import refresh_unreal_export
         refresh_unreal_export(self)
+        from .unreal_animation_export_workflow import refresh_unreal_animation_export
+        refresh_unreal_animation_export(self)
         from .sprite_workflow import refresh_sprite
         refresh_sprite(self)
         from .facial_sprite_workflow import refresh_facial_sprite
@@ -555,6 +561,11 @@ class MainWindow(QMainWindow):
         if busy and self._work_kind == UNITY_ANIMATION_EXPORT:
             self.cancel_generation_action.setEnabled(True)
             self.statusBar().showMessage('Preparing and independently reopening the private animated Unity project…')
+        from .unreal_animation_export_workflow import KIND as UNREAL_ANIMATION_EXPORT, refresh_unreal_animation_export
+        refresh_unreal_animation_export(self, busy=busy)
+        if busy and self._work_kind == UNREAL_ANIMATION_EXPORT:
+            self.cancel_generation_action.setEnabled(True)
+            self.statusBar().showMessage('Verifying the private animated Unreal project…')
         from .unity_export_workflow import refresh_unity_export
         refresh_unity_export(self)
         from .unreal_export_workflow import refresh_unreal_export
@@ -615,6 +626,10 @@ class MainWindow(QMainWindow):
         if self._work_kind == 'unity_animation_export':
             from .unity_animation_export_workflow import finish_unity_animation_export
             finish_unity_animation_export(self, result)
+            return
+        if self._work_kind == 'unreal_animation_export':
+            from .unreal_animation_export_workflow import finish_unreal_animation_export
+            finish_unreal_animation_export(self, result)
             return
         if self._work_kind=='skin_material':
             from .skin_material_workflow import finish_skin_material
@@ -944,6 +959,10 @@ class MainWindow(QMainWindow):
         if self._work_kind == 'unity_animation_export':
             from .unity_animation_export_workflow import unity_animation_export_error
             unity_animation_export_error(self, error)
+            return
+        if self._work_kind == 'unreal_animation_export':
+            from .unreal_animation_export_workflow import unreal_animation_export_error
+            unreal_animation_export_error(self, error)
             return
         if self._work_kind=='skin_material':
             from .material_master_workflow import show_material_master_error

@@ -52,12 +52,12 @@ def _unassigned(bpy, human, rig) -> None:
         raise ValueError('Registered Unity V1 requires the unassigned MPFB world-metre source profile')
 
 
-def _context(bpy, root, job):
+def _context(bpy, root, job, *, validate_worker_job=validate_job, validate_target_binding=validate_binding):
     options = job['options']
-    validate_job(job['operation'], job['input_project'], options)
+    validate_worker_job(job['operation'], job['input_project'], options)
     raw = read_json(root/'target_binding.json', options['target_binding_sha256'], MAX_BINDING_BYTES)
     binding = TargetActionBinding.from_dict(raw)
-    validate_binding(binding, options)
+    validate_target_binding(binding, options)
     if bpy.app.version[:2] != (5, 3):
         raise ValueError('Registered Unity source requires Blender 5.3')
     bound_scene(root/'candidate.blend', options['master_sha256'])
@@ -70,7 +70,7 @@ def _context(bpy, root, job):
     return options, state, native_options
 
 
-def _frame(bpy, human, rig) -> dict[str, bytes]:
+def _frame(bpy, human, rig, *, references=REFERENCES) -> dict[str, bytes]:
     corrected, normals = sampled_mesh(bpy, human)
     modifier = human.modifiers[NAME]
     modifier.show_viewport = False
@@ -80,26 +80,26 @@ def _frame(bpy, human, rig) -> dict[str, bytes]:
         modifier.show_viewport = True
         bpy.context.view_layer.update()
     poses = pose_values(rig, human, [bone.name for bone in rig.data.bones])
-    return {name: np.asarray(values, dtype='<f4').tobytes() for name, values in
-            {RAW: raw, CORRECTED: corrected, NORMALS: normals, WORLD_BONES: poses}.items()}
+    return {name: np.asarray(values, dtype='<f4').tobytes()
+            for name, values in zip(references, (raw, corrected, normals, poses), strict=True)}
 
 
-def _references(bpy, root, native_options, state, *, write):
-    hashes = {name: sha256() for name in REFERENCES}
+def _references(bpy, root, native_options, state, *, write, references=REFERENCES):
+    hashes = {name: sha256() for name in references}
     first = {}
     frames = 0
     with ExitStack() as stack:
-        streams = {name: stack.enter_context((root/name).open('xb')) for name in REFERENCES} if write else {}
+        streams = {name: stack.enter_context((root/name).open('xb')) for name in references} if write else {}
 
         def observe(api, human, rig, frame, _skin_sha):
             nonlocal frames
             if frame != frames + 1 or frame > SOURCE_FRAMES or human.modifiers.get(NAME) is None:
                 raise ValueError('Registered Unity source has incomplete 300-frame corrective-skin coverage')
-            values = _frame(api, human, rig)
+            values = _frame(api, human, rig, references=references)
             if frame == 1:
                 first.update(values)
             for name, data in values.items():
-                if len(data) != REFERENCES[name] // SOURCE_FRAMES:
+                if len(data) != references[name] // SOURCE_FRAMES:
                     raise ValueError('Registered Unity native reference has unexpected dimensions')
                 hashes[name].update(data)
                 if write:
@@ -224,34 +224,34 @@ def _neutral_facial_action(bpy, rig, auxiliary) -> bool:
     return not expected
 
 
-def _check_fbx(bpy, root, bind, expected_sha):
-    observed = inspect_fbx_source(bpy, root/FBX, root/FBX_SNAPSHOT, expected_sha,
+def _check_fbx(bpy, root, bind, expected_sha, *, fbx=FBX, readback=FBX_SNAPSHOT, world_bones=WORLD_BONES, engine='Unity'):
+    observed = inspect_fbx_source(bpy, root/fbx, root/readback, expected_sha,
         validate_auxiliary_actions=lambda rig, actions: _neutral_facial_action(bpy, rig, actions))
     if (observed['fps'] != FPS or observed['frame_count'] != VIRTUAL_FRAME
             or observed['bone_count'] != BONES):
-        raise ValueError('Reimported Unity FBX take lost the 30 Hz clock or exact skeleton')
-    snapshot = read_json(root/FBX_SNAPSHOT, observed['snapshot']['sha256'], 64 * 1024**2)
+        raise ValueError(f'Reimported {engine} FBX take lost the 30 Hz clock or exact skeleton')
+    snapshot = read_json(root/readback, observed['snapshot']['sha256'], 64 * 1024**2)
     named = {bone['name']: bone for bone in bind['bones']}
     if {row['name']: row['parent'] for row in snapshot['bones']} != {name: bone['parent'] for name, bone in named.items()}:
-        raise ValueError('Reimported Unity FBX bone hierarchy differs from the saved target')
+        raise ValueError(f'Reimported {engine} FBX bone hierarchy differs from the saved target')
     indices = {row['name']: index for index, row in enumerate(snapshot['bones'])}
     order = [indices[name] for name in named]
     rest = np.asarray(snapshot['armature_rest_world']).reshape(4, 4) @ np.asarray(
         [row['matrix'] for row in snapshot['bones']]).reshape(BONES, 4, 4)[order]
     authored_rest = np.asarray([bone['world'] for bone in named.values()]).reshape(BONES, 4, 4)
     if np.max(np.abs(rest-authored_rest)) > 1e-4:
-        raise ValueError('Reimported Unity FBX changed neutral world bind matrices')
-    source = np.fromfile(root/WORLD_BONES, dtype='<f4').reshape(SOURCE_FRAMES, BONES, 4, 4)
+        raise ValueError(f'Reimported {engine} FBX changed neutral world bind matrices')
+    source = np.fromfile(root/world_bones, dtype='<f4').reshape(SOURCE_FRAMES, BONES, 4, 4)
     for index, row in enumerate(snapshot['frames']):
         world = np.asarray(row['armature_world']).reshape(4, 4)
         poses = np.asarray(row['poses']).reshape(BONES, 4, 4)[order]
         if np.max(np.abs(world @ poses-source[index % SOURCE_FRAMES])) > 1e-4:
-            raise ValueError('Reimported Unity FBX world pose differs from the original registered Action')
+            raise ValueError(f'Reimported {engine} FBX world pose differs from the original registered Action')
     meshes = [obj for obj in bpy.context.scene.objects if obj.type == 'MESH']
     rigs = [obj for obj in bpy.context.scene.objects if obj.type == 'ARMATURE']
     if len(rigs) != 1 or len(meshes) != 1 or not any(mod.type == 'ARMATURE' and mod.object == rigs[0]
                                                   for mod in meshes[0].modifiers):
-        raise ValueError('Reimported Unity FBX lost its actual skinned mesh')
+        raise ValueError(f'Reimported {engine} FBX lost its actual skinned mesh')
     return observed['snapshot']['sha256']
 
 
