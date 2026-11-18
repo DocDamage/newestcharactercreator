@@ -4,23 +4,32 @@ from pathlib import Path
 import time
 from typing import Callable
 
-from PySide6.QtCore import QEvent, QFileSystemWatcher, QObject, Qt, QTimer
+from PySide6.QtCore import QEvent, QFileSystemWatcher, QObject, QSignalBlocker, Qt, QTimer, Signal
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import QDockWidget, QHBoxLayout, QLabel, QMainWindow, QPushButton, QSpinBox, QWidget
 
 from ucc.core.errors import ProjectConflict, ProjectStorageError, UCCError, ValidationError
 from ucc.core.expression_library import canonical_digest
 from ucc.core.storage import MAX_JSON_BYTES
+from ucc.preview.idle_loop_clock import IdleLoopClock
 from ucc.preview.playback_window import PlaybackWindow, WindowPlaybackClock
 from ucc.preview.motion_cache import MotionCache
 from .motion_viewer import MotionViewer
 
 
+_PREVIEW_NOTE = ('Private one-shot preview • source frames 2–301 / saved target frames 1–300 • '
+                 'editing, usable-action, visual and engine quality unapproved')
+
+
 class TargetActionViewer(MotionViewer):
     """Use the existing transport, guarding activation and its live authority."""
+    review_idle_loop_requested = Signal()
+
     def __init__(self, guard: Callable[[], bool], parent: QWidget | None = None):
         super().__init__(parent)
         self.guard = guard
+        self._idle_guard = None
+        self._idle_watcher = None
         self.guard_timer = QTimer(self)
         self.guard_timer.setInterval(500)
         self.guard_timer.timeout.connect(self._guard_playing)
@@ -39,8 +48,13 @@ class TargetActionViewer(MotionViewer):
         self.layout.addLayout(bounds)
         self.apply_window = QPushButton('Apply review window')
         self.go_start = QPushButton('Go to window start')
+        self.review_idle_loop = QPushButton('Review idle loop…')
+        self.review_idle_loop.setVisible(False)
+        self.loop.setText('Loop preview')
+        self.loop.setVisible(False)
         actions = QHBoxLayout()
         actions.addWidget(self.apply_window); actions.addWidget(self.go_start)
+        actions.addWidget(self.review_idle_loop)
         self.layout.addLayout(actions)
         self.window_status = QLabel('No review window loaded.')
         self.window_status.setTextFormat(Qt.TextFormat.PlainText)
@@ -48,6 +62,7 @@ class TargetActionViewer(MotionViewer):
         self.layout.addWidget(self.window_status)
         self.apply_window.clicked.connect(self.apply_review_window)
         self.go_start.clicked.connect(self.go_to_window_start)
+        self.review_idle_loop.clicked.connect(self.review_idle_loop_requested.emit)
         self._enable(False)
 
     def _enable(self, enabled: bool) -> None:
@@ -58,6 +73,8 @@ class TargetActionViewer(MotionViewer):
                 control.setEnabled(enabled)
             if self.review_window is not None and self.review_window.is_static:
                 self.play.setEnabled(False)
+            self.review_idle_loop.setEnabled(enabled)
+            self.loop.setEnabled(enabled and self._idle_guard is not None and self.review_window == PlaybackWindow())
 
     def show_cache(self, cache: MotionCache) -> None:
         if cache.frame_count != 300 or cache.fps != 30 or cache.source_first_frame != 2:
@@ -86,6 +103,63 @@ class TargetActionViewer(MotionViewer):
             f'nominal sample coverage {window.nominal_coverage_s:.6f} s. '
             'The original 300-frame cache and saved Action remain unchanged.')
 
+    def offer_idle_loop_review(self, enabled: bool) -> None:
+        self.review_idle_loop.setVisible(enabled)
+
+    def install_idle_loop(self, guard: Callable[[], bool], watch_paths=()) -> None:
+        if self.review_window != PlaybackWindow() or not self._authorized() or not guard():
+            raise ProjectConflict('The reviewed idle no longer matches the full target preview')
+        if self._idle_guard is not None:
+            self.clear_idle_loop_review()
+        files = [str(path) for path in watch_paths if path.is_file()]
+        if files:
+            watcher = QFileSystemWatcher(self)
+            if watcher.addPaths(files) or not guard():
+                watcher.deleteLater()
+                raise ProjectStorageError('Could not watch the current authored idle proof')
+            watcher.fileChanged.connect(lambda _path: self._idle_file_changed(watcher))
+            self._idle_watcher = watcher
+        self._idle_guard = guard
+        self.loop.setVisible(True)
+        self.loop.setEnabled(not self._gpu_failed)
+        self.loop.setChecked(False)
+        self.window_status.setText('Idle loop reviewed. Enable Loop preview to play continuously.')
+
+    def _stop_idle_loop(self, *, block_paint: bool = False) -> None:
+        self._idle_guard = None
+        watcher = self._idle_watcher
+        self._idle_watcher = None
+        if watcher is not None:
+            watcher.blockSignals(True)
+            watcher.deleteLater()
+        with QSignalBlocker(self.loop):
+            self.loop.setChecked(False)
+        self.loop.setEnabled(False)
+        self.loop.setVisible(False)
+        self.note.setText(_PREVIEW_NOTE)
+        if self.canvas is not None and hasattr(self.canvas, 'clear_idle_loop_sample'):
+            self.canvas.clear_idle_loop_sample(block_paint=block_paint)
+
+    def _idle_file_changed(self, watcher) -> None:
+        if watcher is not self._idle_watcher:
+            return
+        if isinstance(self.clock, IdleLoopClock):
+            self._failed('Idle loop authority changed. Load and review the binding again.')
+        else:
+            self._stop_idle_loop()
+            if self.review_window is not None:
+                self._window_label()
+
+    def _idle_current(self) -> bool:
+        try:
+            return self._idle_guard is not None and self._idle_guard()
+        except (UCCError, OSError, ValueError):
+            return False
+
+    def clear_idle_loop_review(self) -> None:
+        self.loop.setChecked(False)
+        self._stop_idle_loop()
+
     def apply_review_window(self) -> None:
         if not self._authorized():
             return
@@ -98,6 +172,7 @@ class TargetActionViewer(MotionViewer):
         # GUI callbacks are serialized. Stop the old clock before replacing it;
         # queued timeout/paint events subsequently read only this new frame.
         self.timer.stop(); self.guard_timer.stop()
+        self._stop_idle_loop()
         self.review_window = window; self.clock = clock
         self.scrub.blockSignals(True)
         self.scrub.setRange(window.first_index, window.last_index)
@@ -113,12 +188,35 @@ class TargetActionViewer(MotionViewer):
         self.timer.stop(); self.guard_timer.stop()
         self.clock.reset(time.monotonic())
         self._present()
+        if isinstance(self.clock, IdleLoopClock):
+            self.guard_timer.start()
+
+    def _connect_canvas(self, canvas):
+        canvas.failed.connect(lambda error: self._failed(error) if self.canvas is canvas else None)
 
     def _loop_changed(self, checked):
-        if checked:
-            self.loop.blockSignals(True); self.loop.setChecked(False); self.loop.blockSignals(False)
-        if self.clock is not None:
-            self.clock.loop = False
+        active = isinstance(self.clock, IdleLoopClock)
+        if self.clock is None or (checked and (self.review_window != PlaybackWindow()
+                or not self._idle_current() or not hasattr(self.canvas, 'set_idle_loop_sample'))):
+            with QSignalBlocker(self.loop):
+                self.loop.setChecked(False)
+            return
+        if checked == active:
+            return
+        self.timer.stop()
+        self.guard_timer.stop()
+        frame = self.clock.frame
+        self.clock = IdleLoopClock() if checked else WindowPlaybackClock(self.review_window)
+        self.clock.seek(frame, time.monotonic())
+        if not checked:
+            self.canvas.clear_idle_loop_sample()
+            self._window_label()
+            self.note.setText(_PREVIEW_NOTE)
+        else:
+            self.guard_timer.start()
+            self.window_status.setText('Private continuous idle preview • 300 samples • 10-second cycle')
+            self.note.setText('Private continuous idle preview • visual quality and engine use pending')
+        self._present()
 
     def toggle(self):
         if not self._authorized():
@@ -127,7 +225,7 @@ class TargetActionViewer(MotionViewer):
             self.timer.stop(); self.guard_timer.stop()
             return
         super().toggle()
-        if self.clock is not None and self.clock.playing:
+        if self.clock is not None and (self.clock.playing or isinstance(self.clock, IdleLoopClock)):
             self.guard_timer.start()
         else:
             self.guard_timer.stop()
@@ -147,6 +245,11 @@ class TargetActionViewer(MotionViewer):
         if window is not None and not window.contains_index(self.clock.frame):
             self._failed('A frame outside the applied review window was refused')
             return
+        if isinstance(self.clock, IdleLoopClock):
+            if not self._idle_current():
+                self._failed('Idle loop authority changed. Load and review the binding again.')
+                return
+            self.canvas.set_idle_loop_sample(self.clock.sample, self._idle_current)
         super()._present()
         if window is not None:
             frame = self.clock.frame
@@ -155,16 +258,25 @@ class TargetActionViewer(MotionViewer):
                 f'{window.sample_count} • window elapsed {(frame - window.first_index) / self.clock.fps:.3f} s')
 
     def tick(self):
-        super().tick()
+        if self.clock is not None:
+            self.clock.advance(time.monotonic())
+            self._present()
         if self.clock is None or not self.clock.playing:
+            self.timer.stop()
+        if self.clock is None or (not self.clock.playing and not isinstance(self.clock, IdleLoopClock)):
             self.guard_timer.stop()
 
     def _guard_playing(self):
+        if isinstance(self.clock, IdleLoopClock) and not self._idle_current():
+            self._failed('Idle loop authority changed. Load and review the binding again.')
+            return
         if self.clock is not None and self.clock.playing:
             self._authorized()
 
     def clear(self):
         self.guard_timer.stop()
+        self._stop_idle_loop(block_paint=True)
+        self.offer_idle_loop_review(False)
         self.review_window = None
         super().clear()
         if hasattr(self, 'target_start'):
@@ -221,6 +333,8 @@ def _stamp(path: Path) -> tuple[int, int, int, int]:
 
 
 def clear_target_action_preview(window, message: str | None = None) -> None:
+    from .authored_idle_loop_workflow import cancel_idle_loop_review
+    cancel_idle_loop_review(window)
     watcher = getattr(window, '_target_action_watcher', None)
     if watcher is not None:
         watcher.blockSignals(True)
@@ -416,6 +530,8 @@ def publish_target_action(window, context, review, result, *, selected_binding: 
         _check_context(window, context, review, result)
         if getattr(window, '_target_action_viewer', None) is None:
             viewer = TargetActionViewer(lambda: _active_guard(window))
+            from .authored_idle_loop_workflow import start_idle_loop_review
+            viewer.review_idle_loop_requested.connect(lambda: start_idle_loop_review(window))
             dock = _TargetActionDock('Registered clip — private one-shot target preview', window)
             dock.setObjectName('RegisteredTargetActionPreviewDock')
             dock.setWidget(viewer)
@@ -425,6 +541,7 @@ def publish_target_action(window, context, review, result, *, selected_binding: 
         viewer = window._target_action_viewer
         viewer.loop.setChecked(False)
         viewer.show_cache(cache)
+        viewer.offer_idle_loop_review(binding.root_motion_policy == 'ARMATURE_ORIGIN_DISPLACEMENT_V1')
         viewer.status.setText(f'Registered source: {result.clip_id}\n' + viewer.status.text())
         viewer.highlight.setChecked(False)
         viewer.focus.setChecked(False)
@@ -433,7 +550,7 @@ def publish_target_action(window, context, review, result, *, selected_binding: 
                        viewer.variant, viewer.surface_status):
             widget.setEnabled(False)
             widget.hide()
-        viewer.note.setText('Private one-shot preview • source frames 2–301 / saved target frames 1–300 • editing, usable-action, visual and engine quality unapproved')
+        viewer.note.setText(_PREVIEW_NOTE)
         window._clear_native_review()
         window.mesh_dock.hide()
         window._target_action_owner = context.store

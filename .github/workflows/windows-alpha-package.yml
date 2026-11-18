@@ -22,6 +22,7 @@ on:
       - 'tests/test_target_action_dialog.py'
       - 'tests/test_target_action_desktop.py'
       - 'tests/test_target_action_preview_window.py'
+      - 'tests/test_idle_loop_renderer_qt.py'
       - 'tests/test_registered_native*_qt.py'
       - 'tests/test_godot_saved_preview*.py'
       - 'tests/test_target_action_diagnostic*.py'
@@ -92,6 +93,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Target saved-load and preview lifetime tests failed' }
           python -m unittest discover -s tests -p 'test_target_action_preview_window.py' -v
           if ($LASTEXITCODE -ne 0) { throw 'Registered preview window control tests failed' }
+          python -m unittest discover -s tests -p 'test_idle_loop_renderer_qt.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Guarded idle loop rendering tests failed' }
           python -m unittest discover -s tests -p 'test_godot_saved_preview_widget.py' -v
           if ($LASTEXITCODE -ne 0) { throw 'Saved Godot captured-image widget tests failed' }
           python -m unittest discover -s tests -p 'test_godot_saved_preview_workflow.py' -v

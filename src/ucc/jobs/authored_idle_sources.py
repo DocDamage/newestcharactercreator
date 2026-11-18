@@ -92,7 +92,8 @@ def inspect_idle_authoring_sources(store, *, cancel=None, timeout_s=60) -> tuple
         return sources
 
 
-def prepare_idle_context(store, request, records, database, blender, worker, destination, budget, *, create_jobs=True):
+def prepare_idle_context(store, request, records, database, blender, worker, destination, budget, *,
+                         create_jobs=True, capture_authority=None):
     if type(request) is not AuthoredIdleInspectionRequest:
         raise ValidationError('Original idle starts with its typed pre-measurement inspection request')
     if type(records) is not tuple or any(type(row) is not IdleSourcePolicyRecord for row in records):
@@ -134,6 +135,18 @@ def prepare_idle_context(store, request, records, database, blender, worker, des
     parents = ancestry(inputs|{database, jobs})
     host = host_code_snapshot(budget); namespace = worker_namespace_snapshot(worker, budget)
     helpers = blender_helper_inventory(blender, budget)
+    if capture_authority is not None:
+        # Transfer the stamps that the authored-source guard already checks.
+        # Taking a new baseline at the end would admit post-verification replacements.
+        capture_authority(parents)
+        capture_authority({path: row[0] for path, row in snapshots.items()})
+        capture_authority({path: None if row is None else row[0] for path, row in catalog.items()})
+        capture_authority({store.root/name: row[0] if len(row) == 2 else row
+                           for name, row in state.items() if row is not None})
+        capture_authority({store.root/name: None for name, row in state.items() if row is None})
+        capture_authority({Path(name): row[0] if len(row) == 2 else row
+                           for name, row in helpers.items() if row is not None})
+        capture_authority({Path(name): None for name, row in helpers.items() if row is None})
     if _review(store, initial, budget) != (paths, sources, state):
         raise ProjectConflict('Idle registered provenance changed during admission')
     def guard():
