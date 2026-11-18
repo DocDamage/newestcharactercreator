@@ -93,7 +93,7 @@ def _build_original_idle_profile(request: AuthoredIdleRequest, *, frame_json: by
         worker_request_json: bytes, worker_result_json: bytes,
         source_sha256: str, review_sha256: str, recipe_sha256: str,
         snapshot_sha256: str, worker_request_sha256: str, worker_result_sha256: str,
-        inspection_job_id: str, verification_job_id: str) -> dict:
+        inspection_job_id: str, verification_job_id: str, cancel_check) -> dict:
     """Build an explicit 51-pair profile, never an automatic family fallback.
 
     Host supplies the exact admitted candidate byte buffers and actual verifier
@@ -101,6 +101,7 @@ def _build_original_idle_profile(request: AuthoredIdleRequest, *, frame_json: by
     The caller must keep that candidate receipt/current-policy guard live while
     consuming the returned map through existing target-action preparation.
     """
+    cancel_check()
     need(type(request) is AuthoredIdleRequest, 'Original idle mapping needs the actual typed authoring intent')
     for pin in (source_sha256,review_sha256,recipe_sha256,snapshot_sha256):
         checked_sha(pin)
@@ -109,7 +110,9 @@ def _build_original_idle_profile(request: AuthoredIdleRequest, *, frame_json: by
          'Original idle mapping needs distinct actual inspection, author and verifier workers')
     frame = _json(frame_json, request.anatomical_frame_sha256, 16*1024*1024)
     recipe = _json(recipe_json, recipe_sha256, 16*1024*1024)
+    cancel_check()
     snapshot = _json(snapshot_json, snapshot_sha256, 64*1024*1024)
+    cancel_check()
     worker = _json(worker_request_json, worker_request_sha256, 256*1024)
     result = _json(worker_result_json, worker_result_sha256, 256*1024)
     closed(worker, {'protocol_version','job_id','operation','input_project','options'})
@@ -197,11 +200,12 @@ def _build_original_idle_profile(request: AuthoredIdleRequest, *, frame_json: by
          and recipe['existing_motion_read'] is False and recipe['armature_only_source'] is True,
          'Original idle mapping recipe changed source clock, measured target or original scope')
     _false_quality(recipe)
-    observed = validate_snapshot(snapshot, source_sha256)
+    observed = validate_snapshot(snapshot, source_sha256, cancel_check=cancel_check)
     need((observed['frame_count'], observed['first_frame'], observed['last_frame'], observed['fps']) == (300,2,301,30.),
          'Original idle mapping source clock differs')
     pairs = _pairs()
-    check_same_rig_full_clock(snapshot, frame, {row['source'] for row in pairs if row['source'] != '@ARMATURE'})
+    check_same_rig_full_clock(snapshot, frame, {row['source'] for row in pairs if row['source'] != '@ARMATURE'},
+                              cancel_check=cancel_check)
     landmarks = {key:{'source':name,'target':name} for key,name in (
         ('left_hip','upperleg01.L'),('right_hip','upperleg01.R'),('head','head'),
         ('left_hand','wrist.L'),('right_hand','wrist.R'),('left_foot','foot.L'),('right_foot','foot.R'))}
@@ -220,14 +224,14 @@ def _build_original_idle_profile(request: AuthoredIdleRequest, *, frame_json: by
     return profile
 
 
-def build_original_idle_profile(request: AuthoredIdleRequest, **evidence) -> dict:
+def build_original_idle_profile(request: AuthoredIdleRequest, *, cancel_check=lambda: None, **evidence) -> dict:
     """Checked pure boundary; see the implementation's explicit evidence inputs.
 
     Missing/malformed nested evidence rejects without exposing private numeric
     data. It does not turn a candidate's hashes into execution or rights proof.
     """
     try:
-        return _build_original_idle_profile(request, **evidence)
+        return _build_original_idle_profile(request, cancel_check=cancel_check, **evidence)
     except ValidationError:
         raise
     except (KeyError, TypeError, ValueError, IndexError, OverflowError, RecursionError) as error:

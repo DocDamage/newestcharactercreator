@@ -9,11 +9,14 @@ import unittest
 from unittest.mock import patch
 
 from fixtures.authored_idle_host import HostFixture, pin
+from ucc.animations.authored_idle_mapping_math import check_same_rig_full_clock
+from ucc.animations.native_profile import validate_native_profile
 from ucc.core.errors import ProjectConflict, ProjectStorageError, ValidationError
+from ucc.core.target_action_format import canonical_bytes
 from ucc.jobs.authored_idle import author_original_idle
 from ucc.jobs.authored_idle_evidence import INSPECT, AUTHOR, VERIFY, QUALITY_EXECUTION
 from ucc.jobs.authored_idle_io import private_bytes
-from ucc.jobs.authored_idle_receipt import load_authored_idle_candidate
+from ucc.jobs.authored_idle_receipt import load_authored_idle_candidate, load_authored_idle_target_mapping
 from ucc.jobs.authored_idle_sources import prepare_idle_context
 from ucc.jobs.target_action_context import Budget
 
@@ -33,6 +36,75 @@ class AuthoredIdleHostTests(unittest.TestCase):
             expected_receipt_sha256=result.receipt_sha256, source_policy_records=self.f.records,
             database_path=self.f.database, blender_exe=self.f.blender, worker_script=self.f.worker,
             **changes)
+
+    def load_mapping(self, result, **changes):
+        arguments = dict(directory=result.directory, expected_receipt_sha256=result.receipt_sha256,
+            source_policy_records=self.f.records, database_path=self.f.database,
+            blender_exe=self.f.blender, worker_script=self.f.worker)
+        return load_authored_idle_target_mapping(self.f.store, **(arguments | changes))
+
+    def test_target_mapping_binds_current_candidate_without_writing(self):
+        result = self.run_host()
+        before = {path: pin(path.read_bytes()) for path in self.f.root.rglob('*') if path.is_file()}
+        mapping = self.load_mapping(result)
+        after = {path: pin(path.read_bytes()) for path in self.f.root.rglob('*') if path.is_file()}
+        self.assertEqual(before, after)
+        self.assertEqual(mapping.candidate, result)
+        self.assertEqual(mapping.mapping_sha256, pin(mapping.mapping_json))
+        profile = json.loads(mapping.mapping_json)
+        self.assertEqual(mapping.mapping_json, canonical_bytes(profile))
+        self.assertEqual(validate_native_profile(profile, result.source_sha256,
+            result.snapshot_sha256, result.target.master_sha256), profile)
+        self.assertEqual(len(profile['pairs']), 51)
+        self.assertEqual([j.operation for j in self.f.calls], [INSPECT, AUTHOR, VERIFY])
+
+    def test_target_mapping_rejects_changed_verifier_before_mapping(self):
+        result = self.run_host()
+        path = self.f.store.root/'.ucc-jobs'/result.verification_job_id/'request.json'
+        path.write_bytes(path.read_bytes() + b' ')
+        with patch('ucc.jobs.authored_idle_receipt.build_original_idle_profile') as mapper:
+            with self.assertRaises(ValidationError):
+                self.load_mapping(result)
+            mapper.assert_not_called()
+
+    def test_target_mapping_rechecks_current_policy_after_build(self):
+        result = self.run_host()
+        original = self.f.policy.read_bytes()
+
+        def change_policy_after_admission(*args, **kwargs):
+            self.f.policy.write_bytes(original + b' ')
+            return {}
+
+        with patch('ucc.jobs.authored_idle_receipt.build_original_idle_profile',
+                side_effect=change_policy_after_admission):
+            with self.assertRaisesRegex(ProjectStorageError, 'source, review, catalog or runtime bytes changed'):
+                self.load_mapping(result)
+
+    def test_target_mapping_rechecks_verifier_pin_after_build(self):
+        result = self.run_host()
+        path = self.f.store.root/'.ucc-jobs'/result.verification_job_id/'result.json'
+
+        def change_verifier_after_admission(*args, **kwargs):
+            path.write_bytes(path.read_bytes() + b' ')
+            return {}
+
+        with patch('ucc.jobs.authored_idle_receipt.build_original_idle_profile',
+                side_effect=change_verifier_after_admission):
+            with self.assertRaisesRegex(ValidationError, 'actual request/result bytes changed'):
+                self.load_mapping(result)
+
+    def test_target_mapping_observes_cancellation_during_full_clock_check(self):
+        result = self.run_host()
+        cancel = Event()
+
+        def cancel_as_clock_check_begins(*args, **kwargs):
+            cancel.set()
+            return check_same_rig_full_clock(*args, **kwargs)
+
+        with patch('ucc.animations.authored_idle_mapping.check_same_rig_full_clock',
+                side_effect=cancel_as_clock_check_begins):
+            with self.assertRaisesRegex(ProjectStorageError, 'cancelled by caller'):
+                self.load_mapping(result, cancel=cancel)
 
     def test_three_phase_closed_delivery_preserves_sources_and_legacy_snapshot(self):
         project_before = self.f.store.file.read_bytes(); master_before = self.f.master.read_bytes()
