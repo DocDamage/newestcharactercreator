@@ -495,6 +495,7 @@ class MainWindow(QMainWindow):
                 'target_action_mapping': 'Checking the explicitly selected target mapping...',
                 'target_action_prepare': 'Preparing and independently reopening a private target Action...',
                 'target_action_load': 'Validating the explicitly selected saved target preview...',
+                'target_action_idle_loop_review': 'Reviewing the authored idle proof and saved target preview...',
                 'godot_saved_review': 'Reviewing the selected saved Godot proof and source policies...',
                 'godot_saved_load': 'Validating saved Godot frames and the current source binding...',
                 'target_action_diagnostic': 'Inspecting position-only diagnostics for the selected saved clip...',

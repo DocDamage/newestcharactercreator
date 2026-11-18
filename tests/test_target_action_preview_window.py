@@ -206,6 +206,23 @@ class TargetPreviewWindowTests(unittest.TestCase):
         self.assertTrue(canvas.released)
         self.assertEqual(canvas.submissions, [])
 
+    def test_main_window_registers_idle_review_in_busy_and_cancel_controls(self):
+        from ucc.animations.catalog import AnimationCatalog
+        from ucc.desktop.authored_idle_loop_workflow import KIND
+        from ucc.desktop.window import MainWindow
+
+        catalog_path = Path(self.temp.name).resolve()/'catalog.db'
+        with AnimationCatalog(catalog_path):
+            pass
+        window = MainWindow(catalog_path=catalog_path)
+        self.addCleanup(window.deleteLater)
+        window._work_kind = KIND
+        window._busy_changed(True)
+        self.assertTrue(window.cancel_generation_action.isEnabled())
+        self.assertIn('Reviewing the authored idle proof', window.statusBar().currentMessage())
+        window._busy_changed(False)
+        self.assertFalse(window.cancel_generation_action.isEnabled())
+
     def test_single_frame_disables_play_and_guarded_go_start_still_works(self):
         self.apply(150,150)
         self.assertEqual((self.viewer.scrub.minimum(),self.viewer.scrub.maximum()),(149,149))
