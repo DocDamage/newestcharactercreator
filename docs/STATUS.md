@@ -1,3 +1,56 @@
+## Registered body sprite samples — merged November 17, 2026
+
+PR #87 merged as `e72b5cba37b187bc283ac82d8ecf3cc28cea31ea`; its tree is
+identical to accepted feature head `a2ec2dbfe1f3e3990eed5934e62bea83e79fb978`.
+The desktop renders a bounded private sample from an explicitly selected saved
+binding after origin review, separate source grants and a copy-only matte
+acknowledgement. All seventeen applicable PR checks pass.
+
+The final required-Qt run passes 2,260 tests: 2,246 passes and fourteen exact
+prior Windows privilege skips. All earlier 2,258 IDs remain. The dialog has
+eighteen tests, including two actual Qt accessibility/Tab regressions for the
+standalone named source checkboxes. Focused test selections overlap and are not additive.
+
+Actual frozen GUI004 passes independent admission (`4a58f4478e50`): four Blender
+workers exit 0, eight frames at 256px/four directions produce 32 RGBA images and
+32 matching atlas crops in one sheet, all 300 cache frames and 600 reconstructed
+timeline observations are checked, and originals/project/catalog/history,
+1,084 public source files and 413 package files remain preserved. All 3,318
+non-cache profile files and the 3,319-file namespace remain exact; the approved
+opaque 156-byte generated cache differs only in its four gzip timestamp bytes.
+Four separately authenticated OS console helpers naturally exit 109; those
+actual codes are retained, never normalized to zero.
+
+The merged-main package audit passes (`9d1d1fa0b104`), including three actual
+executable startup checks. Its 304 host source hashes and 228 raw worker files
+match the accepted feature head. Of 413 bundle files, 411 are byte-identical;
+the remaining executable and `base_library.zip` container differ, while all
+155 raw members of that archive match. This is code equivalence plus startup
+acceptance, not a new normal main-package UI run.
+
+Fresh-main standard verification passes all ten checks (four core, four Qt,
+preflight and the automatic Windows package), independently admitted as
+`b657f8d51e0e65fdd493e76b6f845bc7998e95d3604936e4b4bcbbc4df73190d`.
+Fresh-main experimental verification remains running. The source-reference
+domain has separate five-record/cache-proof acceptance; success for all seven
+domains on main is not claimed at this checkpoint.
+The ordinary feature branch is pruned locally and remotely after main standard
+and package acceptance, using an expected-head deletion lease. A verified Git
+recovery bundle and the exact 1,084-file accepted raw source snapshot are retained
+before further authorized development reuses the checkout.
+
+GUI001/GUI002 remain incomplete with zero native workers; GUI003 remains failed
+after one native worker, with its unknown child and incomplete cleanup
+qualification. Later console diagnostics do not identify that old child.
+Historical API/negative failures and the private-metadata incident remain;
+overall zero emission is false. No artist, usable-action, loop, engine or
+distribution approval follows. See the [acceptance record](acceptance/UCC-P1-BODY-SPRITE-SAMPLE-001.md).
+Next product task after integration closure: one genuinely usable original idle
+on the existing humanoid, with source permissions and human visual review.
+
+Earlier entries below are historical checkpoints.
+
+---
 ## Registered body sprite samples — API and desktop checkpoint
 
 [UCC-P1-BODY-SPRITE-SAMPLE-001](acceptance/UCC-P1-BODY-SPRITE-SAMPLE-001.md) adds
