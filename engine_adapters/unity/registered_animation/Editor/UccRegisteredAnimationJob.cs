@@ -42,6 +42,7 @@ namespace Ucc.UnityAdapter.Editor {
             public int fps = UccRegisteredAnimatorSampler.FramesPerSecond;
             public int duration_seconds = (int)UccRegisteredAnimatorSampler.DurationSeconds, native_vertices;
             public int[] native_to_source;
+            public string[] shape_names;
             public Bone[] bones;
         }
 
@@ -169,6 +170,15 @@ namespace Ucc.UnityAdapter.Editor {
             }).ToArray();
         }
 
+        static string[] ShapeNames(SkinnedMeshRenderer skin) {
+            var mesh = skin.sharedMesh;
+            var names = Enumerable.Range(0, mesh.blendShapeCount).Select(mesh.GetBlendShapeName).ToArray();
+            Require(names.Length == 12 && names.Distinct(StringComparer.Ordinal).Count() == names.Length
+                && names.All(name => name.StartsWith("UCC_EXPR_V1_", StringComparison.Ordinal)),
+                "Native registered expression identities differ from the source profile");
+            return names;
+        }
+
         static void ConfigurePreview(SkinnedMeshRenderer skin) {
             var bounds = skin.bounds;
             Require(bounds.size.y > .1f && bounds.size.y < 4f, "Registered preview bounds are outside the metre profile");
@@ -211,6 +221,7 @@ namespace Ucc.UnityAdapter.Editor {
                     binding_sha256 = inputs.binding_sha256, master_sha256 = inputs.master_sha256, fbx_sha256 = inputs.fbx_sha256,
                     native_mesh_sha256 = fingerprint, clip_name = clip.name, native_vertices = skin.sharedMesh.vertexCount,
                     native_to_source = mapping, bones = BindBones(skin),
+                    shape_names = ShapeNames(skin),
                 };
                 using (var stream = new StreamWriter(new FileStream(BindPath, FileMode.CreateNew))) stream.Write(JsonUtility.ToJson(bind));
                 EditorApplication.Exit(0);
@@ -237,6 +248,7 @@ namespace Ucc.UnityAdapter.Editor {
                     && bind.master_sha256 == inputs.master_sha256 && bind.fbx_sha256 == inputs.fbx_sha256 && bind.clip_name == clip.name
                     && bind.fps == 30 && bind.duration_seconds == 10 && bind.native_vertices == skin.sharedMesh.vertexCount
                     && bind.native_mesh_sha256 == UccNativeMeshIdentity.Compute(skin)
+                    && bind.shape_names != null && bind.shape_names.SequenceEqual(ShapeNames(skin))
                     && AssetDatabase.GetAssetPath(skin.sharedMesh) == SkinAsset && bind.native_to_source?.Length == bind.native_vertices
                     && bind.native_to_source.All(index => index >= 0 && index < 13380) && bind.native_to_source.Distinct().Count() == 13380,
                     "Reopened registered mesh, correspondence or clip identity differs");

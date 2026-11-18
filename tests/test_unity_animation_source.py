@@ -67,6 +67,11 @@ class RegisteredUnityAnimationTests(unittest.TestCase):
         result = JobResult(job.job_id, STAGE, 'ok', details).as_dict()
         result_schema.validate(result)
         self.assertFalse(result_schema.is_valid({**result, 'details': {**details, 'engine_import_verified': True}}))
+        verify_options = options | {output_option(name): digest for name, digest in details['files'].items()}
+        verify = JobRequest.new(VERIFY, input_project='candidate.blend', options=verify_options)
+        job_schema.validate(verify.as_dict())
+        verified_details = details | {'verification_sha256': 'a'*64, 'fbx_readback_sha256': 'b'*64}
+        result_schema.validate(JobResult(verify.job_id, VERIFY, 'ok', verified_details).as_dict())
 
     def test_binding_rejects_swapped_native_proof_identity(self):
         with TemporaryDirectory() as tmp:

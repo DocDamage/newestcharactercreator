@@ -33,7 +33,7 @@ MAX_OUTPUT = 512 * 1024**2
 MAX_NATIVE_VERTICES = 6 * VERTICES
 BIND_FIELDS = {'schema_version', 'policy', 'binding_sha256', 'master_sha256', 'fbx_sha256',
                'native_mesh_sha256', 'clip_name', 'fps', 'duration_seconds', 'native_vertices',
-               'native_to_source', 'bones'}
+               'native_to_source', 'bones', 'shape_names'}
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,6 +59,26 @@ def _record(path: Path, maximum: int, budget) -> _File:
     if size < 1:
         raise ValidationError('Unity animation input or result is empty')
     return _File(digest, size)
+
+
+def copy_unity_project_inputs(source: Path, target: Path, sealed: dict[str, str], budget, *,
+                              selected: dict[str, str] | None = None) -> None:
+    """Clone exactly the cache-free input tree previously measured by tree_hashes."""
+    if tree_hashes(source, budget.cancel) != sealed:
+        raise ProjectStorageError('Saved Unity input tree changed before fresh copy')
+    included = sealed if selected is None else selected
+    if any(sealed.get(name) != digest for name, digest in included.items()):
+        raise ProjectStorageError('Selected Unity project inputs are outside the sealed tree')
+    target.mkdir(exist_ok=False)
+    for relative, digest in included.items():
+        destination = target/relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        row = _record(source/relative, MAX_OUTPUT, budget)
+        if row.sha256 != digest:
+            raise ProjectStorageError('Saved Unity input changed during fresh copy')
+        copy_file(source/relative, destination, row, budget)
+    if tree_hashes(target, budget.cancel) != included:
+        raise ProjectStorageError('Fresh Unity project copy differs from its saved tree')
 
 
 def verify_unity_native_animation(prepared: PreparedUnityAnimationSource, *, unity_exe: Path,
@@ -154,22 +174,16 @@ def verify_unity_native_animation(prepared: PreparedUnityAnimationSource, *, uni
                 or type(bind.get('bones')) is not list or len(bind['bones']) != BONES
                 or type(bind.get('native_to_source')) is not list or len(bind['native_to_source']) != native_count
                 or type(bind.get('clip_name')) is not str or not 1 <= len(bind['clip_name']) <= 160
-                or not checked_sha(bind.get('native_mesh_sha256'))
                 or bind.get('fps') != 30 or bind.get('duration_seconds') != 10
                 or not (assets/'AnimatedCharacter.unity').is_file()):
             raise ValidationError('Unity staged animation binding has an unexpected profile or inventory')
-        sealed = tree_hashes(stage, budget)
+        checked_sha(bind['native_mesh_sha256'])
+        sealed = tree_hashes(stage, budget.cancel)
         immutable_assets = {f'Assets/UCC/{name}': records[name].sha256 for name in (FBX, WEIGHTS)}
         immutable_assets.update({f'Assets/UCC/{name}': row.sha256 for name, row in script_records.items()})
         if any(sealed.get(name) != digest for name, digest in immutable_assets.items()):
             raise ProjectStorageError('Unity import modified first-party code or selected source bytes')
-        for relative, digest in sealed.items():
-            target = reopened/relative
-            target.parent.mkdir(parents=True, exist_ok=True)
-            row = _record(stage/relative, MAX_OUTPUT, budget)
-            if row.sha256 != digest:
-                raise ProjectStorageError('Unity stage changed during fresh project copy')
-            copy_file(stage/relative, target, row, budget)
+        copy_unity_project_inputs(stage, reopened, sealed, budget)
         _write(reopened/INPUTS, recipe)
         expectation = dict(schema_version=1, policy='UCC_UNITY_REGISTERED_ANIMATION_VERIFY_V1', bind_sha256=bind_sha)
         _write(reopened/EXPECT, expectation)
@@ -177,10 +191,10 @@ def verify_unity_native_animation(prepared: PreparedUnityAnimationSource, *, uni
         if bind_record.sha256 != bind_sha:
             raise ProjectStorageError('Unity bind observation changed during fresh project copy')
         copy_file(stage/BIND_OBSERVATION, reopened/BIND_OBSERVATION, bind_record, budget)
-        if tree_hashes(reopened, budget) != sealed or any((reopened/name).exists() for name in ('Library', 'Temp')):
+        if any((reopened/name).exists() for name in ('Library', 'Temp')):
             raise ProjectStorageError('Unity fresh project copy is incomplete or contains a cache')
         run(reopened, 'Verify')
-        if tree_hashes(reopened, budget) != sealed or tree_hashes(stage, budget) != sealed:
+        if tree_hashes(reopened, budget.cancel) != sealed or tree_hashes(stage, budget.cancel) != sealed:
             raise ProjectStorageError('Unity fresh animation playback modified saved inputs')
         for path, document in ((stage/INPUTS, recipe), (reopened/INPUTS, recipe), (reopened/EXPECT, expectation)):
             if read_bytes(path, 64 * 1024, budget)[0] != canonical_bytes(document):
@@ -213,6 +227,10 @@ def _compare(source: Path, reopened: Path, files: dict, bind: dict, bind_sha: st
     source_bones = bind_source.get('bones')
     if type(source_bones) is not list or len(source_bones) != BONES:
         raise ValidationError('Unity animation requires the original Blender bind skeleton')
+    morphs, shape_names = bind_source.get('morphs'), bind['shape_names']
+    if (type(morphs) is not dict or len(morphs) != 12 or type(shape_names) is not list or len(shape_names) != 12
+            or any(type(name) is not str for name in shape_names) or set(shape_names) != set(morphs)):
+        raise ValidationError('Unity animation lost an original Blender expression control')
     original_bones = read_bytes(source/BONE_REFERENCE, OUTPUT_LIMITS[BONE_REFERENCE], budget,
                                 expected_sha256=files[BONE_REFERENCE])[0]
     original_raw = read_bytes(source/RAW_REFERENCE, OUTPUT_LIMITS[RAW_REFERENCE], budget,

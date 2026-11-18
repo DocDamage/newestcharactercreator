@@ -151,15 +151,20 @@ print('ISOLATED_PURE_CONTRACT_IMPORTS_OK')
         from ucc.core.worker_payload import REGISTERED_CORRECTION_ADAPTER, REGISTERED_CORRECTION_FILES
         from ucc.core.worker_payload import REGISTERED_PLAYBACK_ADAPTER, REGISTERED_PLAYBACK_FILES
         from ucc.core.worker_payload import UNITY_REGISTERED_ANIMATION_ADAPTER, UNITY_REGISTERED_ANIMATION_FILES
+        from ucc.core.worker_payload import (UNITY_REGISTERED_CORRECTION_ADAPTER, UNITY_REGISTERED_CORRECTION_FILES,
+            UNITY_REGISTERED_CORRECTION_BINDING)
         from ucc.jobs.worker_resources import bundled_registered_body_paths, bundled_registered_correction_paths
         from ucc.jobs.worker_resources import bundled_registered_playback_paths
         from ucc.jobs.worker_resources import bundled_unity_registered_animation_paths
+        from ucc.jobs.worker_resources import bundled_unity_registered_correction_paths
 
         groups = (
             (REGISTERED_BODY_ADAPTER, REGISTERED_BODY_FILES, bundled_registered_body_paths),
             (REGISTERED_CORRECTION_ADAPTER, REGISTERED_CORRECTION_FILES, bundled_registered_correction_paths),
             (REGISTERED_PLAYBACK_ADAPTER, REGISTERED_PLAYBACK_FILES, bundled_registered_playback_paths),
             (UNITY_REGISTERED_ANIMATION_ADAPTER, UNITY_REGISTERED_ANIMATION_FILES, bundled_unity_registered_animation_paths),
+            (UNITY_REGISTERED_ANIMATION_ADAPTER, {UNITY_REGISTERED_CORRECTION_BINDING}, bundled_unity_registered_correction_paths),
+            (UNITY_REGISTERED_CORRECTION_ADAPTER, UNITY_REGISTERED_CORRECTION_FILES, bundled_unity_registered_correction_paths),
         )
         with patch.object(sys, 'frozen', True, create=True), patch.object(
             sys, '_MEIPASS', str(self.payload), create=True,

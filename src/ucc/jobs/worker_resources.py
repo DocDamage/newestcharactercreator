@@ -7,6 +7,8 @@ from ucc.core.worker_payload import validate_worker_payload, WorkerPayloadError,
 from ucc.core.worker_payload import STATIC_ADAPTER
 from ucc.core.worker_payload import UNITY_ADAPTER,UNITY_ADAPTER_FILES
 from ucc.core.worker_payload import UNITY_REGISTERED_ANIMATION_ADAPTER, UNITY_REGISTERED_ANIMATION_FILES
+from ucc.core.worker_payload import (UNITY_REGISTERED_CORRECTION_ADAPTER, UNITY_REGISTERED_CORRECTION_FILES,
+    UNITY_REGISTERED_CORRECTION_BINDING)
 from ucc.core.worker_payload import UNREAL_ADAPTER,UNREAL_ADAPTER_FILES
 from ucc.core.worker_payload import (
     REGISTERED_BODY_ADAPTER, REGISTERED_BODY_FILES,
@@ -116,10 +118,28 @@ def bundled_unity_adapter_paths() -> dict[str,Path]:
 def bundled_unity_registered_animation_paths() -> dict[str, Path]:
     """Resolve the animated importer and only the static scripts shared with it."""
     shared = bundled_unity_adapter_paths()
+    files = _registered_unity_resources({name: ('registered_animation', UNITY_REGISTERED_ANIMATION_ADAPTER)
+                                        for name in UNITY_REGISTERED_ANIMATION_FILES})
+    files.update({name: shared[name] for name in ('Editor/UccSourceWeights.cs', 'UccNativeMeshIdentity.cs')})
+    return files
+
+
+def bundled_unity_registered_correction_paths() -> dict[str, Path]:
+    """Resolve only first-party resources needed to attach the corrected draw path."""
+    shared = bundled_unity_adapter_paths()
+    sources = {name: ('registered_correction', UNITY_REGISTERED_CORRECTION_ADAPTER)
+               for name in UNITY_REGISTERED_CORRECTION_FILES}
+    sources[UNITY_REGISTERED_CORRECTION_BINDING] = ('registered_animation', UNITY_REGISTERED_ANIMATION_ADAPTER)
+    files = _registered_unity_resources(sources)
+    files.update({name: shared[name] for name in ('UccNativeNormals.cs', 'UccQuadSourceData.cs',
+                                                 'UccNativeSkinWarmup.shader')})
+    return files
+
+
+def _registered_unity_resources(sources: dict[str, tuple[str, str]]) -> dict[str, Path]:
     if getattr(sys, 'frozen', False):
         base = Path(sys._MEIPASS)
-        root = base/UNITY_REGISTERED_ANIMATION_ADAPTER
-        files = {name: root/name for name in sorted(UNITY_REGISTERED_ANIMATION_FILES)}
+        files = {name: base/adapter/name for name, (_, adapter) in sorted(sources.items())}
         try:
             available = set(validate_worker_payload(base))
         except (WorkerPayloadError, OSError) as error:
@@ -127,12 +147,11 @@ def bundled_unity_registered_animation_paths() -> dict[str, Path]:
         if not set(files.values()).issubset(available):
             raise ValidationError('This package lacks the Unity animation importer')
     else:
-        root = Path(__file__).resolve().parents[3]/'engine_adapters/unity/registered_animation'
-        files = {name: root/name for name in sorted(UNITY_REGISTERED_ANIMATION_FILES)}
+        root = Path(__file__).resolve().parents[3]/'engine_adapters/unity'
+        files = {name: root/folder/name for name, (folder, _) in sorted(sources.items())}
     if any(path.is_symlink() or not path.is_file() or path.resolve() != path
            or not 0 < path.stat().st_size <= 256 * 1024 for path in files.values()):
         raise ValidationError('Unity animation adapter resources are missing, redirected or oversized')
-    files.update({name: shared[name] for name in ('Editor/UccSourceWeights.cs', 'UccNativeMeshIdentity.cs')})
     return files
 
 

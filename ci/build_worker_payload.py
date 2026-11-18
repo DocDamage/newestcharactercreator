@@ -78,11 +78,15 @@ def build_payload(repo: Path, destination: Path) -> dict:
         root = godot if name == 'ucc_skin_adapter.gd' else godot/'registered_correction'
         sources[REGISTERED_CORRECTION_ADAPTER+'/'+name] = root/name
     from ucc.core.worker_payload import (UNITY_ADAPTER, UNITY_ADAPTER_FILES,
-        UNITY_REGISTERED_ANIMATION_ADAPTER, UNITY_REGISTERED_ANIMATION_FILES)
+        UNITY_REGISTERED_ANIMATION_ADAPTER, UNITY_REGISTERED_ANIMATION_FILES,
+        UNITY_REGISTERED_CORRECTION_ADAPTER, UNITY_REGISTERED_CORRECTION_FILES,
+        UNITY_REGISTERED_CORRECTION_BINDING)
     for name in UNITY_ADAPTER_FILES:
         sources[UNITY_ADAPTER+'/'+name] = repo/'engine_adapters/unity'/name
-    for name in UNITY_REGISTERED_ANIMATION_FILES:
+    for name in UNITY_REGISTERED_ANIMATION_FILES | {UNITY_REGISTERED_CORRECTION_BINDING}:
         sources[UNITY_REGISTERED_ANIMATION_ADAPTER+'/'+name] = repo/'engine_adapters/unity/registered_animation'/name
+    for name in UNITY_REGISTERED_CORRECTION_FILES:
+        sources[UNITY_REGISTERED_CORRECTION_ADAPTER+'/'+name] = repo/'engine_adapters/unity/registered_correction'/name
     from ucc.core.worker_payload import UNREAL_ADAPTER,UNREAL_ADAPTER_FILES
     for name in UNREAL_ADAPTER_FILES:
         sources[UNREAL_ADAPTER+'/'+name] = repo/'engine_adapters/unreal'/name

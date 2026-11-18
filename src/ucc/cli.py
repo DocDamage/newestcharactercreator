@@ -71,6 +71,29 @@ def _prepare_godot_animation(args: argparse.Namespace) -> dict:
     }
 
 
+def _export_unity_animation(args: argparse.Namespace) -> dict:
+    from ucc.core.errors import ValidationError
+    from ucc.jobs.export_destination import plan_destination
+    from ucc.jobs.unity_animation_authorization import load_unity_animation_authorization
+    from ucc.jobs.unity_animation_export import export_unity_animation
+
+    authorization = load_unity_animation_authorization(args.authorization)
+    store = ProjectStore(args.project)
+    worker = Path(__file__).resolve().parents[2]/'blender_bridge/entrypoint.py'
+
+    def authorization_guard() -> None:
+        if load_unity_animation_authorization(args.authorization) != authorization:
+            raise ValidationError('The selected local Unity authorization changed')
+
+    published = export_unity_animation(store, authorization=authorization, database_path=args.database,
+        blender_exe=args.blender, worker_script=worker, unity_exe=args.unity, unity_executable_sha256=args.unity_sha256,
+        destination=plan_destination(args.destination, store.root), authorization_guard=authorization_guard,
+        timeout_s=args.timeout, progress=lambda phase: print(phase, file=sys.stderr, flush=True))
+    return {'status': 'PRIVATE_UNITY_ANIMATION_EXPORTED_AND_REOPENED',
+            'directory': str(published.directory), 'receipt_sha256': published.receipt_sha256,
+            'engine_project_exported': True, 'distribution_review_complete': False}
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="UCC metadata/diagnostics CLI (not a graphical character creator)")
     sp = p.add_subparsers(dest="command", required=True)
@@ -119,6 +142,16 @@ def main(argv: list[str] | None = None) -> int:
         parser.add_argument("--godot-main", required=True, type=Path, help="Matching installed main executable")
         parser.add_argument("--timeout", default=1800., type=float, help="Total local deadline in seconds")
     export_godot.add_argument("--destination", required=True, type=Path)
+    export_unity = sp.add_parser("export-unity-animation",
+        help="Verify and export one saved animation to a new private Unity project")
+    export_unity.add_argument("project", type=Path)
+    export_unity.add_argument("--authorization", required=True, type=Path)
+    export_unity.add_argument("--database", required=True, type=Path)
+    export_unity.add_argument("--blender", required=True, type=Path)
+    export_unity.add_argument("--unity", required=True, type=Path, help="Installed Unity 6000.4.5f1 editor")
+    export_unity.add_argument("--unity-sha256", required=True, help="Reviewed local Unity editor SHA-256")
+    export_unity.add_argument("--destination", required=True, type=Path)
+    export_unity.add_argument("--timeout", default=2400., type=float, help="Total local deadline in seconds")
     index_anim = sp.add_parser("index-animation", help="Index one explicitly chosen animation with fail-closed provenance")
     index_anim.add_argument("file", type=Path)
     index_anim.add_argument("--database", type=Path, required=True, help="Private local SQLite catalog")
@@ -194,6 +227,8 @@ def main(argv: list[str] | None = None) -> int:
                   "mapping_profile":result.mapping_profile_used,"retargeting_verified":False,"animation_visual_quality_verified":False}
         elif args.command in {"prepare-godot-animation", "export-godot-animation"}:
             data = _prepare_godot_animation(args)
+        elif args.command == "export-unity-animation":
+            data = _export_unity_animation(args)
         elif args.command == "index-animation":
             if args.policy_file is not None:
                 policy_data = json.loads(args.policy_file.read_text(encoding="utf-8"))

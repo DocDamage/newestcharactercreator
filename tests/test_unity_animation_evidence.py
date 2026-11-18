@@ -4,6 +4,7 @@ from unittest import TestCase
 
 from ucc.core.errors import ValidationError
 from ucc.export.unity_animation_evidence import compare_unity_animation
+from ucc.jobs.unity_corrected_animation_verification import _check_rows
 
 
 _REST = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
@@ -42,3 +43,12 @@ class UnityAnimationEvidenceTests(TestCase):
         self.inputs['native_pose_samples'] = pack('<16f', *position)*300
         with self.assertRaisesRegex(ValidationError, 'orientation'):
             compare_unity_animation(**self.inputs)
+
+    def test_fresh_correction_rejects_previous_draw_from_same_camera(self):
+        stride = 24
+        rows = [dict(sample=i, engine_frame=i + 30, camera_id=51, completed_frame=i + 30,
+                     completed_camera=51, offset=i*stride) for i in range(300)]
+        _check_rows(rows, stride)
+        rows[-1]['completed_frame'] -= 1
+        with self.assertRaisesRegex(ValidationError, 'stale.*300'):
+            _check_rows(rows, stride)
