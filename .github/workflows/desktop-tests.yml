@@ -19,6 +19,8 @@ on:
       - 'tests/test_unity_export_desktop.py'
       - 'tests/test_unity_animation_export_desktop.py'
       - 'tests/test_unreal_animation_export_desktop.py'
+      - 'tests/test_body_sprite_desktop.py'
+      - 'tests/test_body_sprite_dialog.py'
       - 'tests/test_export_compatibility_report.py'
       - 'tests/test_target_action_dialog.py'
       - 'tests/test_target_action_desktop.py'
@@ -59,8 +61,8 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           timeout 120s sudo apt-get install -y -qq --no-install-recommends libegl1 libgl1 libopengl0 libxkbcommon-x11-0 libxcb-cursor0 libxcb-xinerama0
-      - name: Install Qt dependencies
-        run: python -m pip install "PySide6>=6.8,<7"
+      - name: Install Qt and sprite test dependencies
+        run: python -m pip install -e ".[desktop,sprites]"
       - name: Validate desktop source imports
         run: python -m compileall -q src/ucc/desktop
       - name: Fail early if PySide6 UI cannot be imported
@@ -105,6 +107,10 @@ jobs:
         run: python -m unittest discover -s tests -p test_unity_animation_export_desktop.py -v
       - name: Run private Unreal animation export workflow tests
         run: python -m unittest discover -s tests -p test_unreal_animation_export_desktop.py -v
+      - name: Run private body sprite dialog tests
+        run: python -m unittest discover -s tests -p test_body_sprite_dialog.py -v
+      - name: Run private body sprite workflow tests
+        run: python -m unittest discover -s tests -p test_body_sprite_desktop.py -v
       - name: Run export compatibility report tests
         run: python -m unittest discover -s tests -p test_export_compatibility_report.py -v
       - name: Run registered target private-preview review tests (real Qt)
