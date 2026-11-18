@@ -21,7 +21,9 @@ py -3.12 -m unittest test_unity_animation_authorization test_unity_animation_sou
 
 Keep native evidence, character sources and permissions on the local machine. The installed editor is selected and pinned by hash for verification.
 
-With an existing registered project and local Unity authorization, run the complete private export using absolute paths.
+From the desktop, open the saved MPFB project and choose **File → Export private animated Unity project…**. Select its Unity authorization, the installed Blender and Unity editors, and a new export folder. The desktop verifies the published files before reporting completion.
+
+The same export is available from the CLI with absolute paths.
 
 ```powershell
 py -3.12 -m ucc.cli export-unity-animation $project --authorization $authority `
