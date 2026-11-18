@@ -28,6 +28,7 @@ LIMITS = {'character.glb': 512*1024*1024, 'skin_plan.json': 64*1024*1024,
           'blender_stage.json': 4*1024*1024, 'source_positions.bin': 25*13380*3*4,
           'bind_source_indices.json': 4*1024*1024, 'bind_positions.bin': 13380*3*4,
           'blender_verification.json': 4*1024*1024}
+_UNPINNED_JSON = object()
 
 
 def check_cancel(cancel: Event | None) -> None:
@@ -35,7 +36,7 @@ def check_cancel(cancel: Event | None) -> None:
         raise ProjectStorageError('Godot candidate cancelled; project and master remain authoritative')
 
 
-def read_json(path: Path, maximum: int, *, expected_sha256: str | None = None) -> dict:
+def read_json(path: Path, maximum: int, *, expected_sha256: object = _UNPINNED_JSON) -> dict:
     if path.is_symlink() or not path.is_file() or not 2 <= path.stat().st_size <= maximum:
         raise ValidationError('Missing or oversized candidate JSON: '+path.name)
     try:
@@ -43,7 +44,8 @@ def read_json(path: Path, maximum: int, *, expected_sha256: str | None = None) -
             raw = stream.read(maximum + 1)
         if len(raw) > maximum:
             raise ValidationError('Candidate JSON grew beyond its limit')
-        if expected_sha256 is not None and sha256(raw).hexdigest() != expected_sha256:
+        if expected_sha256 is not _UNPINNED_JSON and (
+                type(expected_sha256) is not str or sha256(raw).hexdigest() != expected_sha256):
             raise ValidationError('Export receipt changed after verification')
         value = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique_project_fields,
                            parse_constant=_nonfinite_project_number)

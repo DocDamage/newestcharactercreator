@@ -110,3 +110,13 @@ class ExportCompatibilityReportTests(unittest.TestCase):
         receipt.write_bytes(data)
         finish_export(self.window, replace(result, receipt_sha256=sha256(data).hexdigest()))
         self.assert_no_report()
+
+    def test_godot_completion_requires_a_receipt_digest(self):
+        from ucc.desktop.godot_export_workflow import finish_export
+
+        result = receipt_result(self.root/'UNIT_GODOT_RECEIPT')
+        for invalid in (None, '', False):
+            with self.subTest(invalid=invalid):
+                self.window._error.reset_mock()
+                finish_export(self.window, replace(result, receipt_sha256=invalid))
+                self.assert_no_report()
