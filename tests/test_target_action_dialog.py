@@ -125,6 +125,22 @@ class TargetActionDialogTests(unittest.TestCase):
         d.set_busy(False)
         self.assertTrue(d.load.isEnabled())
 
+    def test_body_sprites_require_explicit_saved_binding_and_fresh_local_review(self):
+        d=self.dialog
+        self.assertFalse(d.body_sprites.isEnabled())
+        d.consent.setChecked(True)
+        self.assertFalse(d.body_sprites.isEnabled())
+        d.bindings.setCurrentIndex(1)
+        self.assertTrue(d.body_sprites.isEnabled())
+        d.set_busy(True)
+        self.assertFalse(d.body_sprites.isEnabled())
+        d.set_busy(False)
+        d.body_sprites.click()
+        self.assertEqual(d.choice.operation,'body_sprites')
+        self.assertEqual(d.choice.binding_sha256,self.saved.binding_sha256)
+        self.assertIsNone(d.choice.mapping_profile)
+        self.assertTrue(d.choice.local_preview_confirmed)
+
 
 if __name__ == '__main__':
     unittest.main()

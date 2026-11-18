@@ -1,3 +1,31 @@
+## Registered body sprite samples — API and desktop checkpoint
+
+[UCC-P1-BODY-SPRITE-SAMPLE-001](acceptance/UCC-P1-BODY-SPRITE-SAMPLE-001.md) adds
+an explicit saved-binding desktop route, original-motion metadata review,
+separate unchecked source grants and a bounded private transparent sample. The
+fixed matte stays on copies; saved appearance and all motion references remain
+unchanged. Origin metadata is not proof of human authorship or a sprite-rights
+grant. No artist, usable-action, engine or distribution approval is inferred.
+
+Native API samples at 128px and 256px passed four fresh workers each and local
+independent 32-image/atlas/full-motion checks. F1–F4 scoped negatives and a fresh
+F5 concurrent-save/four-case zero-native filesystem follow-up are accepted; the
+original F5 remains inconclusive. The final required-Qt full run passes 2,258:
+2,244 passes and fourteen exact prior Windows privilege skips. All 2,201 prior IDs
+are retained; all 57 additions pass without skips (24 CI, 33 body feature).
+All 1,084 public files stayed unchanged; preflight and three source startup
+self-checks pass. Focused 124/42/final8 selections overlap and are not additive.
+
+Actual frozen desktop rendering, exact-head package audit, body-feature PR and
+fresh-main checks remain pending. PR #85 and its ten standard checks and the
+separate PR #86 archive cache change are merged. PR #86's ten fresh-main standard
+checks pass and its ordinary branch is pruned; its 1,057-file proof is retained.
+Main experimental suites remain separately pending. Historical failures and the
+private-metadata incident remain recorded; overall zero emission is not claimed.
+Earlier sections below preserve historical checkpoints.
+
+---
+
 ## Explicit session catalog — source acceptance checkpoint
 
 [UCC-P1-SESSION-CATALOG-001](acceptance/UCC-P1-SESSION-CATALOG-001.md) adds
