@@ -10,7 +10,7 @@ from ucc.sprites.body_evidence import (frame_names, atlas_side, checked_body_evi
                                       annotate_body_atlas, checked_body_atlas)
 from ucc.sprites.plan import CameraProfile, build_plan
 from ucc.sprites.atlas import pack_frames
-from .body_sprite_sources import prepare_body_sprite_context
+from .body_sprite_sources import AuthoredIdleSpriteProof, prepare_body_sprite_context
 from .body_sprite_provenance import OriginalMotionProvenance
 from .body_sprite_transactions import write_journal, file_inventory, BodySpritePublication
 from .target_action_context import operation_budget, protected
@@ -37,22 +37,34 @@ class BodySpriteExport:
 
 def export_body_sprite_sample(store, *, request: BodySpriteRequest, database_path: Path,
                               destination: ExportDestination, blender_exe: Path, worker_script: Path,
-                              original_author_record: Path, original_author_record_sha256: str,
-                              original_motion_role: str, original_motion_uri_aliases: tuple=(),
+                              original_author_record: Path | None = None,
+                              original_author_record_sha256: str | None = None,
+                              original_motion_role: str | None = None, original_motion_uri_aliases: tuple = (),
+                              authored_idle_proof: Path | None = None, authored_idle_proof_sha256: str | None = None,
                               cancel=None, timeout_s: float=3600) -> BodySpriteExport:
     if type(request) is not BodySpriteRequest or type(destination) is not ExportDestination:
         raise ValidationError('Body-sprite export needs its explicit reviewed request and exclusive destination')
     if plan_destination(destination.path, store.root) != destination or destination.path.is_relative_to(store.root/'animations'):
         raise ValidationError('Body-sprite destination cannot alter the registered Action source namespace')
     with operation_budget(cancel, timeout_s) as budget:
-        provenance = OriginalMotionProvenance(Path(original_author_record),original_author_record_sha256,
-                                             original_motion_role,original_motion_uri_aliases)
+        legacy = (original_author_record, original_author_record_sha256, original_motion_role)
+        if authored_idle_proof is not None or authored_idle_proof_sha256 is not None:
+            if (authored_idle_proof is None or authored_idle_proof_sha256 is None
+                    or any(value is not None for value in legacy) or original_motion_uri_aliases != ()):
+                raise ValidationError('Select one complete authored idle proof or one legacy origin record')
+            provenance = AuthoredIdleSpriteProof(Path(authored_idle_proof), authored_idle_proof_sha256)
+        else:
+            if any(value is None for value in legacy):
+                raise ValidationError('Select one complete authored idle proof or one legacy origin record')
+            provenance = OriginalMotionProvenance(Path(original_author_record), original_author_record_sha256,
+                                                  original_motion_role, original_motion_uri_aliases)
         return _export(store, request, Path(database_path), destination,
                        Path(blender_exe), Path(worker_script), budget, provenance)
 
 
 def _export(store, request, database, destination, blender, worker, budget, provenance):
-    context = prepare_body_sprite_context(store, request, database, blender, worker, budget, provenance)
+    context = prepare_body_sprite_context(store, request, database, blender, worker, budget, provenance,
+                                          destination=destination.path)
     context.guard(); destination.unchanged()
     work = safe_directory(store, '.ucc-jobs', create=True)/('body-sprites-'+request.job_id)
     work.mkdir(exist_ok=False); publication = None; stage = None

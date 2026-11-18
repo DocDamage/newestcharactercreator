@@ -6,7 +6,7 @@ import unittest
 
 from fixtures.target_action_contract import metadata_pair
 from fixtures.sprite_render_logic import request as neutral_request
-from ucc.core.body_sprites import BodySpriteRequest, BodySpriteWindow, body_sprite_sources
+from ucc.core.body_sprites import BodySpriteRequest, BodySpriteWindow, authored_idle_sprite_origin, body_sprite_sources
 from ucc.core.errors import ValidationError
 from ucc.core.expressions import ExpressionState
 from ucc.core.models import CharacterProject, PartInstance
@@ -37,7 +37,13 @@ class BodySpriteContractTests(unittest.TestCase):
                          'catalog_source_uri':'ucc-original-diagnostic://unit/original','uri_aliases':[],
                          'origin_declaration_only':True,'sprite_rights_inferred':False}}
         recipe = {'schema_version':1,'policy':POLICY,'request':original.to_dict(),'source_admission':admission}
-        self.assertEqual(validate_recipe(recipe),recipe)
+        self.assertEqual(canonical_bytes(validate_recipe(recipe)),canonical_bytes(recipe))
+        qualified = deepcopy(recipe)
+        qualified['source_admission']['original_motion_provenance'].update(
+            record_format='INDEPENDENT_PREPARED_NATIVE300_AUDIT_V1',
+            record_status='REAL_PREPARED_MASTER_NATIVE300_INDEPENDENTLY_AUDITED_AFTER_HARNESS_KEY_ERROR',
+            original_script_exit_success=False, motion_role='source_permission')
+        self.assertEqual(canonical_bytes(validate_recipe(qualified)),canonical_bytes(qualified))
         for fault in ('missing_admission','old_worker','same_record','shifted_snapshot'):
             changed = deepcopy(recipe)
             if fault == 'missing_admission': changed.pop('source_admission')
@@ -51,6 +57,48 @@ class BodySpriteContractTests(unittest.TestCase):
         for changed in (options|{'path':'elsewhere'}, {k:v for k,v in options.items() if k!='snapshot_sha256'}):
             with self.assertRaises(ValidationError): validate_job(STAGE,'candidate.blend',changed)
         with self.assertRaises(ValidationError): validate_job(VERIFY,'candidate.blend',options)
+
+    def test_authored_idle_recipe_binds_exact_cache_mapping_and_only_origin_scope(self):
+        original = request()
+        binding = replace(original.target_binding, root_motion_policy='ARMATURE_ORIGIN_DISPLACEMENT_V1')
+        export = replace(original, target_binding=binding)
+        origin = authored_idle_sprite_origin(binding, proof_sha256='e'*64, receipt_sha256='f'*64,
+            mapping_sha256=binding.mapping_sha256, cache_sha256=binding.file_map['playback/motion_skin.bin'].sha256)
+        recipe = {'schema_version':1, 'policy':POLICY, 'request':export.to_dict(), 'source_admission':{
+            'source_sha256':binding.source.source_sha256, 'snapshot_sha256':binding.source.snapshot_sha256,
+            'worker_job_ids':[str(UUID(int=1001)),str(UUID(int=1002))],
+            'worker_records':[{'request_sha256':'a'*64,'result_sha256':'b'*64},
+                              {'request_sha256':'c'*64,'result_sha256':'d'*64}],
+            'original_motion_provenance':origin}}
+        self.assertEqual(canonical_bytes(validate_recipe(recipe)), canonical_bytes(recipe))
+        self.assertEqual(origin['record_format'], 'AUTHORED_IDLE_PROOF_V1')
+        self.assertEqual(origin['record_sha256'], 'e'*64)
+        self.assertEqual(origin['record_source_uri'], 'urn:sha256:'+binding.source.source_sha256)
+        self.assertEqual(origin['motion_role'], 'motion:'+binding.source.clip_id)
+        self.assertEqual(recipe['request']['full_clock'], original.to_dict()['full_clock'])
+        self.assertFalse(origin['sprite_rights_inferred'])
+        for key, replacement in (
+            ('record_sha256', 'invalid'),
+            ('authored_idle_receipt_sha256', 'invalid'),
+            ('record_status','UNIT_NOT_ADMITTED'),
+            ('record_policy_sha256','0'*64),
+            ('target_binding_sha256','0'*64),
+            ('mapping_sha256','0'*64),
+            ('cache_sha256','0'*64),
+            ('source_sha256','0'*64),
+            ('snapshot_sha256','0'*64),
+            ('catalog_source_uri','ucc-original-diagnostic://unit/relabel'),
+            ('motion_role','motion:wrong-source'),
+            ('uri_aliases',[['wrong','wrong']]),
+            ('origin_declaration_only',False),
+            ('sprite_rights_inferred',True),
+            ('original_script_exit_success',False),
+            ('proof_file','UNIT_PATH_MUST_NOT_BE_STAGED'),
+        ):
+            changed = deepcopy(recipe)
+            changed['source_admission']['original_motion_provenance'][key] = replacement
+            with self.subTest(field=key), self.assertRaises(ValidationError):
+                validate_recipe(changed)
 
     def test_closed_roundtrip_preserves_complete_project_and_full_action_binding(self):
         original = request(); raw = original.to_dict(); before = deepcopy(raw)

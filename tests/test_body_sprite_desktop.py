@@ -67,7 +67,7 @@ class BodySpriteDesktopTests(unittest.TestCase):
         self.source_review=patch('ucc.jobs.target_action.review_target_action_source',return_value=self.review).start()
         self.origin_path=self.root/'UNIT_origin.json';self.origin_path.write_bytes(b'UNIT_PIN_REVIEWED_BY_EXPLICIT_DOUBLE')
         self.origin=ui_origin(self.origin_path)
-        self.origin_reader=patch('ucc.jobs.body_sprite_provenance.review_original_motion_record',return_value=(
+        self.origin_reader=patch('ucc.jobs.body_sprite_provenance.review_body_sprite_origin_record',return_value=(
             self.origin,{'record_format':'UNIT_ONLY','original_script_exit_success':False})).start()
 
     def wait(self):
@@ -150,6 +150,37 @@ class BodySpriteDesktopTests(unittest.TestCase):
         self.assertEqual(captured['timeout_s'],2400);checked.assert_called_once()
         self.assertIn('PRIVATE REGISTERED BODY SPRITE SAMPLE',self.window.log.toPlainText())
         self.assertIsNone(self.window._body_sprite_selection)
+
+    def test_authored_idle_proof_stays_bound_across_desktop_review_export_and_receipt(self):
+        from ucc.jobs.body_sprite_provenance import AUTHORED_IDLE_ORIGIN_FORMAT, AuthoredIdleSpriteOrigin
+
+        proof_sha = '9'*64
+        evidence = SimpleNamespace(review_identity=SimpleNamespace(proof_sha256=proof_sha))
+        origin = AuthoredIdleSpriteOrigin(self.origin_path, evidence)
+        self.origin_reader.return_value = origin, {'record_format': AUTHORED_IDLE_ORIGIN_FORMAT}
+        dialog = self.start()
+        self.complete(dialog)
+        self.assertIn('Verified authored idle and saved motion', dialog.origin_summary.text())
+        self.assertNotIn('historical original script failed', dialog.origin_summary.text())
+        self.assertEqual(self.origin_reader.call_args.kwargs['store'], self.store)
+        self.assertEqual(self.origin_reader.call_args.kwargs['database_path'], self.database)
+
+        def export(store, **options):
+            request = options['request']
+            return BodySpriteExport(options['destination'].path, 'e'*64, request.image_count,
+                request.window.target_frames, request.window.source_frames, (str(uuid4()), str(uuid4())),
+                str(uuid4()), str(uuid4()), self.root/'UNIT_work')
+
+        with patch('ucc.jobs.body_sprite_export.export_body_sprite_sample', side_effect=export) as run, patch(
+                'ucc.desktop.body_sprite_receipt.verify_body_sprite_delivery') as receipt, patch(
+                'ucc.desktop.generation.bundled_worker_path', return_value=self.root/'UNIT_worker.py'):
+            dialog.render_button.click()
+            self.wait()
+        self.window._error.assert_not_called()
+        self.assertEqual(run.call_args.kwargs['authored_idle_proof'], self.origin_path)
+        self.assertEqual(run.call_args.kwargs['authored_idle_proof_sha256'], proof_sha)
+        self.assertNotIn('original_author_record', run.call_args.kwargs)
+        self.assertEqual(receipt.call_args.kwargs['expected_authored_idle_proof_sha256'], proof_sha)
 
     def test_catalog_switch_or_dirty_project_invalidates_dialog_before_render(self):
         for change in ('catalog','dirty'):
@@ -256,6 +287,17 @@ class BodySpriteDeliveryTests(unittest.TestCase):
             changed=replace(result,receipt_sha256=sha256(payload).hexdigest())
             with self.subTest(field=key),self.assertRaises(UCCError):
                 verify_body_sprite_delivery(changed,helper.f.request,result.destination)
+
+    def test_legacy_receipt_cannot_claim_the_authored_idle_review_even_with_same_digest(self):
+        import json
+        from ucc.desktop.body_sprite_receipt import verify_body_sprite_delivery
+
+        helper, result = self.fixture()
+        recipe = json.loads((result.destination/'body_sprite_recipe.json').read_bytes())
+        digest = recipe['source_admission']['original_motion_provenance']['record_sha256']
+        with self.assertRaisesRegex(UCCError, 'reviewed authored idle proof'):
+            verify_body_sprite_delivery(result, helper.f.request, result.destination,
+                                        expected_authored_idle_proof_sha256=digest)
 
     def test_receipt_read_bytes_cannot_be_replaced_by_original_before_path_hash(self):
         import json

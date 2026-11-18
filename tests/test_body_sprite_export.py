@@ -6,14 +6,19 @@ import os
 import shutil
 import tempfile
 import threading
+from types import SimpleNamespace
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from fixtures.body_sprite_sources import BodySourceFixture
 from fixtures.body_sprite_images import image_evidence
+from ucc.animations.target_action_diagnostic_contract import TargetActionDiagnosticSelection
 from ucc.core.body_sprites import POLICY,STAGE
+from ucc.core.target_action_format import canonical_bytes
 from ucc.core.errors import ProjectConflict,ProjectStorageError,ValidationError
+from ucc.jobs.authored_idle_loop_preview import AuthoredIdleReviewIdentity
 from ucc.jobs.body_sprite_export import export_body_sprite_sample
+from ucc.jobs.body_sprite_provenance import AuthoredIdleSpriteOrigin
 from ucc.jobs.export_destination import plan_destination
 from ucc.jobs.master_preview import _digest
 from ucc.jobs.protocol import JobResult
@@ -64,6 +69,78 @@ class BodySpriteExportTests(unittest.TestCase):
             original_motion_role=self.f.provenance.motion_role,
             original_motion_uri_aliases=self.f.provenance.uri_aliases)
         return export_body_sprite_sample(self.f.store,**(options|changes))
+
+    def authored_fixture(self):
+        binding = replace(self.f.binding, root_motion_policy='ARMATURE_ORIGIN_DISPLACEMENT_V1')
+        if self.f.directory.name != binding.sha256:
+            (self.f.directory/'binding.json').write_bytes(canonical_bytes(binding.to_dict()))
+            renamed = self.f.directory.with_name(binding.sha256)
+            self.f.directory.rename(renamed)
+            self.f.directory = renamed
+        self.f.request = replace(self.f.request, target_binding=binding)
+        source, target = binding.source, binding.target
+        selection = TargetActionDiagnosticSelection(target.project_id,target.revision,target.project_sha256,
+            target.master_sha256,source.clip_id,binding.sha256,source.source_binding_sha256,source.catalog_record_sha256)
+        protected = self.root/'UNIT_OWNED_ORIGIN_SCOPE'
+        protected.mkdir()
+        proof = protected/'UNIT_PROOF_POINTER.json'
+        proof.write_bytes(b'UNIT_NOT_AN_ADMITTED_REAL_PROOF')
+        digest = _digest(proof)
+        identity = AuthoredIdleReviewIdentity(selection,digest,'f'*64,binding.mapping_sha256,
+                                               binding.file_map['playback/motion_skin.bin'].sha256)
+        authority = SimpleNamespace(review_identity=identity, _protected_output_scopes=(protected,),
+                                    assert_current=Mock())
+        origin = AuthoredIdleSpriteOrigin(proof,authority)
+        return origin,authority
+
+    def invoke_authored(self, origin, **changes):
+        return self.invoke(original_author_record=None,original_author_record_sha256=None,
+            original_motion_role=None,original_motion_uri_aliases=(),authored_idle_proof=origin.record_path,
+            **({'authored_idle_proof_sha256':origin.expected_sha256}|changes))
+
+    def test_authored_idle_origin_is_readmitted_and_keeps_the_four_worker_and_pixel_route(self):
+        origin, authority = self.authored_fixture()
+        with patch(self.prefix+'review_authored_idle_sprite_origin',return_value=origin) as review:
+            result = self.invoke_authored(origin)
+        review.assert_called_once()
+        self.assertEqual(review.call_args.kwargs['proof_file'],origin.record_path)
+        self.assertEqual(review.call_args.kwargs['expected_proof_sha256'],origin.expected_sha256)
+        self.assertEqual(review.call_args.kwargs['binding'],self.f.request.target_binding)
+        self.assertEqual(len(self.f.calls),2)
+        self.assertEqual(len(self.calls),2)
+        self.assertEqual(result.image_count,8)
+        receipt = json.loads((self.destination.path/'body_sprite_receipt.json').read_bytes())
+        metadata = receipt['source_admission']['original_motion_provenance']
+        self.assertEqual(metadata['record_sha256'],origin.expected_sha256)
+        self.assertEqual(metadata['record_format'],'AUTHORED_IDLE_PROOF_V1')
+        self.assertFalse(metadata['sprite_rights_inferred'])
+        self.assertNotIn(str(origin.record_path),str(metadata))
+        self.assertGreater(authority.assert_current.call_count,4)
+
+    def test_authored_idle_origin_revoked_between_stages_stops_before_publication(self):
+        origin, authority = self.authored_fixture()
+        self.after_stage = lambda: setattr(authority.assert_current,'side_effect',ProjectStorageError('Unit stale origin'))
+        with patch(self.prefix+'review_authored_idle_sprite_origin',return_value=origin):
+            with self.assertRaisesRegex(ProjectStorageError,'Unit stale origin'):
+                self.invoke_authored(origin)
+        self.assertEqual(len(self.f.calls),2)
+        self.assertEqual(len(self.calls),1)
+        self.assertFalse(self.destination.path.exists())
+
+    def test_authored_idle_output_must_be_disjoint_and_proof_options_are_exclusive(self):
+        origin, _ = self.authored_fixture()
+        inside = plan_destination(origin.record_path.parent/'UNIT_OUTPUT',self.f.store.root)
+        with patch(self.prefix+'review_authored_idle_sprite_origin',return_value=origin) as review:
+            with self.assertRaises(ValidationError):
+                self.invoke(authored_idle_proof=origin.record_path,authored_idle_proof_sha256=origin.expected_sha256)
+            with self.assertRaises(ValidationError):
+                self.invoke_authored(origin,authored_idle_proof_sha256=None)
+            review.assert_not_called()
+            with self.assertRaisesRegex(ValidationError,'outside the authored idle proof closure'):
+                self.invoke_authored(origin,destination=inside)
+        self.assertEqual(self.f.calls,[])
+        self.assertEqual(self.calls,[])
+        self.assertFalse(inside.path.exists())
 
     def test_two_fresh_intakes_then_render_reopen_exact_pixels_and_exclusive_publication(self):
         original=self.f.store.file.read_bytes();result=self.invoke()

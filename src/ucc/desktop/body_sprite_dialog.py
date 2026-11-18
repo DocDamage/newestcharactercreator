@@ -15,7 +15,7 @@ from ucc.core.skin_material import SkinMaterialSpec
 from ucc.core.sprite_render import SpritePermission, SpriteSettings
 from ucc.core.target_action import TargetActionBinding
 from ucc.core.target_action_format import canonical_bytes, read_document
-from ucc.jobs.body_sprite_provenance import OriginalMotionProvenance
+from ucc.jobs.body_sprite_provenance import AuthoredIdleSpriteOrigin, OriginalMotionProvenance
 
 
 class BodySpriteDialog(QDialog):
@@ -72,7 +72,7 @@ class BodySpriteDialog(QDialog):
         layout.addWidget(self.window_summary)
         origin_row = QHBoxLayout()
         self.origin_path = QLineEdit(); self.origin_path.setReadOnly(True)
-        self.origin_path.setPlaceholderText('Choose the local original-motion record')
+        self.origin_path.setPlaceholderText('Choose a local idle proof or motion record')
         self.choose_origin = QPushButton('Choose origin record…')
         self.choose_origin.clicked.connect(self.browse_origin)
         origin_row.addWidget(self.origin_path); origin_row.addWidget(self.choose_origin)
@@ -139,16 +139,18 @@ class BodySpriteDialog(QDialog):
 
     def browse_origin(self):
         if self._busy or not self._valid: return
-        path, _ = QFileDialog.getOpenFileName(self, 'Choose original-motion record', '', 'JSON records (*.json);;All files (*)')
+        path, _ = QFileDialog.getOpenFileName(self, 'Choose an authored idle proof or original-motion record', '', 'JSON records (*.json);;All files (*)')
         if not path: return
         self._origin = None; self._pending_origin = Path(path)
         self.origin_path.setText(path); self._clear_consents()
         self.origin_summary.setText('Checking the selected origin record…')
         self.refresh(); self.origin_selected.emit(path)
 
-    def set_origin_review(self, origin: OriginalMotionProvenance, summary: str, *, context_token: object) -> bool:
+    def set_origin_review(self, origin: OriginalMotionProvenance | AuthoredIdleSpriteOrigin,
+                          summary: str, *, context_token: object) -> bool:
         if (not self._valid or context_token is not self.context_token
-                or type(origin) is not OriginalMotionProvenance or origin.record_path != self._pending_origin):
+                or type(origin) not in (OriginalMotionProvenance, AuthoredIdleSpriteOrigin)
+                or origin.record_path != self._pending_origin):
             return False
         self._origin = origin; self._clear_consents()
         self.origin_summary.setText(summary + '\nRecord SHA-256: ' + origin.expected_sha256
@@ -216,7 +218,7 @@ class BodySpriteDialog(QDialog):
                                  SpriteSettings(self.resolution.currentData(), 4, 0., 0.),
                                  SkinMaterialSpec((.55, .35, .25), 1.), permissions, self._purpose, True)
 
-    def origin_review(self) -> OriginalMotionProvenance:
+    def origin_review(self) -> OriginalMotionProvenance | AuthoredIdleSpriteOrigin:
         self._require_ready(); return self._origin
 
     def destination_path(self) -> Path:

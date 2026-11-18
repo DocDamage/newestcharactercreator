@@ -5,9 +5,9 @@ from typing import Callable
 import re
 
 from ucc.animations.fbx_snapshot import read_snapshot
-from ucc.core.body_sprites import BodySpriteRequest
+from ucc.core.body_sprites import BodySpriteRequest, authored_idle_sprite_origin
 from ucc.core.errors import ProjectConflict, ProjectStorageError, ValidationError
-from ucc.core.target_action_format import canonical_bytes
+from ucc.core.target_action_format import canonical_bytes, checked_sha
 from .expression_storage import load_expression_library
 from .expression_revisions import admit_expression_source
 from .hand_storage import load_hand_library, load_hand_receipt
@@ -19,7 +19,18 @@ from .worker_resources import worker_dependency_files
 from .godot_candidate_inputs import identity, read_json
 from .master_preview import _digest
 from .fbx_intake import inspect_selected_fbx
-from .body_sprite_provenance import OriginalMotionProvenance
+from .body_sprite_provenance import OriginalMotionProvenance, review_authored_idle_sprite_origin
+
+
+@dataclass(frozen=True, slots=True)
+class AuthoredIdleSpriteProof:
+    record_path: Path
+    expected_sha256: str
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.record_path, Path):
+            raise ValidationError('Choose a local authored idle proof file')
+        checked_sha(self.expected_sha256)
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,8 +67,9 @@ def _character_sources(store, project, binding, cancel):
 
 def prepare_body_sprite_context(store, request: BodySpriteRequest, database: Path,
                                 blender: Path, worker: Path, budget,
-                                provenance: OriginalMotionProvenance) -> BodySpriteContext:
-    """Admit the full old proof and two NEW actual source observations."""
+                                provenance: OriginalMotionProvenance | AuthoredIdleSpriteProof,
+                                *, destination: Path | None = None) -> BodySpriteContext:
+    """Admit the selected origin proof and two fresh actual source observations."""
     binding = request.target_binding; target = binding.target; source = binding.source
     initial = store.load(); database = protected(database); blender = protected(blender); worker = protected(worker)
     if canonical_bytes(initial.to_dict()) != request.project_snapshot_json or _digest(store.file, budget.cancel) != target.project_sha256:
@@ -74,9 +86,23 @@ def prepare_body_sprite_context(store, request: BodySpriteRequest, database: Pat
                            initial.master_blend, target.project_sha256, budget)
     if review.source != source:
         raise ProjectConflict('Body-sprite current source policy/receipt differs from the target binding')
-    if type(provenance) is not OriginalMotionProvenance:
-        raise ValidationError('Body sprites need their separately pinned original-motion provenance review')
-    origin = provenance.read(request, review.policy, budget)
+    idle = None
+    if type(provenance) is AuthoredIdleSpriteProof:
+        idle = review_authored_idle_sprite_origin(store, proof_file=provenance.record_path,
+            binding=binding, database_path=database, current_policy=review.policy,
+            expected_proof_sha256=provenance.expected_sha256, cancel=budget.cancel,
+            timeout_s=budget.remaining())
+        if destination is not None and any(destination.is_relative_to(scope) or scope.is_relative_to(destination)
+                                          for scope in idle.protected_output_scopes):
+            raise ValidationError('Body-sprite destination must be outside the authored idle proof closure')
+        evidence = idle.review_identity
+        origin = authored_idle_sprite_origin(binding, proof_sha256=evidence.proof_sha256,
+            receipt_sha256=evidence.receipt_sha256, mapping_sha256=evidence.mapping_sha256,
+            cache_sha256=evidence.cache_sha256)
+    elif type(provenance) is OriginalMotionProvenance:
+        origin = provenance.read(request, review.policy, budget)
+    else:
+        raise ValidationError('Body sprites need a separately pinned original-motion origin review')
     # This preserves source policy independently of the new per-use sprite grants.
     authority = bind_native_catalog_source(database, source.clip_id,
         expected_source_sha256=source.source_sha256, expected_policy=review.policy,
@@ -103,6 +129,8 @@ def prepare_body_sprite_context(store, request: BodySpriteRequest, database: Pat
         if store.load() != initial or _digest(store.file, budget.cancel) != target.project_sha256:
             raise ProjectConflict('Saved project changed during private body-sprite rendering')
         authority.guard(cancel=budget.cancel, timeout_s=budget.remaining())
+        if idle is not None:
+            idle.assert_current()
         for path, (stamp, digest) in {**frozen, **fresh}.items():
             if identity(protected(path)) != stamp or _digest(path, budget.cancel) != digest:
                 raise ProjectStorageError('Body-sprite source, native proof or runtime changed: '+str(path))

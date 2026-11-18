@@ -6,6 +6,7 @@ from ucc.core.body_sprites import BodySpriteRequest, POLICY, validate_recipe, wo
 from ucc.core.errors import ValidationError
 from ucc.core.target_action_format import CLOCK, canonical_bytes, checked_sha, checked_uuid, closed, read_document
 from ucc.jobs.body_sprite_export import BodySpriteExport
+from ucc.jobs.body_sprite_provenance import AUTHORED_IDLE_ORIGIN_FORMAT
 from ucc.jobs.body_sprite_transactions import file_inventory
 from ucc.jobs.master_preview import _digest
 from ucc.jobs.target_action_context import protected
@@ -22,7 +23,8 @@ RECEIPT_FIELDS = FALSE_FIELDS | {'schema_version', 'policy', 'request_sha256', '
 
 
 def verify_body_sprite_delivery(result: BodySpriteExport, request: BodySpriteRequest,
-                                destination: Path, cancel=None) -> BodySpriteExport:
+                                destination: Path, cancel=None, *,
+                                expected_authored_idle_proof_sha256: str | None = None) -> BodySpriteExport:
     """Rehash the closed delivered inventory off the GUI thread before reporting."""
     if (type(result) is not BodySpriteExport or result.destination != destination
             or result.image_count != request.image_count
@@ -96,6 +98,11 @@ def verify_body_sprite_delivery(result: BodySpriteExport, request: BodySpriteReq
             or canonical_bytes(recipe['source_admission']) != canonical_bytes(receipt['source_admission'])
             or recipe['source_admission']['worker_job_ids'] != ids):
         raise ValidationError('Private sprite receipt differs from the source admission and exact requested recipe')
+    if expected_authored_idle_proof_sha256 is not None:
+        origin = recipe['source_admission']['original_motion_provenance']
+        if (origin['record_format'] != AUTHORED_IDLE_ORIGIN_FORMAT
+                or origin['record_sha256'] != checked_sha(expected_authored_idle_proof_sha256)):
+            raise ValidationError('Private sprite receipt differs from the reviewed authored idle proof')
     checked_sha(receipt['blender_executable_sha256'])
     if receipt['blender_executable_sha256'] != request.target_binding.producer.blender_executable_sha256:
         raise ValidationError('Private sprite receipt differs from the selected saved Blender identity')

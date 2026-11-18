@@ -15,14 +15,20 @@ from ucc.animations.target_action_diagnostic_contract import TargetActionDiagnos
 from ucc.core.authored_idle_visual_review import AuthoredIdleVisualDecision
 from ucc.core.errors import ProjectConflict, ProjectStorageError, ValidationError
 from ucc.core.storage import ProjectStore
-from ucc.core.target_action_format import canonical_bytes
+from ucc.core.target_action_format import canonical_bytes, document_sha256
 from ucc.jobs.authored_idle import author_original_idle
 from ucc.jobs.authored_idle_loop_preview import POLICY, load_authored_idle_loop_preview
 from ucc.jobs.authored_idle_receipt import load_authored_idle_target_mapping
 from ucc.jobs.authored_idle_visual_review import (DECISION_FILENAME, POLICY as VISUAL_POLICY,
                                                   publish_authored_idle_visual_decision)
+from ucc.jobs.body_sprite_provenance import (
+    AUTHORED_IDLE_ORIGIN_FORMAT, AuthoredIdleSpriteOrigin, review_authored_idle_sprite_origin,
+    review_body_sprite_origin_record,
+)
 from ucc.jobs.export_destination import plan_destination, rename_new
+from ucc.jobs.target_action_context import operation_budget
 from ucc.jobs.target_action_storage import ancestry
+from ucc.library.provenance import LicensePolicy
 
 
 _LOADER = 'ucc.jobs.authored_idle_loop_preview.load_target_action'
@@ -65,7 +71,7 @@ class AuthoredIdleLoopPreviewTests(unittest.TestCase):
         self.candidate = candidate
         self.mapping = mapping
 
-    def _load(self, *, changes=lambda: None):
+    def _load(self, *, changes=lambda: None, origin_policy=None):
         binding = self.binding
         folder = self.target.root/'animations/actions'/binding.sha256
         folder.mkdir(parents=True, exist_ok=True)
@@ -82,10 +88,70 @@ class AuthoredIdleLoopPreviewTests(unittest.TestCase):
             return selected
 
         with patch(_LOADER, side_effect=target_load) as loader:
-            result = load_authored_idle_loop_preview(self.target, proof_file=self.proof, selection=selection,
-                database_path=self.database, local_preview_confirmed=True)
+            if origin_policy is None:
+                result = load_authored_idle_loop_preview(self.target, proof_file=self.proof, selection=selection,
+                    database_path=self.database, local_preview_confirmed=True)
+            else:
+                with operation_budget(None, 120) as budget:
+                    result = review_body_sprite_origin_record(self.proof, binding, origin_policy, budget,
+                        store=self.target, database_path=self.database)
             loader.assert_called_once()
             return result
+
+    def _sprite_policy(self):
+        source = self.binding.source
+        policy = LicensePolicy('unit authored idle', 'private preview fixture', 'urn:sha256:'+source.source_sha256,
+                               reviewed=True, no_ai=True, local_preview_allowed=True)
+        self.binding = replace(self.binding,
+            source=replace(source, catalog_policy_sha256=document_sha256(policy.to_dict())))
+        return policy
+
+    def test_sprite_origin_dispatch_pins_authored_receipt_and_exact_saved_action(self):
+        self._real_authored_evidence()
+        origin, metadata = self._load(origin_policy=self._sprite_policy())
+        self.assertIs(type(origin), AuthoredIdleSpriteOrigin)
+        self.assertEqual(metadata, {'record_format': AUTHORED_IDLE_ORIGIN_FORMAT})
+        self.assertEqual(origin.record_path, self.proof)
+        self.assertEqual(origin.expected_sha256, pin(self.proof.read_bytes()))
+        self.assertEqual(origin.review_identity.selection.binding_sha256, self.binding.sha256)
+        self.assertEqual(origin.review_identity.receipt_sha256, self.candidate.receipt_sha256)
+        self.assertEqual(origin.review_identity.mapping_sha256, self.mapping.mapping_sha256)
+        self.assertEqual(origin.review_identity.cache_sha256, pin(self.cache.packed))
+        self.assertIn(self.fixture.store.root, origin.protected_output_scopes)
+        origin.assert_current()
+        self.proof.write_bytes(self.proof.read_bytes()+b' ')
+        with self.assertRaises(ProjectStorageError):
+            origin.assert_current()
+
+    def test_sprite_origin_rejects_changed_dispatch_bytes_and_malformed_authored_proof(self):
+        self._real_authored_evidence()
+        policy = self._sprite_policy()
+        original = self.proof.read_bytes()
+
+        def change_after_dispatch(*args, **kwargs):
+            self.proof.write_bytes(original+b' ')
+            return review_authored_idle_sprite_origin(*args, **kwargs)
+
+        module = 'ucc.jobs.body_sprite_provenance.'
+        with patch(module+'review_authored_idle_sprite_origin', side_effect=change_after_dispatch):
+            with self.assertRaisesRegex(ProjectStorageError, 'differs from selected SHA'):
+                self._load(origin_policy=policy)
+
+        raw = json.loads(original)
+        raw['sprite_rights_inferred'] = True
+        self.proof.write_bytes(canonical_bytes(raw))
+        with patch(module+'_review_historical_origin') as historical:
+            with self.assertRaises(ValidationError):
+                self._load(origin_policy=policy)
+            historical.assert_not_called()
+
+    def test_sprite_origin_requires_exact_content_addressed_catalog_policy(self):
+        self._real_authored_evidence()
+        policy = self._sprite_policy()
+        for mismatch in (replace(policy, no_ai=False), replace(policy, source_uri='urn:sha256:'+'f'*64)):
+            with self.subTest(policy=mismatch), self.assertRaisesRegex(ProjectConflict, 'motion policy differs'):
+                review_authored_idle_sprite_origin(self.target, proof_file=self.proof, binding=self.binding,
+                    database_path=self.database, current_policy=mismatch)
 
     def test_frozen_original_authority_and_ephemeral_catalog_coordination(self):
         self._real_authored_evidence()

@@ -1,19 +1,63 @@
-"""Pinned historical original-source declaration; never a sprite-rights grant."""
-from dataclasses import dataclass
+"""Pinned original-source evidence for a separately authorized private sprite use."""
+from dataclasses import dataclass, field
 from hashlib import sha256
 import json
 from pathlib import Path
 
+from ucc.animations.target_action_diagnostic_contract import TargetActionDiagnosticSelection
 from ucc.core.errors import ValidationError, ProjectConflict
 from ucc.core.storage import _unique_project_fields, _nonfinite_project_number
 from ucc.core.target_action_format import checked_sha, checked_text, checked_uuid, document_sha256, closed
-from ucc.core.body_sprites import ORIGIN_POLICY as POLICY
+from ucc.core.body_sprites import AUTHORED_IDLE_ORIGIN_FORMAT, ORIGIN_POLICY as POLICY
 from ucc.core.target_action import TargetActionBinding
 from ucc.export.godot_native_recipe import validate_native_recipe
 from ucc.library.provenance import LicensePolicy
-from .target_action_context import protected
+from .authored_idle_loop_preview import (
+    POLICY as AUTHORED_IDLE_PROOF_POLICY,
+    AuthoredIdleLoopPreview, AuthoredIdleReviewIdentity, authenticate_authored_idle_target,
+)
+from .target_action_context import Budget, protected
 
 AUDIT_STATUS = 'REAL_PREPARED_MASTER_NATIVE300_INDEPENDENTLY_AUDITED_AFTER_HARNESS_KEY_ERROR'
+
+
+@dataclass(frozen=True, slots=True)
+class AuthoredIdleSpriteOrigin:
+    record_path: Path
+    _authority: AuthoredIdleLoopPreview = field(repr=False)
+
+    @property
+    def expected_sha256(self) -> str:
+        return self.review_identity.proof_sha256
+
+    @property
+    def review_identity(self) -> AuthoredIdleReviewIdentity:
+        return self._authority.review_identity
+
+    @property
+    def protected_output_scopes(self) -> tuple[Path, ...]:
+        return self._authority._protected_output_scopes
+
+    def assert_current(self) -> None:
+        self._authority.assert_current()
+
+
+def review_authored_idle_sprite_origin(store, *, proof_file: Path, binding: TargetActionBinding,
+        database_path: Path, current_policy: LicensePolicy, expected_proof_sha256: str | None = None,
+        cancel=None, timeout_s=300) -> AuthoredIdleSpriteOrigin:
+    """Authenticate the authored receipt and exact saved Action without granting sprite or preview consent."""
+    if type(binding) is not TargetActionBinding:
+        raise ValidationError('Origin review requires the exact typed saved target binding')
+    target, source = binding.target, binding.source
+    if (type(current_policy) is not LicensePolicy or current_policy.source_uri != 'urn:sha256:'+source.source_sha256
+            or document_sha256(current_policy.to_dict()) != source.catalog_policy_sha256):
+        raise ProjectConflict('Current content-addressed motion policy differs from the registered Action')
+    selection = TargetActionDiagnosticSelection(target.project_id, target.revision, target.project_sha256,
+        target.master_sha256, source.clip_id, binding.sha256, source.source_binding_sha256, source.catalog_record_sha256)
+    path = Path(proof_file)
+    evidence = authenticate_authored_idle_target(store, proof_file=path, selection=selection,
+        database_path=database_path, expected_proof_sha256=expected_proof_sha256, cancel=cancel, timeout_s=timeout_s)
+    return AuthoredIdleSpriteOrigin(path, evidence)
 
 
 def _qualified_audit_record(raw, role, source):
@@ -126,9 +170,7 @@ class OriginalMotionProvenance:
             'origin_declaration_only':True,'sprite_rights_inferred':False}
 
 
-def review_original_motion_record(path: Path, binding: TargetActionBinding,
-                                  current_policy: LicensePolicy, budget) -> tuple[OriginalMotionProvenance, dict]:
-    """Pin one selected record and infer its unique role; never create grants."""
+def _selected_origin_record(path: Path, budget: Budget) -> tuple[Path, bytes, object]:
     budget.check(); path = protected(path)
     if not path.is_file() or path.stat().st_nlink != 1:
         raise ValidationError('Choose one canonical local original-origin record')
@@ -141,6 +183,29 @@ def review_original_motion_record(path: Path, binding: TargetActionBinding,
                          parse_constant=_nonfinite_project_number)
     except (ValueError, UnicodeError, RecursionError) as error:
         raise ValidationError('Malformed original-author record') from error
+    return path, payload, raw
+
+
+def review_original_motion_record(path: Path, binding: TargetActionBinding,
+                                  current_policy: LicensePolicy, budget) -> tuple[OriginalMotionProvenance, dict]:
+    """Pin one selected historical record and infer its unique role."""
+    path, payload, raw = _selected_origin_record(path, budget)
+    return _review_historical_origin(path, payload, raw, binding, current_policy, budget)
+
+
+def review_body_sprite_origin_record(path: Path, binding: TargetActionBinding, current_policy: LicensePolicy,
+        budget: Budget, *, store, database_path: Path) -> tuple[OriginalMotionProvenance | AuthoredIdleSpriteOrigin, dict]:
+    """Dispatch the selected JSON by policy and authenticate its exact bytes."""
+    path, payload, raw = _selected_origin_record(path, budget)
+    if type(raw) is dict and raw.get('policy') == AUTHORED_IDLE_PROOF_POLICY:
+        origin = review_authored_idle_sprite_origin(store, proof_file=path, binding=binding,
+            database_path=database_path, current_policy=current_policy,
+            expected_proof_sha256=sha256(payload).hexdigest(), cancel=budget.cancel, timeout_s=budget.remaining())
+        return origin, {'record_format': AUTHORED_IDLE_ORIGIN_FORMAT}
+    return _review_historical_origin(path, payload, raw, binding, current_policy, budget)
+
+
+def _review_historical_origin(path, payload, raw, binding, current_policy, budget):
     if type(binding) is not TargetActionBinding:
         raise ValidationError('Origin review requires the exact typed saved target binding')
     if type(raw) is dict and raw.get('status') == AUDIT_STATUS:
