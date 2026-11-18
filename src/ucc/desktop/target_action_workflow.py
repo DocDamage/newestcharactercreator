@@ -20,12 +20,13 @@ from .godot_saved_preview_workflow import KINDS as SAVED_GODOT_KINDS
 from .target_action_diagnostic_workflow import KINDS as DIAGNOSTIC_KINDS
 from .body_sprite_workflow import KINDS as BODY_SPRITE_KINDS
 from .authored_idle_loop_workflow import KIND as IDLE_LOOP_REVIEW
+from .authored_idle_visual_workflow import KIND as IDLE_VISUAL_DECISION
 from .authored_idle_authoring_workflow import KINDS as IDLE_AUTHORING_KINDS
 
 
 IDLE_MAPPING_SAVE = 'target_action_idle_mapping_save'
 REVIEW_KINDS = frozenset({'target_action_review', 'target_action_mapping', IDLE_MAPPING_SAVE})
-KINDS = REVIEW_KINDS | {'target_action_prepare', 'target_action_load', IDLE_LOOP_REVIEW} | (
+KINDS = REVIEW_KINDS | {'target_action_prepare', 'target_action_load', IDLE_LOOP_REVIEW, IDLE_VISUAL_DECISION} | (
     SAVED_GODOT_KINDS | DIAGNOSTIC_KINDS | BODY_SPRITE_KINDS | IDLE_AUTHORING_KINDS)
 PHASES = {
     'SOURCE_REVIEW': 'Checking the exact registered source and local preview permission...',
@@ -373,6 +374,10 @@ def finish_target_action(window, result) -> None:
         from .authored_idle_loop_workflow import finish_idle_loop_review
         finish_idle_loop_review(window, result)
         return
+    if window._work_kind == IDLE_VISUAL_DECISION:
+        from .authored_idle_visual_workflow import finish_visual_decision
+        finish_visual_decision(window, result)
+        return
     if window._work_kind in BODY_SPRITE_KINDS:
         from .body_sprite_workflow import finish_body_sprite
         finish_body_sprite(window, result)
@@ -474,6 +479,10 @@ def target_action_error(window, error: str) -> None:
     if window._work_kind == IDLE_LOOP_REVIEW:
         from .authored_idle_loop_workflow import idle_loop_review_error
         idle_loop_review_error(window, error)
+        return
+    if window._work_kind == IDLE_VISUAL_DECISION:
+        from .authored_idle_visual_workflow import visual_decision_error
+        visual_decision_error(window, error)
         return
     if window._work_kind in BODY_SPRITE_KINDS:
         from .body_sprite_workflow import body_sprite_error

@@ -58,12 +58,13 @@ def start_idle_loop_review(window):
             review.source.source_binding_sha256, review.source.catalog_record_sha256)
         viewer.clear_idle_loop_review()
         token = object()
-        window._idle_loop_review = (token, context, active, viewer)
+        proof_file = Path(selected)
+        window._idle_loop_review = (token, context, active, viewer, proof_file)
 
         def operation(cancel, _progress):
             from ucc.jobs.authored_idle_loop_preview import load_authored_idle_loop_preview
 
-            result = load_authored_idle_loop_preview(context.store, proof_file=Path(selected),
+            result = load_authored_idle_loop_preview(context.store, proof_file=proof_file,
                 selection=selection, database_path=context.database, local_preview_confirmed=True,
                 cancel=cancel)
             if result.binding_sha256 != active.binding_sha256 or result.cache_sha256 != sha256(active.cache.packed).hexdigest():
@@ -85,7 +86,7 @@ def finish_idle_loop_review(window, output):
     window._idle_loop_review = None
     if request is None or window.jobs.cancel_requested:
         return
-    token, context, active, viewer = request
+    token, context, active, viewer, proof_file = request
     try:
         if (type(output) is not tuple or len(output) != 2 or output[0] is not token
                 or type(output[1]) is not AuthoredIdleLoopPreview or output[1].database_path != context.database):
@@ -95,7 +96,16 @@ def finish_idle_loop_review(window, output):
         def still_current():
             return _is_current(window, context, active, viewer) and admitted.identities_current()
 
-        viewer.install_idle_loop(still_current, admitted.watch_paths)
+        def record_decision():
+            from .authored_idle_visual_workflow import start_visual_decision
+
+            def visual_current():
+                return (viewer._idle_decision is record_decision and viewer.review_window == PlaybackWindow()
+                        and still_current())
+
+            start_visual_decision(window, context, proof_file, admitted, visual_current)
+
+        viewer.install_idle_loop(still_current, admitted.watch_paths, record_decision=record_decision)
     except (UCCError, OSError, ValueError) as error:
         window._error(str(error))
 

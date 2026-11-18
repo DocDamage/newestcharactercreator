@@ -30,6 +30,7 @@ class TargetActionViewer(MotionViewer):
         self.guard = guard
         self._idle_guard = None
         self._idle_watcher = None
+        self._idle_decision = None
         self.guard_timer = QTimer(self)
         self.guard_timer.setInterval(500)
         self.guard_timer.timeout.connect(self._guard_playing)
@@ -50,11 +51,14 @@ class TargetActionViewer(MotionViewer):
         self.go_start = QPushButton('Go to window start')
         self.review_idle_loop = QPushButton('Review idle loop…')
         self.review_idle_loop.setVisible(False)
+        self.record_idle_decision = QPushButton('Record visual decision…')
+        self.record_idle_decision.setVisible(False)
         self.loop.setText('Loop preview')
         self.loop.setVisible(False)
         actions = QHBoxLayout()
         actions.addWidget(self.apply_window); actions.addWidget(self.go_start)
         actions.addWidget(self.review_idle_loop)
+        actions.addWidget(self.record_idle_decision)
         self.layout.addLayout(actions)
         self.window_status = QLabel('No review window loaded.')
         self.window_status.setTextFormat(Qt.TextFormat.PlainText)
@@ -63,6 +67,7 @@ class TargetActionViewer(MotionViewer):
         self.apply_window.clicked.connect(self.apply_review_window)
         self.go_start.clicked.connect(self.go_to_window_start)
         self.review_idle_loop.clicked.connect(self.review_idle_loop_requested.emit)
+        self.record_idle_decision.clicked.connect(self._record_idle_decision)
         self._enable(False)
 
     def _enable(self, enabled: bool) -> None:
@@ -75,6 +80,7 @@ class TargetActionViewer(MotionViewer):
                 self.play.setEnabled(False)
             self.review_idle_loop.setEnabled(enabled)
             self.loop.setEnabled(enabled and self._idle_guard is not None and self.review_window == PlaybackWindow())
+            self.record_idle_decision.setEnabled(enabled and self._idle_decision is not None)
 
     def show_cache(self, cache: MotionCache) -> None:
         if cache.frame_count != 300 or cache.fps != 30 or cache.source_first_frame != 2:
@@ -106,7 +112,8 @@ class TargetActionViewer(MotionViewer):
     def offer_idle_loop_review(self, enabled: bool) -> None:
         self.review_idle_loop.setVisible(enabled)
 
-    def install_idle_loop(self, guard: Callable[[], bool], watch_paths=()) -> None:
+    def install_idle_loop(self, guard: Callable[[], bool], watch_paths=(), *,
+                          record_decision: Callable[[], None] | None = None) -> None:
         if self.review_window != PlaybackWindow() or not self._authorized() or not guard():
             raise ProjectConflict('The reviewed idle no longer matches the full target preview')
         if self._idle_guard is not None:
@@ -120,6 +127,9 @@ class TargetActionViewer(MotionViewer):
             watcher.fileChanged.connect(lambda _path: self._idle_file_changed(watcher))
             self._idle_watcher = watcher
         self._idle_guard = guard
+        self._idle_decision = record_decision
+        self.record_idle_decision.setVisible(record_decision is not None)
+        self.record_idle_decision.setEnabled(record_decision is not None and not self._gpu_failed)
         self.loop.setVisible(True)
         self.loop.setEnabled(not self._gpu_failed)
         self.loop.setChecked(False)
@@ -127,6 +137,9 @@ class TargetActionViewer(MotionViewer):
 
     def _stop_idle_loop(self, *, block_paint: bool = False) -> None:
         self._idle_guard = None
+        self._idle_decision = None
+        self.record_idle_decision.setVisible(False)
+        self.record_idle_decision.setEnabled(False)
         watcher = self._idle_watcher
         self._idle_watcher = None
         if watcher is not None:
@@ -139,6 +152,10 @@ class TargetActionViewer(MotionViewer):
         self.note.setText(_PREVIEW_NOTE)
         if self.canvas is not None and hasattr(self.canvas, 'clear_idle_loop_sample'):
             self.canvas.clear_idle_loop_sample(block_paint=block_paint)
+
+    def _record_idle_decision(self) -> None:
+        if self._idle_decision is not None and self._authorized() and self._idle_current():
+            self._idle_decision()
 
     def _idle_file_changed(self, watcher) -> None:
         if watcher is not self._idle_watcher:
