@@ -5,6 +5,14 @@ using UnityEngine;
 using UnityEngine.Rendering;
 
 namespace Ucc.UnityAdapter {
+ public interface IUccNativePositionCorrection : IDisposable {
+  void Record(CommandBuffer commands,GraphicsBuffer nativeSkin,GraphicsBuffer ownedDraw);
+ }
+
+ public interface IUccNativePositionCorrectionBinding {
+  IUccNativePositionCorrection CreateCorrection(int[] nativeToSource);
+ }
+
  [DisallowMultipleComponent,RequireComponent(typeof(SkinnedMeshRenderer))]
  public sealed class UccNativeNormals : MonoBehaviour {
   public const string Policy="UCC_UNITY_BUILTIN_FORWARD_QUAD_NORMALS_V1";
@@ -12,6 +20,8 @@ namespace Ucc.UnityAdapter {
   [SerializeField] string sourceDataSha256;
   [SerializeField] ComputeShader normalShader;
   [SerializeField] Shader warmupShader;
+  [SerializeField] bool requiresPositionCorrection;
+  [SerializeField] ScriptableObject positionCorrectionBinding;
   sealed class Pending {public Camera camera;public CommandBuffer commands;public GraphicsBuffer input;public int frame;}
   readonly Dictionary<int,Pending> pending=new Dictionary<int,Pending>();
   SkinnedMeshRenderer source;Mesh sourceMesh,display;UccQuadSourceData topology;
@@ -19,19 +29,35 @@ namespace Ucc.UnityAdapter {
   Material original,warmup;Material[] materials;int faceKernel,pointKernel,copyKernel,warmupFrames;
   GraphicsBuffer.Target originalBufferTarget;bool ownsBufferTarget;
   bool originalMatrixRecalculation,ownsMatrixRecalculation;
+  IUccNativePositionCorrection positionCorrection;
   public string LastError {get;private set;}="";
   public bool IsInitialized {get;private set;}
   public int CompletedFrame {get;private set;}=-1;
   public int CompletedCamera {get;private set;}=-1;
   public int CompletedFrames {get;private set;}
   public GraphicsBuffer DrawVertexBuffer=>destination;
+  public bool PositionCorrectionActive=>IsInitialized&&positionCorrection!=null;
 
 #if UNITY_EDITOR
   public void ConfigureForExport(TextAsset data,string digest,ComputeShader compute,Shader hidden) {
+   ConfigureForExport(data,digest,compute,hidden,null);
+  }
+  public void ConfigureForExport(TextAsset data,string digest,ComputeShader compute,Shader hidden,ScriptableObject correctionBinding) {
    if(Application.isPlaying)throw new InvalidOperationException("Export configuration cannot modify a running character");
+   if(correctionBinding!=null&&!(correctionBinding is IUccNativePositionCorrectionBinding))
+    throw new InvalidDataException("Registered position correction requires its explicit saved binding");
    sourceData=data;sourceDataSha256=digest;normalShader=compute;warmupShader=hidden;
+   positionCorrectionBinding=correctionBinding;requiresPositionCorrection=correctionBinding!=null;
   }
 #endif
+  void SetupPositionCorrection() {
+   if(!requiresPositionCorrection&&positionCorrectionBinding==null)return;
+   if(!requiresPositionCorrection||positionCorrectionBinding==null||
+     !(positionCorrectionBinding is IUccNativePositionCorrectionBinding binding))
+    throw new InvalidDataException("Saved registered position-correction binding is missing or invalid");
+   positionCorrection=binding.CreateCorrection(topology.native_source);
+   if(positionCorrection==null)throw new InvalidDataException("Registered position correction did not initialize");
+  }
   static ComputeBuffer Buffer<T>(T[] values,int stride) where T:struct {
    var result=new ComputeBuffer(values.Length,stride);try{result.SetData(values);return result;}catch{result.Release();throw;}
   }
@@ -56,6 +82,7 @@ namespace Ucc.UnityAdapter {
     original=materials[0];
     if(original.GetFloat("_Mode")!=0||original.GetTexture("_MainTex")!=null||original.GetTexture("_BumpMap")!=null||original.GetTexture("_MetallicGlossMap")!=null)
      throw new InvalidDataException("This profile requires the saved opaque color/roughness material without texture maps");
+    SetupPositionCorrection();
     first=Buffer(topology.FirstNative,4);ids=Buffer(topology.native_source,4);faces=Buffer(topology.quads,16);
     offsets=Buffer(topology.Offsets,4);adjacency=Buffer(topology.Adjacency,8);faceNormals=new ComputeBuffer(topology.quads.Length,12);
     display=new Mesh{name="UCC native GPU draw buffer",indexFormat=sourceMesh.indexFormat};display.vertexBufferTarget|=GraphicsBuffer.Target.Raw;
@@ -102,7 +129,9 @@ namespace Ucc.UnityAdapter {
      command.SetComputeBufferParam(normalShader,kernel,"_Vertices",destination);
     }
     command.SetComputeBufferParam(normalShader,copyKernel,"_Input",input);command.SetComputeBufferParam(normalShader,copyKernel,"_Vertices",destination);
-    command.DispatchCompute(normalShader,copyKernel,(display.vertexCount+63)/64,1,1);command.DispatchCompute(normalShader,faceKernel,(topology.quads.Length+63)/64,1,1);
+    command.DispatchCompute(normalShader,copyKernel,(display.vertexCount+63)/64,1,1);
+    positionCorrection?.Record(command,input,destination);
+    command.DispatchCompute(normalShader,faceKernel,(topology.quads.Length+63)/64,1,1);
     command.DispatchCompute(normalShader,pointKernel,(display.vertexCount+63)/64,1,1);command.DrawMesh(display,root,original,0,0);
     camera.AddCommandBuffer(CameraEvent.AfterForwardOpaque,command);pending.Add(key,new Pending{camera=camera,commands=command,input=input,frame=Time.frameCount});
    }catch(Exception error){input?.Dispose();command?.Release();Fail(error);}
@@ -118,6 +147,7 @@ namespace Ucc.UnityAdapter {
   void Cleanup() {
    IsInitialized=false;Camera.onPostRender-=Complete;
    foreach(var entry in pending.Values){if(entry.camera!=null)entry.camera.RemoveCommandBuffer(CameraEvent.AfterForwardOpaque,entry.commands);entry.commands.Release();entry.input.Dispose();}pending.Clear();
+   positionCorrection?.Dispose();positionCorrection=null;
    if(source!=null&&materials!=null&&warmup!=null){var current=source.sharedMaterials;if(current.Length==1&&current[0]==warmup)source.sharedMaterials=materials;}
    if(source!=null&&source.sharedMesh==sourceMesh&&ownsBufferTarget&&source.vertexBufferTarget==(originalBufferTarget|GraphicsBuffer.Target.Raw))source.vertexBufferTarget=originalBufferTarget;
    ownsBufferTarget=false;

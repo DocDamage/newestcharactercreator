@@ -91,6 +91,8 @@
         "verify_mpfb_facial_sprites",
         "stage_mpfb_unity_source",
         "verify_mpfb_unity_source",
+        "stage_registered_unity_animation_source",
+        "verify_registered_unity_animation_source",
         "stage_mpfb_unity_runtime_source",
         "verify_mpfb_unity_runtime_source",
         "stage_registered_native_godot_runtime",
@@ -4545,6 +4547,194 @@
               "stage_sha256": {
                 "type": "string",
                 "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "stage_registered_unity_animation_source"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "input_project": {
+            "const": "candidate.blend"
+          },
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "master_sha256",
+              "review_sha256",
+              "timeline_sha256",
+              "snapshot_sha256",
+              "mapping_sha256",
+              "target_binding_sha256",
+              "source_sha256"
+            ],
+            "properties": {
+              "master_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "review_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "timeline_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "snapshot_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "mapping_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "target_binding_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "source_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "verify_registered_unity_animation_source"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "input_project": {
+            "const": "candidate.blend"
+          },
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "master_sha256",
+              "review_sha256",
+              "timeline_sha256",
+              "snapshot_sha256",
+              "mapping_sha256",
+              "target_binding_sha256",
+              "source_sha256",
+              "animated_character_fbx_sha256",
+              "unity_animated_bind_json_sha256",
+              "source_weights_json_sha256",
+              "unity_animated_source_stage_json_sha256",
+              "unity_animated_raw_positions_f32_sha256",
+              "unity_animated_corrected_positions_f32_sha256",
+              "unity_animated_corrected_normals_f32_sha256",
+              "unity_animated_world_bones_f32_sha256",
+              "neighbor_ranges_u32_sha256",
+              "neighbors_u32_sha256",
+              "corners_u32_sha256",
+              "offsets_vec4_f32_sha256",
+              "corner_ranges_u32_sha256",
+              "corner_indices_u32_sha256"
+            ],
+            "properties": {
+              "master_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "review_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "timeline_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "snapshot_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "mapping_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "target_binding_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "source_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "animated_character_fbx_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "unity_animated_bind_json_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "source_weights_json_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "unity_animated_source_stage_json_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "unity_animated_raw_positions_f32_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "unity_animated_corrected_positions_f32_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "unity_animated_corrected_normals_f32_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "unity_animated_world_bones_f32_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "neighbor_ranges_u32_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "neighbors_u32_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "corners_u32_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "offsets_vec4_f32_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "corner_ranges_u32_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "corner_indices_u32_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
               }
             }
           }

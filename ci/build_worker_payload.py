@@ -77,9 +77,16 @@ def build_payload(repo: Path, destination: Path) -> dict:
     for name in REGISTERED_CORRECTION_FILES:
         root = godot if name == 'ucc_skin_adapter.gd' else godot/'registered_correction'
         sources[REGISTERED_CORRECTION_ADAPTER+'/'+name] = root/name
-    from ucc.core.worker_payload import UNITY_ADAPTER,UNITY_ADAPTER_FILES
+    from ucc.core.worker_payload import (UNITY_ADAPTER, UNITY_ADAPTER_FILES,
+        UNITY_REGISTERED_ANIMATION_ADAPTER, UNITY_REGISTERED_ANIMATION_FILES,
+        UNITY_REGISTERED_CORRECTION_ADAPTER, UNITY_REGISTERED_CORRECTION_FILES,
+        UNITY_REGISTERED_CORRECTION_BINDING)
     for name in UNITY_ADAPTER_FILES:
         sources[UNITY_ADAPTER+'/'+name] = repo/'engine_adapters/unity'/name
+    for name in UNITY_REGISTERED_ANIMATION_FILES | {UNITY_REGISTERED_CORRECTION_BINDING}:
+        sources[UNITY_REGISTERED_ANIMATION_ADAPTER+'/'+name] = repo/'engine_adapters/unity/registered_animation'/name
+    for name in UNITY_REGISTERED_CORRECTION_FILES:
+        sources[UNITY_REGISTERED_CORRECTION_ADAPTER+'/'+name] = repo/'engine_adapters/unity/registered_correction'/name
     from ucc.core.worker_payload import UNREAL_ADAPTER,UNREAL_ADAPTER_FILES
     for name in UNREAL_ADAPTER_FILES:
         sources[UNREAL_ADAPTER+'/'+name] = repo/'engine_adapters/unreal'/name
@@ -96,7 +103,7 @@ def build_payload(repo: Path, destination: Path) -> dict:
             shutil.copy2(path, target)
             if sha256(target.read_bytes()).hexdigest() != snapshots[relative]['sha256']:
                 raise ValueError('Worker source changed during payload staging')
-        manifest = {'schema_version': 2, 'policy': POLICY, 'files': snapshots,
+        manifest = {'schema_version': 3, 'policy': POLICY, 'files': snapshots,
             'modules': sorted(modules), 'engine_import_verified': False, 'distribution_license_review_complete': False}
         (temporary / 'worker_support/payload.v1.json').write_text(json.dumps(manifest, sort_keys=True, separators=(',', ':')) + '\n', encoding='utf-8')
         for relative, path in sources.items():

@@ -1,0 +1,82 @@
+// Registered profile. Take positions from the same owned stream the preview draws.
+#pragma kernel Copy
+#pragma kernel Faces
+#pragma kernel Points
+
+RWByteAddressBuffer _Vertices;
+ByteAddressBuffer _Input;
+StructuredBuffer<int> _FirstNative;
+StructuredBuffer<int> _NativeSource;
+StructuredBuffer<int4> _Faces;
+StructuredBuffer<int> _Offsets;
+StructuredBuffer<int2> _Adjacency;
+RWStructuredBuffer<float3> _FaceNormals;
+int _Stride;
+int _PositionOffset;
+int _NormalOffset;
+int _FaceCount;
+int _VertexCount;
+
+float3 Position(int index)
+{
+    return asfloat(_Vertices.Load3(_FirstNative[index] * _Stride + _PositionOffset));
+}
+
+float3 Unit(float3 value)
+{
+    float size = length(value);
+    return size > 0.0 ? value / size : float3(0, 0, 0);
+}
+
+[numthreads(64, 1, 1)]
+void Copy(uint id : SV_DispatchThreadID)
+{
+    if (id >= (uint)_VertexCount)
+        return;
+    [unroll] for (uint word = 0; word < 10; ++word)
+    {
+        uint offset = id * 40 + word * 4;
+        _Vertices.Store(offset, _Input.Load(offset));
+    }
+}
+
+[numthreads(64, 1, 1)]
+void Faces(uint id : SV_DispatchThreadID)
+{
+    if (id >= (uint)_FaceCount)
+        return;
+    int4 vertices = _Faces[id];
+    float3 origin = Position(vertices.x);
+    precise float3 area = 0;
+    area += cross(Position(vertices.y) - origin, Position(vertices.z) - origin);
+    area += cross(Position(vertices.z) - origin, Position(vertices.w) - origin);
+    _FaceNormals[id] = Unit(area);
+}
+
+[numthreads(64, 1, 1)]
+void Points(uint id : SV_DispatchThreadID)
+{
+    if (id >= (uint)_VertexCount)
+        return;
+    int source = _NativeSource[id];
+    float3 center = Position(source);
+    precise float3 weighted = 0;
+    for (int entry = _Offsets[source]; entry < _Offsets[source + 1]; ++entry)
+    {
+        int2 adjacent = _Adjacency[entry];
+        int4 face = _Faces[adjacent.x];
+        float3 a = Position(face[(adjacent.y + 3) % 4]) - center;
+        float3 b = Position(face[(adjacent.y + 1) % 4]) - center;
+        float3 normal = _FaceNormals[adjacent.x];
+        if (dot(a, a) <= 0.0 || dot(b, b) <= 0.0 || dot(normal, normal) <= 0.0)
+        {
+            _Vertices.Store3(id * _Stride + _NormalOffset, uint3(0, 0, 0));
+            return;
+        }
+        a = Unit(a);
+        b = Unit(b);
+        weighted += normal * atan2(length(cross(a, b)), dot(a, b));
+    }
+    // Unity's source mapping reflects handedness. Flip once to preserve outward normals.
+    _Vertices.Store3(id * _Stride + _NormalOffset, asuint(-Unit(weighted)));
+}

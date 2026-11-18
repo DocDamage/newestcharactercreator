@@ -17,6 +17,7 @@ on:
       - 'tests/test_desktop_*.py'
       - 'tests/test_unity_export_dialog.py'
       - 'tests/test_unity_export_desktop.py'
+      - 'tests/test_unity_animation_export_desktop.py'
       - 'tests/test_export_compatibility_report.py'
       - 'tests/test_target_action_dialog.py'
       - 'tests/test_target_action_desktop.py'
@@ -99,6 +100,8 @@ jobs:
         run: python -m unittest discover -s tests -p test_unity_export_dialog.py -v
       - name: Run Unity desktop export workflow tests (real Qt, no engine claim)
         run: python -m unittest discover -s tests -p test_unity_export_desktop.py -v
+      - name: Run private Unity animation export workflow tests
+        run: python -m unittest discover -s tests -p test_unity_animation_export_desktop.py -v
       - name: Run export compatibility report tests
         run: python -m unittest discover -s tests -p test_export_compatibility_report.py -v
       - name: Run registered target private-preview review tests (real Qt)

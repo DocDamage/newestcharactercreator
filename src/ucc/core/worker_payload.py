@@ -10,8 +10,9 @@ from pathlib import Path, PurePosixPath
 import re
 import sys
 
-POLICY = 'UCC_WORKER_PAYLOAD_V2'
+POLICY = 'UCC_WORKER_PAYLOAD_V3'
 LEGACY_POLICY = 'UCC_WORKER_PAYLOAD_V1'
+GODOT_ANIMATION_POLICY = 'UCC_WORKER_PAYLOAD_V2'
 ADAPTER_FILES = frozenset({'validate.gd', 'configure.gd', 'clay.gdshader', 'project.godot'})
 SUPPORT = 'worker_support'
 MANIFEST = 'payload.v1.json'
@@ -29,6 +30,14 @@ UNITY_ADAPTER = SUPPORT + '/adapters/unity'
 UNITY_ADAPTER_FILES = frozenset({'UccNativeNormals.cs','UccNativeMeshIdentity.cs','UccQuadSourceData.cs',
     'UccQuadNormals.compute','UccNativeSkinWarmup.shader','Editor/UccSourceWeights.cs','Editor/UccUnityImport.cs',
     'Editor/UccUnityObservation.cs','Editor/UccUnityExportJobs.cs','UccUnityRuntimeObserver.cs','Editor/UccUnityRuntimeJob.cs'})
+UNITY_REGISTERED_ANIMATION_ADAPTER = UNITY_ADAPTER + '/registered_animation'
+UNITY_REGISTERED_ANIMATION_FILES = frozenset({'Editor/UccRegisteredAnimationJob.cs',
+    'UccRegisteredAnimatorSampler.cs', 'UccRegisteredAnimationObserver.cs'})
+UNITY_REGISTERED_CORRECTION_ADAPTER = UNITY_ADAPTER + '/registered_correction'
+UNITY_REGISTERED_CORRECTION_FILES = frozenset({'Editor/UccRegisteredCorrectionJob.cs',
+    'Editor/UccRegisteredCorrectionVerify.cs', 'UccRegisteredCorrectionObserver.cs',
+    'UccRegisteredCorrection.cs', 'UccRegisteredCorrection.compute', 'UccRegisteredQuadNormals.compute'})
+UNITY_REGISTERED_CORRECTION_BINDING = 'UccRegisteredNormalsCorrectionBinding.cs'
 UNREAL_ADAPTER = SUPPORT + '/adapters/unreal'
 UNREAL_ADAPTER_FILES = frozenset({'README.md', 'project.uproject', 'DefaultEngine.ini',
     'capture_common.py', 'stage.py', 'reopen.py', 'UccNativeObservation.uplugin',
@@ -72,7 +81,7 @@ def validate_worker_payload(base: Path) -> tuple[Path, ...]:
     if (type(raw) is not dict or set(raw) != {'schema_version', 'policy', 'files', 'modules',
             'engine_import_verified', 'distribution_license_review_complete'}
             or type(raw['schema_version']) is not int
-            or (raw['schema_version'], raw['policy']) not in ((1, LEGACY_POLICY), (2, POLICY))
+            or (raw['schema_version'], raw['policy']) not in ((1, LEGACY_POLICY), (2, GODOT_ANIMATION_POLICY), (3, POLICY))
             or raw['engine_import_verified'] is not False
             or raw['distribution_license_review_complete'] is not False
             or type(raw['files']) is not dict or not 10 <= len(raw['files']) <= 512
@@ -82,10 +91,14 @@ def validate_worker_payload(base: Path) -> tuple[Path, ...]:
         raise WorkerPayloadError('Unsupported worker payload contract')
     groups = [(ADAPTER, ADAPTER_FILES), (STATIC_ADAPTER, STATIC_ADAPTER_FILES),
               (UNITY_ADAPTER, UNITY_ADAPTER_FILES), (UNREAL_ADAPTER, UNREAL_ADAPTER_FILES)]
-    if raw['schema_version'] == 2:
+    if raw['schema_version'] >= 2:
         groups.extend(((REGISTERED_CORRECTION_ADAPTER, REGISTERED_CORRECTION_FILES),
                        (REGISTERED_BODY_ADAPTER, REGISTERED_BODY_FILES),
                        (REGISTERED_PLAYBACK_ADAPTER, REGISTERED_PLAYBACK_FILES)))
+    if raw['schema_version'] >= 3:
+        groups.extend(((UNITY_REGISTERED_ANIMATION_ADAPTER, UNITY_REGISTERED_ANIMATION_FILES |
+                        {UNITY_REGISTERED_CORRECTION_BINDING}),
+                       (UNITY_REGISTERED_CORRECTION_ADAPTER, UNITY_REGISTERED_CORRECTION_FILES)))
     resources = {root + '/' + name for root, files in groups for name in files}
     paths = []
     for relative, record in raw['files'].items():

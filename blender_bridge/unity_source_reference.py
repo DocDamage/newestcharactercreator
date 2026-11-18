@@ -4,6 +4,17 @@ from blender_bridge.godot_bind_mesh import build_godot_bind_mesh,discard_godot_b
 
 
 def reference(bpy,human,rig,*,master_sha: str,request_sha: str,spec) -> tuple[dict,dict]:
+    return _reference(bpy,human,rig,master_sha=master_sha,request_sha=request_sha,
+                      policy='UCC_UNITY_ORIGINAL_BIND_REFERENCE_V1',material_spec=spec.to_dict())
+
+
+def animated_reference(bpy,human,rig,*,master_sha: str,request_sha: str) -> tuple[dict,dict]:
+    """Share exact bind preparation for the admitted unassigned-material profile."""
+    return _reference(bpy,human,rig,master_sha=master_sha,request_sha=request_sha,
+                      policy='UCC_UNITY_ANIMATED_BIND_REFERENCE_V1',material_spec=None)
+
+
+def _reference(bpy,human,rig,*,master_sha: str,request_sha: str,policy: str,material_spec) -> tuple[dict,dict]:
     candidate=build_godot_bind_mesh(bpy,human,rig)
     try:
         obj=candidate.object;mesh=obj.data;mesh.calc_loop_triangles()
@@ -20,8 +31,8 @@ def reference(bpy,human,rig,*,master_sha: str,request_sha: str,spec) -> tuple[di
             raise ValueError('Unity source differs from the admitted MPFB human topology')
         uv=mesh.uv_layers.active
         if len(mesh.uv_layers)!=1 or uv is None:raise ValueError('Unity source needs its complete original UV set')
-        result={'schema_version':1,'policy':'UCC_UNITY_ORIGINAL_BIND_REFERENCE_V1','master_sha256':master_sha,'request_sha256':request_sha,
-            'blender_version':bpy.app.version_string,'blender_build':bpy.app.build_hash.decode(),'material_spec':spec.to_dict(),
+        result={'schema_version':1,'policy':policy,'master_sha256':master_sha,'request_sha256':request_sha,
+            'blender_version':bpy.app.version_string,'blender_build':bpy.app.build_hash.decode(),'material_spec':material_spec,
             'vertices':points,'quads':quads,'triangles':[list(t.vertices) for t in mesh.loop_triangles],
             'corners':[{'vertices':list(t.vertices),'uv':[list(uv.data[i].uv) for i in t.loops]} for t in mesh.loop_triangles],
             'weights':weights,'morphs':{key.name:[list(obj.matrix_world.to_3x3()@(p.co-v.co)) for p,v in zip(key.data,mesh.vertices)]
