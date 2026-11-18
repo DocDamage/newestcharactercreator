@@ -75,6 +75,39 @@ class AuthoredIdleDesktopTests(unittest.TestCase):
             self.assertIsNone(self.window._authored_idle_context)
             author.assert_not_called()
 
+    def test_separate_target_copy_uses_saved_project_and_leaves_it_open(self):
+        original = self.window.controller.store
+        project = self.window.controller.require_project()
+        original.save(replace(project, animations=self.f.project.animations, revision=project.revision + 1),
+                      expected_revision=project.revision)
+        self.window.controller.open(original.root)
+        self.window.refresh_project()
+        original = self.window.controller.store
+        project = self.window.controller.require_project()
+        self.assertTrue(project.animations)
+        self.assertTrue(self.window.private_target_copy_action.isEnabled())
+        destination = self.f.root / 'private-target'
+        with patch('ucc.desktop.private_target_copy_workflow.QFileDialog.getExistingDirectory',
+                   return_value=str(self.f.root)), patch(
+                       'ucc.desktop.private_target_copy_workflow.QInputDialog.getText',
+                       return_value=(destination.name, True)), patch(
+                       'ucc.jobs.private_target_copy.create_private_target_copy', return_value=destination) as copy:
+            self.window.private_target_copy_action.trigger()
+            self.wait_for_jobs()
+        self.assertIs(copy.call_args.args[0], original)
+        self.assertEqual(copy.call_args.kwargs['expected_project'], project)
+        self.assertEqual(copy.call_args.kwargs['destination'], destination)
+        self.assertIs(self.window.controller.store, original)
+        self.assertIn('Open that folder', self.window.log.toPlainText())
+
+    def test_separate_target_copy_is_disabled_for_unsaved_changes(self):
+        self.assertTrue(self.window.private_target_copy_action.isEnabled())
+        self.window.rename('Unsaved character name')
+        try:
+            self.assertFalse(self.window.private_target_copy_action.isEnabled())
+        finally:
+            self.window.controller.save()
+
     def test_candidate_result_remains_visible_after_proof_failure(self):
         from ucc.desktop.authored_idle_authoring_workflow import _accepted
 

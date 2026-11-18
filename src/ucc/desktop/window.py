@@ -105,6 +105,10 @@ class MainWindow(QMainWindow):
         self.open_action = self._action(menu, "&Open character...", "Ctrl+O", self.open_project)
         self.save_action = self._action(menu, "&Save metadata", "Ctrl+S", self.save_project)
         self.save_action.setEnabled(False)
+        from .private_target_copy_workflow import start_private_target_copy
+        self.private_target_copy_action = self._action(
+            menu, 'Create separate target copy…', '', lambda: start_private_target_copy(self))
+        self.private_target_copy_action.setEnabled(False)
         from .godot_export_workflow import start_export
         self.godot_export_action=self._action(menu,'Export private Godot character…','',lambda:start_export(self))
         self.godot_export_action.setEnabled(False)
@@ -267,6 +271,8 @@ class MainWindow(QMainWindow):
         from .facial_sprite_workflow import refresh_facial_sprite
         refresh_facial_sprite(self)
         self.save_action.setEnabled(state.dirty and not self.jobs.busy)
+        from .private_target_copy_workflow import refresh_private_target_copy
+        refresh_private_target_copy(self)
         self.undo_action.setEnabled(state.can_undo and not self.jobs.busy)
         self.redo_action.setEnabled(state.can_redo and not self.jobs.busy)
         self.statusBar().showMessage(
@@ -516,6 +522,11 @@ class MainWindow(QMainWindow):
         if busy and self._work_kind in {'registered_native_body','registered_native_playback'}:
             self.cancel_generation_action.setEnabled(True)
             self.statusBar().showMessage('Validating registered source rights and private native skin...')
+        from .private_target_copy_workflow import KIND as PRIVATE_TARGET_COPY, refresh_private_target_copy
+        refresh_private_target_copy(self)
+        if busy and self._work_kind == PRIVATE_TARGET_COPY:
+            self.cancel_generation_action.setEnabled(True)
+            self.statusBar().showMessage('Creating and verifying the separate target copy...')
         if not busy:
             resume_target_action(self)
 
@@ -536,6 +547,10 @@ class MainWindow(QMainWindow):
             resume_unreal_source_review(self)
 
     def _job_success(self, result: object) -> None:
+        from .private_target_copy_workflow import KIND as PRIVATE_TARGET_COPY, finish_private_target_copy
+        if self._work_kind == PRIVATE_TARGET_COPY:
+            finish_private_target_copy(self, result)
+            return
         from .registered_native_workflow import RegisteredNativeCompletion, finish_registered_native
         if (isinstance(result, RegisteredNativeCompletion)
                 or self._work_kind in {'registered_native_body','registered_native_playback'}):
@@ -1180,7 +1195,11 @@ class MainWindow(QMainWindow):
     def cancel_generation(self) -> None:
         if self.jobs.cancel():
             from .authored_idle_authoring_workflow import KINDS as IDLE_AUTHORING_KINDS
+            from .private_target_copy_workflow import KIND as PRIVATE_TARGET_COPY
             from .target_action_workflow import KINDS
+            if self._work_kind == PRIVATE_TARGET_COPY:
+                self.statusBar().showMessage('Cancellation requested. Waiting for the target copy to stop.')
+                return
             if self._work_kind in IDLE_AUTHORING_KINDS:
                 self.statusBar().showMessage('Cancellation requested. Waiting for the original idle operation to stop.')
                 return
