@@ -8,7 +8,7 @@ from blender_bridge.godot_bind_mesh import build_godot_bind_mesh, discard_godot_
 from blender_bridge.triangulated_export import discard_triangulated_copy, triangulated_copy
 from blender_bridge.unity_animation_take import export_take
 from blender_bridge.unreal_source_reference import portable_export_header
-from ucc.export.unity_animation_recipe import VIRTUAL_FRAME
+from ucc.export.unreal_animation_recipe import FBX_BASIS_MODEL, VIRTUAL_FRAME
 from ucc.export.unreal_blender_recipe import EXPORT_OPTIONS
 
 
@@ -49,8 +49,8 @@ def serialize_prepared_animated_fbx(bpy: Any, mesh: Any, rig: Any, path: Path) -
     """Export an already prepared triangle mesh and a private copy of its bound rig."""
     if path.suffix.lower() != '.fbx' or path.exists() or path.is_symlink():
         raise ValueError('Unreal animation needs a fresh FBX destination')
-    if bpy.data.objects.get('Armature') is not None:
-        raise ValueError('Reserved Unreal export Armature object name is occupied')
+    if bpy.data.objects.get(FBX_BASIS_MODEL) is not None:
+        raise ValueError('Reserved Unreal animation basis name is occupied')
     if (rig.type != 'ARMATURE' or rig.data.pose_position != 'POSE' or mesh.type != 'MESH'
             or len(mesh.modifiers) != 1 or mesh.modifiers[0].type != 'ARMATURE'
             or mesh.modifiers[0].object != rig or not mesh.data.polygons
@@ -64,7 +64,8 @@ def serialize_prepared_animated_fbx(bpy: Any, mesh: Any, rig: Any, path: Path) -
         export_rig = rig.copy()
         armature = rig.data.copy()
         export_rig.data = armature
-        export_rig.name = 'Armature'
+        # Unreal's legacy importer strips the special Armature name.
+        export_rig.name = FBX_BASIS_MODEL
         export_rig.parent = None
         export_rig.matrix_world = rig.matrix_world.copy()
         scene.collection.objects.link(export_rig)

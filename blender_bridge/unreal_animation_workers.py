@@ -14,7 +14,7 @@ from blender_bridge.unreal_animation_take import export_animated_fbx
 from blender_bridge.unreal_fbx_metadata import validate_portable_header
 from ucc.export.godot_candidate_contract import canonical_bytes
 from ucc.export.unreal_animation_recipe import (
-    BIND, FBX, FBX_SNAPSHOT, OUTPUT_LIMITS, POLICY, REFERENCES, STAGE, STAGE_REPORT, VERIFY_REPORT,
+    BIND, FBX, FBX_BASIS_MODEL, FBX_SNAPSHOT, OUTPUT_LIMITS, POLICY, REFERENCES, STAGE, STAGE_REPORT, VERIFY_REPORT,
     output_option, source_report, validate_binding, validate_job,
 )
 
@@ -39,6 +39,15 @@ def _check_export_profile(path: Path) -> None:
     if (len(axis) != len(AXIS_AND_UNIT_SETTINGS)
             or {node.props[0]: node.props[-1] for node in axis} != AXIS_AND_UNIT_SETTINGS or takes != 1):
         raise ValueError('Unreal animated FBX must use the exact centimetre axes and one take')
+    nulls = [node for node in objects.elems if node.id == b'Model' and node.props[2] == b'Null']
+    if len(nulls) != 1 or nulls[0].props[1].split(b'\x00\x01')[0] != FBX_BASIS_MODEL.encode('ascii'):
+        raise ValueError('Unreal animated FBX must retain the explicit basis model')
+    basis_id = nulls[0].props[0]
+    clusters = {node.props[0] for node in objects.elems if node.id == b'Deformer' and node.props[2] == b'Cluster'}
+    connections, = (node for node in root.elems if node.id == b'Connections')
+    if any(node.id == b'C' and node.props[0] == b'OO' and node.props[1] == basis_id and node.props[2] in clusters
+           for node in connections.elems):
+        raise ValueError('Unreal animated FBX basis model must be unweighted')
 
 
 def _bind_reference(bpy, donor, rig, options: dict) -> dict:

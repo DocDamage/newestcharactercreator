@@ -20,6 +20,7 @@ REFERENCES = {
     'unreal_animated_world_bones.f32': SOURCE_FRAMES * BONES * 16 * 4,
 }
 FBX = 'animated_character.fbx'
+FBX_BASIS_MODEL = 'UccAnimationBasis'
 BIND = 'unreal_animated_bind.json'
 STAGE_REPORT = 'unreal_animated_source_stage.json'
 VERIFY_REPORT = 'unreal_animated_source_verification.json'
@@ -33,7 +34,7 @@ OUTPUT_LIMITS = {
 def source_report(options: dict, files: dict, *, fbx_readback_sha256: str | None = None) -> dict:
     reopened = fbx_readback_sha256 is not None
     report = {
-        'schema_version': 1, 'policy': POLICY, 'fbx_profile': PROFILE,
+        'schema_version': 1, 'policy': POLICY, 'fbx_profile': PROFILE, 'fbx_basis_model': FBX_BASIS_MODEL,
         'target_binding_sha256': options['target_binding_sha256'],
         'master_sha256': options['master_sha256'], 'files': files,
         'source_samples': SOURCE_FRAMES, 'fps': FPS, 'virtual_endpoint': VIRTUAL_FRAME,

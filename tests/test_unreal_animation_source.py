@@ -35,6 +35,8 @@ class RegisteredUnrealAnimationTests(unittest.TestCase):
         report = unreal.source_report(self.options, self.files)
         self.assertIs(report['blender_fbx_reimport_verified'], False)
         final = unreal.source_report(self.options, self.files, fbx_readback_sha256='c' * 64)
+        self.assertEqual(report['fbx_basis_model'], 'UccAnimationBasis')
+        self.assertEqual(final['fbx_basis_model'], report['fbx_basis_model'])
         self.assertEqual((final['source_samples'], final['virtual_endpoint'], final['fps']), (300, 301, 30))
         self.assertIs(final['blender_fbx_reimport_verified'], True)
         self.assertIs(final['recomputed_source_references'], True)
