@@ -14,7 +14,7 @@ from ucc.core.material_master_intent import supports_material_master_intent
 from ucc.jobs.static_export_sources import static_export_sources
 from ucc.jobs.export_destination import plan_destination
 from ucc.jobs.godot_candidate_inputs import regular_file, identity, read_json
-from ucc.jobs.master_preview import _digest
+from .export_compatibility_report import ExportProfile, show_export_compatibility
 from .unreal_export_dialog import UnrealExportDialog
 
 
@@ -235,9 +235,7 @@ def finish_unreal_export(window, result):
         # The transaction verifies the entire final payload on its worker before returning.
         # Confirm only the bounded receipt here so large mesh hashing cannot freeze Qt.
         receipt = regular_file(result.destination/'export_receipt.json', result.destination, 2*1024*1024)
-        if _digest(receipt) != result.receipt_sha256:
-            raise ValidationError('Unreal export receipt changed after final verification')
-        record = read_json(receipt, 2*1024*1024)
+        record = read_json(receipt, 2*1024*1024, expected_sha256=result.receipt_sha256)
         if (type(record.get('schema_version')) is not int or record['schema_version'] != 1
                 or record.get('policy') != 'UCC_UNREAL_EXPORT_TRANSACTION_V1'
                 or record.get('request_sha256') != result.request_sha256
@@ -262,6 +260,7 @@ def finish_unreal_export(window, result):
             'No animation clips are included. Editable master and history were preserved. '
             'Shader/GPU rendering, PIE, player builds, visual quality and public distribution remain unapproved.')
         window.statusBar().showMessage('Private Unreal export verified; review the project and retained receipt')
+        show_export_compatibility(window, ExportProfile.UNREAL, result.destination)
     except (UCCError, OSError, ValueError, TypeError, KeyError) as error:
         window._error('Unreal output could not be confirmed. Inspect retained logs and receipt: '+str(error))
 
