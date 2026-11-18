@@ -1,15 +1,31 @@
 name: MPFB 2.0.18 / Blender 5.3 Linux smoke (experimental)
+run-name: ${{ github.event_name == 'workflow_dispatch' && inputs.checksum_receipt_only && 'METADATA ONLY - Blender checksum receipt' || github.event_name == 'workflow_dispatch' && inputs.archive_cache_only && 'PUBLIC ARCHIVE CACHE ONLY - no Blender/domain execution' || 'MPFB Blender 5.3 Linux integration' }}
 
 # Integration investigation only. Pull requests touching this workflow or MPFB
 # bridge can run a real Linux smoke; does not prove Windows compatibility.
 on:
   workflow_dispatch:
+    inputs:
+      checksum_receipt_only:
+        description: 'Metadata only: fetch public official checksum; run no Blender or domain suites'
+        type: boolean
+        default: false
+      archive_cache_only:
+        description: 'Public tool archive cache only: no extraction, Blender or domain execution'
+        type: boolean
+        default: false
   pull_request:
     paths:
       - '.github/workflows/mpfb-cloud-smoke.yml'
       - 'blender_bridge/**'
       - 'Stage0_Starter/blender_bridge/**'
       - 'Stage0_Starter/tools/run_mpfb_smoke.py'
+      - 'ci/blender_archive_cache.py'
+      - 'ci/fetch_blender_archive.sh'
+      - 'tests/test_blender_archive_cache.py'
+      - 'ci/blender_checksum_receipt.py'
+      - 'tests/test_blender_checksum_receipt.py'
+      - 'tests/fixtures/ci_blender_checksum.py'
       - 'ci/verify_production_worker.py'
       - 'ci/verify_project_generation.py'
       - 'ci/verify_custom_face.py'
@@ -119,6 +135,12 @@ on:
       - 'blender_bridge/**'
       - 'Stage0_Starter/blender_bridge/**'
       - 'Stage0_Starter/tools/run_mpfb_smoke.py'
+      - 'ci/blender_archive_cache.py'
+      - 'ci/fetch_blender_archive.sh'
+      - 'tests/test_blender_archive_cache.py'
+      - 'ci/blender_checksum_receipt.py'
+      - 'tests/test_blender_checksum_receipt.py'
+      - 'tests/fixtures/ci_blender_checksum.py'
       - 'ci/verify_production_worker.py'
       - 'ci/verify_project_generation.py'
       - 'ci/verify_custom_face.py'
@@ -230,7 +252,91 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  record-blender-checksum:
+    name: Metadata only - official Blender checksum; no Blender execution
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.checksum_receipt_only }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch at most 64 KiB of public official checksum metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          directory="$RUNNER_TEMP/ucc-blender-checksum-receipt"
+          mkdir -p "$directory"
+          source_url="https://download.blender.org/release/Blender5.3/blender-5.3.0.sha256?ucc_ci=${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-checksum-receipt"
+          effective_url="$(curl --fail --location --proto '=https' --proto-redir '=https' \
+            --retry 3 --retry-all-errors --retry-delay 10 --connect-timeout 20 \
+            --max-time 60 --retry-max-time 180 --max-filesize 65536 --silent --show-error \
+            --output "$directory/official.sha256" --write-out '%{url_effective}' "$source_url")"
+          python3 ci/blender_checksum_receipt.py \
+            --input "$directory/official.sha256" --out "$directory/receipt.json" \
+            --source-url "$source_url" --effective-url "$effective_url" \
+            --head-sha "$GITHUB_SHA" --run-id "$GITHUB_RUN_ID" --run-attempt "$GITHUB_RUN_ATTEMPT"
+      - name: Retain only the public metadata receipt; no tool archive or private files
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-blender-checksum-metadata-only
+          path: ${{ runner.temp }}/ucc-blender-checksum-receipt/receipt.json
+          if-no-files-found: error
+          retention-days: 3
+
+  prepare-blender-linux:
+    name: Prepare exact pinned Blender 5.3.0 public archive cache
+    if: ${{ !inputs.checksum_receipt_only }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    outputs:
+      cache_key: ${{ steps.pin.outputs.cache_key }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve reviewed version and archive SHA cache key
+        id: pin
+        run: python3 ci/blender_archive_cache.py cache-key >> "$GITHUB_OUTPUT"
+      - name: Restore only the exact public archive cache
+        id: archive
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5
+        env:
+          SEGMENT_DOWNLOAD_TIMEOUT_MINS: '2'
+        with:
+          key: ${{ steps.pin.outputs.cache_key }}
+          path: ${{ runner.temp }}/ucc-blender-archive
+      - name: Reject partial or unexpected cache identities
+        env:
+          CACHE_HIT: ${{ steps.archive.outputs.cache-hit }}
+          MATCHED_KEY: ${{ steps.archive.outputs.cache-matched-key }}
+        run: python3 ci/blender_archive_cache.py check-restore --cache-hit "$CACHE_HIT" --matched-key "$MATCHED_KEY" --allow-miss
+      - name: Fetch one pinned official archive pair on exact cache miss
+        if: steps.archive.outputs.cache-hit != 'true'
+        run: bash ci/fetch_blender_archive.sh "$RUNNER_TEMP/ucc-blender-archive"
+      - name: Rehash exact archive and official checksum on both miss and hit
+        run: python3 ci/blender_archive_cache.py verify --directory "$RUNNER_TEMP/ucc-blender-archive"
+      - name: Publish only the verified public tar and checksum
+        if: steps.archive.outputs.cache-hit != 'true'
+        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          key: ${{ steps.pin.outputs.cache_key }}
+          path: ${{ runner.temp }}/ucc-blender-archive
+      - name: Confirm exact cache publication before releasing consumers
+        id: publication
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5
+        env:
+          SEGMENT_DOWNLOAD_TIMEOUT_MINS: '2'
+        with:
+          key: ${{ steps.pin.outputs.cache_key }}
+          path: ${{ runner.temp }}/ucc-blender-archive
+          lookup-only: true
+          fail-on-cache-miss: true
+      - name: Require the exact published key
+        env:
+          CACHE_HIT: ${{ steps.publication.outputs.cache-hit }}
+          MATCHED_KEY: ${{ steps.publication.outputs.cache-matched-key }}
+        run: python3 ci/blender_archive_cache.py check-restore --cache-hit "$CACHE_HIT" --matched-key "$MATCHED_KEY"
+
   verify-mpfb-linux:
+    needs: prepare-blender-linux
+    if: ${{ !inputs.checksum_receipt_only && !inputs.archive_cache_only }}
     name: ${{ matrix.suite == 'regression' && 'verify-mpfb-linux' || matrix.suite == 'native-fit' && 'verify-native-fit-linux' || matrix.suite == 'symmetric-fit' && 'verify-symmetric-fit-linux' || matrix.suite == 'regional-skin' && 'verify-regional-skin-linux' || matrix.suite == 'source-references' && 'verify-source-references-linux' || matrix.suite == 'reference-creator' && 'verify-reference-creator-linux' || 'verify-body-contacts-linux' }}
     runs-on: ubuntu-24.04
     strategy:
@@ -284,28 +390,30 @@ jobs:
           printf 'BLENDER_USER_CONFIG=%s\n' "$RUNNER_TEMP/ucc-blender-config" >> "$GITHUB_ENV"
           printf 'BLENDER_USER_SCRIPTS=%s\n' "$RUNNER_TEMP/ucc-blender-scripts" >> "$GITHUB_ENV"
           mkdir -p "$RUNNER_TEMP/ucc-blender-config" "$RUNNER_TEMP/ucc-blender-scripts"
-      - name: Download Blender 5.3.0 and check official SHA-256
+      - name: Restore the producer's exact pinned public archive
+        id: blender_archive
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5
+        env:
+          SEGMENT_DOWNLOAD_TIMEOUT_MINS: '2'
+        with:
+          key: ${{ needs.prepare-blender-linux.outputs.cache_key }}
+          path: ${{ runner.temp }}/ucc-blender-archive
+          fail-on-cache-miss: true
+      - name: Require exact restore and rehash before extraction
         shell: bash
+        env:
+          CACHE_HIT: ${{ steps.blender_archive.outputs.cache-hit }}
+          MATCHED_KEY: ${{ steps.blender_archive.outputs.cache-matched-key }}
         run: |
           set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/ucc-blender" "$BLENDER_USER_CONFIG" "$BLENDER_USER_SCRIPTS"
-          cd "$RUNNER_TEMP/ucc-blender"
-          origin='https://download.blender.org/release/Blender5.3'
-          # Unique public requests test the repeated cached-403 failure while
-          # retaining the exact official archive path and strict checksum.
-          request_id="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${{ matrix.suite }}"
-          # The public origin intermittently returns HTTP 403 on individual
-          # runners. Default curl retries do not retry that status. Retain the
-          # official origin/checksum and bound retries and stalled transfers.
-          curl --fail --location --retry 3 --retry-all-errors --retry-delay 10 \
-            --connect-timeout 20 --max-time 180 --retry-max-time 360 --silent --show-error \
-            "$origin/blender-5.3.0-linux-x64.tar.xz?ucc_ci=$request_id" -o blender-5.3.0-linux-x64.tar.xz
-          curl --fail --location --retry 3 --retry-all-errors --retry-delay 10 \
-            --connect-timeout 20 --max-time 60 --retry-max-time 180 --silent --show-error \
-            "$origin/blender-5.3.0.sha256?ucc_ci=$request_id" -o blender-5.3.0.sha256
-          grep -E '^[a-fA-F0-9]{64} [ *]blender-5\.3\.0-linux-x64\.tar\.xz$' blender-5.3.0.sha256 | sha256sum --check --strict
-          tar -xf blender-5.3.0-linux-x64.tar.xz
-          executable="$(find "$PWD" -maxdepth 3 -type f -name blender | head -n 1)"
+          python3 ci/blender_archive_cache.py check-restore --cache-hit "$CACHE_HIT" --matched-key "$MATCHED_KEY"
+          python3 ci/blender_archive_cache.py verify --directory "$RUNNER_TEMP/ucc-blender-archive"
+          mkdir -p "$RUNNER_TEMP/ucc-blender"
+          # Both files have already been independently checked against reviewed
+          # fixed digests. Keep the existing strict platform checksum check too.
+          (cd "$RUNNER_TEMP/ucc-blender-archive" && grep -E '^[a-fA-F0-9]{64} [ *]blender-5\.3\.0-linux-x64\.tar\.xz$' blender-5.3.0.sha256 | sha256sum --check --strict)
+          tar -xf "$RUNNER_TEMP/ucc-blender-archive/blender-5.3.0-linux-x64.tar.xz" -C "$RUNNER_TEMP/ucc-blender"
+          executable="$(find "$RUNNER_TEMP/ucc-blender" -maxdepth 3 -type f -name blender | head -n 1)"
           test -n "$executable" && test -x "$executable"
           "$executable" --background --version | head -n 5
           echo "BLENDER_EXE=$executable" >> "$GITHUB_ENV"
@@ -313,6 +421,7 @@ jobs:
         shell: bash
         run: |
           echo "Blender 5.3.0 source: https://download.blender.org/release/Blender5.3/" >> "$GITHUB_STEP_SUMMARY"
+          echo "Pinned public archive cache: exact SHA-256 checked before extraction on every runner." >> "$GITHUB_STEP_SUMMARY"
           echo "MPFB official extension: https://extensions.blender.org/add-ons/mpfb/" >> "$GITHUB_STEP_SUMMARY"
           echo "Success requires a real mesh, rig, and separate-process reopen; synthetic tests do not count." >> "$GITHUB_STEP_SUMMARY"
       - name: Install only official MPFB Blender extension
