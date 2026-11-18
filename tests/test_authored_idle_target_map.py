@@ -4,6 +4,7 @@ from dataclasses import replace
 import json
 from pathlib import Path
 import tempfile
+from threading import Event
 import unittest
 from unittest.mock import patch
 
@@ -20,7 +21,7 @@ from ucc.jobs.animation_reference_storage import publish_source_binding
 from ucc.jobs.authored_idle import author_original_idle
 from ucc.jobs.authored_idle_loop_proof import publish_authored_idle_loop_proof
 from ucc.jobs.authored_idle_target_map import MAPPING_FILENAME, publish_authored_idle_target_mapping
-from ucc.jobs.authored_idle_transactions import IdlePublication
+from ucc.jobs.authored_idle_transactions import IdlePublication, rename_new
 from ucc.jobs.catalog_clip import _saved_reference
 from ucc.jobs.export_destination import plan_destination
 from ucc.jobs.target_action_context import review_target_action_source
@@ -142,3 +143,43 @@ class AuthoredIdleTargetMapTests(unittest.TestCase):
                 self.publish()
         self.assertFalse(self.output.exists())
         self.assertFalse(list(self.root.glob('.ucc-export-*')))
+
+    def publish_with_rename_hook(self, after_rename, **changes):
+        def rename_then_act(source, target):
+            rename_new(source, target)
+            if target == self.output:
+                after_rename()
+
+        with patch('ucc.jobs.authored_idle_transactions.rename_new', rename_then_act):
+            return self.publish(**changes)
+
+    def test_withdraws_owned_map_when_original_policy_changes_at_rename(self):
+        policy = self.source.policy
+        original = policy.read_bytes()
+        self.addCleanup(policy.write_bytes, original)
+        with self.assertRaisesRegex(ProjectStorageError, 'authority changed'):
+            self.publish_with_rename_hook(lambda: policy.write_bytes(original + b' '))
+        self.assertFalse(self.output.exists())
+        self.assertFalse(list(self.root.glob('.ucc-export-*')))
+
+    def test_withdraws_owned_map_when_cancelled_at_rename(self):
+        cancel = Event()
+        with self.assertRaisesRegex(ProjectStorageError, 'cancelled'):
+            self.publish_with_rename_hook(cancel.set, cancel=cancel)
+        self.assertFalse(self.output.exists())
+        self.assertFalse(list(self.root.glob('.ucc-export-*')))
+
+    def test_reports_retained_folder_when_published_map_was_changed(self):
+        cancel = Event()
+        path = self.output/MAPPING_FILENAME
+
+        def change_output_and_cancel():
+            path.write_bytes(b'')
+            cancel.set()
+
+        with self.assertRaisesRegex(ProjectStorageError, 'cancelled') as failure:
+            self.publish_with_rename_hook(change_output_and_cancel, cancel=cancel)
+        self.assertEqual(path.read_bytes(), b'')
+        notes = failure.exception.__notes__
+        self.assertTrue(any(f'Private idle output retained at {self.output}' in note for note in notes))
+        self.assertFalse(any('document staging retained' in note for note in notes))
