@@ -190,6 +190,7 @@ def _admitted_idle_candidate(store, directory, expected_receipt_sha256, source_p
             'Idle delivered byte closure changed')
         inspection = AuthoredIdleInspectionRequest.from_bytes(_raw(directory/'idle_inspection_request.json', receipt['inspection_request_sha256'], budget, 256*1024))
         author = AuthoredIdleRequest.from_bytes(_raw(directory/'idle_authoring_request.json', receipt['authoring_request_sha256'], budget, 256*1024))
+        need(author.profile == inspection.profile, 'Idle authoring recipe profile differs from the admitted inspection')
         need(author.project_snapshot_json == inspection.project_snapshot_json and author.permissions == inspection.permissions
             and author.purpose == inspection.purpose and author.target.to_dict() == receipt['target']
             and author.anatomical_frame_sha256 == receipt['anatomical_frame_sha256'], 'Idle author intent differs from its admitted inspection')

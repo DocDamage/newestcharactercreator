@@ -146,7 +146,7 @@ def _accepted(window, context, dialog):
         worker = bundled_worker_path()
         request = AuthoredIdleInspectionRequest(str(uuid4()), canonical_bytes(context.project.to_dict()),
             choice.permissions, choice.purpose, choice.original_procedural_recipe_declared,
-            choice.private_authored_output_preview_confirmed)
+            choice.private_authored_output_preview_confirmed, profile=choice.profile)
         destination = plan_destination(choice.candidate_destination, context.store.root)
         proof = plan_destination(choice.proof_destination, context.store.root) if choice.proof_destination else None
         if proof is not None and (proof.path.is_relative_to(destination.path) or destination.path.is_relative_to(proof.path)):

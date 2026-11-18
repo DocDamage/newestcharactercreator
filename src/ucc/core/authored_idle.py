@@ -22,9 +22,11 @@ POLICY = 'UCC_ORIGINAL_PROCEDURAL_IDLE_CANDIDATE_V1'
 INSPECTION_POLICY = 'UCC_ORIGINAL_IDLE_NEUTRAL_INSPECTION_V1'
 AUTHORING_USE = 'PRIVATE_LOCAL_IDLE_AUTHORING_AND_DERIVED_RIG_V1'
 PROFILE = 'MPFB_RELAXED_STANDING_IDLE_V1'
+CLEAR_IDLE_PROFILE = 'MPFB_CLEAR_STANDING_IDLE_V1'
 FRAME_POLICY = 'MEASURED_RIGHT_HANDED_ANATOMICAL_FRAME_V1'
 BASELINE_POLICY = 'MEASURED_T_POSE_TO_RELAXED_STANDING_V1'
 PERIOD_POLICY = 'UNIQUE_300_SAMPLES_ANALYTIC_PERIODIC_V1'
+_PROFILE_AMPLITUDES = {PROFILE: (0.5, -0.25, 0.5), CLEAR_IDLE_PROFILE: (3.0, -1.5, 3.0)}
 
 _FIXED_FLAGS = (
     ('private_local_only', True),
@@ -105,7 +107,11 @@ def baseline_spec() -> dict:
     }
 
 
-def periodic_spec() -> dict:
+def _check_profile(profile: str) -> None:
+    require(type(profile) is str and profile in _PROFILE_AMPLITUDES, 'Choose a supported original idle recipe profile')
+
+
+def periodic_spec(profile: str = PROFILE) -> dict:
     """A closed original motion function, with no expression evaluator.
 
     Offsets are anatomical rotations relative to the SOLVED relaxed baseline.
@@ -113,14 +119,16 @@ def periodic_spec() -> dict:
     phase(k)=2*pi*k/300, k=target_frame-1. One ten-second cycle is sampled at
     k=0..299; k=300 is a quality probe, not an appended duplicate keyframe.
     """
+    _check_profile(profile)
+    torso, head, elbow = _PROFILE_AMPLITUDES[profile]
     return {
         'policy': PERIOD_POLICY,
         'basis': 'ONE_CYCLE_SINE_WITH_ZERO_PHASE',
         'rotation_composition': 'ANATOMICAL_OFFSETS_AFTER_SOLVED_BASELINE',
         'cycles_per_period': 1,
-        'torso_forward_pitch_amplitude_deg': 0.5,
-        'head_counter_pitch_amplitude_deg': -0.25,
-        'bilateral_elbow_flex_amplitude_deg': 0.5,
+        'torso_forward_pitch_amplitude_deg': torso,
+        'head_counter_pitch_amplitude_deg': head,
+        'bilateral_elbow_flex_amplitude_deg': elbow,
         'other_offsets': 'ZERO',
         'root_and_lower_chain_offsets': 'ZERO',
         'quaternion_policy': 'NORMALIZED_SIGN_CONTINUOUS_THROUGH_VIRTUAL_SEAM',
@@ -266,9 +274,11 @@ class AuthoredIdleInspectionRequest:
     purpose: str
     original_procedural_recipe_declared: bool
     private_authored_output_preview_confirmed: bool
+    profile: str = PROFILE
 
     def __post_init__(self) -> None:
         checked_uuid(self.job_id)
+        _check_profile(self.profile)
         project = _saved_project(self.project_snapshot_json)
         _authoring_review(self.permissions, saved_authoring_sources(project), self.purpose,
             self.original_procedural_recipe_declared, self.private_authored_output_preview_confirmed)
@@ -284,7 +294,7 @@ class AuthoredIdleInspectionRequest:
 
     def to_dict(self) -> dict:
         return {
-            'schema_version': 1, 'policy': INSPECTION_POLICY, 'profile': PROFILE,
+            'schema_version': 1, 'policy': INSPECTION_POLICY, 'profile': self.profile,
             'job_id': self.job_id, 'project_snapshot': read_document(self.project_snapshot_json),
             'project_snapshot_sha256': sha256(self.project_snapshot_json).hexdigest(),
             'consumed_sources': dict(saved_authoring_sources(self.project)),
@@ -309,7 +319,7 @@ class AuthoredIdleInspectionRequest:
         result = cls(value['job_id'], canonical_bytes(value['project_snapshot']),
             tuple(IdleAuthoringPermission.from_dict(item) for item in value['permissions']),
             value['purpose'], value['original_procedural_recipe_declared'],
-            value['private_authored_output_preview_confirmed'])
+            value['private_authored_output_preview_confirmed'], profile=value['profile'])
         require(canonical_bytes(value) == canonical_bytes(result.to_dict()),
                 'Idle inspection changed a closed input, use, phase or readiness field')
         return result
@@ -329,6 +339,7 @@ class AuthoredIdleRequest:
     purpose: str
     original_procedural_recipe_declared: bool
     private_authored_output_preview_confirmed: bool
+    profile: str = PROFILE
 
     def __post_init__(self) -> None:
         checked_uuid(self.job_id)
@@ -348,7 +359,7 @@ class AuthoredIdleRequest:
 
     def to_dict(self) -> dict:
         return {
-            'schema_version': 1, 'policy': POLICY, 'profile': PROFILE,
+            'schema_version': 1, 'policy': POLICY, 'profile': self.profile,
             'job_id': self.job_id, 'project_snapshot': read_document(self.project_snapshot_json),
             'project_snapshot_sha256': sha256(self.project_snapshot_json).hexdigest(),
             'target': self.target.to_dict(), 'anatomical_frame_sha256': self.anatomical_frame_sha256,
@@ -357,7 +368,7 @@ class AuthoredIdleRequest:
             'purpose': self.purpose,
             'original_procedural_recipe_declared': self.original_procedural_recipe_declared,
             'private_authored_output_preview_confirmed': self.private_authored_output_preview_confirmed,
-            'clock': clock_spec(), 'baseline': baseline_spec(), 'periodic_motion': periodic_spec(),
+            'clock': clock_spec(), 'baseline': baseline_spec(), 'periodic_motion': periodic_spec(self.profile),
             'required_quality': required_quality_spec(), **dict(_FIXED_FLAGS),
         }
 
@@ -373,7 +384,7 @@ class AuthoredIdleRequest:
             TargetActionTarget.from_dict(value['target']), value['anatomical_frame_sha256'],
             tuple(IdleAuthoringPermission.from_dict(item) for item in value['permissions']),
             value['purpose'], value['original_procedural_recipe_declared'],
-            value['private_authored_output_preview_confirmed'])
+            value['private_authored_output_preview_confirmed'], profile=value['profile'])
         require(canonical_bytes(value) == canonical_bytes(result.to_dict()),
                 'Idle candidate changed its closed recipe, clock, source, target, or readiness policy')
         return result

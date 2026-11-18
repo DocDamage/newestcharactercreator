@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+from ucc.core.authored_idle import CLEAR_IDLE_PROFILE, PROFILE
 from ucc.core.target_action_format import canonical_bytes
 from ucc.jobs.authored_idle_policy import FLAGS, POLICY
 from ucc.jobs.authored_idle_sources import IdleAuthoringSource
@@ -88,6 +89,18 @@ class AuthoredIdleAuthoringDialogTests(unittest.TestCase):
                          [row.sha256 for row in choice.source_policy_records])
         self.assertEqual(choice.candidate_destination, self.root/'authored candidate')
         self.assertIsNone(choice.proof_destination)
+        self.assertEqual(choice.profile, CLEAR_IDLE_PROFILE)
+
+    def test_switching_movement_requires_consent_for_the_selected_recipe(self):
+        self.make_ready()
+        dialog = self.dialog
+        dialog.profile.setCurrentIndex(dialog.profile.findData(PROFILE))
+        self.assertFalse(dialog.recipe.isChecked())
+        self.assertTrue(dialog.preview.isChecked())
+        self.assertFalse(dialog.create_button.isEnabled())
+        dialog.recipe.click()
+        dialog.create_button.click()
+        self.assertEqual(dialog.choice.profile, PROFILE)
 
     def test_cancelled_picker_preserves_choice_and_wrong_role_revokes_it(self):
         dialog = self.dialog

@@ -12,7 +12,7 @@ from fixtures.authored_idle_contract import (
     inspection, metadata, request, saved_project, synthetic_mpfb_axes, with_project,
 )
 from ucc.core.authored_idle import (
-    AuthoredIdleInspectionRequest, AuthoredIdleRequest, IdleAuthoringPermission,
+    CLEAR_IDLE_PROFILE, PROFILE, AuthoredIdleInspectionRequest, AuthoredIdleRequest, IdleAuthoringPermission,
     baseline_spec, clock_spec, consumed_sources, periodic_spec, saved_authoring_sources,
 )
 from ucc.core.errors import ValidationError
@@ -21,6 +21,38 @@ from ucc.core.target_action_format import CLOCK, canonical_bytes
 
 
 class AuthoredIdleContractTests(unittest.TestCase):
+    def test_existing_default_requests_keep_their_exact_canonical_bytes(self):
+        earlier = ((inspection(), '507e47466ca676a06640e2c518c33f1f508297853c83e8d6e82c60ad67138d32'),
+                   (request(), '10852116f21072ae857199b7b902dd36f0dd244a823ca2a5efe00fcd509a35d6'))
+        for intent, original_sha in earlier:
+            with self.subTest(phase=type(intent).__name__):
+                self.assertEqual(intent.profile, PROFILE)
+                self.assertEqual(intent.sha256, original_sha)
+                self.assertEqual(type(intent).from_bytes(canonical_bytes(intent.to_dict())), intent)
+
+    def test_clear_recipe_only_changes_named_profile_and_bounded_amplitudes(self):
+        first, author = (replace(item, profile=CLEAR_IDLE_PROFILE) for item in (inspection(), request()))
+        self.assertEqual(AuthoredIdleInspectionRequest.from_dict(first.to_dict()), first)
+        self.assertEqual(AuthoredIdleRequest.from_dict(author.to_dict()), author)
+        self.assertEqual(first.to_dict(), inspection().to_dict() | {'profile': CLEAR_IDLE_PROFILE})
+        revised = periodic_spec() | {'torso_forward_pitch_amplitude_deg': 3.0,
+            'head_counter_pitch_amplitude_deg': -1.5, 'bilateral_elbow_flex_amplitude_deg': 3.0}
+        self.assertEqual(author.to_dict(), request().to_dict() |
+                         {'profile': CLEAR_IDLE_PROFILE, 'periodic_motion': revised})
+        self.assertEqual(author.to_dict()['clock'], clock_spec())
+        self.assertFalse(author.to_dict()['usable_action_approved'])
+
+    def test_unknown_profiles_and_amplitude_substitutions_fail_closed(self):
+        for intent in (inspection(), request()):
+            for forged in ('MPFB_CUSTOM_IDLE', [], True):
+                with self.subTest(phase=type(intent).__name__, profile=forged), self.assertRaises(ValidationError):
+                    type(intent).from_dict(intent.to_dict() | {'profile': forged})
+        for candidate in (request(), replace(request(), profile=CLEAR_IDLE_PROFILE)):
+            other_profile = PROFILE if candidate.profile == CLEAR_IDLE_PROFILE else CLEAR_IDLE_PROFILE
+            forged = candidate.to_dict() | {'periodic_motion': periodic_spec(other_profile)}
+            with self.subTest(profile=candidate.profile), self.assertRaises(ValidationError):
+                AuthoredIdleRequest.from_dict(forged)
+
     def test_anatomical_forward_is_anterior_not_backward_for_public_mpfb_convention(self):
         points = synthetic_mpfb_axes()
         right = tuple(r-l for r,l in zip(points['right_shoulder'], points['left_shoulder']))

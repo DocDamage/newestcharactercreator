@@ -7,11 +7,11 @@ import re
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QCheckBox, QDialog, QDialogButtonBox, QFileDialog, QFormLayout, QGroupBox,
+    QCheckBox, QComboBox, QDialog, QDialogButtonBox, QFileDialog, QFormLayout, QGroupBox,
     QHBoxLayout, QLabel, QLineEdit, QPushButton, QScrollArea, QVBoxLayout, QWidget,
 )
 
-from ucc.core.authored_idle import IdleAuthoringPermission
+from ucc.core.authored_idle import CLEAR_IDLE_PROFILE, PROFILE, IdleAuthoringPermission
 from ucc.core.errors import UCCError, ValidationError
 from ucc.core.target_action_format import checked_text
 from ucc.jobs.authored_idle_policy import IdleSourcePolicyRecord
@@ -28,6 +28,7 @@ class AuthoredIdleAuthoringChoice:
     private_authored_output_preview_confirmed: bool
     candidate_destination: Path
     proof_destination: Path | None
+    profile: str
 
 
 @dataclass(slots=True)
@@ -106,7 +107,12 @@ class AuthoredIdleAuthoringDialog(QDialog):
         form = QFormLayout()
         self.purpose = QLineEdit()
         self.purpose.setMaxLength(2000)
-        self.recipe = QCheckBox('I declare use of the original procedural idle recipe.')
+        self.profile = QComboBox()
+        self.profile.setAccessibleName('Idle movement')
+        self.profile.addItem('Clear chest, head and arm movement', CLEAR_IDLE_PROFILE)
+        self.profile.addItem('Subtle chest, head and arm movement', PROFILE)
+        self.recipe = QCheckBox('I confirm use of the selected procedural idle recipe.')
+        self.profile.currentIndexChanged.connect(lambda _index: self.recipe.setChecked(False))
         self.preview = QCheckBox('I authorize private local preview of the authored output.')
         self.output_parent = QLineEdit()
         self.output_parent.setReadOnly(True)
@@ -121,6 +127,7 @@ class AuthoredIdleAuthoringDialog(QDialog):
         self.proof_name = QLineEdit()
         self.proof_name.setMaxLength(120)
         form.addRow('Purpose', self.purpose)
+        form.addRow('Idle movement', self.profile)
         form.addRow(self.recipe)
         form.addRow(self.preview)
         form.addRow('Output parent', parent_row)
@@ -203,6 +210,9 @@ class AuthoredIdleAuthoringDialog(QDialog):
         checked_text(purpose, 2000)
         if not self.recipe.isChecked() or not self.preview.isChecked():
             raise ValidationError('Declare the original recipe and confirm private local preview separately.')
+        profile = self.profile.currentData()
+        if profile not in (CLEAR_IDLE_PROFILE, PROFILE):
+            raise ValidationError('Choose a supported idle movement profile.')
         parent = _local_path(self.output_parent.text())
         if not parent.is_dir():
             raise ValidationError('Choose an existing local output parent.')
@@ -210,7 +220,7 @@ class AuthoredIdleAuthoringDialog(QDialog):
         proof = _new_folder(parent, self.proof_name.text()) if self.write_proof.isChecked() else None
         if proof is not None and candidate.name.casefold() == proof.name.casefold():
             raise ValidationError('Choose distinct candidate and proof folder names.')
-        return AuthoredIdleAuthoringChoice(tuple(records), tuple(permissions), purpose, True, True, candidate, proof)
+        return AuthoredIdleAuthoringChoice(tuple(records), tuple(permissions), purpose, True, True, candidate, proof, profile)
 
     def accept(self) -> None:
         self.choice = None

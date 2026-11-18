@@ -11,6 +11,7 @@ from unittest.mock import patch
 from fixtures.authored_idle_host import HostFixture, pin
 from ucc.animations.authored_idle_mapping_math import check_same_rig_full_clock
 from ucc.animations.native_profile import validate_native_profile
+from ucc.core.authored_idle import CLEAR_IDLE_PROFILE, AuthoredIdleInspectionRequest, AuthoredIdleRequest
 from ucc.core.errors import ProjectConflict, ProjectStorageError, ValidationError
 from ucc.core.target_action_format import canonical_bytes
 from ucc.jobs.authored_idle import author_original_idle
@@ -42,6 +43,32 @@ class AuthoredIdleHostTests(unittest.TestCase):
             source_policy_records=self.f.records, database_path=self.f.database,
             blender_exe=self.f.blender, worker_script=self.f.worker)
         return load_authored_idle_target_mapping(self.f.store, **(arguments | changes))
+
+    def test_clear_profile_survives_three_worker_intents_and_cross_phase_relabel_rejects(self):
+        inspected = replace(self.f.inspection, profile=CLEAR_IDLE_PROFILE)
+        candidate = self.run_host(inspection_request=inspected)
+        jobs = self.f.store.root/'.ucc-jobs'
+        saved_inspection = candidate.directory/'idle_inspection_request.json'
+        self.assertEqual(AuthoredIdleInspectionRequest.from_bytes(saved_inspection.read_bytes()), inspected)
+        author = AuthoredIdleRequest.from_bytes((jobs/candidate.author_job_id/'idle_authoring_request.json').read_bytes())
+        verification = AuthoredIdleRequest.from_bytes((jobs/candidate.verification_job_id/'idle_authoring_request.json').read_bytes())
+        self.assertEqual(author.profile, CLEAR_IDLE_PROFILE)
+        self.assertEqual(author, verification)
+        self.assertEqual(self.load(candidate).request, author)
+        self.assertEqual(self.load_mapping(candidate).candidate, candidate)
+
+        # Rehash the substituted, valid V1 inspection through the delivered receipt.
+        # The existing author and verifier still declare the clear recipe.
+        payload = canonical_bytes(self.f.inspection.to_dict())
+        saved_inspection.write_bytes(payload)
+        receipt_file = candidate.directory/'authored_idle_receipt.json'
+        receipt = json.loads(receipt_file.read_bytes())
+        receipt['inspection_request_sha256'] = pin(payload)
+        receipt['files'][saved_inspection.name] = {'bytes': len(payload), 'sha256': pin(payload)}
+        raw = private_bytes(receipt)
+        receipt_file.write_bytes(raw)
+        with self.assertRaisesRegex(ValidationError, 'recipe profile differs'):
+            self.load(replace(candidate, receipt_sha256=pin(raw)))
 
     def test_target_mapping_binds_current_candidate_without_writing(self):
         result = self.run_host()
