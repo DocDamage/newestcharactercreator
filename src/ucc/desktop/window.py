@@ -137,6 +137,10 @@ class MainWindow(QMainWindow):
         self.target_action_action = self._action(
             character_menu, 'Prepare registered clip preview...', '', lambda: start_target_action(self))
         self.target_action_action.setEnabled(False)
+        from .authored_idle_authoring_workflow import start_authored_idle_authoring
+        self.authored_idle_action = self._action(
+            character_menu, 'Create private original idle…', '', lambda: start_authored_idle_authoring(self))
+        self.authored_idle_action.setEnabled(False)
         view_menu = self.menuBar().addMenu("&View")
         self.mesh_action = self._action(view_menu, "&Preview local GLB model...", "Ctrl+Shift+M", self.open_mesh_preview)
         self.preview_master_action = self._action(
@@ -496,6 +500,8 @@ class MainWindow(QMainWindow):
                 'target_action_prepare': 'Preparing and independently reopening a private target Action...',
                 'target_action_load': 'Validating the explicitly selected saved target preview...',
                 'target_action_idle_loop_review': 'Reviewing the authored idle proof and saved target preview...',
+                'authored_idle_source_review': 'Reviewing the exact saved MPFB authoring sources...',
+                'authored_idle_author': 'Authoring and independently reopening the private original idle...',
                 'godot_saved_review': 'Reviewing the selected saved Godot proof and source policies...',
                 'godot_saved_load': 'Validating saved Godot frames and the current source binding...',
                 'target_action_diagnostic': 'Inspecting position-only diagnostics for the selected saved clip...',
@@ -1172,7 +1178,11 @@ class MainWindow(QMainWindow):
 
     def cancel_generation(self) -> None:
         if self.jobs.cancel():
+            from .authored_idle_authoring_workflow import KINDS as IDLE_AUTHORING_KINDS
             from .target_action_workflow import KINDS
+            if self._work_kind in IDLE_AUTHORING_KINDS:
+                self.statusBar().showMessage('Cancellation requested. Waiting for the original idle operation to stop.')
+                return
             if self._work_kind in KINDS:
                 self.statusBar().showMessage('Cancellation requested; waiting for target-preview work to stop. Saved records may remain retained.')
                 return

@@ -20,10 +20,11 @@ from .godot_saved_preview_workflow import KINDS as SAVED_GODOT_KINDS
 from .target_action_diagnostic_workflow import KINDS as DIAGNOSTIC_KINDS
 from .body_sprite_workflow import KINDS as BODY_SPRITE_KINDS
 from .authored_idle_loop_workflow import KIND as IDLE_LOOP_REVIEW
+from .authored_idle_authoring_workflow import KINDS as IDLE_AUTHORING_KINDS
 
 
 KINDS = frozenset({'target_action_review', 'target_action_mapping', 'target_action_prepare', 'target_action_load',
-                   IDLE_LOOP_REVIEW}) | SAVED_GODOT_KINDS | DIAGNOSTIC_KINDS | BODY_SPRITE_KINDS
+                   IDLE_LOOP_REVIEW}) | SAVED_GODOT_KINDS | DIAGNOSTIC_KINDS | BODY_SPRITE_KINDS | IDLE_AUTHORING_KINDS
 PHASES = {
     'SOURCE_REVIEW': 'Checking the exact registered source and local preview permission...',
     'NEUTRAL_MASTER': 'Independently checking the saved neutral character...',
@@ -38,6 +39,9 @@ PHASES = {
     'TARGET_DIAGNOSTIC_MEASURE': 'Measuring position-only root and endpoint diagnostics...',
     'TARGET_DIAGNOSTIC_FINAL_GUARD': 'Rechecking current proof and catalog authority...',
     'TARGET_DIAGNOSTIC_COMPLETE': 'Checking the diagnostic report against the current selection...',
+    'REVIEW_AUTHORED_IDLE_SOURCES': 'Reviewing the exact saved MPFB authoring sources...',
+    'AUTHOR_ORIGINAL_IDLE': 'Authoring and independently reopening the private original idle...',
+    'SAVE_AUTHORED_IDLE_PROOF': 'Saving the selected local idle review proof...',
 }
 if TYPE_CHECKING:
     from ucc.jobs.target_action import TargetActionSourceReview, TargetActionSummary
@@ -73,6 +77,8 @@ class SavedTargetActionRetained(ProjectStorageError):
 
 
 def refresh_target_action(window) -> None:
+    from .authored_idle_authoring_workflow import refresh_authored_idle_authoring
+    refresh_authored_idle_authoring(window)
     from .body_sprite_workflow import refresh_body_sprite
     refresh_body_sprite(window)
     from .target_action_diagnostic_workflow import refresh_target_action_diagnostic
@@ -130,11 +136,14 @@ def _submit(window, kind, operation, *, progress=False):
     window._target_action_progress_signal = signal
     if progress:
         body = kind in BODY_SPRITE_KINDS
-        label = ('Authenticating the selected source, rendering and independently reopening the private sample…'
+        idle_authoring = kind in IDLE_AUTHORING_KINDS
+        label = ('Checking the saved character and original idle authoring inputs…' if idle_authoring else
+                 'Authenticating the selected source, rendering and independently reopening the private sample…'
                  if kind == 'body_sprite_export' else 'Checking the complete saved Action for private sprite use…'
                  if body else 'Validating private target-preview inputs…')
         box = QProgressDialog(label, 'Cancel operation', 0, 0, window)
-        box.setWindowTitle('Private body sprite sample' if body else 'Registered target preview')
+        box.setWindowTitle('Private original idle' if idle_authoring else
+                           'Private body sprite sample' if body else 'Registered target preview')
         box.setWindowModality(Qt.WindowModality.WindowModal)
         box.setMinimumDuration(0)
         box.canceled.connect(cancel.set)
@@ -309,6 +318,10 @@ def _chosen(window, dialog):
 
 
 def finish_target_action(window, result) -> None:
+    if window._work_kind in IDLE_AUTHORING_KINDS:
+        from .authored_idle_authoring_workflow import finish_authored_idle_authoring
+        finish_authored_idle_authoring(window, result)
+        return
     if window._work_kind == IDLE_LOOP_REVIEW:
         from .authored_idle_loop_workflow import finish_idle_loop_review
         finish_idle_loop_review(window, result)
@@ -382,6 +395,10 @@ def _close_progress(window):
 
 
 def target_action_error(window, error: str) -> None:
+    if window._work_kind in IDLE_AUTHORING_KINDS:
+        from .authored_idle_authoring_workflow import authored_idle_authoring_error
+        authored_idle_authoring_error(window, error)
+        return
     if window._work_kind == IDLE_LOOP_REVIEW:
         from .authored_idle_loop_workflow import idle_loop_review_error
         idle_loop_review_error(window, error)
