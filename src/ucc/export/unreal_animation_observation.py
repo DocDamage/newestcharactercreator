@@ -5,6 +5,7 @@ from typing import Callable
 
 from ucc.core.errors import ValidationError
 from .unreal_animation_evidence import SOURCE_FRAMES, UnrealAnimationComparison, compare_unreal_animation
+from .unreal_bind_math import expected_bone_name
 
 
 STAGE_POLICY = 'UCC_UNREAL_NATIVE_ANIMATION_STAGE_V1'
@@ -52,6 +53,7 @@ def admit_unreal_animation(*, stage: dict, observation: dict, native_bind: dict,
         raise ValidationError('Unreal skin influences must exclude the dedicated import basis')
     for index, row in enumerate(raw_bones):
         if (type(row) is not dict or set(row) != {'name', 'parent', 'rest_world'}
+                or type(row['name']) is not str
                 or type(row['parent']) is not int or not -1 <= row['parent'] < index):
             raise ValidationError('Unreal bind has an invalid parent-first skeletal hierarchy')
     basis = raw_bones[0]
@@ -60,16 +62,22 @@ def admit_unreal_animation(*, stage: dict, observation: dict, native_bind: dict,
             or any(not _finite_number(x) or abs(x-y) > .0002 for x, y in zip(rest, _BASIS_MATRIX, strict=True))
             or any(row['parent'] < 0 or row['name'] == _BASIS_NAME for row in raw_bones[1:])):
         raise ValidationError('Unreal animation requires one fixed centimetre/axis import basis')
+    if (type(source_bind) is not dict or type(source_bind.get('bones')) is not list
+            or type(source_bind.get('vertices')) is not list
+            or len(source_bind['bones']) != len(raw_bones) - 1
+            or any(type(row) is not dict or type(row.get('name')) is not str for row in source_bind['bones'])
+            or not 1 <= len(source_bind['vertices']) <= observation['native_vertices']):
+        raise ValidationError('Unreal animation needs the independently reopened Blender bind')
+    name_map = {expected_bone_name(row['name']): row['name'] for row in source_bind['bones']}
+    if (len({name.casefold() for name in name_map}) != len(raw_bones) - 1
+            or set(name_map) != {row['name'] for row in raw_bones[1:]}):
+        raise ValidationError('Unreal bone translation requires an exact bijective legacy FBX name map')
     bones = []
     for row in raw_bones[1:]:
         parent = row['parent']
-        bones.append({'name': row['name'], 'parent': None if parent == 0 else raw_bones[parent]['name'],
+        bones.append({'name': name_map[row['name']],
+                      'parent': None if parent == 0 else name_map[raw_bones[parent]['name']],
                       'rest_world': row['rest_world']})
-    if (type(source_bind) is not dict or type(source_bind.get('bones')) is not list
-            or type(source_bind.get('vertices')) is not list
-            or len(source_bind['bones']) != len(bones)
-            or not 1 <= len(source_bind['vertices']) <= observation['native_vertices']):
-        raise ValidationError('Unreal animation needs the independently reopened Blender bind')
     native_morphs, source_morphs = native_bind['morph_names'], source_bind.get('morphs', {})
     if (type(native_morphs) is not list or type(source_morphs) is not dict
             or any(type(name) is not str for name in native_morphs)

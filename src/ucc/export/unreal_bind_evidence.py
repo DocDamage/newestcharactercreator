@@ -18,7 +18,7 @@ from .unreal_contract import ENGINE_VERSION, PROFILE, READINESS_FLAGS
 from .unreal_engine_profile import FBX_IMPORT, LOD_BUILD, MESH_SETTINGS, TRIANGLE_ORDER_OPTIMIZATION
 from .unreal_native_data import decode_native, finite, integer, require
 from .unreal_bind_math import (geometry, bone_identities, verify_bind, morphs,
-    positive_weight_identities, verify_numeric_weights, verify_corner_normals)
+    expected_bone_name, positive_weight_identities, verify_numeric_weights, verify_corner_normals)
 from .unreal_material_bounds import verify_material, verify_bounds, verify_graph
 
 SOURCE_FIELDS = frozenset({'schema_version','policy','profile','master_sha256','request_sha256',
@@ -184,9 +184,7 @@ def _source(value: dict, request: str, spec: SkinMaterialSpec, check) -> None:
             and len({name.casefold() for name in mapping.values()}) == len(names),
             'source canonical bone naming is not bijective')
     for name,target in mapping.items():
-        canonical = name.rsplit(':',1)[-1]
-        for character in '.,/`%': canonical = canonical.replace(character,'_')
-        require(type(target) is str and target == canonical.strip().replace(' ','-'), 'source bone canonicalization differs')
+        require(type(target) is str and target == expected_bone_name(name), 'source bone canonicalization differs')
     require(type(value['expected_unreal_bone_order']) is list and len(value['expected_unreal_bone_order']) == len(bones)
             and set(value['expected_unreal_bone_order']) == set(mapping.values()), 'source declared bone order differs')
     for index,row in enumerate(value['weights']):
