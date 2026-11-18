@@ -100,6 +100,7 @@ OPERATIONS|={'stage_mpfb_sprite_sample','verify_mpfb_sprite_sample'}
 OPERATIONS|={'stage_mpfb_facial_sprites','verify_mpfb_facial_sprites'}
 OPERATIONS|={'stage_registered_body_sprites','verify_registered_body_sprites'}
 OPERATIONS |= {'inspect_authored_idle_target', 'author_original_idle_source', 'verify_authored_idle_source'}
+OPERATIONS |= {'author_original_walk_source', 'verify_authored_walk_source'}
 OPERATIONS|={'stage_mpfb_unity_source','verify_mpfb_unity_source'}
 OPERATIONS|={'stage_mpfb_unity_runtime_source','verify_mpfb_unity_runtime_source'}
 OPERATIONS |= {"stage_registered_unity_animation_source", "verify_registered_unity_animation_source"}
@@ -166,6 +167,17 @@ def authored_idle(job: dict, root: Path) -> dict:
     return {'inspect_authored_idle_target': inspect_target,
             'author_original_idle_source': author_source,
             'verify_authored_idle_source': verify_source}[job['operation']](bpy, root, job)
+
+
+def authored_walk(job: dict, root: Path) -> dict:
+    activate_material_contract()
+    from ucc.core.authored_walk_job import AUTHOR, validate_job
+    validate_job(job['operation'], job['input_project'], job['options'])
+    if job['operation'] == AUTHOR:
+        from blender_bridge.authored_walk import author_source
+        return author_source(bpy, root, job)
+    from blender_bridge.walk_authoring_verify import verify_source
+    return verify_source(bpy, root, job)
 
 
 def body_sprites(job: dict,root: Path) -> dict:
@@ -598,6 +610,8 @@ def main() -> int:
                   'inspect_authored_idle_target': authored_idle,
                   'author_original_idle_source': authored_idle,
                   'verify_authored_idle_source': authored_idle,
+                  'author_original_walk_source': authored_walk,
+                  'verify_authored_walk_source': authored_walk,
                   'verify_registered_body_sprites': body_sprites,
                   'verify_mpfb_sprite_sample': sprite_sample,
                   'stage_mpfb_face': mpfb_face,

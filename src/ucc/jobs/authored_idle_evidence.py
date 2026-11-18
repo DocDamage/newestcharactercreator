@@ -31,6 +31,8 @@ STATUS = {INSPECT: 'ACTUAL_NEUTRAL_IDLE_ANATOMY_MEASURED',
     AUTHOR: 'ORIGINAL_IDLE_SOURCE_AUTHORED_PENDING_INDEPENDENT_REOPEN',
     VERIFY: 'ORIGINAL_IDLE_FRESH_REOPEN_FULL300_VERIFIED_NOT_USABLE_APPROVED'}
 LIMITS = {'original_idle.fbx': 512*1024*1024, 'authored_idle_review.blend': 512*1024*1024,
+          'original_walk.fbx': 512*1024*1024, 'original_walk.blend': 512*1024*1024,
+          'authored_walk_source_snapshot.json': 64*1024*1024,
           'authored_idle_source_snapshot.json': 64*1024*1024, 'candidate.blend': 2*1024*1024*1024}
 QUALITY_EXECUTION = {key: True for key in ('root_neutral_measured', 'lower_chain_neutral_measured',
     'neutral_sole_drift_measured', 'full300_finite_zero_translation_unit_scale',

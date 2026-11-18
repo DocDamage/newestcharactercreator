@@ -103,7 +103,9 @@
         "verify_registered_body_sprites",
         "inspect_authored_idle_target",
         "author_original_idle_source",
-        "verify_authored_idle_source"
+        "verify_authored_idle_source",
+        "author_original_walk_source",
+        "verify_authored_walk_source"
       ]
     },
     "input_project": {
@@ -5280,6 +5282,42 @@
             }
           }
         }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "enum": ["author_original_walk_source", "verify_authored_walk_source"]
+          }
+        }
+      },
+      "then": {
+        "required": ["input_project", "options"],
+        "properties": {
+          "input_project": {"const": "candidate.blend"},
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["request_sha256", "walk_request_sha256", "project_sha256", "master_sha256", "anatomy_sha256"],
+            "properties": {
+              "request_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+              "walk_request_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+              "project_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+              "master_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+              "anatomy_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+              "review_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+              "source_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+            }
+          }
+        },
+        "allOf": [{
+          "if": {"properties": {"operation": {"const": "verify_authored_walk_source"}}},
+          "then": {"properties": {"options": {"required": ["review_sha256", "source_sha256"]}}},
+          "else": {"properties": {"options": {"not": {"anyOf": [
+            {"required": ["review_sha256"]}, {"required": ["source_sha256"]}
+          ]}}}}
+        }]
       }
     },
     {

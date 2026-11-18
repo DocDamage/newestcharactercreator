@@ -1,4 +1,4 @@
-"""Review the exact character sources and destinations for one private idle."""
+"""Review the exact character sources and destinations for private motion authoring."""
 
 from dataclasses import dataclass
 from hashlib import sha256
@@ -49,7 +49,7 @@ def _label(text: str) -> QLabel:
 
 
 class AuthoredIdleAuthoringDialog(QDialog):
-    def __init__(self, sources: tuple[IdleAuthoringSource, ...], parent=None):
+    def __init__(self, sources: tuple[IdleAuthoringSource, ...], parent=None, *, walk: bool = False):
         super().__init__(parent)
         if (type(sources) is not tuple or not 1 <= len(sources) <= 3
                 or any(type(source) is not IdleAuthoringSource for source in sources)):
@@ -62,9 +62,12 @@ class AuthoredIdleAuthoringDialog(QDialog):
         if len(hands) > 1 or any(not re.fullmatch(r'part:ucc-hand-v1-[a-f0-9]{64}-(shorter|longer)', row)
                                 for row in hands):
             raise ValidationError('Review the supported saved character sources first')
+        if walk and hands:
+            raise ValidationError('Original walk authoring requires a saved character with no installed parts')
 
+        self.motion = 'walk' if walk else 'idle'
         self.choice: AuthoredIdleAuthoringChoice | None = None
-        self.setWindowTitle('Create private original idle')
+        self.setWindowTitle(f'Create private original {self.motion}')
         self.resize(800, 660)
         outer = QVBoxLayout(self)
         scroll = QScrollArea()
@@ -73,7 +76,7 @@ class AuthoredIdleAuthoringDialog(QDialog):
         layout = QVBoxLayout(content)
         scroll.setWidget(content)
         outer.addWidget(scroll)
-        layout.addWidget(_label('Review each source for the original idle recipe and private use of the derived rig. '
+        layout.addWidget(_label(f'Review each source for the original {self.motion} recipe and private use of the derived rig. '
             'This creates a local candidate from the saved character. Registration and visual review are separate.'))
 
         self.rows: list[_SourceRow] = []
@@ -89,7 +92,7 @@ class AuthoredIdleAuthoringDialog(QDialog):
             choose = QPushButton('Choose reviewed policy…')
             choose.setAccessibleName('Choose reviewed policy for ' + title)
             review = _label('Choose an existing local policy record for this source.')
-            confirm = QCheckBox('I confirm private idle authoring and derived-rig use for this source.')
+            confirm = QCheckBox(f'I confirm private {self.motion} authoring and derived-rig use for this source.')
             confirm.setAccessibleName('Confirm private authoring for ' + title)
             note = QLineEdit()
             note.setMaxLength(2000)
@@ -107,12 +110,11 @@ class AuthoredIdleAuthoringDialog(QDialog):
         form = QFormLayout()
         self.purpose = QLineEdit()
         self.purpose.setMaxLength(2000)
-        self.profile = QComboBox()
-        self.profile.setAccessibleName('Idle movement')
-        self.profile.addItem('Clear chest, head and arm movement', CLEAR_IDLE_PROFILE)
-        self.profile.addItem('Subtle chest, head and arm movement', PROFILE)
-        self.recipe = QCheckBox('I confirm use of the selected procedural idle recipe.')
-        self.profile.currentIndexChanged.connect(lambda _index: self.recipe.setChecked(False))
+        self.recipe = QCheckBox(f'I confirm use of the procedural original {self.motion} recipe.' if walk
+                                else 'I confirm use of the selected procedural idle recipe.')
+        self.profile = None
+        self.write_proof = None
+        self.proof_name = None
         self.preview = QCheckBox('I authorize private local preview of the authored output.')
         self.output_parent = QLineEdit()
         self.output_parent.setReadOnly(True)
@@ -123,17 +125,26 @@ class AuthoredIdleAuthoringDialog(QDialog):
         parent_row.addWidget(self.choose_parent)
         self.candidate_name = QLineEdit()
         self.candidate_name.setMaxLength(120)
-        self.write_proof = QCheckBox('Also save a local loop review proof beside the candidate.')
-        self.proof_name = QLineEdit()
-        self.proof_name.setMaxLength(120)
         form.addRow('Purpose', self.purpose)
-        form.addRow('Idle movement', self.profile)
+        if not walk:
+            self.profile = QComboBox()
+            self.profile.setAccessibleName('Idle movement')
+            self.profile.addItem('Clear chest, head and arm movement', CLEAR_IDLE_PROFILE)
+            self.profile.addItem('Subtle chest, head and arm movement', PROFILE)
+            self.profile.currentIndexChanged.connect(lambda _index: self.recipe.setChecked(False))
+            form.addRow('Idle movement', self.profile)
         form.addRow(self.recipe)
         form.addRow(self.preview)
         form.addRow('Output parent', parent_row)
         form.addRow('New candidate folder name', self.candidate_name)
-        form.addRow(self.write_proof)
-        form.addRow('New proof folder name', self.proof_name)
+        if not walk:
+            self.write_proof = QCheckBox('Also save a local loop review proof beside the candidate.')
+            self.proof_name = QLineEdit()
+            self.proof_name.setMaxLength(120)
+            self.write_proof.toggled.connect(self._refresh)
+            self.proof_name.textChanged.connect(self._refresh)
+            form.addRow(self.write_proof)
+            form.addRow('New proof folder name', self.proof_name)
         layout.addLayout(form)
         self.status = _label('')
         outer.addWidget(self.status)
@@ -144,14 +155,15 @@ class AuthoredIdleAuthoringDialog(QDialog):
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         outer.addWidget(buttons)
-        for widget in (self.purpose, self.output_parent, self.candidate_name, self.proof_name):
+        for widget in (self.purpose, self.output_parent, self.candidate_name):
             widget.textChanged.connect(self._refresh)
-        for widget in (self.recipe, self.preview, self.write_proof):
+        for widget in (self.recipe, self.preview):
             widget.toggled.connect(self._refresh)
         self._refresh()
 
     def _choose_policy(self, row: _SourceRow) -> None:
-        selected, _ = QFileDialog.getOpenFileName(self, 'Choose reviewed idle source policy', '', 'JSON records (*.json)')
+        selected, _ = QFileDialog.getOpenFileName(
+            self, f'Choose reviewed {self.motion} source policy', '', 'JSON records (*.json)')
         if not selected:
             return
         row.record = None
@@ -164,7 +176,7 @@ class AuthoredIdleAuthoringDialog(QDialog):
             with path.open('rb') as stream:
                 payload = stream.read(256 * 1024 + 1)
             if len(payload) > 256 * 1024:
-                raise ValidationError('The selected idle policy file is too large')
+                raise ValidationError(f'The selected {self.motion} policy file is too large')
             record = IdleSourcePolicyRecord(row.source.asset_id, path, sha256(payload).hexdigest())
             document = record.read(row.source.sha256, row.source.provenance_sha256, Budget(None, 5))
             row.record = record
@@ -174,7 +186,8 @@ class AuthoredIdleAuthoringDialog(QDialog):
         self._refresh()
 
     def _choose_parent(self) -> None:
-        selected = QFileDialog.getExistingDirectory(self, 'Choose private idle output parent outside the saved project')
+        selected = QFileDialog.getExistingDirectory(
+            self, f'Choose private {self.motion} output parent outside the saved project')
         if selected:
             self.output_parent.setText(selected)
 
@@ -182,7 +195,8 @@ class AuthoredIdleAuthoringDialog(QDialog):
         for row in self.rows:
             for widget in (row.confirm, row.note):
                 widget.setEnabled(row.record is not None)
-        self.proof_name.setEnabled(self.write_proof.isChecked())
+        if self.proof_name is not None and self.write_proof is not None:
+            self.proof_name.setEnabled(self.write_proof.isChecked())
         try:
             self._choice()
         except (UCCError, OSError, ValueError) as error:
@@ -210,14 +224,15 @@ class AuthoredIdleAuthoringDialog(QDialog):
         checked_text(purpose, 2000)
         if not self.recipe.isChecked() or not self.preview.isChecked():
             raise ValidationError('Declare the original recipe and confirm private local preview separately.')
-        profile = self.profile.currentData()
+        profile = self.profile.currentData() if self.profile is not None else PROFILE
         if profile not in (CLEAR_IDLE_PROFILE, PROFILE):
             raise ValidationError('Choose a supported idle movement profile.')
         parent = _local_path(self.output_parent.text())
         if not parent.is_dir():
             raise ValidationError('Choose an existing local output parent.')
         candidate = _new_folder(parent, self.candidate_name.text())
-        proof = _new_folder(parent, self.proof_name.text()) if self.write_proof.isChecked() else None
+        proof = (_new_folder(parent, self.proof_name.text()) if self.proof_name is not None
+                 and self.write_proof is not None and self.write_proof.isChecked() else None)
         if proof is not None and candidate.name.casefold() == proof.name.casefold():
             raise ValidationError('Choose distinct candidate and proof folder names.')
         return AuthoredIdleAuthoringChoice(tuple(records), tuple(permissions), purpose, True, True, candidate, proof, profile)
