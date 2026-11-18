@@ -47,6 +47,9 @@ def _make_project(project: Path, cache: Path) -> None:
     if any(c in cache.as_posix() for c in ('"', '\n', '\r')):
         raise ValidationError('Unreal private cache needs a plain canonical path')
     (project/'Config/DefaultEngine.ini').write_text(
+        '[ConsoleVariables]\nr.TriangleOrderOptimization=2\nInterchange.FeatureFlags.Import.FBX=False\n'
+        '\n[Analytics]\nProviderModuleName=\n'
+        '\n[/Script/UnrealEd.AnalyticsPrivacySettings]\nbSendUsageData=False\n'
         '\n[DerivedDataCacheGraphs]\nUccPrivate=(UccLocal)\n[DerivedDataCacheStores]\n'
         'UccLocal=(Type=FileSystem,ReadOnly=false,Path="'+cache.as_posix()+'")\n', encoding='utf-8')
 
@@ -129,13 +132,19 @@ def verify_unreal_native_animation(prepared: PreparedUnrealAnimationSource, *, t
                 progress('UNREAL_ANIMATION_'+phase.upper())
             output = work/(phase+'-output')
             output.mkdir()
+            log_path = work/(phase+'-UnrealEditor.log')
             command = [str(toolchain.editor_exe), str(project/'AnimatedCharacter.uproject'),
                 '-run=UccNativeAnimation', '-UccPhase='+phase, '-UccOutput='+str(output),
                 '-NullRHI', '-RenderOffscreen', '-Unattended', '-NoEpicPortal', '-NoP4', '-NoSound',
-                '-NoSplash', '-DDC=UccPrivate', '-stdout', '-FullStdOutLogOutput']
+                '-NoAnalytics', '-NoSplash', '-DDC=UccPrivate', '-stdout', '-FullStdOutLogOutput',
+                '-UTF8Output', '-abslog='+str(log_path)]
             if input_fbx is not None:
                 command.append('-UccFbx='+str(input_fbx))
             _run(command, work/(phase+'-process'), budget.user, budget.deadline)
+            log, log_sha = read_bytes(log_path, 64 * 1024**2, budget)
+            if b"InternalLoadLibrary: 'NullDrv'" not in log or b'Success - 0 error(s)' not in log:
+                raise ProjectStorageError('Unreal did not confirm the actual CPU-only native commandlet')
+            watched[log_path] = (log_sha, 64 * 1024**2)
             unchanged()
             return output
 
