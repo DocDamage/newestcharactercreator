@@ -19,9 +19,11 @@ from .target_action_preview import _small_digest, publish_target_action
 from .godot_saved_preview_workflow import KINDS as SAVED_GODOT_KINDS
 from .target_action_diagnostic_workflow import KINDS as DIAGNOSTIC_KINDS
 from .body_sprite_workflow import KINDS as BODY_SPRITE_KINDS
+from .authored_idle_loop_workflow import KIND as IDLE_LOOP_REVIEW
 
 
-KINDS = frozenset({'target_action_review', 'target_action_mapping', 'target_action_prepare', 'target_action_load'}) | SAVED_GODOT_KINDS | DIAGNOSTIC_KINDS | BODY_SPRITE_KINDS
+KINDS = frozenset({'target_action_review', 'target_action_mapping', 'target_action_prepare', 'target_action_load',
+                   IDLE_LOOP_REVIEW}) | SAVED_GODOT_KINDS | DIAGNOSTIC_KINDS | BODY_SPRITE_KINDS
 PHASES = {
     'SOURCE_REVIEW': 'Checking the exact registered source and local preview permission...',
     'NEUTRAL_MASTER': 'Independently checking the saved neutral character...',
@@ -307,6 +309,10 @@ def _chosen(window, dialog):
 
 
 def finish_target_action(window, result) -> None:
+    if window._work_kind == IDLE_LOOP_REVIEW:
+        from .authored_idle_loop_workflow import finish_idle_loop_review
+        finish_idle_loop_review(window, result)
+        return
     if window._work_kind in BODY_SPRITE_KINDS:
         from .body_sprite_workflow import finish_body_sprite
         finish_body_sprite(window, result)
@@ -376,6 +382,10 @@ def _close_progress(window):
 
 
 def target_action_error(window, error: str) -> None:
+    if window._work_kind == IDLE_LOOP_REVIEW:
+        from .authored_idle_loop_workflow import idle_loop_review_error
+        idle_loop_review_error(window, error)
+        return
     if window._work_kind in BODY_SPRITE_KINDS:
         from .body_sprite_workflow import body_sprite_error
         body_sprite_error(window, error)

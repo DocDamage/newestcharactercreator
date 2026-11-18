@@ -35,8 +35,17 @@ class TargetPreviewWindowTests(unittest.TestCase):
                 super().__init__(parent)
                 self.cache = cache; self.frame = 0; self.submissions = []
                 self.released = False; self.camera_resets = 0
+                self.loop_sample = self.loop_guard = None
+                self.paint_blocked = False
             def update(self):
-                self.submissions.append(self.frame)
+                if not self.paint_blocked and (self.loop_guard is None or self.loop_guard()):
+                    self.submissions.append(self.frame)
+            def set_idle_loop_sample(self, sample, guard):
+                self.loop_sample = sample
+                self.loop_guard = guard
+            def clear_idle_loop_sample(self, *, block_paint=False):
+                self.loop_sample = self.loop_guard = None
+                self.paint_blocked = block_paint
             def release(self):
                 self.released = True; self.cache = None
             def reset_view(self):
@@ -133,6 +142,86 @@ class TargetPreviewWindowTests(unittest.TestCase):
         self.assertTrue(canvas.submissions)
         self.assertTrue(all(74<=frame<=149 for frame in canvas.submissions))
         self.assertEqual(canvas.frame,74)
+
+    def test_reviewed_idle_loops_only_after_opt_in(self):
+        viewer = self.viewer
+        viewer.loop.setChecked(True)
+        self.assertFalse(viewer.loop.isChecked())
+        viewer.install_idle_loop(lambda: True)
+        self.assertTrue(viewer.loop.isEnabled())
+        self.assertFalse(viewer.loop.isChecked())
+        with patch('ucc.desktop.motion_viewer.time.monotonic', return_value=10):
+            viewer.seek(299)
+            viewer.loop.setChecked(True)
+            viewer.toggle()
+        with patch('ucc.desktop.motion_viewer.time.monotonic', return_value=10+1/60):
+            viewer.tick()
+        sample = viewer.canvas.loop_sample
+        self.assertEqual((sample.left_index, sample.right_index), (299, 0))
+        self.assertAlmostEqual(sample.alpha, .5)
+        self.assertIs(viewer.cache, self.cache)
+        self.assertTrue(viewer.clock.playing)
+        viewer.loop.setChecked(False)
+        self.assertIsNone(viewer.canvas.loop_sample)
+        self.assertFalse(viewer.clock.playing)
+        self.assertEqual(viewer.clock.frame, 299)
+
+    def test_applying_review_window_removes_idle_authority_and_blend(self):
+        viewer = self.viewer
+        viewer.install_idle_loop(lambda: True)
+        viewer.loop.setChecked(True)
+        self.assertIsNotNone(viewer.canvas.loop_sample)
+        self.apply(25, 30)
+        self.assertIsNone(viewer.canvas.loop_sample)
+        self.assertFalse(viewer.loop.isEnabled())
+        self.assertFalse(viewer.loop.isChecked())
+        self.assertEqual(viewer.canvas.frame, 24)
+
+    def test_revoked_loop_suppresses_queued_paint_and_releases_cache(self):
+        viewer = self.viewer
+        permitted = True
+        viewer.install_idle_loop(lambda: permitted)
+        viewer.loop.setChecked(True)
+        canvas = viewer.canvas
+        canvas.submissions.clear()
+        permitted = False
+        canvas.update()
+        viewer.tick()
+        self.assertEqual(canvas.submissions, [])
+        self.assertTrue(canvas.paint_blocked)
+        self.assertTrue(canvas.released)
+        self.assertIsNone(viewer.cache)
+
+    def test_watched_file_notification_revokes_even_when_stat_guard_has_not_changed(self):
+        viewer = self.viewer
+        proof = Path(self.temp.name).resolve()/'loop-proof.json'
+        proof.write_text('{}', encoding='utf8')
+        viewer.install_idle_loop(lambda: True, (proof,))
+        viewer.loop.setChecked(True)
+        canvas = viewer.canvas
+        canvas.submissions.clear()
+        viewer._idle_watcher.fileChanged.emit(str(proof))
+        canvas.update()
+        self.assertIsNone(viewer.cache)
+        self.assertTrue(canvas.released)
+        self.assertEqual(canvas.submissions, [])
+
+    def test_main_window_registers_idle_review_in_busy_and_cancel_controls(self):
+        from ucc.animations.catalog import AnimationCatalog
+        from ucc.desktop.authored_idle_loop_workflow import KIND
+        from ucc.desktop.window import MainWindow
+
+        catalog_path = Path(self.temp.name).resolve()/'catalog.db'
+        with AnimationCatalog(catalog_path):
+            pass
+        window = MainWindow(catalog_path=catalog_path)
+        self.addCleanup(window.deleteLater)
+        window._work_kind = KIND
+        window._busy_changed(True)
+        self.assertTrue(window.cancel_generation_action.isEnabled())
+        self.assertIn('Reviewing the authored idle proof', window.statusBar().currentMessage())
+        window._busy_changed(False)
+        self.assertFalse(window.cancel_generation_action.isEnabled())
 
     def test_single_frame_disables_play_and_guarded_go_start_still_works(self):
         self.apply(150,150)

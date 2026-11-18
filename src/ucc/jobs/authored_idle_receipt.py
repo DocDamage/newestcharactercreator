@@ -18,6 +18,7 @@ from .authored_idle_transactions import inventory
 from .protocol import JobRequest, JobResult
 from .master_preview import _digest
 from .target_action_context import operation_budget, protected
+from .target_action_storage import ancestry
 
 POLICY = 'UCC_PRIVATE_ORIGINAL_IDLE_CANDIDATE_RECEIPT_V1'
 ROLES = ('inspection', 'author', 'verification')
@@ -91,7 +92,7 @@ def check_worker_pair(store, job, result, folder, budget):
             'result_sha256': record(folder/'result.json', budget)['sha256']}
 
 
-def check_staged_inputs(folder, job, request, budget):
+def check_staged_inputs(folder, job, request, budget, *, capture_authority=None):
     inspect = job.operation == INSPECT
     name = 'idle_inspection_request.json' if inspect else 'idle_authoring_request.json'
     expected = {'candidate.blend': dict(request.to_dict()['consumed_sources'])['master_and_derived_rig'],
@@ -100,6 +101,8 @@ def check_staged_inputs(folder, job, request, budget):
     if job.operation == VERIFY:
         expected.update({'authored_idle_review.blend': job.options['review_sha256'],
             'original_idle.fbx': job.options['source_sha256'], 'authored_idle_recipe.json': job.options['recipe_sha256']})
+    if capture_authority is not None:
+        capture_authority(ancestry(folder/name for name in expected))
     for name, pin in expected.items():
         need(record(folder/name, budget)['sha256'] == pin, 'Idle staged immutable input differs from its exact intent')
 
@@ -135,27 +138,34 @@ def load_authored_idle_target_mapping(store, *, directory: Path, expected_receip
     """
     with _admitted_idle_candidate(store, directory, expected_receipt_sha256,
             source_policy_records, database_path, blender_exe, worker_script, cancel, timeout_s) as (admitted, verifier, budget):
-        candidate = admitted.candidate
-        profile = build_original_idle_profile(admitted.request,
-            frame_json=admitted.anatomical_frame_json, recipe_json=admitted.recipe_json,
-            snapshot_json=admitted.source_snapshot_json, verification_json=admitted.verification_json,
-            worker_request_json=admitted.verification_job_request_json,
-            worker_result_json=admitted.verification_job_result_json,
-            source_sha256=candidate.source_sha256, review_sha256=candidate.review_sha256,
-            recipe_sha256=candidate.recipe_sha256, snapshot_sha256=candidate.snapshot_sha256,
-            worker_request_sha256=verifier['request_sha256'], worker_result_sha256=verifier['result_sha256'],
-            inspection_job_id=candidate.inspection_job_id, verification_job_id=candidate.verification_job_id,
-            cancel_check=budget.check)
-        mapping = canonical_bytes(profile)
-        return AuthoredIdleTargetMapping(candidate, mapping, sha256(mapping).hexdigest())
+        return _current_idle_mapping(admitted, verifier, budget)
+
+
+def _current_idle_mapping(admitted, verifier, budget):
+    candidate = admitted.candidate
+    profile = build_original_idle_profile(admitted.request,
+        frame_json=admitted.anatomical_frame_json, recipe_json=admitted.recipe_json,
+        snapshot_json=admitted.source_snapshot_json, verification_json=admitted.verification_json,
+        worker_request_json=admitted.verification_job_request_json,
+        worker_result_json=admitted.verification_job_result_json,
+        source_sha256=candidate.source_sha256, review_sha256=candidate.review_sha256,
+        recipe_sha256=candidate.recipe_sha256, snapshot_sha256=candidate.snapshot_sha256,
+        worker_request_sha256=verifier['request_sha256'], worker_result_sha256=verifier['result_sha256'],
+        inspection_job_id=candidate.inspection_job_id, verification_job_id=candidate.verification_job_id,
+        cancel_check=budget.check)
+    mapping = canonical_bytes(profile)
+    return AuthoredIdleTargetMapping(candidate, mapping, sha256(mapping).hexdigest())
 
 
 @contextmanager
 def _admitted_idle_candidate(store, directory, expected_receipt_sha256, source_policy_records,
-        database_path, blender_exe, worker_script, cancel, timeout_s):
+        database_path, blender_exe, worker_script, cancel, timeout_s, *, capture_authority=None):
     checked_sha(expected_receipt_sha256)
     with operation_budget(cancel, timeout_s) as budget:
         directory = protected(Path(directory))
+        names = RETAINED|set(policy_names(len(source_policy_records)))
+        if capture_authority is not None:
+            capture_authority(ancestry(directory/name for name in names|{'authored_idle_receipt.json'}))
         receipt = read_idle_json(directory/'authored_idle_receipt.json', budget, expected_receipt_sha256)
         closed(receipt, {'schema_version', 'policy', 'source_profile', 'inspection_request_sha256',
             'authoring_request_sha256', 'project_file_sha256', 'project_snapshot_sha256', 'target',
@@ -170,7 +180,6 @@ def _admitted_idle_candidate(store, directory, expected_receipt_sha256, source_p
                     'project_snapshot_sha256', 'anatomical_frame_sha256', 'skeleton_fingerprint',
                     'source_sha256', 'review_sha256', 'recipe_sha256', 'snapshot_sha256'):
             checked_sha(receipt[key])
-        names = RETAINED|set(policy_names(len(source_policy_records)))
         need(type(receipt['files']) is dict and set(receipt['files']) == names, 'Idle receipt file closure is incomplete or unrequested')
         for row in receipt['files'].values():
             closed(row, {'sha256', 'bytes'}); checked_sha(row['sha256'])
@@ -184,8 +193,9 @@ def _admitted_idle_candidate(store, directory, expected_receipt_sha256, source_p
         need(author.project_snapshot_json == inspection.project_snapshot_json and author.permissions == inspection.permissions
             and author.purpose == inspection.purpose and author.target.to_dict() == receipt['target']
             and author.anatomical_frame_sha256 == receipt['anatomical_frame_sha256'], 'Idle author intent differs from its admitted inspection')
+        authority = {} if capture_authority is None else {'capture_authority': capture_authority}
         context = prepare_idle_context(store, inspection, source_policy_records, Path(database_path),
-            Path(blender_exe), Path(worker_script), None, budget, create_jobs=False)
+            Path(blender_exe), Path(worker_script), None, budget, create_jobs=False, **authority)
         need(context.project_file_sha256 == receipt['project_file_sha256']
             and author.to_dict()['project_snapshot_sha256'] == receipt['project_snapshot_sha256']
             and context.executable_sha256 == receipt['blender_executable_sha256'], 'Current idle source/project/executable selection differs')
@@ -210,12 +220,14 @@ def _admitted_idle_candidate(store, directory, expected_receipt_sha256, source_p
         for index, role in enumerate(ROLES):
             row = workers[role]; folder = store.root/'.ucc-jobs'/row['job_id']
             job = JobRequest(row['job_id'], OPS[index], 'candidate.blend', options[index])
+            if capture_authority is not None:
+                capture_authority(ancestry(folder/name for name in ('request.json', 'result.json', *OUTPUTS[job.operation])))
             request_name, result_name = pair_names(role)
             need(_raw(directory/request_name, row['request_sha256'], budget) == _raw(folder/'request.json', row['request_sha256'], budget), 'Idle retained/actual request bytes differ')
             need(_raw(directory/result_name, row['result_sha256'], budget) == _raw(folder/'result.json', row['result_sha256'], budget), 'Idle retained/actual result bytes differ')
             result = JobResult.from_dict(read_idle_json(folder/'result.json', budget, canonical=False, maximum=256*1024))
             need(check_worker_pair(store, job, result, folder, budget) == row, 'Idle current actual worker pair differs')
-            check_staged_inputs(folder, job, inspection if index == 0 else author, budget)
+            check_staged_inputs(folder, job, inspection if index == 0 else author, budget, **authority)
             summary = result.details
             checked_summary(summary, OPS[index], inspection if index == 0 else author, folder, budget)
             pairs.append(folder); summaries.append(summary)

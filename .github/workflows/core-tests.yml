@@ -14,8 +14,8 @@ jobs:
         os: [ubuntu-latest, windows-latest]
         python-version: ['3.12', '3.13']
     runs-on: ${{ matrix.os }}
-    # Includes environment setup, full discovery and the earlier guardrail suites.
-    timeout-minutes: 20
+    # Windows runners have hit the 20-minute cap during full discovery.
+    timeout-minutes: ${{ matrix.os == 'windows-latest' && 30 || 20 }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

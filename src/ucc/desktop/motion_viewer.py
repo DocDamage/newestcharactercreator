@@ -8,6 +8,7 @@ from PySide6.QtGui import QSurfaceFormat
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QSlider, QCheckBox, QComboBox
 
+from ucc.preview.idle_loop_clock import LoopSample
 from ucc.preview.motion_cache import MotionCache
 from ucc.preview.playback_clock import PlaybackClock
 from ucc.preview.surface_review import POLICY as ARM_POLICY
@@ -23,6 +24,8 @@ class MotionCanvas(QOpenGLWidget):
     def __init__(self,cache: MotionCache,parent=None,*,paint_guard=None):
         super().__init__(parent)
         self._paint_guard=paint_guard
+        self._idle_loop_state=None
+        self._idle_loop_paint_blocked=False
         format=QSurfaceFormat();format.setVersion(3,3);format.setProfile(QSurfaceFormat.CoreProfile)
         format.setDepthBufferSize(24);self.setFormat(format)
         self.cache=cache;self.frame=0;self.renderer=None;self.error=""
@@ -47,7 +50,20 @@ class MotionCanvas(QOpenGLWidget):
         if not self.error:
             self.error=error;self.failed.emit(error)
 
+    def set_idle_loop_sample(self, sample, guard):
+        if (type(sample) is not LoopSample or not callable(guard) or type(self.cache) is not MotionCache
+                or (self.cache.frame_count, self.cache.fps, self.cache.source_first_frame) != (300, 30, 2)):
+            raise ValidationError('Idle interpolation requires the admitted complete original cache')
+        self._idle_loop_state=(sample, guard, self.cache)
+        self._idle_loop_paint_blocked=False
+        self.frame=sample.left_index
+
+    def clear_idle_loop_sample(self, *, block_paint=False):
+        self._idle_loop_state=None
+        self._idle_loop_paint_blocked=block_paint
+
     def paintGL(self):
+        if self._idle_loop_paint_blocked:return
         guard=getattr(self,'_paint_guard',None)
         if guard is not None:
             try:
@@ -56,11 +72,23 @@ class MotionCanvas(QOpenGLWidget):
                 self._fail(str(error));return
         if self.renderer is None or self.error:return
         try:
+            options={}
+            state=self._idle_loop_state
+            if state is not None:
+                sample, admit, cache=state
+                if (admit() is not True or self._idle_loop_state is not state or self._idle_loop_paint_blocked
+                        or self.cache is not cache or self.frame != sample.left_index):
+                    raise ValidationError('Idle loop preview authority changed')
+                if sample.alpha:
+                    options['idle_sample']=sample
             dpr=self.devicePixelRatioF()
             self.renderer.draw(self.cache,self.frame,round(self.width()*dpr),round(self.height()*dpr),
                 yaw=self.yaw,pitch=self.pitch,zoom=self.zoom,pan=self.pan,
-                highlight_intersections=self.highlight_intersections,focus_intersections=self.focus_intersections)
-        except Exception as error:self._fail(str(error))
+                highlight_intersections=self.highlight_intersections,focus_intersections=self.focus_intersections,
+                **options)
+        except Exception as error:
+            if state is not None:self.clear_idle_loop_sample(block_paint=True)
+            self._fail(str(error))
 
     def reset_view(self):
         self.yaw=-.45;self.pitch=.15;self.zoom=1.;self.pan=(0.,0.);self.update()
