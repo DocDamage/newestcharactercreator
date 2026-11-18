@@ -9,6 +9,7 @@
 #include "Engine/SkeletalMesh.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
+#include "Logging/LogMacros.h"
 #include "Materials/Material.h"
 #include "ProceduralMeshComponent.h"
 #include "Rendering/SkeletalMeshRenderData.h"
@@ -228,5 +229,9 @@ void AUccRegisteredPreviewActor::StopPreview()
     Draw->ClearAllMeshSections();
     State.Reset();
     SetActorTickEnabled(false);
-    UE_LOG(LogTemp, Error, TEXT("UCC corrected character playback stopped because its saved source or runtime operands failed verification"));
+    if (UE_LOG_ACTIVE(LogTemp, Error))
+    {
+        FMsg::Logf("UccRegisteredPreviewActor.cpp", __LINE__, LogTemp.GetCategoryName(), ELogVerbosity::Error,
+            TEXT("UCC corrected character playback stopped because its saved source or runtime operands failed verification"));
+    }
 }

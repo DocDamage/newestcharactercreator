@@ -25,6 +25,7 @@ NATIVE_RECEIPT = 'unreal-animation-native-receipt.json'
 _RAW_SOURCE = 'unreal_animated_raw_positions.f32'
 _BONE_SOURCE = 'unreal_animated_world_bones.f32'
 _MAX_ASSET = 512 * 1024**2
+_MAX_PORTABLE_PLUGIN = 16 * 1024**2
 
 
 @dataclass(frozen=True, slots=True)
@@ -146,7 +147,16 @@ def verify_unreal_native_animation(prepared: PreparedUnrealAnimationSource, *, t
             dll = f'Binaries/Win64/UnrealEditor-{plugin}.dll'
             for filename in (_MODULES, dll):
                 name = f'{plugin}/{filename}'
-                binaries[name] = hash_file(stage_plugin/name, _MAX_ASSET, budget)[0]
+                path = stage_plugin/name
+                if plugin == RUNTIME_PLUGIN and filename == dll:
+                    binary, digest = read_bytes(path, _MAX_PORTABLE_PLUGIN, budget)
+                    binary = binary.lower()
+                    if any(prefix.encode(encoding).lower() in binary for prefix in (str(stage), stage.as_posix())
+                            for encoding in ('utf-8', 'utf-16le')):
+                        raise ProjectStorageError('Portable Unreal runtime includes a private build directory')
+                    binaries[name] = digest
+                else:
+                    binaries[name] = hash_file(path, _MAX_ASSET, budget)[0]
         watched.update({stage_plugin/name: (digest, _MAX_ASSET) for name, digest in binaries.items()})
 
         def capture(project: Path, phase: str, *, input_fbx: Path | None) -> Path:
