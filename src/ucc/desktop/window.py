@@ -112,6 +112,10 @@ class MainWindow(QMainWindow):
         from .godot_export_workflow import start_export
         self.godot_export_action=self._action(menu,'Export private Godot character…','',lambda:start_export(self))
         self.godot_export_action.setEnabled(False)
+        from .godot_animation_export_workflow import start_godot_animation_export
+        self.godot_animation_export_action = self._action(menu, 'Export private animated Godot project…', '',
+            lambda: start_godot_animation_export(self))
+        self.godot_animation_export_action.setEnabled(False)
         from .unity_export_workflow import start_unity_export
         self.unity_export_action=self._action(menu,'Export private Unity character…','',lambda:start_unity_export(self))
         self.unity_export_action.setEnabled(False)
@@ -262,6 +266,8 @@ class MainWindow(QMainWindow):
         self.preview_master_action.setEnabled(state.master_blend is not None and not self.jobs.busy)
         from .godot_export_workflow import refresh_export
         refresh_export(self)
+        from .godot_animation_export_workflow import refresh_godot_animation_export
+        refresh_godot_animation_export(self)
         from .unity_export_workflow import refresh_unity_export
         refresh_unity_export(self)
         from .unreal_export_workflow import refresh_unreal_export
@@ -533,6 +539,11 @@ class MainWindow(QMainWindow):
 
         from .godot_export_workflow import refresh_export
         refresh_export(self)
+        from .godot_animation_export_workflow import KIND as GODOT_ANIMATION_EXPORT, refresh_godot_animation_export
+        refresh_godot_animation_export(self)
+        if busy and self._work_kind == GODOT_ANIMATION_EXPORT:
+            self.cancel_generation_action.setEnabled(True)
+            self.statusBar().showMessage('Preparing and independently reopening the private animated Godot project…')
         from .unity_export_workflow import refresh_unity_export
         refresh_unity_export(self)
         from .unreal_export_workflow import refresh_unreal_export
@@ -586,6 +597,10 @@ class MainWindow(QMainWindow):
         if self._work_kind=='godot_export':
             from .godot_export_workflow import finish_export
             finish_export(self,result);return
+        if self._work_kind == 'godot_animation_export':
+            from .godot_animation_export_workflow import finish_godot_animation_export
+            finish_godot_animation_export(self, result)
+            return
         if self._work_kind=='skin_material':
             from .skin_material_workflow import finish_skin_material
             finish_skin_material(self,result)
@@ -907,6 +922,10 @@ class MainWindow(QMainWindow):
         if self._work_kind=='godot_export':
             from .godot_export_workflow import export_error
             export_error(self,error);return
+        if self._work_kind == 'godot_animation_export':
+            from .godot_animation_export_workflow import godot_animation_export_error
+            godot_animation_export_error(self, error)
+            return
         if self._work_kind=='skin_material':
             from .material_master_workflow import show_material_master_error
             show_material_master_error(self,error)

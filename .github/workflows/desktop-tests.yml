@@ -24,6 +24,7 @@ on:
       - 'tests/test_idle_loop_renderer_qt.py'
       - 'tests/test_authored_idle_authoring*.py'
       - 'tests/test_godot_saved_preview*.py'
+      - 'tests/test_godot_animation_export_desktop.py'
       - 'tests/test_target_action_diagnostic*.py'
       - 'tests/test_unreal_export_dialog.py'
       - 'tests/test_unreal_export_desktop.py'
@@ -114,6 +115,8 @@ jobs:
         run: python -m unittest discover -s tests -p test_godot_saved_preview_widget.py -v
       - name: Run saved Godot consent and viewer lifetime tests (real Qt, no skips)
         run: python -m unittest discover -s tests -p test_godot_saved_preview_workflow.py -v
+      - name: Run private Godot animation export workflow tests
+        run: python -m unittest discover -s tests -p test_godot_animation_export_desktop.py -v
       - name: Run registered clip diagnostic report tests (real Qt, no skips)
         run: python -m unittest discover -s tests -p test_target_action_diagnostic_dialog.py -v
       - name: Run diagnostic watch, consent and lifetime tests (real Qt, no skips)

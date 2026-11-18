@@ -1,0 +1,13 @@
+config_version=5
+
+[application]
+config/name="UCC Private Character Animation"
+run/main_scene="res://character.tscn"
+config/features=PackedStringArray("4.7", "Mobile")
+
+[display]
+window/size/viewport_width=768
+window/size/viewport_height=768
+
+[rendering]
+renderer/rendering_method="mobile"

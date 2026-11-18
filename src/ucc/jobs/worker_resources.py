@@ -7,6 +7,11 @@ from ucc.core.worker_payload import validate_worker_payload, WorkerPayloadError,
 from ucc.core.worker_payload import STATIC_ADAPTER
 from ucc.core.worker_payload import UNITY_ADAPTER,UNITY_ADAPTER_FILES
 from ucc.core.worker_payload import UNREAL_ADAPTER,UNREAL_ADAPTER_FILES
+from ucc.core.worker_payload import (
+    REGISTERED_BODY_ADAPTER, REGISTERED_BODY_FILES,
+    REGISTERED_CORRECTION_ADAPTER, REGISTERED_CORRECTION_FILES,
+    REGISTERED_PLAYBACK_ADAPTER, REGISTERED_PLAYBACK_FILES,
+)
 
 
 def worker_dependency_files(worker: Path) -> set[Path]:
@@ -53,6 +58,44 @@ def bundled_static_adapter_paths() -> dict[str, Path]:
            or not 0 < path.stat().st_size <= 256 * 1024 for path in files.values()):
         raise ValidationError('Static Godot adapter resources are unavailable')
     return files
+
+
+def _registered_godot_resources(adapter: str, names: frozenset[str], source_folder: str) -> dict[str, Path]:
+    if getattr(sys, 'frozen', False):
+        base = Path(sys._MEIPASS)
+        files = {name: base/adapter/name for name in sorted(names)}
+        try:
+            available = set(validate_worker_payload(base))
+        except (WorkerPayloadError, OSError) as error:
+            raise ValidationError('Bundled registered Godot resources are incomplete or changed') from error
+        if not set(files.values()).issubset(available):
+            raise ValidationError('This package does not contain the registered Godot adapter')
+    else:
+        godot = Path(__file__).resolve().parents[3]/'engine_adapters/godot'
+        files = {name: (godot if name == 'ucc_skin_adapter.gd' else godot/source_folder)/name
+                 for name in sorted(names)}
+    if any(path.is_symlink() or not path.is_file() or path.resolve() != path
+           or not 0 < path.stat().st_size <= 256 * 1024 for path in files.values()):
+        raise ValidationError('Registered Godot resources are missing, redirected or oversized')
+    return files
+
+
+def bundled_registered_correction_paths() -> dict[str, Path]:
+    """Return only the first-party correction code shipped with this app."""
+    return _registered_godot_resources(REGISTERED_CORRECTION_ADAPTER, REGISTERED_CORRECTION_FILES,
+                                       'registered_correction')
+
+
+def bundled_registered_body_paths() -> dict[str, Path]:
+    """Return the registered-body engine verification entry points."""
+    return _registered_godot_resources(REGISTERED_BODY_ADAPTER, REGISTERED_BODY_FILES,
+                                       'registered_body300')
+
+
+def bundled_registered_playback_paths() -> dict[str, Path]:
+    """Return the private animated-project builder and playback verification code."""
+    return _registered_godot_resources(REGISTERED_PLAYBACK_ADAPTER, REGISTERED_PLAYBACK_FILES,
+                                       'registered_playback')
 
 
 def bundled_unity_adapter_paths() -> dict[str,Path]:
