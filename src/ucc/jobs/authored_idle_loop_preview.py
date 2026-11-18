@@ -190,9 +190,9 @@ class _IdleProofInputs:
 
 
 @contextmanager
-def _source_from_idle_proof(proof_file, database, budget):
+def _source_from_idle_proof(proof_file, database, budget, expected_sha256=None):
     reads = ProofReads(budget)
-    raw = reads.capture(_path(str(proof_file)), MAX_BYTES)
+    raw = reads.capture(_path(str(proof_file)), MAX_BYTES, expected_sha256)
     pointer = _pointer(raw)
     original = _path(pointer['catalog_path'])
     source_store = ProjectStore(_path(pointer['project_root']))
@@ -256,13 +256,26 @@ def _match(admitted, mapping, binding, cache):
 
 def load_authored_idle_loop_preview(store, *, proof_file: Path, selection: TargetActionDiagnosticSelection,
         database_path: Path, local_preview_confirmed: bool, cancel=None, timeout_s=300) -> AuthoredIdleLoopPreview:
-    """Check the original authoring proof and independently retained current target."""
+    """Check the original authoring proof and current target for private preview."""
     if type(selection) is not TargetActionDiagnosticSelection or local_preview_confirmed is not True:
         raise ValidationError('Choose an exact saved target and confirm private authored idle loop preview')
+    return authenticate_authored_idle_target(store, proof_file=proof_file, selection=selection,
+        database_path=database_path, cancel=cancel, timeout_s=timeout_s)
+
+
+def authenticate_authored_idle_target(store, *, proof_file: Path, selection: TargetActionDiagnosticSelection,
+        database_path: Path, expected_proof_sha256: str | None = None,
+        cancel=None, timeout_s=300) -> AuthoredIdleLoopPreview:
+    """Authenticate original and saved target evidence without authorizing a new use."""
+    if type(selection) is not TargetActionDiagnosticSelection:
+        raise ValidationError('Choose the exact saved authored idle target')
+    if expected_proof_sha256 is not None:
+        checked_sha(expected_proof_sha256)
     try:
         with operation_budget(cancel, timeout_s) as budget:
             database = _path(str(database_path))
-            with _source_from_idle_proof(proof_file, database, budget) as (admitted, verifier, source_budget, authority, inputs):
+            with _source_from_idle_proof(proof_file, database, budget, expected_proof_sha256) as (
+                    admitted, verifier, source_budget, authority, inputs):
                 mapping = _current_idle_mapping(admitted, verifier, source_budget)
                 cache, binding, stamps = _target(store, selection, database, source_budget)
                 authority.remember(stamps)
