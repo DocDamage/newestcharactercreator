@@ -148,7 +148,9 @@ def publish_first_party_godot_playback(store: ProjectStore, *, result: PreparedF
         run('initial-import', build, settings+['--editor', '--import'], build_rows)
         run('configure-import', build, ['--headless', '--script', 'res://configure.gd'], build_rows)
         run('configured-import', build, settings+['--editor', '--import'], build_rows)
-        run('pack', build, ['--headless', '--script', 'res://pack.gd', '--',
+        # Packing rechecks the imported skin buffer through Godot. The dummy
+        # headless renderer cannot preserve the observable packed skin codes.
+        run('pack', build, settings+['--script', 'res://pack.gd', '--',
             build_rows['character.glb'].sha256, build_rows['skin_plan.json'].sha256,
             manifest_row.sha256, build_rows['bind_source_indices.json'].sha256], build_rows)
         runtime_sources.update({

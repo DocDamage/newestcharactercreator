@@ -102,6 +102,9 @@ class FirstPartyGodotPlaybackTests(unittest.TestCase):
         pack, verify = self.commands[-2:]
         self.assertIn('res://pack.gd', pack)
         self.assertIn('res://verify.gd', verify)
+        self.assertEqual(pack[pack.index('--rendering-method')+1], 'mobile')
+        self.assertEqual(pack[pack.index('--rendering-driver')+1], 'vulkan')
+        self.assertNotIn('--headless', pack)
         self.assertNotEqual(Path(pack[2]), Path(verify[2]))
         portable = self.runtime_names | {'character.tscn', 'playback.json'}
         self.assertEqual({path.name for path in target.iterdir()}, portable | {'playback-receipt.json'})
