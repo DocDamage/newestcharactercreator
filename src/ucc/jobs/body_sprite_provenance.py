@@ -8,7 +8,7 @@ from ucc.animations.target_action_diagnostic_contract import TargetActionDiagnos
 from ucc.core.errors import ValidationError, ProjectConflict
 from ucc.core.storage import _unique_project_fields, _nonfinite_project_number
 from ucc.core.target_action_format import checked_sha, checked_text, checked_uuid, document_sha256, closed
-from ucc.core.body_sprites import ORIGIN_POLICY as POLICY
+from ucc.core.body_sprites import AUTHORED_IDLE_ORIGIN_FORMAT, ORIGIN_POLICY as POLICY
 from ucc.core.target_action import TargetActionBinding
 from ucc.export.godot_native_recipe import validate_native_recipe
 from ucc.library.provenance import LicensePolicy
@@ -19,7 +19,6 @@ from .authored_idle_loop_preview import (
 from .target_action_context import Budget, protected
 
 AUDIT_STATUS = 'REAL_PREPARED_MASTER_NATIVE300_INDEPENDENTLY_AUDITED_AFTER_HARNESS_KEY_ERROR'
-AUTHORED_IDLE_ORIGIN_FORMAT = 'AUTHORED_IDLE_PROOF_V1'
 
 
 @dataclass(frozen=True, slots=True)

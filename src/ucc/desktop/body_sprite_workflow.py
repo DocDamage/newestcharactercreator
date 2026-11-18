@@ -9,7 +9,9 @@ from ucc.core.body_sprites import body_sprite_sources
 from ucc.core.errors import ProjectConflict, ProjectStorageError, UCCError, ValidationError
 from ucc.core.target_action import TargetActionBinding
 from ucc.core.target_action_format import canonical_bytes
-from ucc.jobs.body_sprite_provenance import OriginalMotionProvenance
+from ucc.jobs.body_sprite_provenance import (
+    AUTHORED_IDLE_ORIGIN_FORMAT, AuthoredIdleSpriteOrigin, OriginalMotionProvenance,
+)
 
 KINDS = frozenset({'body_sprite_review', 'body_sprite_origin', 'body_sprite_export'})
 
@@ -33,7 +35,7 @@ class BodyReview:
 class OriginReview:
     token: object
     path: Path
-    provenance: OriginalMotionProvenance
+    provenance: OriginalMotionProvenance | AuthoredIdleSpriteOrigin
     summary: str
 
 
@@ -106,18 +108,22 @@ def _origin(window, path, owner=None):
         window._body_sprite_origin_path = requested
         from .target_action_workflow import _submit
         def operation(cancel, _progress):
-            from ucc.jobs.body_sprite_provenance import review_original_motion_record
+            from ucc.jobs.body_sprite_provenance import review_body_sprite_origin_record
             from ucc.jobs.target_action_context import operation_budget
-            with operation_budget(cancel, 30) as budget:
+            with operation_budget(cancel, 300) as budget:
                 current = _source_review(selection, budget.cancel, budget.remaining())
-                origin, metadata = review_original_motion_record(requested,
-                    binding, current.policy, budget)
-                label = ('Independently checked original-motion record' if metadata['record_format'] ==
-                    'INDEPENDENT_PREPARED_NATIVE300_AUDIT_V1' else 'Original-motion declaration record')
+                context = selection.context
+                origin, metadata = review_body_sprite_origin_record(requested, binding, current.policy, budget,
+                    store=context.store, database_path=context.database)
+                labels = {
+                    AUTHORED_IDLE_ORIGIN_FORMAT: 'Verified authored idle and saved motion',
+                    'INDEPENDENT_PREPARED_NATIVE300_AUDIT_V1': 'Independently checked original-motion record',
+                }
+                label = labels.get(metadata['record_format'], 'Original-motion declaration record')
                 summary = (label+'\n'
                     'This metadata declaration does not prove human authorship or grant sprite rights.\n'
                     'Review each exact rendered source separately for this private use.')
-                if metadata['original_script_exit_success'] is False:
+                if metadata.get('original_script_exit_success') is False:
                     summary += '\nThe historical original script failed; its qualified independent full-clip recheck is retained.'
                 return OriginReview(token, requested, origin, summary)
         _submit(window, 'body_sprite_origin', operation)
@@ -139,7 +145,7 @@ def _render(window, dialog):
         origin = dialog.origin_review()
         if (request.target_binding != window._body_sprite_binding
                 or request.project_snapshot_json != canonical_bytes(selection.context.project.to_dict())
-                or type(origin) is not OriginalMotionProvenance):
+                or type(origin) not in (OriginalMotionProvenance, AuthoredIdleSpriteOrigin)):
             raise ValidationError('Sprite request differs from the reviewed saved character and origin')
         from ucc.jobs.export_destination import plan_destination
         destination = plan_destination(dialog.destination_path(), selection.context.store.root)
@@ -161,14 +167,20 @@ def _render(window, dialog):
         def operation(cancel, _progress):
             from ucc.jobs.body_sprite_export import export_body_sprite_sample
             from .body_sprite_receipt import verify_body_sprite_delivery
+            if type(origin) is AuthoredIdleSpriteOrigin:
+                provenance = dict(authored_idle_proof=origin.record_path,
+                    authored_idle_proof_sha256=origin.expected_sha256)
+                receipt_scope = dict(expected_authored_idle_proof_sha256=origin.expected_sha256)
+            else:
+                provenance = dict(original_author_record=origin.record_path,
+                    original_author_record_sha256=origin.expected_sha256, original_motion_role=origin.motion_role,
+                    original_motion_uri_aliases=origin.uri_aliases)
+                receipt_scope = {}
             result = export_body_sprite_sample(selection.context.store, request=request,
                 database_path=selection.context.database, destination=destination,
-                blender_exe=executable, worker_script=worker,
-                original_author_record=origin.record_path, original_author_record_sha256=origin.expected_sha256,
-                original_motion_role=origin.motion_role, original_motion_uri_aliases=origin.uri_aliases,
-                cancel=cancel, timeout_s=2400)
+                blender_exe=executable, worker_script=worker, cancel=cancel, timeout_s=2400, **provenance)
             try:
-                verify_body_sprite_delivery(result, request, destination.path, cancel)
+                verify_body_sprite_delivery(result, request, destination.path, cancel, **receipt_scope)
             except Exception as error:
                 error.add_note('Completed private sprite output retained at '+str(destination.path))
                 raise

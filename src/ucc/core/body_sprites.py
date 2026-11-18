@@ -20,6 +20,8 @@ from .target_action_format import (
 POLICY = 'UCC_PRIVATE_REGISTERED_BODY_SPRITE_SAMPLE_V1'
 MATERIAL_POLICY = 'COPIES_ONLY_REQUEST_BOUND_MATTE_V1'
 ORIGIN_POLICY = 'PINNED_ORIGINAL_MOTION_DECLARATION_V1'
+AUTHORED_IDLE_ORIGIN_FORMAT = 'AUTHORED_IDLE_PROOF_V1'
+AUTHORED_IDLE_ORIGIN_STATUS = 'UCC_PRIVATE_AUTHORED_IDLE_LOOP_PREVIEW_V1'
 STAGE = 'stage_registered_body_sprites'
 VERIFY = 'verify_registered_body_sprites'
 WORKER_FIELDS = frozenset({'master_sha256', 'recipe_sha256', 'target_binding_sha256',
@@ -209,6 +211,71 @@ class BodySpriteRequest:
         return cls.from_dict(read_document(payload))
 
 
+def authored_idle_sprite_origin(binding: TargetActionBinding, *, proof_sha256: str,
+                                receipt_sha256: str, mapping_sha256: str, cache_sha256: str) -> dict:
+    """Project already-admitted authored idle identity to worker-safe metadata."""
+    require(type(binding) is TargetActionBinding, 'Authored idle sprite origin needs the exact saved target binding')
+    for digest in (proof_sha256, receipt_sha256, mapping_sha256, cache_sha256):
+        checked_sha(digest)
+    require(binding.root_motion_policy == 'ARMATURE_ORIGIN_DISPLACEMENT_V1'
+            and mapping_sha256 == binding.mapping_sha256
+            and cache_sha256 == binding.file_map['playback/motion_skin.bin'].sha256,
+            'Authored idle sprite proof differs from the saved target mapping or playback cache')
+    source = binding.source
+    uri = 'urn:sha256:'+source.source_sha256
+    return {
+        'policy': ORIGIN_POLICY,
+        'record_sha256': proof_sha256,
+        'record_format': AUTHORED_IDLE_ORIGIN_FORMAT,
+        'record_status': AUTHORED_IDLE_ORIGIN_STATUS,
+        'motion_role': 'motion:'+source.clip_id,
+        'source_sha256': source.source_sha256,
+        'snapshot_sha256': source.snapshot_sha256,
+        'record_policy_sha256': source.catalog_policy_sha256,
+        'catalog_policy_sha256': source.catalog_policy_sha256,
+        'record_source_uri': uri,
+        'catalog_source_uri': uri,
+        'uri_aliases': [],
+        'target_binding_sha256': binding.sha256,
+        'authored_idle_receipt_sha256': receipt_sha256,
+        'mapping_sha256': mapping_sha256,
+        'cache_sha256': cache_sha256,
+        'origin_declaration_only': True,
+        'sprite_rights_inferred': False,
+    }
+
+
+def _validate_origin(raw: object, binding: TargetActionBinding) -> None:
+    if type(raw) is dict and raw.get('record_format') == AUTHORED_IDLE_ORIGIN_FORMAT:
+        expected = authored_idle_sprite_origin(binding, proof_sha256=raw.get('record_sha256'),
+            receipt_sha256=raw.get('authored_idle_receipt_sha256'), mapping_sha256=raw.get('mapping_sha256'),
+            cache_sha256=raw.get('cache_sha256'))
+        require(canonical_bytes(raw) == canonical_bytes(expected),
+                'Authored idle sprite recipe differs from its exact origin metadata or separate sprite-rights scope')
+        return
+    origin = closed(raw, {'policy','record_sha256','motion_role',
+        'record_format','record_status','original_script_exit_success',
+        'source_sha256','snapshot_sha256','record_policy_sha256','catalog_policy_sha256',
+        'record_source_uri','catalog_source_uri','uri_aliases','origin_declaration_only','sprite_rights_inferred'})
+    for key in ('record_sha256','record_policy_sha256','catalog_policy_sha256'): checked_sha(origin[key])
+    checked_text(origin['motion_role'],160)
+    for key in ('record_source_uri','catalog_source_uri'): checked_text(origin[key],2048)
+    aliases = [] if origin['record_source_uri']==origin['catalog_source_uri'] else [[origin['record_source_uri'],origin['catalog_source_uri']]]
+    declared = (origin['record_format']=='LEGACY_NATIVE_SOURCE_REVIEW_V1'
+        and origin['record_status']=='MPFB_NATIVE_RUNTIME_SOURCE_V1' and origin['original_script_exit_success'] is None
+        and origin['motion_role'].startswith('motion:')) or (
+        origin['record_format']=='INDEPENDENT_PREPARED_NATIVE300_AUDIT_V1'
+        and origin['record_status']=='REAL_PREPARED_MASTER_NATIVE300_INDEPENDENTLY_AUDITED_AFTER_HARNESS_KEY_ERROR'
+        and origin['original_script_exit_success'] is False and origin['motion_role']=='source_permission')
+    require(origin['policy']==ORIGIN_POLICY and declared
+            and origin['record_source_uri'].startswith('ucc-original-diagnostic://')
+            and origin['source_sha256']==binding.source.source_sha256 and origin['snapshot_sha256']==binding.source.snapshot_sha256
+            and origin['catalog_policy_sha256']==binding.source.catalog_policy_sha256
+            and origin['origin_declaration_only'] is True and origin['sprite_rights_inferred'] is False
+            and canonical_bytes(origin['uri_aliases'])==canonical_bytes(aliases),
+            'Body-sprite source admission lost its exact pinned original declaration and separate sprite-rights scope')
+
+
 def validate_recipe(raw: object) -> dict:
     value = closed(raw, {'schema_version', 'policy', 'request', 'source_admission'})
     request = BodySpriteRequest.from_dict(value['request'])
@@ -228,27 +295,7 @@ def validate_recipe(raw: object) -> dict:
         for digest in record.values(): checked_sha(digest)
     require(all(len({record[key] for record in records}) == 2 for key in ('request_sha256','result_sha256')),
             'Body-sprite source admission cannot reuse one worker record twice')
-    origin = closed(admission['original_motion_provenance'], {'policy','record_sha256','motion_role',
-        'record_format','record_status','original_script_exit_success',
-        'source_sha256','snapshot_sha256','record_policy_sha256','catalog_policy_sha256',
-        'record_source_uri','catalog_source_uri','uri_aliases','origin_declaration_only','sprite_rights_inferred'})
-    for key in ('record_sha256','record_policy_sha256','catalog_policy_sha256'): checked_sha(origin[key])
-    checked_text(origin['motion_role'],160)
-    for key in ('record_source_uri','catalog_source_uri'): checked_text(origin[key],2048)
-    aliases = [] if origin['record_source_uri']==origin['catalog_source_uri'] else [[origin['record_source_uri'],origin['catalog_source_uri']]]
-    declared = (origin['record_format']=='LEGACY_NATIVE_SOURCE_REVIEW_V1'
-        and origin['record_status']=='MPFB_NATIVE_RUNTIME_SOURCE_V1' and origin['original_script_exit_success'] is None
-        and origin['motion_role'].startswith('motion:')) or (
-        origin['record_format']=='INDEPENDENT_PREPARED_NATIVE300_AUDIT_V1'
-        and origin['record_status']=='REAL_PREPARED_MASTER_NATIVE300_INDEPENDENTLY_AUDITED_AFTER_HARNESS_KEY_ERROR'
-        and origin['original_script_exit_success'] is False and origin['motion_role']=='source_permission')
-    require(origin['policy']==ORIGIN_POLICY and declared
-            and origin['record_source_uri'].startswith('ucc-original-diagnostic://')
-            and origin['source_sha256']==admission['source_sha256'] and origin['snapshot_sha256']==admission['snapshot_sha256']
-            and origin['catalog_policy_sha256']==request.target_binding.source.catalog_policy_sha256
-            and origin['origin_declaration_only'] is True and origin['sprite_rights_inferred'] is False
-            and canonical_bytes(origin['uri_aliases'])==canonical_bytes(aliases),
-            'Body-sprite source admission lost its exact pinned original declaration and separate sprite-rights scope')
+    _validate_origin(admission['original_motion_provenance'], request.target_binding)
     expected = {'schema_version': 1, 'policy': POLICY, 'request': request.to_dict(),
                 'source_admission': admission}
     require(canonical_bytes(value) == canonical_bytes(expected), 'Malformed closed registered body-sprite recipe')
