@@ -123,7 +123,7 @@ class AuthoredIdleTargetMapTests(unittest.TestCase):
                 with self.assertRaisesRegex(ProjectConflict, 'exact attached source'):
                     self.publish(expected_review=wrong)
         for output in (self.source.store.root/'map', self.candidate.directory/'map', self.proof.parent/'map',
-                       self.store.root/'map', Path(str(self.database)+'-wal')):
+                       self.store.root/'map', Path(str(self.database)+'-journal')):
             with self.subTest(output=output), self.assertRaisesRegex(ValidationError, 'outside'):
                 self.publish(destination=plan_destination(output, self.store.root))
             self.assertFalse(output.exists())
