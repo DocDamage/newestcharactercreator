@@ -8,6 +8,8 @@ from unittest.mock import patch
 
 try:
     from PySide6.QtCore import Qt
+    from PySide6.QtGui import QAccessible
+    from PySide6.QtTest import QTest
     from PySide6.QtWidgets import QApplication, QDialog, QLabel
 except ImportError:
     QApplication = None
@@ -64,6 +66,48 @@ class BodySpriteDialogTests(unittest.TestCase):
         self.assertIn('source 2–9', d.window_summary.text())
         for method in (d.request, d.origin_review, d.destination_path):
             with self.assertRaises(ValidationError): method()
+
+    def test_every_source_grant_is_named_in_the_dialog_accessibility_tree(self):
+        self.dialog.show(); self.app.processEvents()
+        root = QAccessible.queryAccessibleInterface(self.dialog)
+        self.assertIsNotNone(root)
+        pending = [(root, 0)]; names = set(); checkbox_objects = set(); interfaces = []
+        while pending:
+            interface, depth = pending.pop(); interfaces.append(interface)
+            self.assertLess(depth, 32); self.assertLess(len(interfaces), 1000)
+            if interface.role() == QAccessible.Role.CheckBox:
+                names.add(interface.text(QAccessible.Text.Name))
+                checkbox_objects.add(interface.object())
+            for index in range(interface.childCount()):
+                child = interface.child(index)
+                if child is not None: pending.append((child, depth + 1))
+        expected = {'Authorize private sprite rendering: ' + label for label in
+                    ('Saved character', 'Expression library', 'Registered hand', 'Selected motion')}
+        self.assertTrue(expected <= names, 'Every source grant must be exposed from the dialog root: ' + str(expected - names))
+        self.assertTrue(set(self.dialog.checks) <= checkbox_objects)
+        self.assertEqual([label.text() for label in self.dialog.source_hash_labels],
+                         ['SHA-256: ' + digest for _, digest in self.review.source_bindings])
+        self.assertTrue(all(not check.isChecked() for check in self.dialog.checks))
+
+    def test_tab_reaches_every_source_grant_and_space_checks_only_the_focused_source(self):
+        self.dialog.show(); self.dialog.activateWindow(); self.app.processEvents()
+        self.dialog.set_busy(True); self.dialog.set_busy(False)
+        self.dialog.origin_declaration.setFocus(); self.app.processEvents()
+        visited = set()
+        for _ in range(64):
+            focus = self.app.focusWidget() or self.dialog
+            QTest.keyClick(focus, Qt.Key.Key_Tab); self.app.processEvents()
+            focus = self.app.focusWidget()
+            if focus in self.dialog.checks and focus not in visited:
+                self.assertFalse(focus.visibleRegion().isEmpty(), 'Tab focus must scroll the grant into view')
+                self.assertFalse(focus.isChecked())
+                QTest.keyClick(focus, Qt.Key.Key_Space); self.app.processEvents()
+                self.assertTrue(focus.isChecked()); visited.add(focus)
+            if len(visited) == len(self.dialog.checks): break
+        self.assertEqual(visited, set(self.dialog.checks))
+        self.assertFalse(self.dialog.origin_declaration.isChecked())
+        self.assertFalse(self.dialog.matte_consent.isChecked())
+        self.assertFalse(self.dialog.render_button.isEnabled())
 
     def test_all_actual_grants_declaration_note_and_matte_are_separately_required(self):
         self.ready(); d = self.dialog
@@ -167,7 +211,7 @@ class BodySpriteDialogTests(unittest.TestCase):
         dialog = BodySpriteDialog(review.project_snapshot_json, review.target_binding, context_token=object())
         self.addCleanup(dialog.close)
         self.assertEqual(len(dialog.checks), 3)
-        self.assertNotIn('Registered hand', [dialog.table.item(i, 0).text() for i in range(dialog.table.rowCount())])
+        self.assertNotIn('Registered hand', dialog.source_labels)
 
     def test_cancelled_pickers_keep_current_review_and_output_draft(self):
         origin = self.ready()

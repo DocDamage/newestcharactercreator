@@ -4,9 +4,8 @@ from uuid import uuid4
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QCheckBox, QComboBox, QDialog, QDialogButtonBox, QFileDialog, QFormLayout,
-    QHBoxLayout, QLabel, QLineEdit, QPushButton, QScrollArea, QSpinBox, QTableWidget,
-    QTableWidgetItem, QVBoxLayout, QWidget,
+    QCheckBox, QComboBox, QDialog, QDialogButtonBox, QFileDialog, QFormLayout, QGroupBox,
+    QHBoxLayout, QLabel, QLineEdit, QPushButton, QScrollArea, QSpinBox, QVBoxLayout, QWidget,
 )
 
 from ucc.core.body_sprites import BodySpriteRequest, BodySpriteWindow, body_sprite_sources
@@ -84,18 +83,27 @@ class BodySpriteDialog(QDialog):
         layout.addWidget(self.origin_summary)
         self.origin_declaration = QCheckBox('I confirm the selected motion’s original-authored declaration, including the qualifications shown.')
         layout.addWidget(self.origin_declaration)
-        self.table = QTableWidget(len(self._sources), 3)
-        self.table.setHorizontalHeaderLabels(['Input', 'Content SHA-256', 'Private sprite permission'])
+        self.source_permissions = QGroupBox('Review each source for private sprite rendering')
+        permission_layout = QVBoxLayout(self.source_permissions)
         self.checks = []
-        for index, (name, digest) in enumerate(self._sources):
+        self.source_labels = []
+        self.source_hash_labels = []
+        for name, digest in self._sources:
             label = ('Saved character' if name == 'master' else 'Expression library' if name == 'expression_library'
                      else 'Registered hand' if name.startswith('part:') else 'Selected motion')
-            self.table.setItem(index, 0, QTableWidgetItem(label))
-            self.table.setItem(index, 1, QTableWidgetItem(digest))
-            check = QCheckBox('Reviewed and authorized'); self.checks.append(check)
-            self.table.setCellWidget(index, 2, check); check.toggled.connect(self.refresh)
-        self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.table.resizeColumnsToContents(); layout.addWidget(self.table)
+            name = 'Authorize private sprite rendering: ' + label
+            check = QCheckBox(name); check.setAccessibleName(name)
+            check.setAccessibleDescription(label + '; content SHA-256 ' + digest)
+            check.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+            digest_label = QLabel('SHA-256: ' + digest)
+            digest_label.setTextFormat(Qt.TextFormat.PlainText)
+            digest_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+            digest_label.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            self.checks.append(check); self.source_labels.append(label)
+            self.source_hash_labels.append(digest_label)
+            permission_layout.addWidget(check); permission_layout.addWidget(digest_label)
+            check.toggled.connect(self.refresh)
+        layout.addWidget(self.source_permissions)
         fixed_policy = QLabel('Review every exact source separately for this private render. NoAI stays enabled; '
                               'UE-only inputs and source/sprite redistribution are not allowed.')
         fixed_policy.setWordWrap(True); layout.addWidget(fixed_policy)
@@ -121,6 +129,9 @@ class BodySpriteDialog(QDialog):
         self.resolution.currentIndexChanged.connect(self.refresh)
         self.note.textChanged.connect(self.refresh); self.destination.textChanged.connect(self.refresh)
         self.origin_declaration.toggled.connect(self.refresh); self.matte_consent.toggled.connect(self.refresh)
+        tab_order = [self.origin_declaration, *self.checks, self.note, self.matte_consent,
+                     self.destination, self.choose_destination, self.render_button]
+        for previous, following in zip(tab_order, tab_order[1:]): QWidget.setTabOrder(previous, following)
         self.refresh()
 
     def _clear_consents(self):
