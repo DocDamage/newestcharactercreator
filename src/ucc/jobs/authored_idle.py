@@ -117,7 +117,8 @@ def _author(store, inspection, policies, database, destination, blender, worker,
         target, frame = checked_inspection(measured, inspection, summary, budget)
         author = AuthoredIdleRequest(str(uuid4()), inspection.project_snapshot_json, target,
             summary['anatomical_frame_sha256'], inspection.permissions, inspection.purpose,
-            inspection.original_procedural_recipe_declared, inspection.private_authored_output_preview_confirmed)
+            inspection.original_procedural_recipe_declared, inspection.private_authored_output_preview_confirmed,
+            profile=inspection.profile)
         author_path = work/'idle_authoring_request.json'
         _write(author_path, canonical_bytes(author.to_dict()), work_stamp)
         frozen[author_path] = record(author_path, budget); retained[author_path.name] = author_path

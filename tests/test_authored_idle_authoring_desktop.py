@@ -109,6 +109,7 @@ class AuthoredIdleDesktopTests(unittest.TestCase):
             self.window.controller.save()
 
     def test_candidate_result_remains_visible_after_proof_failure(self):
+        from ucc.core.authored_idle import CLEAR_IDLE_PROFILE
         from ucc.desktop.authored_idle_authoring_workflow import _accepted
 
         self.window.authored_idle_action.trigger()
@@ -120,7 +121,7 @@ class AuthoredIdleDesktopTests(unittest.TestCase):
         choice = SimpleNamespace(permissions=self.f.inspection.permissions, source_policy_records=self.f.records,
             purpose=self.f.inspection.purpose, original_procedural_recipe_declared=True,
             private_authored_output_preview_confirmed=True, candidate_destination=self.f.destination.path,
-            proof_destination=self.f.root / 'outputs/loop-proof')
+            proof_destination=self.f.root / 'outputs/loop-proof', profile=CLEAR_IDLE_PROFILE)
         dialog = SimpleNamespace(choice=choice, deleteLater=lambda: None)
         self.window._authored_idle_dialog = dialog
         output = SimpleNamespace(directory=choice.candidate_destination, receipt_sha256='a'*64)
@@ -131,6 +132,7 @@ class AuthoredIdleDesktopTests(unittest.TestCase):
             _accepted(self.window, context, dialog)
             self.wait_for_jobs()
         self.assertEqual(author.call_args.kwargs['inspection_request'].permissions, choice.permissions)
+        self.assertEqual(author.call_args.kwargs['inspection_request'].profile, CLEAR_IDLE_PROFILE)
         self.assertEqual(proof.call_args.kwargs['expected_receipt_sha256'], output.receipt_sha256)
         self.assertIn('candidate saved', self.window.log.toPlainText())
         self.assertIn('NONSHIPPING proof failure', self.window.log.toPlainText())
