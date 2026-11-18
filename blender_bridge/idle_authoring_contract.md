@@ -1,0 +1,47 @@
+# Original idle bridge contract — source implementation, native acceptance pending
+
+These three handlers create and inspect an original private candidate only. They do not consume an existing clip, admit a retarget family, approve quality or register a usable Action. `inspect_target`, `author_source`, `verify_source` live in `authored_idle.py`; each takes `(bpy, root: Path, job: dict) -> dict`.
+
+| Operation | Exact options | Fixed staged intent |
+|---|---|---|
+| `inspect_authored_idle_target` | `request_sha256` | `idle_inspection_request.json`: canonical core `AuthoredIdleInspectionRequest` |
+| `author_original_idle_source` | `request_sha256` | `idle_authoring_request.json`: canonical core `AuthoredIdleRequest` |
+| `verify_authored_idle_source` | `request_sha256`, `review_sha256`, `source_sha256`, `recipe_sha256` | Unchanged authoring intent with a distinct verifier worker job ID |
+
+All have `input_project: candidate.blend`; the original master SHA comes from the complete saved project and exact per-use source declarations. Author and verify additionally stage `idle_anatomical_frame.json`, bound by the actual core request's anatomical SHA. Verify additionally stages `authored_idle_review.blend`, `original_idle.fbx`, `authored_idle_recipe.json` under the respective option hashes. No existing motion input or Action is allowed. Requests retain the core 256 KiB bound. Canonical private evidence has a separate 16 MiB bound; source/review files are bounded to 512 MiB, the independently imported FBX snapshot to 64 MiB. Reads remain bounded if a file grows between hashing and reading.
+
+Inspection outputs `idle_anatomical_frame.json`, `idle_inspection_report.json`. Author outputs `original_idle.fbx`, `authored_idle_review.blend`, `authored_idle_recipe.json`, `authored_idle_report.json`. Verify outputs `authored_idle_source_snapshot.json`, `authored_idle_verification.json`. Every record is exactly `{name, bytes, sha256}`. No output overwrites an existing file.
+
+## Closed worker summary
+
+Exactly: `schema_version`, `status`, `operation`, `request_sha256`, `target`, `anatomical_frame_sha256`, `source_profile`, `skeleton_fingerprint`, `bone_count`, `outputs`, `sample_count`, `source_first_frame`, `source_last_frame`, `fps`, plus the eight flags below. `target` is the actual `TargetActionTarget.to_dict()`. The anatomical SHA is the SHA256 of the actual canonical frame bytes, including non-ASCII metadata. `source_profile` is `UCC_ORIGINAL_MPFB_IDLE_SOURCE_V1`, never the Hips-object family or a filename alias.
+
+All eight flags remain false: `human_visual_review_approved`, `loop_quality_approved`, `usable_action_approved`, `engine_import_verified`, `sprite_use_authorized`, `source_redistribution_authorized`, `quality_measurements_verified`, `source_authorship_proven`.
+
+Inspection status is `ACTUAL_NEUTRAL_IDLE_ANATOMY_MEASURED`, sample count 0 and the three clock values null. Author status is `ORIGINAL_IDLE_SOURCE_AUTHORED_PENDING_INDEPENDENT_REOPEN`. Verify status is `ORIGINAL_IDLE_FRESH_REOPEN_FULL300_VERIFIED_NOT_USABLE_APPROVED`. Author/verify use count 300, source bounds 2 and 301, fps 30. Statuses describe actual completed narrow operations, not satisfaction of every required quality check.
+
+## Private raw schemas
+
+Full builders are authoritative in the six small implementation modules. Private numeric geometry stays in local artifacts, never model-facing summary output.
+
+- Frame: `{schema_version, profile, target, source_profile, skeleton_fingerprint, anatomy, sole_patches, neutral}`. Anatomy is `{axes:{right,up,forward}, hands:{L,R}, bones:[...]}`; each hand is `{direction,normal,flex_axis}`; each bone is `{name,parent,head_world,tail_world,rest_local,rest_world}`. Each sole patch is `{indices,neutral_world}`. Neutral is `{rig_name,human_name,rig_world,human_world,stable_invariants_sha256,full_vertex_count,full_skin_sha256,visible_skin_sha256,weights_sha256,key_state_sha256}`. Frame profile is `UCC_MEASURED_MPFB_IDLE_ANATOMY_V1`. All of this is actually remeasured before author and verify; no supplied target or frame is used to bootstrap inspection.
+- Inspection report: `{schema_version,status,inspection_request_sha256,target,anatomical_frame,source_profile,skeleton_fingerprint,bone_count,existing_action_count,existing_motion_read,authoring_performed}` plus eight false flags. Existing Action count is 0; the last two fields are false.
+- Recipe: `{schema_version,profile,authoring_request_sha256,anatomical_frame_sha256,target,skeleton_fingerprint,construction,source_samples,source_first_frame,source_last_frame,fps,review_first_frame,review_last_frame,virtual_source_frame302_stored,existing_motion_read,armature_only_source}` plus eight false flags. `construction` contains exactly `{baseline_quaternions,periodic_axes,baseline_max_anatomical_direction_residual}`; each periodic axis is `{kind,axis}`. It is regenerated from actual rest anatomy during independent verification and compared without alteration.
+- Author report: `{schema_version,status,authoring_request_sha256,anatomical_frame_sha256,target,skeleton_fingerprint,sample_count,numeric_observations,files,saved_reopen_verified,private_geometry_metrics_not_for_model_output}` plus eight false flags. `saved_reopen_verified` remains false here.
+- Verification report: `{schema_version,status,authoring_request_sha256,anatomical_frame_sha256,target,skeleton_fingerprint,direct_recipe,saved_review,actual_fbx_source,original_inputs_preserved,private_geometry_metrics_not_for_model_output,required_quality_execution,independent_root_nine_worker_and_human_review_required}` plus eight false flags. Its three numeric observation dictionaries are private artifacts; their exact builders are in `idle_authoring_verify.py`.
+- Verification `required_quality_execution` true fields: `root_neutral_measured`, `lower_chain_neutral_measured`, `neutral_sole_drift_measured`, `full300_finite_zero_translation_unit_scale`, `analytic_seam_value_measured`, `analytic_seam_first_derivative_measured`, `wrapped_same_interval_velocities_measured`. False/unrun fields: `palmar_skin_surface_normal_verified`, `hand_digit_body_clearance_measured`, `human_visual_review_performed`, `complete_required_quality_verified`. A human/loop/usable approval cannot be derived from these counts or measurements.
+- The FBX snapshot is the existing independent `fbx_source.py` schema: actual complete source rest/bone/300-pose observations, import options and source SHA; it remains private, not a new family admission.
+
+## Public API and anatomical grounding
+
+[Blender 5.3 Bone conversion documentation](https://docs.blender.org/api/5.3/bpy.types.Bone.html) describes parent-aware `convert_local_to_pose` for complete recursive FK. The [official Blender 5.3 exporter source](https://github.com/blender/blender/blob/blender-v5.3-release/scripts/addons_core/io_scene_fbx/export_fbx_bin.py) explicitly uses `start_zero=False` for the global animation stack when both all-Actions and NLA export are false. Thus a review clock 1..300, fps 30, produces the intended 2..301 clock under the existing importer offset 1; actual fresh intake rejects any mismatch. Export is selected armature only, all bones, no leaf bones, no custom properties or textures, no all-Actions/NLA, step 1 and simplification 0. There is no stored virtual 302.
+
+Public MPFB [rig definitions](https://github.com/makehumancommunity/mpfb2/blob/master/src/mpfb/data/rigs/standard/rig.default.json) and [RigService](https://github.com/makehumancommunity/mpfb2/blob/master/src/mpfb/services/rigservice.py) establish actual default-rig helper ancestry and the MakeHuman-to-Blender coordinate conversion. Anatomical right is measured R-shoulder minus L-shoulder; up is pelvis-to-neck; anterior is **up cross right**. Both actual foot-to-toe directions must corroborate that convention, without auto-flipping. Named forward torso/head pitch uses negative anatomical-right angle. Palmar axis uses measured hand digit chirality `D cross A` for L and its negative for R, with `D=middle-wrist`, `A=index-little`; positive finger flex is toward that measured axis. This is not actual volar-surface or clearance proof; those remain unrun. Degenerate, ambiguous/nonplanar anatomy and unsolved zero-translation/unit-scale FK explicitly reject rather than returning T-pose.
+
+## Current scope and unrun work
+
+Only Blender 5.3 plus the already-pinned MPFB 2.0.18 default rig/topology and existing strict neutral intake are supported. Linked/overridden data, any inherited Actions/NLA/drivers/constraints, nonneutral keys/pose, unexpected units/object scale/hierarchy, ambiguous hand anatomy, changed source/target/rest, incomplete/duplicate/extra samples, nonfinite values, changed rest/skin/weights/keys/materials and unsupported FBX round trips reject explicitly.
+
+Only exact `finger[1-5]-[1-3].[LR]` phalanges receive declared digit flex. Joint0 metacarpals and every other unaddressed helper retain identity local basis, including `finger2-0` through `finger5-0` on both sides; they cannot index the flex list negatively.
+
+Synthetic tests are isolated under `tests/fixtures`, never shipping assets or native evidence. Native execution, actual export/reopen behavior, local palmar/hand-digit-body clearance checks, the root-owned nine-worker target preparation, cyclic transport and human relaxed-idle review remain required. No original source or master is modified. No new dependencies, models, assets, installs, cloud transmission or license rights are introduced.

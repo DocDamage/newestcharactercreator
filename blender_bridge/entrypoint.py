@@ -99,6 +99,7 @@ OPERATIONS|={'stage_mpfb_expression_normals','verify_mpfb_expression_normals'}
 OPERATIONS|={'stage_mpfb_sprite_sample','verify_mpfb_sprite_sample'}
 OPERATIONS|={'stage_mpfb_facial_sprites','verify_mpfb_facial_sprites'}
 OPERATIONS|={'stage_registered_body_sprites','verify_registered_body_sprites'}
+OPERATIONS |= {'inspect_authored_idle_target', 'author_original_idle_source', 'verify_authored_idle_source'}
 OPERATIONS|={'stage_mpfb_unity_source','verify_mpfb_unity_source'}
 OPERATIONS|={'stage_mpfb_unity_runtime_source','verify_mpfb_unity_runtime_source'}
 OPERATIONS|={'stage_mpfb_unreal_source','verify_mpfb_unreal_source'}
@@ -141,6 +142,16 @@ def facial_sprites(job: dict,root: Path) -> dict:
     activate_material_contract()
     from blender_bridge.facial_sprite_workers import stage,verify
     return (stage if job['operation']=='stage_mpfb_facial_sprites' else verify)(bpy,root,job)
+
+
+def authored_idle(job: dict, root: Path) -> dict:
+    activate_material_contract()
+    from ucc.core.authored_idle_job import validate_job
+    from blender_bridge.authored_idle import inspect_target, author_source, verify_source
+    validate_job(job['operation'], job['input_project'], job['options'])
+    return {'inspect_authored_idle_target': inspect_target,
+            'author_original_idle_source': author_source,
+            'verify_authored_idle_source': verify_source}[job['operation']](bpy, root, job)
 
 
 def body_sprites(job: dict,root: Path) -> dict:
@@ -566,6 +577,9 @@ def main() -> int:
                   'stage_mpfb_facial_sprites': facial_sprites,
                   'verify_mpfb_facial_sprites': facial_sprites,
                   'stage_registered_body_sprites': body_sprites,
+                  'inspect_authored_idle_target': authored_idle,
+                  'author_original_idle_source': authored_idle,
+                  'verify_authored_idle_source': authored_idle,
                   'verify_registered_body_sprites': body_sprites,
                   'verify_mpfb_sprite_sample': sprite_sample,
                   'stage_mpfb_face': mpfb_face,

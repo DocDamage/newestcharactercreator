@@ -96,7 +96,10 @@
         "stage_registered_native_godot_runtime",
         "verify_registered_native_godot_runtime",
         "stage_registered_body_sprites",
-        "verify_registered_body_sprites"
+        "verify_registered_body_sprites",
+        "inspect_authored_idle_target",
+        "author_original_idle_source",
+        "verify_authored_idle_source"
       ]
     },
     "input_project": {
@@ -4977,6 +4980,108 @@
                 "pattern": "^[a-f0-9]{64}$"
               },
               "stage_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "inspect_authored_idle_target"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "input_project": {
+            "const": "candidate.blend"
+          },
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "request_sha256"
+            ],
+            "properties": {
+              "request_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "author_original_idle_source"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "input_project": {
+            "const": "candidate.blend"
+          },
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "request_sha256"
+            ],
+            "properties": {
+              "request_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "verify_authored_idle_source"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "input_project": {
+            "const": "candidate.blend"
+          },
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "request_sha256",
+              "review_sha256",
+              "source_sha256",
+              "recipe_sha256"
+            ],
+            "properties": {
+              "request_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "review_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "source_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "recipe_sha256": {
                 "type": "string",
                 "pattern": "^[a-f0-9]{64}$"
               }
