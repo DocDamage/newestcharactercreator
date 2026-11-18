@@ -273,6 +273,8 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Universal Character Creator — " + state.name + (" *" if state.dirty else ""))
 
     def _clear_preview(self) -> None:
+        from .body_sprite_workflow import clear_body_sprite
+        clear_body_sprite(self)
         from .source_skeleton_workflow import clear_source_skeleton
         clear_source_skeleton(self)
         from .target_action_diagnostic_workflow import clear_target_action_diagnostic
@@ -496,6 +498,9 @@ class MainWindow(QMainWindow):
                 'godot_saved_review': 'Reviewing the selected saved Godot proof and source policies...',
                 'godot_saved_load': 'Validating saved Godot frames and the current source binding...',
                 'target_action_diagnostic': 'Inspecting position-only diagnostics for the selected saved clip...',
+                'body_sprite_review': 'Checking the complete selected saved Action for private sprites...',
+                'body_sprite_origin': 'Reviewing the selected original-motion declaration...',
+                'body_sprite_export': 'Rendering and independently reopening the private sprite sample...',
             }[self._work_kind])
         if busy and self._work_kind == 'source_skeleton':
             self.cancel_generation_action.setEnabled(True)

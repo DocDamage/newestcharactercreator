@@ -32,6 +32,7 @@ SUPPORTED_OPERATIONS|={'stage_mpfb_skin_material','verify_mpfb_skin_material'}
 SUPPORTED_OPERATIONS|={'stage_mpfb_expression_normals','verify_mpfb_expression_normals'}
 SUPPORTED_OPERATIONS|={'stage_mpfb_sprite_sample','verify_mpfb_sprite_sample'}
 SUPPORTED_OPERATIONS|={'stage_mpfb_facial_sprites','verify_mpfb_facial_sprites'}
+SUPPORTED_OPERATIONS|={'stage_registered_body_sprites','verify_registered_body_sprites'}
 SUPPORTED_OPERATIONS|={'stage_mpfb_unity_source','verify_mpfb_unity_source'}
 SUPPORTED_OPERATIONS|={'stage_mpfb_unity_runtime_source','verify_mpfb_unity_runtime_source'}
 SUPPORTED_OPERATIONS|={'stage_mpfb_unreal_source','verify_mpfb_unreal_source'}
@@ -62,6 +63,9 @@ class JobRequest:
     protocol_version: int = PROTOCOL_VERSION
 
     def __post_init__(self) -> None:
+        if self.operation in {'stage_registered_body_sprites','verify_registered_body_sprites'}:
+            from ucc.core.body_sprites import validate_job
+            validate_job(self.operation,self.input_project,self.options)
         if self.operation in {'stage_mpfb_unreal_source','verify_mpfb_unreal_source'}:
             from ucc.export.unreal_blender_recipe import validate_job
             validate_job(self.operation,self.input_project,self.options)

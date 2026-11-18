@@ -78,6 +78,8 @@ class TargetActionDialog(QDialog):
         layout.addWidget(self.status)
         self.diagnostics = QPushButton('Inspect selected clip diagnostics...')
         layout.addWidget(self.diagnostics)
+        self.body_sprites = QPushButton('Render selected saved clip sprites…')
+        layout.addWidget(self.body_sprites)
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Cancel)
         self.prepare = buttons.addButton('Prepare new private preview', QDialogButtonBox.ButtonRole.ActionRole)
         self.load = buttons.addButton('Load selected saved preview', QDialogButtonBox.ButtonRole.ActionRole)
@@ -93,6 +95,7 @@ class TargetActionDialog(QDialog):
         self.load.clicked.connect(lambda: self._choose('load'))
         self.godot_saved.clicked.connect(lambda: self._choose('godot_saved'))
         self.diagnostics.clicked.connect(lambda: self._choose('diagnostics'))
+        self.body_sprites.clicked.connect(lambda: self._choose('body_sprites'))
         self._refresh()
 
     def _source_changed(self, clip_id):
@@ -164,14 +167,15 @@ class TargetActionDialog(QDialog):
         self.load.setEnabled(bool(consent and self.bindings.currentData()))
         self.godot_saved.setEnabled(bool(consent and self.bindings.currentData()))
         self.diagnostics.setEnabled(bool(consent and self.bindings.currentData()))
+        self.body_sprites.setEnabled(bool(consent and self.bindings.currentData()))
 
     def _choose(self, operation: str):
         button = {'prepare': self.prepare, 'load': self.load, 'godot_saved': self.godot_saved,
-                  'diagnostics': self.diagnostics}[operation]
+                  'diagnostics': self.diagnostics, 'body_sprites': self.body_sprites}[operation]
         if not button.isEnabled():
             return
         self.choice = TargetActionChoice(
-            operation, self.clips.currentText(), self.bindings.currentData() if operation in {'load', 'godot_saved', 'diagnostics'} else None,
+            operation, self.clips.currentText(), self.bindings.currentData() if operation in {'load', 'godot_saved', 'diagnostics', 'body_sprites'} else None,
             Path(self.mapping.text()) if operation == 'prepare' else None,
             self.mapping_sha256 if operation == 'prepare' else None,
             self.purpose.text().strip(), self.consent.isChecked())

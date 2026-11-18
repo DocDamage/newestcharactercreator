@@ -18,9 +18,10 @@ from .target_action_dialog import TargetActionDialog
 from .target_action_preview import _small_digest, publish_target_action
 from .godot_saved_preview_workflow import KINDS as SAVED_GODOT_KINDS
 from .target_action_diagnostic_workflow import KINDS as DIAGNOSTIC_KINDS
+from .body_sprite_workflow import KINDS as BODY_SPRITE_KINDS
 
 
-KINDS = frozenset({'target_action_review', 'target_action_mapping', 'target_action_prepare', 'target_action_load'}) | SAVED_GODOT_KINDS | DIAGNOSTIC_KINDS
+KINDS = frozenset({'target_action_review', 'target_action_mapping', 'target_action_prepare', 'target_action_load'}) | SAVED_GODOT_KINDS | DIAGNOSTIC_KINDS | BODY_SPRITE_KINDS
 PHASES = {
     'SOURCE_REVIEW': 'Checking the exact registered source and local preview permission...',
     'NEUTRAL_MASTER': 'Independently checking the saved neutral character...',
@@ -70,6 +71,8 @@ class SavedTargetActionRetained(ProjectStorageError):
 
 
 def refresh_target_action(window) -> None:
+    from .body_sprite_workflow import refresh_body_sprite
+    refresh_body_sprite(window)
     from .target_action_diagnostic_workflow import refresh_target_action_diagnostic
     refresh_target_action_diagnostic(window)
     from .godot_saved_preview_workflow import refresh_saved_godot_preview
@@ -124,8 +127,12 @@ def _submit(window, kind, operation, *, progress=False):
     signal = TargetActionProgress(window)
     window._target_action_progress_signal = signal
     if progress:
-        box = QProgressDialog('Validating private target-preview inputs…', 'Cancel operation', 0, 0, window)
-        box.setWindowTitle('Registered target preview')
+        body = kind in BODY_SPRITE_KINDS
+        label = ('Authenticating the selected source, rendering and independently reopening the private sample…'
+                 if kind == 'body_sprite_export' else 'Checking the complete saved Action for private sprite use…'
+                 if body else 'Validating private target-preview inputs…')
+        box = QProgressDialog(label, 'Cancel operation', 0, 0, window)
+        box.setWindowTitle('Private body sprite sample' if body else 'Registered target preview')
         box.setWindowModality(Qt.WindowModality.WindowModal)
         box.setMinimumDuration(0)
         box.canceled.connect(cancel.set)
@@ -240,9 +247,13 @@ def _chosen(window, dialog):
     context = window._target_action_context
     try:
         _current(window, context)
-        if (choice.operation not in {'prepare', 'load', 'godot_saved', 'diagnostics'} or choice.clip_id != review.source.clip_id
+        if (choice.operation not in {'prepare', 'load', 'godot_saved', 'diagnostics', 'body_sprites'} or choice.clip_id != review.source.clip_id
                 or not choice.local_preview_confirmed):
             raise ValidationError('Confirm the exact reviewed source for this private preview')
+        if choice.operation == 'body_sprites':
+            from .body_sprite_workflow import start_body_sprite
+            start_body_sprite(window, context, review, choice.binding_sha256)
+            return
         if choice.operation == 'diagnostics':
             from .target_action_diagnostic_workflow import start_target_action_diagnostic
             start_target_action_diagnostic(window, context, review, choice.binding_sha256,
@@ -296,6 +307,10 @@ def _chosen(window, dialog):
 
 
 def finish_target_action(window, result) -> None:
+    if window._work_kind in BODY_SPRITE_KINDS:
+        from .body_sprite_workflow import finish_body_sprite
+        finish_body_sprite(window, result)
+        return
     if window._work_kind in DIAGNOSTIC_KINDS:
         from .target_action_diagnostic_workflow import finish_target_action_diagnostic
         finish_target_action_diagnostic(window, result)
@@ -361,6 +376,10 @@ def _close_progress(window):
 
 
 def target_action_error(window, error: str) -> None:
+    if window._work_kind in BODY_SPRITE_KINDS:
+        from .body_sprite_workflow import body_sprite_error
+        body_sprite_error(window, error)
+        return
     if window._work_kind in DIAGNOSTIC_KINDS:
         from .target_action_diagnostic_workflow import target_action_diagnostic_error
         target_action_diagnostic_error(window, error)
@@ -389,6 +408,8 @@ def target_action_error(window, error: str) -> None:
 
 
 def resume_target_action(window) -> None:
+    from .body_sprite_workflow import resume_body_sprite
+    resume_body_sprite(window)
     dialog = getattr(window, '_target_action_dialog', None)
     if dialog is not None:
         dialog.set_busy(False)
