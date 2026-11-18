@@ -33,7 +33,8 @@ def _dot(a, b):
 
 
 def _basis(matrix):
-    if (len(matrix) != 16 or any(type(value) not in (int, float) or not isfinite(value) for value in matrix)
+    if (len(matrix) != 16
+            or any(type(value) not in (int, float) or abs(value) > 1e8 or not isfinite(value) for value in matrix)
             or any(abs(actual - expected) > 1e-5 for actual, expected in zip(matrix[12:], (0, 0, 0, 1)))):
         raise ValidationError('Native animation contains a malformed affine bone transform')
     axes = ((matrix[0], matrix[4], matrix[8]), (matrix[1], matrix[5], matrix[9]),
@@ -120,7 +121,8 @@ def compare_registered_animation(*, source_bones: list[dict], native_bones: list
                 observed = tuple(value*native_unit_m for value in observed)
             error = dist(to_engine(original_point), observed)
             if not isfinite(error) or error > maximum_error_m:
-                raise ValidationError(f'Native raw skin differs from Blender at sample {frame + 1}')
+                raise ValidationError(
+                    f'Native raw skin differs from Blender at sample {frame + 1}, vertex {index}, error {error:.6g} m')
             max_point = max(max_point, error)
         for native_index, (source_index, local_axes, source_scale, native_scale) in enumerate(bindings):
             original = _BONE.unpack_from(source_pose_samples, bone_size*frame + _BONE.size*source_index)
@@ -131,13 +133,15 @@ def compare_registered_animation(*, source_bones: list[dict], native_bones: list
             observed_axes, observed_scale = _basis(observed)
             if (bones_error > maximum_error_m
                     or abs(original_scale/source_scale - observed_scale/native_scale) > 1e-4):
-                raise ValidationError(f'Native bone translation or scale differs at sample {frame + 1}')
+                raise ValidationError(f'Native bone translation or scale differs at sample {frame + 1}, '
+                                      f'{native_bones[native_index]["name"]}')
             max_bone = max(max_bone, bones_error)
             for local, actual in zip(local_axes, observed_axes, strict=True):
                 expected = tuple(sum(local[i]*original_axes[i][j] for i in range(3)) for j in range(3))
                 axis_error = dist(to_engine(expected), actual)
                 if axis_error > _MAX_AXIS_DISTANCE:
-                    raise ValidationError(f'Native bone orientation differs at sample {frame + 1}')
+                    raise ValidationError(f'Native bone orientation differs at sample {frame + 1}, '
+                                          f'{native_bones[native_index]["name"]}')
                 max_axis = max(max_axis, axis_error)
     check()
     return RegisteredAnimationComparison(source_frames, source_vertex_count, len(native_to_source), count,

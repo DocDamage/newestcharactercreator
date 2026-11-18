@@ -1,0 +1,10 @@
+{
+  "FileVersion": 3,
+  "Version": 1,
+  "VersionName": "1",
+  "FriendlyName": "UCC editor native animation observation",
+  "CanContainContent": false,
+  "EnabledByDefault": false,
+  "SupportedTargetPlatforms": ["Win64"],
+  "Modules": [{"Name": "UccNativeAnimation", "Type": "Editor", "LoadingPhase": "PreDefault"}]
+}
