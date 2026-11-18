@@ -10,6 +10,7 @@ from ucc.core.errors import ValidationError
 from ucc.core.models import safe_relative_path
 from ucc.core.authored_idle_job import OPERATIONS as AUTHORED_IDLE_OPERATIONS
 from ucc.export.unity_animation_recipe import OPERATIONS as UNITY_ANIMATION_OPERATIONS
+from ucc.export.unreal_animation_recipe import OPERATIONS as UNREAL_ANIMATION_OPERATIONS
 from .phenotype import validate_macro_parameters
 
 PROTOCOL_VERSION = 1
@@ -38,6 +39,7 @@ SUPPORTED_OPERATIONS|={'stage_registered_body_sprites','verify_registered_body_s
 SUPPORTED_OPERATIONS|={'stage_mpfb_unity_source','verify_mpfb_unity_source'}
 SUPPORTED_OPERATIONS|={'stage_mpfb_unity_runtime_source','verify_mpfb_unity_runtime_source'}
 SUPPORTED_OPERATIONS |= UNITY_ANIMATION_OPERATIONS
+SUPPORTED_OPERATIONS |= UNREAL_ANIMATION_OPERATIONS
 SUPPORTED_OPERATIONS|={'stage_mpfb_unreal_source','verify_mpfb_unreal_source'}
 BODY_CONTACT_OPERATIONS = {'verify_fitted_body_contacts', 'verify_native_body_contacts', 'inspect_fitted_body_contacts', 'inspect_native_body_contacts'}
 BODY_CONTACT_OPERATIONS |= {'inspect_native_body_areas','verify_native_body_areas','inspect_fitted_body_areas','verify_fitted_body_areas'}
@@ -86,6 +88,9 @@ class JobRequest:
             validate_job(self.operation,self.input_project,self.options)
         if self.operation in UNITY_ANIMATION_OPERATIONS:
             from ucc.export.unity_animation_recipe import validate_job
+            validate_job(self.operation, self.input_project, self.options)
+        if self.operation in UNREAL_ANIMATION_OPERATIONS:
+            from ucc.export.unreal_animation_recipe import validate_job
             validate_job(self.operation, self.input_project, self.options)
         if self.operation in {'stage_mpfb_facial_sprites','verify_mpfb_facial_sprites'}:
             from ucc.core.facial_sprites import validate_job
@@ -333,6 +338,9 @@ class JobResult:
             raise ValidationError("details must be an object")
         if self.status == 'ok' and self.operation in UNITY_ANIMATION_OPERATIONS:
             from ucc.export.unity_animation_recipe import validate_result
+            validate_result(self.operation, self.details)
+        if self.status == 'ok' and self.operation in UNREAL_ANIMATION_OPERATIONS:
+            from ucc.export.unreal_animation_recipe import validate_result
             validate_result(self.operation, self.details)
         try:
             UUID(self.job_id)

@@ -4,6 +4,7 @@ from unittest import TestCase
 
 from ucc.core.errors import ValidationError
 from ucc.export.unreal_animation_evidence import compare_unreal_animation
+from ucc.export.unreal_animation_observation import _check_preview
 
 
 _REST = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
@@ -40,3 +41,13 @@ class UnrealAnimationEvidenceTests(TestCase):
         self.inputs['native_raw_samples'] = self.inputs['native_raw_samples'][:-4] + pack('<f', 351)
         with self.assertRaisesRegex(ValidationError, 'raw skin.*300'):
             compare_unreal_animation(**self.inputs)
+
+    def test_ordinary_preview_must_wrap_with_current_native_pose(self):
+        frames = [_REST[:3] + [i*.01] + _REST[4:] for i in range(300)]
+        samples = b''.join(pack('<16f', *matrix) for matrix in frames)
+        rows = [{'time_seconds': frame/30, 'pose_world': frames[frame].copy()}
+                for frame in (298, 299, 0, 1, 2, 3, 4)]
+        _check_preview(rows, samples, 1, lambda: None)
+        rows[4]['pose_world'][3] += 1
+        with self.assertRaisesRegex(ValidationError, 'world-ticked pose'):
+            _check_preview(rows, samples, 1, lambda: None)
