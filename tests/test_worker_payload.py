@@ -1,6 +1,7 @@
 """Real first-party source packaging tests; no model or engine success fixtures."""
 from importlib.util import module_from_spec, spec_from_file_location
 import ast
+from hashlib import sha256
 import json
 from pathlib import Path
 import shutil
@@ -10,6 +11,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+from ucc.core.errors import ValidationError
 from ucc.core.worker_payload import validate_worker_payload, WorkerPayloadError, ADAPTER
 from ucc.core.worker_payload import STATIC_ADAPTER, STATIC_ADAPTER_FILES
 from ucc.jobs.worker_resources import worker_dependency_files, bundled_native_adapter_path
@@ -71,6 +73,118 @@ print('ISOLATED_PURE_CONTRACT_IMPORTS_OK')
         name = STATIC_ADAPTER + '/' + sorted(STATIC_ADAPTER_FILES)[0]
         (self.payload/name).unlink();value['files'].pop(name);self.write_manifest(value)
         with self.assertRaisesRegex(WorkerPayloadError, 'incomplete'):validate_worker_payload(self.payload)
+
+    def test_registered_godot_adapters_resolve_exact_first_party_source_bytes(self):
+        from ucc.core.worker_payload import REGISTERED_BODY_ADAPTER, REGISTERED_BODY_FILES
+        from ucc.core.worker_payload import REGISTERED_CORRECTION_ADAPTER, REGISTERED_CORRECTION_FILES
+        from ucc.core.worker_payload import REGISTERED_PLAYBACK_ADAPTER, REGISTERED_PLAYBACK_FILES
+        from ucc.jobs.godot_registered_body_inputs import body_adapter_paths
+        from ucc.jobs.worker_resources import bundled_registered_body_paths, bundled_registered_correction_paths
+        from ucc.jobs.worker_resources import bundled_registered_playback_paths
+
+        correction_names = {
+            'runtime_kernel.gd', 'ucc_skin_adapter.gd', 'smooth.glsl', 'corners.glsl',
+            'normal_faces.glsl', 'normal_vertices.glsl', 'combine.glsl',
+        }
+        body_names = {'project.godot', 'configure.gd', 'validate.gd'}
+        playback_names = {'project.godot', 'pack.gd', 'playback.gd', 'verify.gd'}
+        self.assertEqual(REGISTERED_CORRECTION_FILES, correction_names)
+        self.assertEqual(REGISTERED_BODY_FILES, body_names)
+        self.assertEqual(REGISTERED_PLAYBACK_FILES, playback_names)
+        self.assertEqual(self.manifest['schema_version'], 2)
+        source_root = ROOT/'engine_adapters/godot'
+        cases = (
+            ('registered_correction', REGISTERED_CORRECTION_ADAPTER, correction_names,
+             bundled_registered_correction_paths),
+            ('registered_body300', REGISTERED_BODY_ADAPTER, body_names, bundled_registered_body_paths),
+            ('registered_playback', REGISTERED_PLAYBACK_ADAPTER, playback_names, bundled_registered_playback_paths),
+        )
+        for source_name, payload_relative, names, locator in cases:
+            with self.subTest(adapter=source_name):
+                source = locator()
+                with patch.object(sys, 'frozen', True, create=True), patch.object(
+                    sys, '_MEIPASS', str(self.payload), create=True,
+                ):
+                    frozen = locator()
+                    if source_name == 'registered_body300':
+                        self.assertEqual(body_adapter_paths(), frozen)
+                self.assertEqual(set(frozen), names)
+                self.assertEqual(set(source), names)
+                for name in sorted(names):
+                    original = (source_root/name if name == 'ucc_skin_adapter.gd'
+                                else source_root/source_name/name)
+                    self.assertEqual(source[name], original)
+                    self.assertEqual(frozen[name], self.payload/payload_relative/name)
+                    data = original.read_bytes()
+                    self.assertTrue(data)
+                    self.assertEqual(frozen[name].read_bytes(), data)
+                    self.assertEqual(self.manifest['files'][f'{payload_relative}/{name}'],
+                                     {'bytes': len(data), 'sha256': sha256(data).hexdigest()})
+
+    def test_every_new_godot_resource_is_required_even_if_removed_from_manifest(self):
+        from ucc.core.worker_payload import REGISTERED_BODY_ADAPTER, REGISTERED_BODY_FILES
+        from ucc.core.worker_payload import REGISTERED_CORRECTION_ADAPTER, REGISTERED_CORRECTION_FILES
+        from ucc.core.worker_payload import REGISTERED_PLAYBACK_ADAPTER, REGISTERED_PLAYBACK_FILES
+
+        groups = ((REGISTERED_BODY_ADAPTER, REGISTERED_BODY_FILES),
+                  (REGISTERED_CORRECTION_ADAPTER, REGISTERED_CORRECTION_FILES),
+                  (REGISTERED_PLAYBACK_ADAPTER, REGISTERED_PLAYBACK_FILES))
+        for directory, names in groups:
+            for name in sorted(names):
+                relative = f'{directory}/{name}'
+                path = self.payload/relative
+                original = path.read_bytes()
+                with self.subTest(resource=relative):
+                    altered = json.loads(json.dumps(self.manifest))
+                    del altered['files'][relative]
+                    path.unlink()
+                    self.write_manifest(altered)
+                    try:
+                        with self.assertRaisesRegex(WorkerPayloadError, 'incomplete'):
+                            validate_worker_payload(self.payload)
+                    finally:
+                        path.write_bytes(original)
+                        self.write_manifest(self.manifest)
+
+    def test_frozen_registered_locators_reject_changed_bytes_and_legacy_payload(self):
+        from ucc.core.worker_payload import REGISTERED_BODY_ADAPTER, REGISTERED_BODY_FILES
+        from ucc.core.worker_payload import REGISTERED_CORRECTION_ADAPTER, REGISTERED_CORRECTION_FILES
+        from ucc.core.worker_payload import REGISTERED_PLAYBACK_ADAPTER, REGISTERED_PLAYBACK_FILES
+        from ucc.jobs.worker_resources import bundled_registered_body_paths, bundled_registered_correction_paths
+        from ucc.jobs.worker_resources import bundled_registered_playback_paths
+
+        groups = (
+            (REGISTERED_BODY_ADAPTER, REGISTERED_BODY_FILES, bundled_registered_body_paths),
+            (REGISTERED_CORRECTION_ADAPTER, REGISTERED_CORRECTION_FILES, bundled_registered_correction_paths),
+            (REGISTERED_PLAYBACK_ADAPTER, REGISTERED_PLAYBACK_FILES, bundled_registered_playback_paths),
+        )
+        with patch.object(sys, 'frozen', True, create=True), patch.object(
+            sys, '_MEIPASS', str(self.payload), create=True,
+        ):
+            for root, names, locator in groups:
+                target = self.payload/root/sorted(names)[0]
+                original = target.read_bytes()
+                with self.subTest(resource=target.name):
+                    target.write_bytes(b'UNIT_DAMAGED_NOT_ENGINE_PROOF')
+                    try:
+                        with self.assertRaises(ValidationError):
+                            locator()
+                    finally:
+                        target.write_bytes(original)
+
+            legacy = json.loads(json.dumps(self.manifest))
+            legacy.update(schema_version=1, policy='UCC_WORKER_PAYLOAD_V1')
+            for root, names, _ in groups:
+                for name in names:
+                    relative = f'{root}/{name}'
+                    del legacy['files'][relative]
+                    (self.payload/relative).unlink()
+            self.write_manifest(legacy)
+            validate_worker_payload(self.payload)
+            self.assertEqual(bundled_native_adapter_path(), self.payload/ADAPTER)
+            for _, _, locator in groups:
+                with self.subTest(locator=locator.__name__), self.assertRaises(ValidationError):
+                    locator()
 
     def test_unity_editor_and_shader_resources_resolve_and_tampering_rejects(self):
         from ucc.jobs.worker_resources import bundled_unity_adapter_paths

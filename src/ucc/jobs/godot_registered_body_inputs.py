@@ -2,10 +2,10 @@
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
-import sys
 import sqlite3
 from ucc.core.errors import ValidationError,ProjectStorageError
 from ucc.core.storage import ProjectStore
+from ucc.core.worker_payload import REGISTERED_BODY_FILES
 from ucc.export.godot_candidate_contract import EngineInputPermission
 from ucc.export.godot_registered_body_runtime import RegisteredRuntimeExecutionSelection,REFERENCE_BYTES
 from ucc.export.godot_registered_runtime_contract import RegisteredInputSelection,RegisteredRuntimeManifest,MAX_MANIFEST_BYTES
@@ -17,8 +17,9 @@ from .godot_registered_runtime_files import read_bytes,hash_file,seal,check_seal
 from .godot_candidate_inputs import identity
 from .target_action_context import Budget,protected
 from .target_action_storage import ancestry
+from .worker_resources import bundled_registered_body_paths
 
-SCRIPTS=frozenset({'project.godot','configure.gd','validate.gd'})
+SCRIPTS = REGISTERED_BODY_FILES
 
 
 def _current_guard(check:Callable[[],None],budget:Budget)->None:
@@ -46,10 +47,7 @@ class RegisteredBodyInputs:
 
 
 def body_adapter_paths()->dict[str,Path]:
-    # Source API only until the new resources have a packaged manifest gate.
-    if getattr(sys,'frozen',False):raise ValidationError("Registered body300 adapter is not yet packaged")
-    root=Path(__file__).resolve().parents[3]/'engine_adapters/godot/registered_body300'
-    return {name:protected(root/name) for name in SCRIPTS}
+    return {name: protected(path) for name, path in bundled_registered_body_paths().items()}
 
 
 def admit_body_inputs(store:ProjectStore,*,selection:RegisteredInputSelection,retention_id:str,

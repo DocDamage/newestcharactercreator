@@ -26,12 +26,19 @@ on:
       - 'tests/test_authored_idle_authoring*.py'
       - 'tests/test_registered_native*_qt.py'
       - 'tests/test_godot_saved_preview*.py'
+      - 'tests/test_godot_animation_export_desktop.py'
       - 'tests/test_target_action_diagnostic*.py'
       - 'pyproject.toml'
       - '.github/workflows/windows-alpha-package.yml'
   push:
     branches: [main]
     paths:
+      - 'ci/build_worker_payload.py'
+      - 'src/ucc/core/worker_payload.py'
+      - 'src/ucc/jobs/worker_resources.py'
+      - 'engine_adapters/godot/registered_correction/**'
+      - 'engine_adapters/godot/registered_body300/**'
+      - 'engine_adapters/godot/registered_playback/**'
       - 'src/ucc/animations/target_action_diagnostic*.py'
       - 'src/ucc/jobs/target_action_diagnostic*.py'
       - 'src/ucc/preview/playback_window.py'
@@ -104,6 +111,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Saved Godot captured-image widget tests failed' }
           python -m unittest discover -s tests -p 'test_godot_saved_preview_workflow.py' -v
           if ($LASTEXITCODE -ne 0) { throw 'Saved Godot consent and viewer lifetime tests failed' }
+          python -m unittest discover -s tests -p 'test_godot_animation_export_desktop.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Private Godot animation export workflow tests failed' }
           python -m unittest discover -s tests -p 'test_target_action_diagnostic_dialog.py' -v
           if ($LASTEXITCODE -ne 0) { throw 'Registered clip diagnostic report tests failed' }
           python -m unittest discover -s tests -p 'test_target_action_diagnostic_workflow.py' -v

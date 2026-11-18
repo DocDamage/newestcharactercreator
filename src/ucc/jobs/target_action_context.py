@@ -81,6 +81,23 @@ def protected(path):
 def _catalog_rows(database_path, asset_id, clip_id):
     """Hash the four selected logical rows, including committed WAL content."""
     database_path = protected(Path(database_path))
+    for attempt in range(2):
+        try:
+            return _catalog_rows_once(database_path, asset_id, clip_id)
+        except sqlite3.Error as error:
+            code = getattr(error, 'sqlite_errorcode', None)
+            transient = (isinstance(error, sqlite3.OperationalError) and type(code) is int
+                         and (code & 0xff) in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED, sqlite3.SQLITE_INTERRUPT))
+            if attempt or not transient:
+                raise ProjectStorageError(
+                    'Registered catalog is busy, unreadable or exceeds the bounded metadata query; retry preview'
+                ) from error
+            # Retry a whole read-only snapshot, never individual rows from a
+            # transaction that may have been interrupted halfway through.
+            database_path = protected(database_path)
+
+
+def _catalog_rows_once(database_path, asset_id, clip_id):
     stop = time.monotonic()+.1
     db = None
     try:
@@ -117,8 +134,6 @@ def _catalog_rows(database_path, asset_id, clip_id):
         token = sha256(json.dumps(rows, ensure_ascii=False, sort_keys=True,
             separators=(',', ':'), allow_nan=False).encode()).hexdigest()
         return token, rows
-    except sqlite3.Error as error:
-        raise ProjectStorageError('Registered catalog is busy, unreadable or exceeds the bounded metadata query; retry preview') from error
     finally:
         if db is not None: db.close()
 

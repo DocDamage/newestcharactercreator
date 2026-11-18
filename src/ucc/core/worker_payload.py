@@ -10,13 +10,21 @@ from pathlib import Path, PurePosixPath
 import re
 import sys
 
-POLICY = 'UCC_WORKER_PAYLOAD_V1'
+POLICY = 'UCC_WORKER_PAYLOAD_V2'
+LEGACY_POLICY = 'UCC_WORKER_PAYLOAD_V1'
 ADAPTER_FILES = frozenset({'validate.gd', 'configure.gd', 'clay.gdshader', 'project.godot'})
 SUPPORT = 'worker_support'
 MANIFEST = 'payload.v1.json'
 ADAPTER = SUPPORT + '/adapters/godot/native_runtime'
 STATIC_ADAPTER = SUPPORT + '/adapters/godot/static_export'
 STATIC_ADAPTER_FILES = frozenset({'configure.gd', 'inspect.gd', 'export.gd', 'ucc_skin_adapter.gd'})
+REGISTERED_CORRECTION_ADAPTER = SUPPORT + '/adapters/godot/registered_correction'
+REGISTERED_CORRECTION_FILES = frozenset({'runtime_kernel.gd', 'ucc_skin_adapter.gd', 'smooth.glsl',
+    'corners.glsl', 'combine.glsl', 'normal_faces.glsl', 'normal_vertices.glsl'})
+REGISTERED_BODY_ADAPTER = SUPPORT + '/adapters/godot/registered_body300'
+REGISTERED_BODY_FILES = frozenset({'configure.gd', 'validate.gd', 'project.godot'})
+REGISTERED_PLAYBACK_ADAPTER = SUPPORT + '/adapters/godot/registered_playback'
+REGISTERED_PLAYBACK_FILES = frozenset({'pack.gd', 'playback.gd', 'project.godot', 'verify.gd'})
 UNITY_ADAPTER = SUPPORT + '/adapters/unity'
 UNITY_ADAPTER_FILES = frozenset({'UccNativeNormals.cs','UccNativeMeshIdentity.cs','UccQuadSourceData.cs',
     'UccQuadNormals.compute','UccNativeSkinWarmup.shader','Editor/UccSourceWeights.cs','Editor/UccUnityImport.cs',
@@ -63,24 +71,29 @@ def validate_worker_payload(base: Path) -> tuple[Path, ...]:
         raise WorkerPayloadError('Invalid worker payload manifest') from error
     if (type(raw) is not dict or set(raw) != {'schema_version', 'policy', 'files', 'modules',
             'engine_import_verified', 'distribution_license_review_complete'}
-            or type(raw['schema_version']) is not int or raw['schema_version'] != 1
-            or raw['policy'] != POLICY or raw['engine_import_verified'] is not False
+            or type(raw['schema_version']) is not int
+            or (raw['schema_version'], raw['policy']) not in ((1, LEGACY_POLICY), (2, POLICY))
+            or raw['engine_import_verified'] is not False
             or raw['distribution_license_review_complete'] is not False
             or type(raw['files']) is not dict or not 10 <= len(raw['files']) <= 512
             or type(raw['modules']) is not list or not raw['modules']
             or any(type(name) is not str or not re.fullmatch(r'ucc(?:\.[a-z_][a-z_0-9]*)*', name) for name in raw['modules'])
             or raw['modules'] != sorted(set(raw['modules']))):
         raise WorkerPayloadError('Unsupported worker payload contract')
+    groups = [(ADAPTER, ADAPTER_FILES), (STATIC_ADAPTER, STATIC_ADAPTER_FILES),
+              (UNITY_ADAPTER, UNITY_ADAPTER_FILES), (UNREAL_ADAPTER, UNREAL_ADAPTER_FILES)]
+    if raw['schema_version'] == 2:
+        groups.extend(((REGISTERED_CORRECTION_ADAPTER, REGISTERED_CORRECTION_FILES),
+                       (REGISTERED_BODY_ADAPTER, REGISTERED_BODY_FILES),
+                       (REGISTERED_PLAYBACK_ADAPTER, REGISTERED_PLAYBACK_FILES)))
+    resources = {root + '/' + name for root, files in groups for name in files}
     paths = []
     for relative, record in raw['files'].items():
         if (type(relative) is not str or '\\' in relative or ':' in relative
                 or str(PurePosixPath(relative)) != relative or '..' in PurePosixPath(relative).parts
                 or not (re.fullmatch(r'blender_bridge/[a-z_][a-z_0-9]*\.py', relative)
                     or re.fullmatch(r'worker_support/ucc/(?:[a-z_][a-z_0-9]*/)*[a-z_][a-z_0-9]*\.py', relative)
-                    or relative in {ADAPTER + '/' + name for name in ADAPTER_FILES}
-                    or relative in {STATIC_ADAPTER + '/' + name for name in STATIC_ADAPTER_FILES}
-                    or relative in {UNITY_ADAPTER + '/' + name for name in UNITY_ADAPTER_FILES}
-                    or relative in {UNREAL_ADAPTER + '/' + name for name in UNREAL_ADAPTER_FILES})
+                    or relative in resources)
                 or type(record) is not dict or set(record) != {'bytes', 'sha256'}
                 or type(record['bytes']) is not int or not 0 <= record['bytes'] <= 2 * 1024 * 1024
                 or type(record['sha256']) is not str or not re.fullmatch(r'[0-9a-f]{64}', record['sha256'])):
@@ -93,10 +106,7 @@ def validate_worker_payload(base: Path) -> tuple[Path, ...]:
     names = set(raw['files'])
     required = {'blender_bridge/entrypoint.py', 'blender_bridge/payload_contract.py',
         SUPPORT + '/ucc/__init__.py', SUPPORT + '/ucc/core/worker_payload.py'}
-    required.update(ADAPTER + '/' + name for name in ADAPTER_FILES)
-    required.update(STATIC_ADAPTER + '/' + name for name in STATIC_ADAPTER_FILES)
-    required.update(UNITY_ADAPTER + '/' + name for name in UNITY_ADAPTER_FILES)
-    required.update(UNREAL_ADAPTER + '/' + name for name in UNREAL_ADAPTER_FILES)
+    required.update(resources)
     if not required <= names:
         raise WorkerPayloadError('Worker payload is incomplete')
     for name in raw['modules']:

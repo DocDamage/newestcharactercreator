@@ -22,6 +22,55 @@ from ucc.animations.catalog import AnimationCatalog
 from ucc.library.provenance import LicensePolicy
 
 
+def _prepare_godot_animation(args: argparse.Namespace) -> dict:
+    from ucc.core.errors import ValidationError
+    from ucc.jobs.godot_first_party_animation import prepare_first_party_godot_animation
+    from ucc.jobs.godot_first_party_authorization import load_first_party_godot_authorization
+    from ucc.jobs.export_destination import plan_destination
+    from ucc.jobs.target_action_context import operation_budget, protected
+
+    authorization = load_first_party_godot_authorization(args.authorization)
+    worker = Path(__file__).resolve().parents[2]/'blender_bridge/entrypoint.py'
+    store = ProjectStore(args.project)
+    destination = None
+    if args.command == 'export-godot-animation':
+        destination = plan_destination(args.destination, store.root)
+        if (destination.path.is_relative_to(store.root)
+                or destination.path.is_relative_to(protected(args.database).parent)):
+            raise ValidationError('Choose an export folder outside the project and catalog')
+    def authorization_guard() -> None:
+        if load_first_party_godot_authorization(args.authorization) != authorization:
+            raise ValidationError('The selected local Godot authorization changed')
+
+    def progress(phase: str) -> None:
+        authorization_guard()
+        print(phase, file=sys.stderr, flush=True)
+
+    shared = dict(selection=authorization.selection, database_path=args.database, permissions=authorization.permissions,
+                  godot_exe=args.godot, godot_main_exe=args.godot_main, progress=progress)
+    with operation_budget(None, args.timeout) as budget:
+        result = prepare_first_party_godot_animation(store, **shared, blender_exe=args.blender,
+            worker_script=worker, purpose=authorization.purpose, private_local_execution_confirmed=True,
+            cancel=budget.cancel, timeout_s=budget.remaining())
+        authorization_guard()
+        if destination is not None:
+            from ucc.jobs.godot_first_party_playback import publish_first_party_godot_playback
+            published = publish_first_party_godot_playback(store, **shared, result=result,
+                destination=destination, cancel=budget.cancel, timeout_s=budget.remaining(),
+                authorization_guard=authorization_guard)
+            return {'status': 'PRIVATE_GODOT_ANIMATION_EXPORTED_AND_REOPENED',
+                    'directory': str(published.directory), 'receipt_sha256': published.receipt_sha256,
+                    'engine_project_exported': True, 'distribution_review_complete': False}
+    return {
+        'status': 'PRIVATE_GODOT_ANIMATION_GEOMETRY_VERIFIED',
+        'retained_inputs': str(result.retained.directory),
+        'retention_manifest_sha256': result.retained.manifest_sha256,
+        'diagnostic': str(result.diagnostic.directory),
+        'diagnostic_receipt_sha256': result.diagnostic.receipt_sha256,
+        'engine_project_exported': False,
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="UCC metadata/diagnostics CLI (not a graphical character creator)")
     sp = p.add_subparsers(dest="command", required=True)
@@ -57,6 +106,19 @@ def main(argv: list[str] | None = None) -> int:
     native.add_argument("--mapping",type=Path,help="Optional explicit reviewed body map; otherwise only the measured humanoid family is supported")
     native.add_argument("--include-hands",action="store_true",help="Include measured hand/finger chains in automatic mapping; incompatible with --mapping")
     native.add_argument("--policy-file",type=Path,required=True)
+    prepare_godot = sp.add_parser("prepare-godot-animation",
+        help="Prepare one saved animation and verify private Godot body deformation")
+    export_godot = sp.add_parser("export-godot-animation",
+        help="Verify and export one saved animation to a new private Godot project")
+    for parser in (prepare_godot, export_godot):
+        parser.add_argument("project", type=Path)
+        parser.add_argument("--authorization", required=True, type=Path)
+        parser.add_argument("--database", required=True, type=Path)
+        parser.add_argument("--blender", required=True, type=Path)
+        parser.add_argument("--godot", required=True, type=Path, help="Installed Godot 4.7.1 console executable")
+        parser.add_argument("--godot-main", required=True, type=Path, help="Matching installed main executable")
+        parser.add_argument("--timeout", default=1800., type=float, help="Total local deadline in seconds")
+    export_godot.add_argument("--destination", required=True, type=Path)
     index_anim = sp.add_parser("index-animation", help="Index one explicitly chosen animation with fail-closed provenance")
     index_anim.add_argument("file", type=Path)
     index_anim.add_argument("--database", type=Path, required=True, help="Private local SQLite catalog")
@@ -130,6 +192,8 @@ def main(argv: list[str] | None = None) -> int:
                   "mapped_bones":len(result.evidence["mapped_pairs"]),"private_animation":result.private_visual_review_blend,
                   "private_rendered_review":result.private_render_review,"private_timeline":result.private_timeline,
                   "mapping_profile":result.mapping_profile_used,"retargeting_verified":False,"animation_visual_quality_verified":False}
+        elif args.command in {"prepare-godot-animation", "export-godot-animation"}:
+            data = _prepare_godot_animation(args)
         elif args.command == "index-animation":
             if args.policy_file is not None:
                 policy_data = json.loads(args.policy_file.read_text(encoding="utf-8"))

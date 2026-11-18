@@ -1,1 +1,3 @@
 /engine_adapters/godot/registered_body300/project.godot text eol=lf
+/engine_adapters/godot/registered_correction/*.glsl text eol=lf
+/engine_adapters/godot/registered_playback/project.godot text eol=lf
