@@ -21,7 +21,7 @@ def _unit_scale(matrix: list) -> None:
          'Original idle mapping cannot drop source scale')
 
 
-def check_same_rig_full_clock(snapshot: dict, frame: dict, mapped_sources: set[str]) -> None:
+def check_same_rig_full_clock(snapshot: dict, frame: dict, mapped_sources: set[str], *, cancel_check) -> None:
     """Compare imported rest to measured target, never infer rig from a filename.
 
     Caller first validates the complete native snapshot and authenticates the
@@ -81,6 +81,7 @@ def check_same_rig_full_clock(snapshot: dict, frame: dict, mapped_sources: set[s
     need(mapped_sources <= set(parents) and 'root' not in mapped_sources,
          'Original idle source root must remain an independently checked identity omission')
     for sample in snapshot['frames']:
+        cancel_check()
         world = rows(sample['armature_world'])
         _unit_scale(world)
         need(_difference(world, armature_rest) <= 1e-6,

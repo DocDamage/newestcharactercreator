@@ -1,11 +1,14 @@
 """Candidate receipt and read-only current admission, not usable-action approval."""
+from contextlib import contextmanager
 from dataclasses import dataclass
+from hashlib import sha256
 from pathlib import Path
 
+from ucc.animations.authored_idle_mapping import build_original_idle_profile
 from ucc.core.authored_idle import AuthoredIdleInspectionRequest, AuthoredIdleRequest
 from ucc.core.errors import ProjectConflict, ProjectStorageError, ValidationError
 from ucc.core.target_action import TargetActionTarget
-from ucc.core.target_action_format import checked_sha, checked_uuid, closed
+from ucc.core.target_action_format import canonical_bytes, checked_sha, checked_uuid, closed
 from .authored_idle_evidence import (INSPECT, AUTHOR, VERIFY, OUTPUTS, PROFILE, QUALITY,
     QUALITY_EXECUTION, checked_summary, checked_inspection, checked_author, checked_verification,
     need, read_idle_json, record)
@@ -60,6 +63,13 @@ class AdmittedIdleSource:
     receipt_json: bytes
 
 
+@dataclass(frozen=True, slots=True)
+class AuthoredIdleTargetMapping:
+    candidate: AuthoredIdleCandidate
+    mapping_json: bytes
+    mapping_sha256: str
+
+
 def policy_names(count):
     return tuple(f'source-policy-{index:02d}.json' for index in range(count))
 
@@ -98,7 +108,6 @@ def _raw(path, expected, budget, maximum=64*1024*1024):
     row = record(path, budget, maximum)
     need(row['sha256'] == expected, 'Retained idle byte bundle changed')
     with path.open('rb') as stream: payload = stream.read(maximum+1)
-    from hashlib import sha256
     need(len(payload) <= maximum and sha256(payload).hexdigest() == expected, 'Retained idle bytes raced their hash check')
     return payload
 
@@ -111,6 +120,39 @@ def load_authored_idle_candidate(store, *, directory: Path, expected_receipt_sha
     Existing motion references remain in the snapshot but are never parsed as
     sources or staged into these workers. This loader performs no native work.
     """
+    with _admitted_idle_candidate(store, directory, expected_receipt_sha256,
+            source_policy_records, database_path, blender_exe, worker_script, cancel, timeout_s) as (admitted, _, _):
+        return admitted
+
+
+def load_authored_idle_target_mapping(store, *, directory: Path, expected_receipt_sha256: str,
+        source_policy_records: tuple, database_path: Path, blender_exe: Path,
+        worker_script: Path, cancel=None, timeout_s=300) -> AuthoredIdleTargetMapping:
+    """Build a hash-bound target map from the current, independently reopened candidate.
+
+    This performs read-only admission and returns bytes for explicit review.
+    Source registration, target preparation and visual approval remain separate.
+    """
+    with _admitted_idle_candidate(store, directory, expected_receipt_sha256,
+            source_policy_records, database_path, blender_exe, worker_script, cancel, timeout_s) as (admitted, verifier, budget):
+        candidate = admitted.candidate
+        profile = build_original_idle_profile(admitted.request,
+            frame_json=admitted.anatomical_frame_json, recipe_json=admitted.recipe_json,
+            snapshot_json=admitted.source_snapshot_json, verification_json=admitted.verification_json,
+            worker_request_json=admitted.verification_job_request_json,
+            worker_result_json=admitted.verification_job_result_json,
+            source_sha256=candidate.source_sha256, review_sha256=candidate.review_sha256,
+            recipe_sha256=candidate.recipe_sha256, snapshot_sha256=candidate.snapshot_sha256,
+            worker_request_sha256=verifier['request_sha256'], worker_result_sha256=verifier['result_sha256'],
+            inspection_job_id=candidate.inspection_job_id, verification_job_id=candidate.verification_job_id,
+            cancel_check=budget.check)
+        mapping = canonical_bytes(profile)
+        return AuthoredIdleTargetMapping(candidate, mapping, sha256(mapping).hexdigest())
+
+
+@contextmanager
+def _admitted_idle_candidate(store, directory, expected_receipt_sha256, source_policy_records,
+        database_path, blender_exe, worker_script, cancel, timeout_s):
     checked_sha(expected_receipt_sha256)
     with operation_budget(cancel, timeout_s) as budget:
         directory = protected(Path(directory))
@@ -192,12 +234,10 @@ def load_authored_idle_candidate(store, *, directory: Path, expected_receipt_sha
             and receipt['files']['authored_idle_recipe.json']['sha256'] == receipt['recipe_sha256']
             and receipt['files']['authored_idle_source_snapshot.json']['sha256'] == receipt['snapshot_sha256']
             and summaries[2]['skeleton_fingerprint'] == receipt['skeleton_fingerprint'], 'Idle source/recipe/snapshot/family bindings differ')
-        context.guard()
-        need(inventory(directory, names|{'authored_idle_receipt.json'}, budget) == frozen, 'Idle candidate changed during current admission')
         candidate = AuthoredIdleCandidate(directory, expected_receipt_sha256, receipt['source_sha256'], review,
             receipt['review_sha256'], receipt['recipe_sha256'], receipt['snapshot_sha256'], receipt['anatomical_frame_sha256'],
             receipt['skeleton_fingerprint'], author.target, *ids, store.root/'.ucc-jobs'/('authored-idle-'+inspection.job_id))
-        return AdmittedIdleSource(candidate, author,
+        admitted = AdmittedIdleSource(candidate, author,
             _raw(directory/'idle_anatomical_frame.json', receipt['anatomical_frame_sha256'], budget),
             _raw(directory/'authored_idle_recipe.json', receipt['recipe_sha256'], budget),
             _raw(directory/'authored_idle_source_snapshot.json', receipt['snapshot_sha256'], budget),
@@ -205,3 +245,13 @@ def load_authored_idle_candidate(store, *, directory: Path, expected_receipt_sha
             summaries[2], _raw(directory/pair_names('verification')[0], workers['verification']['request_sha256'], budget),
             _raw(directory/pair_names('verification')[1], workers['verification']['result_sha256'], budget),
             _raw(directory/'authored_idle_receipt.json', expected_receipt_sha256, budget))
+        yield admitted, workers['verification'], budget
+        for role, folder, summary in zip(ROLES, pairs, summaries):
+            for kind in ('request', 'result'):
+                need(record(folder/(kind+'.json'), budget)['sha256'] == workers[role][kind+'_sha256'],
+                     'Idle actual request/result bytes changed during current admission')
+            for row in summary['outputs']:
+                need(record(folder/row['name'], budget) == row,
+                     'Idle actual output bytes changed during current admission')
+        context.guard()
+        need(inventory(directory, names|{'authored_idle_receipt.json'}, budget) == frozen, 'Idle candidate changed during current admission')
