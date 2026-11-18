@@ -21,13 +21,17 @@ def _unit_scale(matrix: list) -> None:
          'Original idle mapping cannot drop source scale')
 
 
-def check_same_rig_full_clock(snapshot: dict, frame: dict, mapped_sources: set[str], *, cancel_check) -> None:
+def check_same_rig_full_clock(snapshot: dict, frame: dict, mapped_sources: set[str], *,
+                              cancel_check, armature_world_z_offset_m: float = 0.,
+                              source_height_m: float | None = None) -> None:
     """Compare imported rest to measured target, never infer rig from a filename.
 
     Caller first validates the complete native snapshot and authenticates the
     frame through the current candidate loader. An omitted bone must retain its
     local neutral transform at EVERY sample, even if all mapped joints match.
-    The source's armature-object root remains fixed throughout this idle.
+    The armature object must retain the prescribed constant world offset from
+    its static bind. Idle uses the default zero and its existing axis limit.
+    A walk supplies its anatomical height for the relative translation limit.
     """
     anatomy = frame.get('anatomy')
     need(type(anatomy) is dict and type(anatomy.get('bones')) is list,
@@ -74,6 +78,15 @@ def check_same_rig_full_clock(snapshot: dict, frame: dict, mapped_sources: set[s
              'Original idle source rest differs from the exact measured target')
     need(parents.get('root', 'missing') is None and sum(v is None for v in parents.values()) == 1,
          'Original idle mapping needs the actual single MPFB root')
+    expected_world = [row.copy() for row in armature_rest]
+    expected_world[2][3] += armature_world_z_offset_m
+    parent_names = {parent for parent in parents.values() if parent is not None}
+    root_error = ('Original idle source moved its neutral armature-object root' if source_height_m is None
+                  else 'Original walk changed its prescribed armature-object world offset')
+    translation_error = ('Original idle source has unsupported animated local translation' if source_height_m is None
+                         else 'Original walk has unsupported animated local translation')
+    skipped_error = ('Original idle mapping would silently drop an animated source bone' if source_height_m is None
+                     else 'Original walk mapping would silently drop an animated source bone')
     local_rest = {name: product(inverse(rest[parent]), rest[name]) if parent else rest[name]
                   for name,parent in parents.items()}
     for matrix in local_rest.values():
@@ -84,15 +97,18 @@ def check_same_rig_full_clock(snapshot: dict, frame: dict, mapped_sources: set[s
         cancel_check()
         world = rows(sample['armature_world'])
         _unit_scale(world)
-        need(_difference(world, armature_rest) <= 1e-6,
-             'Original idle source moved its neutral armature-object root')
-        poses = {item['name']: rows(pose) for item,pose in zip(source,sample['poses'])}
+        need(_difference(world, expected_world) <= 1e-6, root_error)
+        poses = {item['name']: rows(pose) for item,pose in zip(source,sample['poses'],strict=True)}
+        inverse_poses = {parent: inverse(poses[parent]) for parent in parent_names}
         for name,parent in parents.items():
-            local = product(inverse(poses[parent]), poses[name]) if parent else poses[name]
+            local = product(inverse_poses[parent], poses[name]) if parent else poses[name]
             _unit_scale(local)
             neutral = local_rest[name]
-            need(max(abs(local[i][3]-neutral[i][3]) for i in range(3)) <= 1e-5,
-                 'Original idle source has unsupported animated local translation')
+            translation = [local[i][3]-neutral[i][3] for i in range(3)]
+            if source_height_m is None:
+                supported_translation = max(map(abs, translation)) <= 1e-5
+            else:
+                supported_translation = math.hypot(*translation) <= 1e-5 * source_height_m
+            need(supported_translation, translation_error)
             if name not in mapped_sources:
-                need(_difference(local, neutral) <= 1e-5,
-                     'Original idle mapping would silently drop an animated source bone')
+                need(_difference(local, neutral) <= 1e-5, skipped_error)
