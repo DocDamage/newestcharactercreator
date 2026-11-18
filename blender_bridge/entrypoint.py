@@ -125,7 +125,7 @@ def unity_runtime_source(job: dict,root: Path) -> dict:
 
 
 def unity_animation_source(job: dict, root: Path) -> dict:
-    import bpy
+    activate_material_contract()
     from blender_bridge.unity_animation_workers import run
     return run(bpy, root, job)
 
