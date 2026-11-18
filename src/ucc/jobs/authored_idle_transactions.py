@@ -3,7 +3,7 @@ import os
 import re
 from pathlib import Path
 
-from ucc.core.errors import ProjectStorageError
+from ucc.core.errors import ProjectStorageError, ValidationError
 from ucc.core.storage import _lock
 from .authored_idle_evidence import record
 from .authored_idle_io import private_bytes
@@ -88,5 +88,5 @@ class IdlePublication:
                     or ownership(path, self.names) != self.owners):
                 raise ProjectStorageError('Private idle output ownership changed; foreign edits cannot be moved')
             rename_new(path, self.stage); self.published = False
-        except (OSError, ProjectStorageError) as rollback:
+        except (OSError, ProjectStorageError, ValidationError) as rollback:
             error.add_note('Private idle output retained at '+str(path)+'; rollback was not safe: '+str(rollback))

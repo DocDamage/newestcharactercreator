@@ -13,7 +13,7 @@ from ucc.jobs.authored_idle import author_original_idle
 from ucc.jobs.authored_idle_loop_preview import POLICY, _pointer
 from ucc.jobs.authored_idle_loop_proof import PROOF_FILENAME, publish_authored_idle_loop_proof
 from ucc.jobs.authored_idle_transactions import IdlePublication
-from ucc.jobs.export_destination import plan_destination
+from ucc.jobs.export_destination import plan_destination, rename_new
 
 
 class AuthoredIdleLoopProofTests(unittest.TestCase):
@@ -86,6 +86,18 @@ class AuthoredIdleLoopProofTests(unittest.TestCase):
         self.assertEqual((self.output/'foreign').read_bytes(), b'foreign data')
         self.assertFalse((self.output/PROOF_FILENAME).exists())
         self.assertEqual(set(self.output.parent.iterdir()), {self.output, self.candidate.directory})
+
+    def test_policy_change_during_rename_withdraws_the_owned_proof(self):
+        def change_policy_at_rename(source, target):
+            if target == self.output:
+                policy = self.fixture.policy
+                policy.write_bytes(policy.read_bytes() + b' ')
+            return rename_new(source, target)
+
+        with patch('ucc.jobs.authored_idle_transactions.rename_new', side_effect=change_policy_at_rename):
+            with self.assertRaisesRegex(ProjectStorageError, 'source changed'):
+                self.publish()
+        self.assert_no_output()
 
     def test_rechecks_tool_identity_and_cancel_inside_publication(self):
         commit = IdlePublication.commit

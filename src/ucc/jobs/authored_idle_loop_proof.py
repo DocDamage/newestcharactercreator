@@ -40,7 +40,7 @@ def publish_authored_idle_loop_proof(store, *, directory: Path, expected_receipt
     if any(output.is_relative_to(path) for path in reserved):
         raise ValidationError('Choose a proof folder outside the original project, candidate, catalog and runtime')
 
-    stage = stage_stamp = file_stamp = None
+    stage = stage_stamp = file_stamp = publication = None
     with operation_budget(cancel, timeout_s) as budget:
         stamps = {}
 
@@ -89,9 +89,13 @@ def publish_authored_idle_loop_proof(store, *, directory: Path, expected_receipt
                     raise ProjectStorageError('The staged idle proof differs from its canonical pointer')
             # Candidate admission rechecks all of its current evidence when its context closes.
             publication.commit(unchanged, budget)
+            unchanged()
+            budget.check()
             return PublishedAuthoredIdleLoopProof(output/PROOF_FILENAME, digest)
         except BaseException as error:
-            if stage is not None:
+            if publication is not None:
+                publication.withdraw(error)
+            if stage is not None and (publication is None or not publication.published):
                 try:
                     _discard_stage(destination, stage, stage_stamp, file_stamp, payload)
                 except (OSError, ProjectStorageError) as cleanup:
