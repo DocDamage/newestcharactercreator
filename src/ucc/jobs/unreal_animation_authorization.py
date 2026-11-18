@@ -40,8 +40,8 @@ class UnrealAnimationAuthorization:
                 raise ValidationError('Choose Unreal permissions scoped to private local rendering')
 
 
-def load_unreal_animation_authorization(path: Path) -> UnrealAnimationAuthorization:
-    raw, _, _ = read_metadata(protected(path), 256 * 1024, Budget(None, 5))
+def load_unreal_animation_authorization(path: Path, *, expected_sha256: str | None = None) -> UnrealAnimationAuthorization:
+    raw, _, _ = read_metadata(protected(path), 256 * 1024, Budget(None, 5), expected_sha256=expected_sha256)
     if (set(raw) != {'schema_version', 'policy', 'engine', 'selection', 'permissions', 'purpose',
                     'private_local_execution_confirmed'}
             or type(raw['schema_version']) is not int or raw['schema_version'] != 1

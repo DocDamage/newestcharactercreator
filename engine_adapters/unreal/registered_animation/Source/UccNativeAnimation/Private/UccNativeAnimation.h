@@ -16,6 +16,12 @@ namespace UccNativeAnimation
         UAnimSequence* Clip = nullptr;
     };
 
+    constexpr TCHAR PreviewScene[] = TEXT("/Game/UccAnimation/CharacterScene");
+
+    bool StagePreview(const FInputs& Inputs, const FString& PacketPath, const FString& Output);
+    bool PreviewPacketSha(TConstArrayView<uint8> Packet, FString& Digest);
+    void StartPreviewVerifier();
+
     constexpr int32 Frames = 300;
     constexpr int32 Fps = 30;
     constexpr float Duration = float(Frames) / Fps;

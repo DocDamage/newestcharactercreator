@@ -8,7 +8,8 @@ public class UccNativeAnimation : ModuleRules
         bUseUnity = false;
         PrivateDependencyModuleNames.AddRange(new[] {
             "Core", "CoreUObject", "Engine", "UnrealEd", "AssetTools", "AssetRegistry",
-            "Json", "RenderCore", "InterchangeEngine"
+            "Json", "RenderCore", "RHI", "InterchangeEngine", "UccRegisteredPreview", "ProceduralMeshComponent"
         });
+        PublicSystemLibraries.Add("bcrypt.lib");
     }
 }

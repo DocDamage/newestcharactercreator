@@ -13,19 +13,15 @@ from .target_action_context import operation_budget, protected
 from .unreal_animation_source import PreparedUnrealAnimationSource
 from .unreal_engine import _copy, _private_cache, _run, _tree, _write, check_selected_compiler
 from .unreal_toolchain import UnrealToolchain
+from .worker_resources import bundled_unreal_registered_paths
 
 
-_PLUGIN = 'UccNativeAnimation'
+EDITOR_PLUGIN = 'UccNativeAnimation'
+RUNTIME_PLUGIN = 'UccRegisteredPreview'
 _MODULES = 'Binaries/Win64/UnrealEditor.modules'
-_LIBRARY = 'Binaries/Win64/UnrealEditor-UccNativeAnimation.dll'
-_PLUGIN_FILES = (
-    'UccNativeAnimation.uplugin', 'Source/UccNativeAnimation/UccNativeAnimation.Build.cs',
-    'Source/UccNativeAnimation/Private/UccNativeAnimation.h',
-    'Source/UccNativeAnimation/Private/UccNativeAnimationCommandlet.h',
-    'Source/UccNativeAnimation/Private/UccNativeAnimationCommandlet.cpp',
-    'Source/UccNativeAnimation/Private/UccNativeAnimationImport.cpp',
-    'Source/UccNativeAnimation/Private/UccNativeAnimationObserve.cpp',
-)
+PROJECT_FILE = 'AnimatedCharacter.uproject'
+PROJECT_CONFIG = 'Config/DefaultEngine.ini'
+NATIVE_RECEIPT = 'unreal-animation-native-receipt.json'
 _RAW_SOURCE = 'unreal_animated_raw_positions.f32'
 _BONE_SOURCE = 'unreal_animated_world_bones.f32'
 _MAX_ASSET = 512 * 1024**2
@@ -37,21 +33,31 @@ class VerifiedUnrealNativeAnimation:
     receipt_sha256: str
 
 
-def _make_project(project: Path, cache: Path) -> None:
+def _make_project(project: Path, cache: Path | None, *, preview: bool = False, observer: bool = True) -> None:
     project.mkdir(exist_ok=False)
     (project/'Content').mkdir()
     (project/'Config').mkdir()
-    _write(project/'AnimatedCharacter.uproject', dict(FileVersion=3, EngineAssociation='5.9',
+    plugins = ('Cascade', 'ACLPlugin', 'ProceduralMeshComponent', RUNTIME_PLUGIN)
+    if observer:
+        plugins += (EDITOR_PLUGIN,)
+    _write(project/PROJECT_FILE, dict(FileVersion=3, EngineAssociation='5.9',
         Category='UCC private animated character', DisableEnginePluginsByDefault=True,
-        Plugins=[dict(Name=name, Enabled=True) for name in ('Cascade', 'ACLPlugin', _PLUGIN)]))
-    if any(c in cache.as_posix() for c in ('"', '\n', '\r')):
-        raise ValidationError('Unreal private cache needs a plain canonical path')
-    (project/'Config/DefaultEngine.ini').write_text(
+        Plugins=[dict(Name=name, Enabled=True) for name in plugins]))
+    config = (
         '[ConsoleVariables]\nr.TriangleOrderOptimization=2\nInterchange.FeatureFlags.Import.FBX=False\n'
         '\n[Analytics]\nProviderModuleName=\n'
         '\n[/Script/UnrealEd.AnalyticsPrivacySettings]\nbSendUsageData=False\n'
-        '\n[DerivedDataCacheGraphs]\nUccPrivate=(UccLocal)\n[DerivedDataCacheStores]\n'
-        'UccLocal=(Type=FileSystem,ReadOnly=false,Path="'+cache.as_posix()+'")\n', encoding='utf-8')
+    )
+    if preview:
+        config += ('\n[/Script/EngineSettings.GameMapsSettings]\n'
+                   'EditorStartupMap=/Game/UccAnimation/CharacterScene\n'
+                   'GameDefaultMap=/Game/UccAnimation/CharacterScene\n')
+    if cache is not None:
+        if any(c in cache.as_posix() for c in ('"', '\n', '\r')):
+            raise ValidationError('Unreal private cache needs a plain canonical path')
+        config += ('\n[DerivedDataCacheGraphs]\nUccPrivate=(UccLocal)\n[DerivedDataCacheStores]\n'
+                   'UccLocal=(Type=FileSystem,ReadOnly=false,Path="'+cache.as_posix()+'")\n')
+    (project/PROJECT_CONFIG).write_bytes(config.encode('utf-8'))
 
 
 def verify_unreal_native_animation(prepared: PreparedUnrealAnimationSource, *, toolchain: UnrealToolchain,
@@ -74,11 +80,11 @@ def verify_unreal_native_animation(prepared: PreparedUnrealAnimationSource, *, t
                 or report.get('recomputed_source_references') is not True
                 or type(files) is not dict or set(files) != set(source_recipe.OUTPUT_LIMITS)):
             raise ValidationError('Unreal animation source report does not confirm the exact registered action')
-        adapter = Path(__file__).resolve().parents[3]/'engine_adapters/unreal/registered_animation'
-        scripts = {name: hash_file(adapter/name, 256 * 1024, budget)[0] for name in _PLUGIN_FILES}
+        adapter = bundled_unreal_registered_paths()
+        scripts = {name: hash_file(path, 256 * 1024, budget)[0] for name, path in adapter.items()}
         watched = {report_path: (proof_sha, 256 * 1024),
                    **{prepared.directory/name: (digest, source_recipe.OUTPUT_LIMITS[name]) for name, digest in files.items()},
-                   **{adapter/name: (digest, 256 * 1024) for name, digest in scripts.items()}}
+                   **{adapter[name]: (digest, 256 * 1024) for name, digest in scripts.items()}}
 
         def unchanged() -> None:
             budget.check()
@@ -99,15 +105,15 @@ def verify_unreal_native_animation(prepared: PreparedUnrealAnimationSource, *, t
         cache = _private_cache(scripts_anchor)
         stage, fresh = work/'stage', work/'fresh'
         _make_project(stage, cache)
-        stage_plugin = stage/'Plugins'/_PLUGIN
+        stage_plugin = stage/'Plugins'
         for name, digest in scripts.items():
-            _copy(adapter/name, stage_plugin/name, digest, budget.cancel)
+            _copy(adapter[name], stage_plugin/name, digest, budget.cancel)
             watched[stage_plugin/name] = (digest, 256 * 1024)
         fbx = stage/'DerivedSources'/source_recipe.FBX
         _copy(prepared.fbx_path, fbx, files[source_recipe.FBX], budget.cancel)
         watched[fbx] = (files[source_recipe.FBX], source_recipe.OUTPUT_LIMITS[source_recipe.FBX])
-        project_file = stage/'AnimatedCharacter.uproject'
-        for path in (project_file, stage/'Config/DefaultEngine.ini'):
+        project_file = stage/PROJECT_FILE
+        for path in (project_file, stage/PROJECT_CONFIG):
             watched[path] = (hash_file(path, 128 * 1024, budget)[0], 128 * 1024)
         unchanged()
         if progress is not None:
@@ -120,10 +126,15 @@ def verify_unreal_native_animation(prepared: PreparedUnrealAnimationSource, *, t
         engine_modules = toolchain.engine_root/_MODULES
         engine_module_data, _, engine_module_sha = read_metadata(engine_modules, 8 * 1024**2, budget)
         watched[engine_modules] = (engine_module_sha, 8 * 1024**2)
-        compiled_modules = read_metadata(stage_plugin/_MODULES, 2 * 1024**2, budget)[0]
-        if compiled_modules.get('BuildId') != engine_module_data.get('BuildId') or not engine_module_data.get('BuildId'):
-            raise ProjectStorageError('Unreal animation observer BuildId differs from the selected editor')
-        binaries = {name: hash_file(stage_plugin/name, _MAX_ASSET, budget)[0] for name in (_LIBRARY, _MODULES)}
+        binaries = {}
+        for plugin in (EDITOR_PLUGIN, RUNTIME_PLUGIN):
+            compiled_modules = read_metadata(stage_plugin/plugin/_MODULES, 2 * 1024**2, budget)[0]
+            if compiled_modules.get('BuildId') != engine_module_data.get('BuildId') or not engine_module_data.get('BuildId'):
+                raise ProjectStorageError('Unreal animation plugin BuildId differs from the selected editor')
+            dll = f'Binaries/Win64/UnrealEditor-{plugin}.dll'
+            for filename in (_MODULES, dll):
+                name = f'{plugin}/{filename}'
+                binaries[name] = hash_file(stage_plugin/name, _MAX_ASSET, budget)[0]
         watched.update({stage_plugin/name: (digest, _MAX_ASSET) for name, digest in binaries.items()})
 
         def capture(project: Path, phase: str, *, input_fbx: Path | None) -> Path:
@@ -133,7 +144,7 @@ def verify_unreal_native_animation(prepared: PreparedUnrealAnimationSource, *, t
             output = work/(phase+'-output')
             output.mkdir()
             log_path = work/(phase+'-UnrealEditor.log')
-            command = [str(toolchain.editor_exe), str(project/'AnimatedCharacter.uproject'),
+            command = [str(toolchain.editor_exe), str(project/PROJECT_FILE),
                 '-run=UccNativeAnimation', '-UccPhase='+phase, '-UccOutput='+str(output),
                 '-NullRHI', '-RenderOffscreen', '-Unattended', '-NoEpicPortal', '-NoP4', '-NoSound',
                 '-NoAnalytics', '-NoSplash', '-DDC=UccPrivate', '-stdout', '-FullStdOutLogOutput',
@@ -156,9 +167,9 @@ def verify_unreal_native_animation(prepared: PreparedUnrealAnimationSource, *, t
                 for name in content) or any(type(stage_report.get(key)) is not str for key in ASSET_FIELDS)):
             raise ValidationError('Unreal animation import did not save exactly one mesh, skeleton and clip')
         _make_project(fresh, cache)
-        for path in (fresh/'AnimatedCharacter.uproject', fresh/'Config/DefaultEngine.ini'):
+        for path in (fresh/PROJECT_FILE, fresh/PROJECT_CONFIG):
             watched[path] = (hash_file(path, 128 * 1024, budget)[0], 128 * 1024)
-        fresh_plugin = fresh/'Plugins'/_PLUGIN
+        fresh_plugin = fresh/'Plugins'
         for name, digest in (scripts | binaries).items():
             _copy(stage_plugin/name, fresh_plugin/name, digest, budget.cancel)
             watched[fresh_plugin/name] = (digest, _MAX_ASSET)
@@ -183,11 +194,12 @@ def verify_unreal_native_animation(prepared: PreparedUnrealAnimationSource, *, t
             source_bind=source_bind, original_pose=reference[_BONE_SOURCE], original_skin=reference[_RAW_SOURCE],
             native_pose=native_pose, native_skin=native_skin, check=budget.check)
         unchanged()
-        receipt = work/'unreal-animation-native-receipt.json'
+        receipt = work/NATIVE_RECEIPT
         _write(receipt, dict(schema_version=1, policy='UCC_UNREAL_NATIVE_ANIMATION_ADMISSION_V1',
             toolchain_identity_sha256=toolchain.identity_sha256, blender_verification_sha256=proof_sha,
             stage_sha256=stage_sha, native_observation_sha256=native_sha, bind_sha256=bind_sha,
-            native_pose_sha256=pose_sha, native_skin_sha256=skin_sha, content=content, result=asdict(comparison),
+            native_pose_sha256=pose_sha, native_skin_sha256=skin_sha, content=content, plugins=scripts | binaries,
+            result=asdict(comparison),
             native_import_verified=True, native_preview_loop_verified=True, corrective_runtime_verified=False,
             pie_verified=False, export_published=False))
         return VerifiedUnrealNativeAnimation(fresh, hash_file(receipt, 512 * 1024, budget)[0])

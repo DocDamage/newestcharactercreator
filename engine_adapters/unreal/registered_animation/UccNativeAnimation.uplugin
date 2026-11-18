@@ -5,6 +5,20 @@
   "FriendlyName": "UCC editor native animation observation",
   "CanContainContent": false,
   "EnabledByDefault": false,
-  "SupportedTargetPlatforms": ["Win64"],
-  "Modules": [{"Name": "UccNativeAnimation", "Type": "Editor", "LoadingPhase": "PreDefault"}]
+  "SupportedTargetPlatforms": [
+    "Win64"
+  ],
+  "Modules": [
+    {
+      "Name": "UccNativeAnimation",
+      "Type": "Editor",
+      "LoadingPhase": "PreDefault"
+    }
+  ],
+  "Plugins": [
+    {
+      "Name": "UccRegisteredPreview",
+      "Enabled": true
+    }
+  ]
 }
