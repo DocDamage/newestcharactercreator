@@ -420,5 +420,109 @@ class TargetActionDesktopTests(unittest.TestCase):
         self.assertTrue(self.result.binding_path.is_file())
 
 
+    def authored_mapping_dialog(self):
+        from ucc.desktop.target_action_workflow import start_target_action
+        from ucc.library.provenance import LicensePolicy
+
+        window = self.window
+        window.jobs.busy = False
+        window._catalog_path = lambda: self.context.database
+        window.animations = SimpleNamespace(references=SimpleNamespace(currentItem=lambda: None))
+        with patch('ucc.desktop.target_action_workflow._review'):
+            start_target_action(window)
+        dialog = window._target_action_dialog
+        self.assertFalse(dialog.save_authored_mapping.isEnabled())
+        review = SimpleNamespace(**vars(self.review), policy=LicensePolicy(
+            'Unit review', 'Private local rights', 'local://unit', reviewed=True, local_preview_allowed=True))
+        dialog.set_review(review, ())
+        return dialog, review
+
+    def test_authored_mapping_export_then_ordinary_review_requires_fresh_consent(self):
+        from PySide6.QtWidgets import QFileDialog, QInputDialog
+        from ucc.desktop.target_action_workflow import IDLE_MAPPING_SAVE
+        from ucc.jobs.authored_idle_target_map import PublishedAuthoredIdleTargetMapping
+
+        dialog, review = self.authored_mapping_dialog()
+        dialog.set_mapping(self.root/'old-map.json', 'a'*64)
+        dialog.consent.click()
+        dialog.purpose.setText('Unit private preview only')
+        self.assertTrue(dialog.prepare.isEnabled())
+        proof = self.root/'unit-idle-proof.json'
+        with tempfile.TemporaryDirectory() as outside:
+            parent = Path(outside).resolve()
+            output = PublishedAuthoredIdleTargetMapping(parent/'new-map'/'idle-target-mapping.json', 'c'*64)
+            with (patch.object(QFileDialog, 'getOpenFileName', return_value=(str(proof), '')),
+                  patch.object(QFileDialog, 'getExistingDirectory', return_value=str(parent)),
+                  patch.object(QInputDialog, 'getText', return_value=('new-map', True)),
+                  patch('ucc.desktop.target_action_workflow._submit') as submit,
+                  patch('ucc.jobs.authored_idle_target_map.publish_authored_idle_target_mapping', return_value=output) as publisher):
+                dialog.save_authored_mapping.click()
+                window, kind, operation = submit.call_args.args
+                self.assertIs(window, self.window)
+                self.assertEqual(kind, IDLE_MAPPING_SAVE)
+                self.assertFalse(dialog.prepare.isEnabled())
+                self.assertFalse(dialog.consent.isChecked())
+                cancel = Event()
+                result = operation(cancel, Mock())
+                self.assertIs(publisher.call_args.kwargs['expected_review'], review)
+                self.assertIs(publisher.call_args.kwargs['cancel'], cancel)
+                self.assertEqual(publisher.call_args.kwargs['proof_file'], proof)
+                self.assertEqual(publisher.call_args.kwargs['destination'].path, output.path.parent)
+            self.window._work_kind = IDLE_MAPPING_SAVE
+            finish_target_action(self.window, result)
+            self.assertIsNone(dialog.mapping_sha256)
+            self.assertIn(str(output.path), dialog.status.text())
+            with (patch.object(QFileDialog, 'getOpenFileName', return_value=(str(output.path), '')),
+                  patch('ucc.desktop.target_action_workflow._submit') as submit,
+                  patch('ucc.desktop.target_action_workflow.read_native_profile', return_value=({}, output.sha256)) as reader):
+                dialog.choose_mapping.click()
+                _, kind, operation = submit.call_args.args
+                self.assertEqual(kind, 'target_action_mapping')
+                result = operation(Event(), Mock())
+                reader.assert_called_once_with(output.path, review.source.source_sha256,
+                                               review.source.snapshot_sha256, review.master_sha256)
+            self.window._work_kind = 'target_action_mapping'
+            finish_target_action(self.window, result)
+            self.assertEqual(dialog.mapping_sha256, output.sha256)
+            self.assertFalse(dialog.prepare.isEnabled())
+            dialog.consent.click()
+            self.assertTrue(dialog.prepare.isEnabled())
+
+    def test_authored_mapping_chooser_cancel_or_stale_review_does_not_submit(self):
+        from PySide6.QtWidgets import QFileDialog, QInputDialog
+
+        dialog, _ = self.authored_mapping_dialog()
+        dialog.set_mapping(self.root/'old-map.json', 'a'*64)
+        with (patch.object(QFileDialog, 'getOpenFileName', return_value=('', '')),
+              patch('ucc.desktop.target_action_workflow._submit') as submit):
+            dialog.save_authored_mapping.click()
+            submit.assert_not_called()
+        self.assertEqual(dialog.mapping_sha256, 'a'*64)
+
+        def stale_while_choosing(*args, **kwargs):
+            dialog.review = None
+            return 'selected-new-folder', True
+
+        with (patch.object(QFileDialog, 'getOpenFileName', return_value=(str(self.root/'proof.json'), '')),
+              patch.object(QFileDialog, 'getExistingDirectory', return_value=str(self.root.parent)),
+              patch.object(QInputDialog, 'getText', side_effect=stale_while_choosing),
+              patch('ucc.desktop.target_action_workflow._submit') as submit):
+            dialog.save_authored_mapping.click()
+            submit.assert_not_called()
+        self.assertIn('changed', dialog.status.text())
+
+    def test_authored_mapping_job_has_actual_mainwindow_busy_dispatch(self):
+        from ucc.desktop.target_action_workflow import IDLE_MAPPING_SAVE
+        from ucc.desktop.window import MainWindow
+
+        window = MainWindow(catalog_path=self.context.database)
+        self.addCleanup(window.deleteLater)
+        window._work_kind = IDLE_MAPPING_SAVE
+        window._busy_changed(True)
+        self.assertTrue(window.cancel_generation_action.isEnabled())
+        self.assertIn('saving the exact target mapping', window.statusBar().currentMessage())
+        window._busy_changed(False)
+
+
 if __name__ == '__main__':
     unittest.main()

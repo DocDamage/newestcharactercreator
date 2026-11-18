@@ -7,7 +7,7 @@ from threading import Event
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QObject, Qt, Signal
-from PySide6.QtWidgets import QFileDialog, QProgressDialog
+from PySide6.QtWidgets import QFileDialog, QInputDialog, QProgressDialog
 
 from ucc.animations.native_profile import read_native_profile
 from ucc.core.errors import ProjectConflict, ProjectStorageError, UCCError, ValidationError
@@ -23,8 +23,10 @@ from .authored_idle_loop_workflow import KIND as IDLE_LOOP_REVIEW
 from .authored_idle_authoring_workflow import KINDS as IDLE_AUTHORING_KINDS
 
 
-KINDS = frozenset({'target_action_review', 'target_action_mapping', 'target_action_prepare', 'target_action_load',
-                   IDLE_LOOP_REVIEW}) | SAVED_GODOT_KINDS | DIAGNOSTIC_KINDS | BODY_SPRITE_KINDS | IDLE_AUTHORING_KINDS
+IDLE_MAPPING_SAVE = 'target_action_idle_mapping_save'
+REVIEW_KINDS = frozenset({'target_action_review', 'target_action_mapping', IDLE_MAPPING_SAVE})
+KINDS = REVIEW_KINDS | {'target_action_prepare', 'target_action_load', IDLE_LOOP_REVIEW} | (
+    SAVED_GODOT_KINDS | DIAGNOSTIC_KINDS | BODY_SPRITE_KINDS | IDLE_AUTHORING_KINDS)
 PHASES = {
     'SOURCE_REVIEW': 'Checking the exact registered source and local preview permission...',
     'NEUTRAL_MASTER': 'Independently checking the saved neutral character...',
@@ -42,6 +44,7 @@ PHASES = {
     'REVIEW_AUTHORED_IDLE_SOURCES': 'Reviewing the exact saved MPFB authoring sources...',
     'AUTHOR_ORIGINAL_IDLE': 'Authoring and independently reopening the private original idle...',
     'SAVE_AUTHORED_IDLE_PROOF': 'Saving the selected local idle review proof...',
+    'SAVE_AUTHORED_IDLE_MAPPING': 'Checking the authored idle proof and saving the exact target mapping...',
 }
 if TYPE_CHECKING:
     from ucc.jobs.target_action import TargetActionSourceReview, TargetActionSummary
@@ -205,6 +208,49 @@ def _mapping(window, selected):
     _submit(window, 'target_action_mapping', operation)
 
 
+def _save_authored_mapping(window, dialog):
+    from ucc.jobs.export_destination import plan_destination
+
+    review = dialog.review
+    if window.jobs.busy or review is None or getattr(window, '_target_action_dialog', None) is not dialog:
+        return
+    context = window._target_action_context
+    try:
+        _current(window, context)
+        selected, _ = QFileDialog.getOpenFileName(dialog, 'Select authored idle proof', '', 'Idle proof (*.json)')
+        if not selected:
+            return
+        parent = QFileDialog.getExistingDirectory(dialog, 'Choose external authored idle mapping output parent')
+        if not parent:
+            return
+        name, confirmed = QInputDialog.getText(dialog, 'Save authored idle mapping', 'New output folder name',
+                                               text='idle-target-mapping')
+        if not confirmed:
+            return
+        if not name or name in {'.', '..'} or '/' in name or '\\' in name:
+            raise ValidationError('Enter a single new mapping folder name')
+        _current(window, context)
+        if (getattr(window, '_target_action_context', None) is not context
+                or getattr(window, '_target_action_dialog', None) is not dialog
+                or dialog.review is not review or window.jobs.busy or window._catalog_path() != context.database):
+            raise ProjectConflict('The selected target or catalog changed while choosing the authored idle proof')
+        destination = plan_destination(Path(parent)/name, context.store.root)
+
+        def operation(cancel, progress):
+            from ucc.jobs.authored_idle_target_map import publish_authored_idle_target_mapping
+
+            progress('SAVE_AUTHORED_IDLE_MAPPING')
+            output = publish_authored_idle_target_mapping(context.store, proof_file=Path(selected),
+                database_path=context.database, expected_review=review, destination=destination, cancel=cancel)
+            return dialog, context, review, output
+
+        dialog.clear_mapping()
+        _submit(window, IDLE_MAPPING_SAVE, operation, progress=True)
+    except (UCCError, OSError, ValueError) as error:
+        if getattr(window, '_target_action_dialog', None) is dialog:
+            dialog.set_error(str(error))
+
+
 def start_target_action(window) -> None:
     if window.jobs.busy:
         window._error('Another local task is still running')
@@ -236,6 +282,7 @@ def start_target_action(window) -> None:
     window._target_action_dialog = dialog
     dialog.source_requested.connect(lambda clip: _review(window, clip))
     dialog.mapping_requested.connect(lambda path: _mapping(window, path))
+    dialog.authored_mapping_requested.connect(lambda: _save_authored_mapping(window, dialog))
     dialog.accepted.connect(lambda: _chosen(window, dialog))
     def rejected():
         cancel = getattr(window, '_target_action_cancel', None)
@@ -340,6 +387,9 @@ def finish_target_action(window, result) -> None:
         return
     kind = window._work_kind
     dialog = getattr(window, '_target_action_dialog', None)
+    if kind == IDLE_MAPPING_SAVE:
+        _finish_authored_mapping(window, dialog, result)
+        return
     if kind in {'target_action_review', 'target_action_mapping'}:
         _close_progress(window)
         if dialog is None or window.jobs.cancel_requested:
@@ -394,6 +444,28 @@ def _close_progress(window):
         signal.deleteLater()
 
 
+def _finish_authored_mapping(window, dialog, result):
+    from ucc.jobs.authored_idle_target_map import PublishedAuthoredIdleTargetMapping
+
+    _close_progress(window)
+    if type(result) is not tuple or len(result) != 4 or type(result[3]) is not PublishedAuthoredIdleTargetMapping:
+        if dialog is not None:
+            dialog.set_error('Unexpected authored idle mapping result')
+        return
+    owner, context, review, output = result
+    message = f'Saved reviewed mapping at {output.path}\nMapping SHA-256 {output.sha256}'
+    window.log.setPlainText(message)
+    if (dialog is not owner or window.jobs.cancel_requested or window._target_action_context is not context
+            or dialog.review is not review):
+        return
+    try:
+        _current(window, context)
+    except (UCCError, OSError, ValueError) as error:
+        dialog.set_error(str(error))
+        return
+    dialog.status.setText(message + '\nUse Choose reviewed mapping to select it for private preview.')
+
+
 def target_action_error(window, error: str) -> None:
     if window._work_kind in IDLE_AUTHORING_KINDS:
         from .authored_idle_authoring_workflow import authored_idle_authoring_error
@@ -417,10 +489,10 @@ def target_action_error(window, error: str) -> None:
         return
     _close_progress(window)
     dialog = getattr(window, '_target_action_dialog', None)
-    if dialog is not None and window._work_kind in {'target_action_review', 'target_action_mapping'}:
+    if dialog is not None and window._work_kind in REVIEW_KINDS:
         dialog.set_error(error)
         return
-    if window._work_kind in {'target_action_review', 'target_action_mapping'} and window.jobs.cancel_requested:
+    if window._work_kind in REVIEW_KINDS and window.jobs.cancel_requested:
         window.log.setPlainText('Registered source review cancelled. Existing saved private records are retained.')
         return
     if (getattr(window, '_target_action_record_committed', False)

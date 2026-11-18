@@ -1,4 +1,5 @@
 """Read-only authority for an explicitly selected private authored-idle loop."""
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from hashlib import sha256
 from pathlib import Path
@@ -85,6 +86,7 @@ class AuthoredIdleLoopPreview:
 class _Authority:
     def __init__(self, budget, databases):
         self._budget = budget
+        self._databases = databases
         self._catalog = _catalog_paths(databases)
         self._stamps = {}
         self._paths = set()
@@ -110,6 +112,11 @@ class _Authority:
                 if parent not in self._stamps:
                     self._budget.check()
                     self._stamps[parent] = _filesystem_stamp(parent)
+
+    def assert_current(self):
+        self._budget.check()
+        _check_stamps(self._stamps.items(), self._databases)
+        self._budget.check()
 
     def freeze(self, binding_sha, cache_sha, database, original):
         stamps = tuple(sorted(self._stamps.items(), key=lambda row: (len(row[0].parts), str(row[0]))))
@@ -144,6 +151,34 @@ def _tool(pointer, reads):
     path = _path(pointer['path'])
     reads.record(path, MAX_FILE_BYTES, checked_sha(pointer['sha256']))
     return path
+
+
+@dataclass(frozen=True, slots=True)
+class _IdleProofInputs:
+    project_root: Path
+    candidate_directory: Path
+    database: Path
+    blender: Path
+    worker: Path
+
+
+@contextmanager
+def _source_from_idle_proof(proof_file, database, budget):
+    reads = ProofReads(budget)
+    pointer = _pointer(reads.capture(_path(str(proof_file)), MAX_BYTES))
+    original = _path(pointer['catalog_path'])
+    source_store = ProjectStore(_path(pointer['project_root']))
+    directory = _path(pointer['candidate_directory'])
+    records = tuple(IdleSourcePolicyRecord(row['asset_id'], _path(row['path']), row['sha256'])
+                    for row in (closed(item, {'asset_id', 'path', 'sha256'}) for item in pointer['source_policy_records']))
+    blender, worker = (_tool(pointer[name], reads) for name in ('blender_executable', 'worker_script'))
+    authority = _Authority(budget, (database, original))
+    authority.remember(reads.authority)
+    with _admitted_idle_candidate(source_store, directory, checked_sha(pointer['receipt_sha256']),
+            records, original, blender, worker, budget.cancel, budget.remaining(),
+            capture_authority=authority.remember) as (admitted, verifier, source_budget):
+        yield admitted, verifier, source_budget, authority, _IdleProofInputs(source_store.root, directory, original, blender, worker)
+    authority.assert_current()
 
 
 def _target(store, selection, database, budget):
@@ -197,25 +232,12 @@ def load_authored_idle_loop_preview(store, *, proof_file: Path, selection: Targe
         raise ValidationError('Choose an exact saved target and confirm private authored idle loop preview')
     try:
         with operation_budget(cancel, timeout_s) as budget:
-            reads = ProofReads(budget)
             database = _path(str(database_path))
-            pointer = _pointer(reads.capture(_path(str(proof_file)), MAX_BYTES))
-            original = _path(pointer['catalog_path'])
-            source_store = ProjectStore(_path(pointer['project_root']))
-            source_directory = _path(pointer['candidate_directory'])
-            records = tuple(IdleSourcePolicyRecord(
-                row['asset_id'], _path(row['path']), row['sha256'])
-                for row in (closed(item, {'asset_id', 'path', 'sha256'}) for item in pointer['source_policy_records']))
-            blender, worker = (_tool(pointer[name], reads) for name in ('blender_executable', 'worker_script'))
-            authority = _Authority(budget, (database, original))
-            authority.remember(reads.authority)
-            with _admitted_idle_candidate(source_store, source_directory, checked_sha(pointer['receipt_sha256']),
-                    records, original, blender, worker, budget.cancel, budget.remaining(),
-                    capture_authority=authority.remember) as (admitted, verifier, source_budget):
+            with _source_from_idle_proof(proof_file, database, budget) as (admitted, verifier, source_budget, authority, inputs):
                 mapping = _current_idle_mapping(admitted, verifier, source_budget)
                 cache, binding, stamps = _target(store, selection, database, source_budget)
                 authority.remember(stamps)
                 cache_sha = _match(admitted, mapping, binding, cache)
-            return authority.freeze(binding.sha256, cache_sha, database, original)
+            return authority.freeze(binding.sha256, cache_sha, database, inputs.database)
     except OSError as error:
         raise ProjectStorageError('Cannot read the private authored idle loop proof') from error

@@ -497,6 +497,7 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage({
                 'target_action_review': 'Reviewing the exact registered source and saved bindings...',
                 'target_action_mapping': 'Checking the explicitly selected target mapping...',
+                'target_action_idle_mapping_save': 'Checking the authored idle proof and saving the exact target mapping...',
                 'target_action_prepare': 'Preparing and independently reopening a private target Action...',
                 'target_action_load': 'Validating the explicitly selected saved target preview...',
                 'target_action_idle_loop_review': 'Reviewing the authored idle proof and saved target preview...',
