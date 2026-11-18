@@ -6,7 +6,7 @@ import json
 import math
 from pathlib import Path
 import struct
-from typing import Any
+from typing import Any, Callable
 
 CONVENTION = "BLENDER_FBX_ARMATURE_POSE_MATRICES_V1"
 MAX_SOURCE_BYTES = 256 * 1024 * 1024
@@ -51,7 +51,9 @@ def pose_digest(world: list[float], poses: list[list[float]]) -> str:
     return digest.hexdigest()
 
 
-def inspect_fbx_source(bpy: Any, source: Path, output: Path, expected_sha: str) -> dict[str, Any]:
+def inspect_fbx_source(bpy: Any, source: Path, output: Path, expected_sha: str, *,
+                       validate_auxiliary_actions: Callable[[Any, tuple[Any, ...]], bool] | None = None) -> dict[str, Any]:
+    """Read the sole skeletal take. Trusted registered callers may validate additional bound actions."""
     if (source.is_symlink() or not source.is_file() or source.suffix.lower() != ".fbx" or
             not 0 < source.stat().st_size <= MAX_SOURCE_BYTES):
         raise FbxSourceError("Expected bounded regular staged FBX")
@@ -91,11 +93,15 @@ def inspect_fbx_source(bpy: Any, source: Path, output: Path, expected_sha: str) 
     if static_bones != {b.name: matrix_values(b.matrix_local) for b in rig.data.bones}:
         raise FbxSourceError("FBX static bind and animated imports disagree on bone rest matrices")
     animation = rig.animation_data
-    if (len(bpy.data.actions) != 1 or animation is None or animation.action is None or
-            animation.action != bpy.data.actions[0] or len(animation.nla_tracks) or
-            len(animation.drivers) or len(rig.constraints) or any(len(p.constraints) for p in rig.pose.bones)):
+    actions = tuple(bpy.data.actions)
+    if (animation is None or animation.action is None or animation.action not in actions or
+            len(animation.nla_tracks) or len(animation.drivers) or len(rig.constraints) or
+            any(len(p.constraints) for p in rig.pose.bones)):
         raise FbxSourceError("FBX requires one unambiguous bound Action without NLA/drivers/constraints")
     action = animation.action
+    auxiliary = tuple(item for item in actions if item != action)
+    if auxiliary and (validate_auxiliary_actions is None or not validate_auxiliary_actions(rig, auxiliary)):
+        raise FbxSourceError("FBX requires one unambiguous bound Action without NLA/drivers/constraints")
     start, end = (float(x) for x in action.frame_range)
     if (not all(math.isfinite(x) and abs(x-round(x)) < 1e-5 and abs(x) <= 100_000 for x in (start,end))):
         raise FbxSourceError("FBX Action needs bounded integral frame endpoints")

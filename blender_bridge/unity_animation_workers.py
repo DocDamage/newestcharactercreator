@@ -6,6 +6,7 @@ from pathlib import Path
 
 import numpy as np
 
+from blender_bridge.expression_policy import TARGETS, keyname
 from blender_bridge.fbx_source import inspect_fbx_source
 from blender_bridge.godot_outputs import write_json
 from blender_bridge.godot_runtime_geometry import binding_arrays, capture_binding, sampled_mesh
@@ -184,8 +185,48 @@ def _check_inputs(root, options):
         _file(root/name, 512 * 1024**2, options[key])
 
 
+def _neutral_facial_action(bpy, rig, auxiliary) -> bool:
+    """The combined Unity FBX includes the twelve canonical constant facial curves."""
+    meshes = [obj for obj in bpy.context.scene.objects if obj.type == 'MESH']
+    if (len(auxiliary) != 1 or len(meshes) != 1 or
+            not any(mod.type == 'ARMATURE' and mod.object == rig for mod in meshes[0].modifiers)):
+        return False
+    keys = meshes[0].data.shape_keys
+    animation = keys.animation_data if keys is not None else None
+    action = auxiliary[0]
+    if (animation is None or animation.action != action or animation.action_slot is None or
+            len(animation.nla_tracks) or len(animation.drivers) or
+            action.users - int(action.use_fake_user) != 1 or len(action.slots) != 1 or
+            len(keys.key_blocks) != len(TARGETS) + 1 or not keys.use_relative):
+        return False
+
+    expected = set()
+    for role, family, _ in TARGETS:
+        key = keys.key_blocks.get(keyname(role, family))
+        if key is None or key.value != 0.0:
+            return False
+        expected.add(key.path_from_id('value'))
+
+    bags = [bag for layer in action.layers for strip in layer.strips for bag in strip.channelbags]
+    if len(bags) != 1 or bags[0].slot_handle != animation.action_slot.handle or len(bags[0].fcurves) != len(expected):
+        return False
+    start, end = (float(x) for x in rig.animation_data.action.frame_range)
+    if end - start != VIRTUAL_FRAME - 1:
+        return False
+    for curve in bags[0].fcurves:
+        if (curve.data_path not in expected or curve.array_index != 0 or curve.mute or len(curve.modifiers) or
+                len(curve.sampled_points) or len(curve.keyframe_points) != VIRTUAL_FRAME):
+            return False
+        expected.remove(curve.data_path)
+        if any(point.interpolation != 'LINEAR' or point.co.x != start + i or point.co.y != 0.0
+               for i, point in enumerate(curve.keyframe_points)):
+            return False
+    return not expected
+
+
 def _check_fbx(bpy, root, bind, expected_sha):
-    observed = inspect_fbx_source(bpy, root/FBX, root/FBX_SNAPSHOT, expected_sha)
+    observed = inspect_fbx_source(bpy, root/FBX, root/FBX_SNAPSHOT, expected_sha,
+        validate_auxiliary_actions=lambda rig, actions: _neutral_facial_action(bpy, rig, actions))
     if (observed['fps'] != FPS or observed['frame_count'] != VIRTUAL_FRAME
             or observed['bone_count'] != BONES):
         raise ValueError('Reimported Unity FBX take lost the 30 Hz clock or exact skeleton')

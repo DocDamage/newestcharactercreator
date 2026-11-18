@@ -79,11 +79,11 @@ namespace Ucc.UnityAdapter {
                 var roots = gameObject.scene.GetRootGameObjects();
                 view = roots.Single(root => root.name == "UCC Preview Camera").GetComponent<Camera>();
                 keyLight = roots.Single(root => root.name == "UCC Preview Light").GetComponent<Light>();
-                Require(view != null && view.isActiveAndEnabled && keyLight != null && keyLight.isActiveAndEnabled
+                Require(view != null && view.isActiveAndEnabled && view.renderingPath == RenderingPath.Forward
+                    && keyLight != null && keyLight.isActiveAndEnabled
                     && keyLight.type == LightType.Directional, "Reopened scene lacks the saved active camera or directional light");
                 lightOrientation = keyLight.transform.rotation;
                 previousTarget = view.targetTexture;
-                view.renderingPath = RenderingPath.Forward;
                 view.clearFlags = CameraClearFlags.SolidColor;
                 view.backgroundColor = new Color(.025f, .025f, .025f, 0f);
                 view.allowHDR = false;

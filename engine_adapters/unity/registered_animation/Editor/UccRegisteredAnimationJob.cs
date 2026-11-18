@@ -183,6 +183,7 @@ namespace Ucc.UnityAdapter.Editor {
             var bounds = skin.bounds;
             Require(bounds.size.y > .1f && bounds.size.y < 4f, "Registered preview bounds are outside the metre profile");
             var camera = new GameObject("UCC Preview Camera").AddComponent<Camera>();
+            camera.renderingPath = RenderingPath.Forward;
             camera.orthographic = true;
             camera.orthographicSize = bounds.size.y * .65f;
             camera.transform.position = bounds.center + new Vector3(0f, 0f, bounds.size.y * 3f);
