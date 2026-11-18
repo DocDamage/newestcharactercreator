@@ -64,6 +64,8 @@
         "verify_mpfb_facial_sprites",
         "stage_mpfb_unity_source",
         "verify_mpfb_unity_source",
+        "stage_registered_unity_animation_source",
+        "verify_registered_unity_animation_source",
         "stage_mpfb_unity_runtime_source",
         "verify_mpfb_unity_runtime_source",
         "stage_registered_native_godot_runtime",
@@ -1037,6 +1039,178 @@
               },
               "visual_quality_approved": {
                 "const": false
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "stage_registered_unity_animation_source"
+          },
+          "status": {
+            "const": "ok"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "details": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "policy",
+              "files",
+              "engine_import_verified"
+            ],
+            "properties": {
+              "policy": {
+                "const": "UCC_REGISTERED_UNITY_ANIMATION_SOURCE_V1"
+              },
+              "files": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "animated_character.fbx",
+                  "unity_animated_bind.json",
+                  "source_weights.json",
+                  "unity_animated_source_stage.json",
+                  "unity_animated_raw_positions.f32",
+                  "unity_animated_corrected_positions.f32",
+                  "unity_animated_corrected_normals.f32",
+                  "unity_animated_world_bones.f32"
+                ],
+                "properties": {
+                  "animated_character.fbx": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "unity_animated_bind.json": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "source_weights.json": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "unity_animated_source_stage.json": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "unity_animated_raw_positions.f32": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "unity_animated_corrected_positions.f32": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "unity_animated_corrected_normals.f32": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "unity_animated_world_bones.f32": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                }
+              },
+              "engine_import_verified": {
+                "const": false
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "verify_registered_unity_animation_source"
+          },
+          "status": {
+            "const": "ok"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "details": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "policy",
+              "files",
+              "engine_import_verified",
+              "verification_sha256",
+              "fbx_readback_sha256"
+            ],
+            "properties": {
+              "policy": {
+                "const": "UCC_REGISTERED_UNITY_ANIMATION_SOURCE_V1"
+              },
+              "files": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "animated_character.fbx",
+                  "unity_animated_bind.json",
+                  "source_weights.json",
+                  "unity_animated_source_stage.json",
+                  "unity_animated_raw_positions.f32",
+                  "unity_animated_corrected_positions.f32",
+                  "unity_animated_corrected_normals.f32",
+                  "unity_animated_world_bones.f32"
+                ],
+                "properties": {
+                  "animated_character.fbx": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "unity_animated_bind.json": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "source_weights.json": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "unity_animated_source_stage.json": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "unity_animated_raw_positions.f32": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "unity_animated_corrected_positions.f32": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "unity_animated_corrected_normals.f32": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "unity_animated_world_bones.f32": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                }
+              },
+              "engine_import_verified": {
+                "const": false
+              },
+              "verification_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "fbx_readback_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
               }
             }
           }

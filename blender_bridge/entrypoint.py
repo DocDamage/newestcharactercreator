@@ -102,6 +102,7 @@ OPERATIONS|={'stage_registered_body_sprites','verify_registered_body_sprites'}
 OPERATIONS |= {'inspect_authored_idle_target', 'author_original_idle_source', 'verify_authored_idle_source'}
 OPERATIONS|={'stage_mpfb_unity_source','verify_mpfb_unity_source'}
 OPERATIONS|={'stage_mpfb_unity_runtime_source','verify_mpfb_unity_runtime_source'}
+OPERATIONS |= {"stage_registered_unity_animation_source", "verify_registered_unity_animation_source"}
 OPERATIONS|={'stage_mpfb_unreal_source','verify_mpfb_unreal_source'}
 
 
@@ -121,6 +122,12 @@ def unity_runtime_source(job: dict,root: Path) -> dict:
     activate_material_contract()
     from blender_bridge.unity_runtime_workers import stage,verify
     return (stage if job['operation']=='stage_mpfb_unity_runtime_source' else verify)(bpy,root,job)
+
+
+def unity_animation_source(job: dict, root: Path) -> dict:
+    import bpy
+    from blender_bridge.unity_animation_workers import run
+    return run(bpy, root, job)
 
 
 def activate_material_contract() -> None:
@@ -573,6 +580,8 @@ def main() -> int:
                   'verify_mpfb_unity_source': unity_source,
                   'stage_mpfb_unity_runtime_source': unity_runtime_source,
                   'verify_mpfb_unity_runtime_source': unity_runtime_source,
+                  "stage_registered_unity_animation_source": unity_animation_source,
+                  "verify_registered_unity_animation_source": unity_animation_source,
                   'stage_mpfb_sprite_sample': sprite_sample,
                   'stage_mpfb_facial_sprites': facial_sprites,
                   'verify_mpfb_facial_sprites': facial_sprites,
