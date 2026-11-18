@@ -1,7 +1,9 @@
 """Exclusive private idle candidate publication; never adopts a project master."""
 import os
 import re
+from hashlib import sha256
 from pathlib import Path
+from uuid import uuid4
 
 from ucc.core.errors import ProjectStorageError
 from ucc.core.storage import _lock
@@ -90,3 +92,49 @@ class IdlePublication:
             rename_new(path, self.stage); self.published = False
         except (OSError, ProjectStorageError) as rollback:
             error.add_note('Private idle output retained at '+str(path)+'; rollback was not safe: '+str(rollback))
+
+
+def publish_idle_document(store, destination, filename, payload, guard, budget):
+    """Stage exactly one canonical document and publish a new directory atomically."""
+    digest = sha256(payload).hexdigest()
+    budget.check()
+    stage = destination.stage(str(uuid4()))
+    stamp = file_stamp = None
+    try:
+        stamp = identity(protected(stage))
+        path = protected(stage/filename)
+        with path.open('xb') as stream:
+            info = os.fstat(stream.fileno())
+            file_stamp = info.st_dev, info.st_ino
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+        publication = IdlePublication(store, destination, stage, {filename}, budget)
+        if (publication.stamp != stamp or publication.owners[filename][:2] != file_stamp
+                or publication.files[filename] != {'sha256': digest, 'bytes': len(payload)}):
+            raise ProjectStorageError('The staged idle document differs from its canonical pointer')
+        publication.commit(guard, budget)
+        return digest
+    except BaseException as error:
+        try:
+            _discard_document_stage(destination, stage, stamp, filename, file_stamp, payload)
+        except (OSError, ProjectStorageError) as cleanup:
+            error.add_note('Private idle document staging retained: '+str(cleanup))
+        raise
+
+
+def _discard_document_stage(destination, stage, stage_stamp, filename, file_stamp, payload):
+    if (identity(protected(stage.parent)) != destination.parent_identity
+            or identity(protected(stage)) != stage_stamp):
+        raise ProjectStorageError('The idle document staging directory changed')
+    path = protected(stage/filename)
+    if path.exists():
+        info = path.stat()
+        if (not path.is_file() or info.st_nlink != 1 or (info.st_dev, info.st_ino) != file_stamp
+                or info.st_size > len(payload) or set(stage.iterdir()) != {path}):
+            raise ProjectStorageError('The idle document staging contents changed')
+        with path.open('rb') as stream:
+            if not payload.startswith(stream.read(len(payload) + 1)):
+                raise ProjectStorageError('The idle document staging bytes changed')
+        path.unlink()
+    stage.rmdir()

@@ -23,6 +23,7 @@ class TargetActionChoice:
 class TargetActionDialog(QDialog):
     source_requested = Signal(str)
     mapping_requested = Signal(str)
+    authored_mapping_requested = Signal()
 
     def __init__(self, clips: tuple[str, ...], selected: str | None = None, parent=None):
         super().__init__(parent)
@@ -61,6 +62,8 @@ class TargetActionDialog(QDialog):
         row.addWidget(self.mapping, 1)
         row.addWidget(self.choose_mapping)
         form.addRow('Mapping for new preview', row)
+        self.save_authored_mapping = QPushButton('Save mapping from authored idle proof…')
+        form.addRow(self.save_authored_mapping)
         self.mapping_hash = QLabel('No mapping reviewed')
         self.mapping_hash.setWordWrap(True)
         form.addRow('Mapping SHA-256', self.mapping_hash)
@@ -88,6 +91,7 @@ class TargetActionDialog(QDialog):
         layout.addWidget(buttons)
         self.clips.currentTextChanged.connect(self._source_changed)
         self.choose_mapping.clicked.connect(self._choose_mapping)
+        self.save_authored_mapping.clicked.connect(self.authored_mapping_requested.emit)
         self.bindings.currentIndexChanged.connect(self._refresh)
         self.purpose.textChanged.connect(self._refresh)
         self.consent.toggled.connect(self._refresh)
@@ -138,6 +142,13 @@ class TargetActionDialog(QDialog):
         self.consent.setChecked(False)
         self._refresh()
 
+    def clear_mapping(self):
+        self.mapping.clear()
+        self.mapping_sha256 = None
+        self.mapping_hash.setText('No mapping reviewed')
+        self.consent.setChecked(False)
+        self._refresh()
+
     def set_error(self, message: str):
         self.status.setText(message)
         self._refresh()
@@ -158,6 +169,7 @@ class TargetActionDialog(QDialog):
         self.clips.setEnabled(not self._busy)
         self.bindings.setEnabled(ready)
         self.choose_mapping.setEnabled(ready)
+        self.save_authored_mapping.setEnabled(ready)
         self.purpose.setEnabled(ready)
         self.consent.setEnabled(ready)
         consent = ready and self.consent.isChecked()
