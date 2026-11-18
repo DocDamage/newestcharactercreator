@@ -113,6 +113,8 @@ def publish_unreal_animation(store: ProjectStore, verified: VerifiedUnrealPrevie
             if identity(protected(destination.path)) != owner:
                 raise ProjectStorageError('Published Unreal folder changed during verification')
             verify_unreal_animation_payload(destination.path, expected, budget)
+            guard()
+            budget.check()
         except BaseException as error:
             try:
                 with operation_budget(None, 10) as rollback:

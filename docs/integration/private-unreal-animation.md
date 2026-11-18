@@ -6,6 +6,8 @@ The Blender workers retain original world pose and geometry references in their 
 
 Publication requires a fresh project to reopen in real Direct3D 12 Play in Editor, sample every corrected pose, cross the native loop seam and show a change in the lit raster. The host checks sampled positions and normals against Blender with limits of 10 µm and 0.1°. The export contains the scene, native mesh, skeleton, animation and first-party preview plugin. The development observer and private evidence stay in local job folders.
 
+Verification runs a single standalone PIE client and keeps two captured raster frames in the private job folder. The delivered project uses a project-local writable shader cache and can read the editor's installed shader archive.
+
 The desktop command **File → Export private animated Unreal project…** takes the exact Unreal authorization for the saved animation, the installed Blender and Unreal executables and a new destination. The equivalent CLI accepts absolute paths.
 
 ```powershell

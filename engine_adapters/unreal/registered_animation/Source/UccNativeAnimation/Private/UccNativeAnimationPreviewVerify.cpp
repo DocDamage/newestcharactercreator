@@ -13,14 +13,18 @@
 #include "EngineUtils.h"
 #include "HAL/FileManager.h"
 #include "HAL/PlatformMisc.h"
+#include "ImageUtils.h"
 #include "Misc/App.h"
 #include "Misc/CommandLine.h"
+#include "Misc/FileHelper.h"
 #include "Misc/Parse.h"
 #include "Misc/Paths.h"
 #include "PlayInEditorDataTypes.h"
 #include "ProceduralMeshComponent.h"
 #include "RenderingThread.h"
+#include "Settings/LevelEditorPlaySettings.h"
 #include "TextureResource.h"
+#include "UObject/StrongObjectPtr.h"
 
 namespace UccNativeAnimation
 {
@@ -65,6 +69,14 @@ namespace UccNativeAnimation
         int32 Difference(FColor A, FColor B)
         {
             return FMath::Max3(FMath::Abs(int32(A.R)-B.R), FMath::Abs(int32(A.G)-B.G), FMath::Abs(int32(A.B)-B.B));
+        }
+
+        bool SaveRaster(const FString& Path, const TArray<FColor>& Pixels)
+        {
+            TArray64<uint8> Png;
+            FImageUtils::PNGCompressImageArray(RasterExtent, RasterExtent, MakeArrayView64(Pixels), Png);
+            return !Png.IsEmpty() && FFileHelper::SaveArrayToFile(
+                Png, *Path, &IFileManager::Get(), FILEWRITE_NoReplaceExisting);
         }
 
         bool RasterCounts(const TArray<FColor>& A, const TArray<FColor>& B, int32& Foreground, int32& Motion)
@@ -119,8 +131,14 @@ namespace UccNativeAnimation
                         return Fail(TEXT("rendering must use a real RHI"));
                     FApp::SetFixedDeltaTime(1.0/double(Fps));
                     FApp::SetUseFixedTimeStep(true);
+                    PlaySettings.Reset(NewObject<ULevelEditorPlaySettings>(GetTransientPackage()));
+                    PlaySettings->SetPlayNetMode(PIE_Standalone);
+                    PlaySettings->SetPlayNumberOfClients(1);
+                    PlaySettings->SetRunUnderOneProcess(true);
+                    PlaySettings->bLaunchSeparateServer = false;
                     FRequestPlaySessionParams Params;
                     Params.WorldType = EPlaySessionWorldType::PlayInEditor;
+                    Params.EditorPlaySettings = PlaySettings.Get();
                     GEditor->RequestPlaySession(Params);
                     Requested = true;
                     return true;
@@ -199,6 +217,9 @@ namespace UccNativeAnimation
                     return Fail(TEXT("the live corrected surface has no verified lit raster motion"));
                 if (!OutputFile || !OutputFile->Close() || OutputFile->IsError())
                     return Fail(TEXT("could not close the exact corrected native sample stream"));
+                if (!SaveRaster(Output / TEXT("preview-frame-075.png"), RasterA)
+                    || !SaveRaster(Output / TEXT("preview-frame-225.png"), RasterB))
+                    return Fail(TEXT("could not retain the two lit PIE raster witnesses"));
                 auto Record = MakeShared<FJsonObject>();
                 Record->SetNumberField(TEXT("schema_version"), 1);
                 Record->SetStringField(TEXT("policy"), TEXT("UCC_UNREAL_REGISTERED_PREVIEW_OBSERVATION_V1"));
@@ -232,6 +253,7 @@ namespace UccNativeAnimation
             TBitArray<> Seen;
             TArray<FColor> RasterA, RasterB;
             TUniquePtr<FArchive> OutputFile;
+            TStrongObjectPtr<ULevelEditorPlaySettings> PlaySettings;
             int32 PreviousIndex = INDEX_NONE;
             int32 NativeVertices = 0;
             int32 Samples = 0;

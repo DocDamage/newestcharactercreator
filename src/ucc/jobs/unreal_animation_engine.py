@@ -33,7 +33,8 @@ class VerifiedUnrealNativeAnimation:
     receipt_sha256: str
 
 
-def _make_project(project: Path, cache: Path | None, *, preview: bool = False, observer: bool = True) -> None:
+def _make_project(project: Path, cache: Path | None, *, preview: bool = False, observer: bool = True,
+                  cache_archive: Path | None = None) -> None:
     project.mkdir(exist_ok=False)
     (project/'Content').mkdir()
     (project/'Config').mkdir()
@@ -55,8 +56,18 @@ def _make_project(project: Path, cache: Path | None, *, preview: bool = False, o
     if cache is not None:
         if any(c in cache.as_posix() for c in ('"', '\n', '\r')):
             raise ValidationError('Unreal private cache needs a plain canonical path')
-        config += ('\n[DerivedDataCacheGraphs]\nUccPrivate=(UccLocal)\n[DerivedDataCacheStores]\n'
+        archive = cache_archive.as_posix() if cache_archive is not None else None
+        if archive is not None and any(c in archive for c in ('"', '%', '\n', '\r')):
+            raise ValidationError('Unreal installed cache archive needs a plain canonical path')
+        graph = '(UccInstalled,UccLocal)' if archive else '(UccLocal)'
+        config += ('\n[DerivedDataCacheGraphs]\nUccPrivate='+graph+'\n[DerivedDataCacheStores]\n'
                    'UccLocal=(Type=FileSystem,ReadOnly=false,Path="'+cache.as_posix()+'")\n')
+        if archive:
+            config += 'UccInstalled=(Type=ReadPak,Filename="'+archive+'",Compressed=true)\n'
+    elif preview:
+        config += ('\n[DerivedDataCacheGraphs]\nDefault=(UccLocal)\nInstalled=(InstalledEnginePak,UccLocal)\n'
+                   '[DerivedDataCacheStores]\n'
+                   'UccLocal=(Type=FileSystem,ReadOnly=false,Path="%GAMEDIR%DerivedDataCache")\n')
     (project/PROJECT_CONFIG).write_bytes(config.encode('utf-8'))
 
 
@@ -121,7 +132,8 @@ def verify_unreal_native_animation(prepared: PreparedUnrealAnimationSource, *, t
         _run([str(toolchain.dotnet), str(toolchain.ubt), 'UnrealEditor', 'Win64', 'Development',
             '-Project='+str(project_file), '-Compiler=VisualStudio2022', '-CompilerVersion='+toolchain.compiler_version,
             '-WindowsSdkVersion='+toolchain.sdk_version, '-NoEngineChanges', '-NoHotReloadFromIDE', '-NoUBA',
-            '-NoXGE', '-MaxParallelActions=2'], work/'build', budget.user, budget.deadline)
+            '-NoXGE', '-MaxParallelActions=2', '-WaitMutex', '-Log='+str(work/'build/UnrealBuildTool.log')],
+            work/'build', budget.user, budget.deadline)
         check_selected_compiler((work/'build/stdout.log').read_text(encoding='utf-8-sig', errors='replace'), toolchain)
         engine_modules = toolchain.engine_root/_MODULES
         engine_module_data, _, engine_module_sha = read_metadata(engine_modules, 8 * 1024**2, budget)

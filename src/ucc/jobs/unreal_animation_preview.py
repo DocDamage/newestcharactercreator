@@ -1,6 +1,7 @@
 """Stage a saved Unreal preview and admit corrected live Play in Editor evidence."""
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from stat import FILE_ATTRIBUTE_REPARSE_POINT, S_ISREG
 from threading import Event
 from typing import Callable
 
@@ -31,6 +32,9 @@ _POS = 'unreal_animated_corrected_positions.f32'
 _NORMALS = 'unreal_animated_corrected_normals.f32'
 _MAX = 512 * 1024**2
 _MAX_LOG = 64 * 1024**2
+_MAX_SHADER_ARCHIVE = 8 * 1024**3
+_RASTER_WITNESSES = ('preview-frame-075.png', 'preview-frame-225.png')
+_RASTER_HEADER = bytes.fromhex('89504e470d0a1a0a0000000d494844520000010000000100')
 
 
 @dataclass(frozen=True, slots=True)
@@ -65,6 +69,14 @@ def _require_observation(observation: dict, expected: dict, *, raster: bool) -> 
         if (type(foreground) is not int or type(changed) is not int
                 or not 64 < foreground <= 256**2 or not 16 < changed <= 256**2):
             raise ValidationError('Unreal did not rasterize a changing lit preview')
+
+
+def _shader_archive_stamp(path: Path, budget) -> tuple[tuple[int, int, int, int], int, str]:
+    info = protected(path).stat()
+    if (not S_ISREG(info.st_mode) or info.st_nlink != 1
+            or getattr(info, 'st_file_attributes', 0) & FILE_ATTRIBUTE_REPARSE_POINT):
+        raise ProjectStorageError('Unreal installed shader cache archive is redirected or shared')
+    return identity(path), info.st_ctime_ns, hash_file(path, _MAX_SHADER_ARCHIVE, budget)[0]
 
 
 def verify_unreal_preview(source: PreparedUnrealAnimationSource, native: VerifiedUnrealNativeAnimation, *,
@@ -144,9 +156,15 @@ def verify_unreal_preview(source: PreparedUnrealAnimationSource, native: Verifie
         preview_content = native_paths | {map_relative: actual[map_relative]}
         runtime = {name: digest for name, digest in plugin_paths.items() if name.startswith(f'Plugins/{RUNTIME_PLUGIN}/')}
         portable, fresh = work/'portable', work/'fresh'
+        shader_archive = toolchain.engine_root/'DerivedDataCache/Compressed.ddp'
+        try:
+            shader_stamp = _shader_archive_stamp(shader_archive, budget)
+        except FileNotFoundError:
+            shader_stamp = None
         for project, project_cache, observer, scripts in ((portable, None, False, runtime),
                 (fresh, cache, True, plugin_paths)):
-            _make_project(project, project_cache, preview=True, observer=observer)
+            _make_project(project, project_cache, preview=True, observer=observer,
+                          cache_archive=shader_archive if observer and shader_stamp is not None else None)
             for name, digest in (preview_content | scripts).items():
                 _copy(stage/name, project/name, digest, budget.cancel)
         portable_files, fresh_files = _project_files(portable, budget), _project_files(fresh, budget)
@@ -161,10 +179,20 @@ def verify_unreal_preview(source: PreparedUnrealAnimationSource, native: Verifie
         log, log_sha = read_bytes(pie_log, _MAX_LOG, budget)
         if b'LogD3D12RHI:' not in log or b"InternalLoadLibrary: 'NullDrv'" in log:
             raise ProjectStorageError('Unreal corrected PIE did not run on the installed Direct3D renderer')
+        archive_opened = (shader_archive.as_posix()+': Opened pak cache for reading.').encode('utf-8')
+        if shader_stamp is not None and (archive_opened not in log
+                or _shader_archive_stamp(shader_archive, budget) != shader_stamp):
+            raise ProjectStorageError('Unreal did not use the unchanged installed read-only shader archive')
         observation, _, observed_sha = read_metadata(output/'preview-observation.json', 128 * 1024, budget)
         _require_observation(observation, fixed | dict(policy='UCC_UNREAL_REGISTERED_PREVIEW_OBSERVATION_V1',
             frames=300, fps=30, corrected_submit_verified=True, normal_loop_wrap_verified=True,
             lit_motion_verified=True), raster=True)
+        raster_sha = {}
+        for name in _RASTER_WITNESSES:
+            raster, raster_sha[name] = read_bytes(output/name, 512 * 1024, budget)
+            if not raster.startswith(_RASTER_HEADER):
+                raise ValidationError('Unreal PIE raster witness is missing its exact 256-pixel PNG header')
+            persistent[output/name] = raster_sha[name]
         sample_path = output/'corrected_skin_world.f32'
         samples, samples_sha = read_bytes(sample_path, 300*len(correction.native_to_source)*24, budget)
         originals = {name: read_bytes(source.directory/name, source_recipe.OUTPUT_LIMITS[name], budget,
@@ -181,7 +209,9 @@ def verify_unreal_preview(source: PreparedUnrealAnimationSource, native: Verifie
         _write(receipt, dict(schema_version=1, policy=PLAYBACK_POLICY, source_binding_sha256=source.binding_sha256,
             blender_verification_sha256=source.verification_sha256, native_receipt_sha256=native.receipt_sha256,
             toolchain_identity_sha256=toolchain.identity_sha256, packet_sha256=correction.sha256,
-            observation_sha256=observed_sha, samples_sha256=samples_sha, comparison=asdict(result),
+            observation_sha256=observed_sha, samples_sha256=samples_sha, raster_sha256=raster_sha,
+            installed_shader_archive_sha256=shader_stamp[-1] if shader_stamp is not None else None,
+            comparison=asdict(result),
             corrected_runtime_verified=True, pie_verified=True, normal_loop_wrap_verified=True,
             lit_motion_verified=True, portable_files=portable_files, export_published=False))
         return VerifiedUnrealPreview(portable, hash_file(receipt, 512 * 1024, budget)[0])
