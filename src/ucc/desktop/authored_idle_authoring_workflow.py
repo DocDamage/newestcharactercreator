@@ -212,8 +212,8 @@ def finish_authored_idle_authoring(window, result):
             message += f"\nPrivate loop proof saved at {value.proof.path}"
         elif value.proof_error:
             message += f"\nLoop proof publication needs another attempt. {value.proof_error}"
-        message += ('\nKeep the saved authoring project and retained worker records. Use a separate target project copy '
-                    'for catalog attachment. Visual quality and engine use remain pending.')
+        message += ('\nKeep the saved authoring project and retained worker records. Choose File > Create separate '
+                    'target copy before attachment. Visual quality and engine use remain pending.')
         window.log.setPlainText(message)
     except (UCCError, OSError, ValueError) as error:
         window._authored_idle_context = None
