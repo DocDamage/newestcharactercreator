@@ -233,8 +233,8 @@ def finish_authored_idle_authoring(window, result):
         message = (f"Private original {motion} candidate saved at {value.candidate.directory}"
                    f"\nReceipt SHA-256 {value.candidate.receipt_sha256}")
         if walk:
-            window.log.setPlainText(message + '\nKeep the saved authoring project and retained worker records. '
-                                    'Visual review and engine use remain pending.')
+            window.log.setPlainText(message + f'\nSame-rig mapping saved at {value.candidate.mapping_path}'
+                '\nUse the FBX and mapping with a separate copy of this project for private preview.')
             return
         if value.proof is not None:
             message += f"\nPrivate loop proof saved at {value.proof.path}"

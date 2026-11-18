@@ -172,6 +172,7 @@ class AuthoredIdleDesktopTests(unittest.TestCase):
         output = SimpleNamespace(directory=self.f.destination.path, receipt_sha256='a'*64,
                                  fbx_path=self.f.destination.path/'original_walk.fbx',
                                  review_path=self.f.destination.path/'authored_walk_review.blend',
+                                 mapping_path=self.f.destination.path/'walk-target-mapping.json',
                                  snapshot_sha256='b'*64)
         author = Mock(return_value=output)
         with patch.dict(sys.modules, {'ucc.jobs.authored_walk': SimpleNamespace(author_original_walk=author)}), \
@@ -198,6 +199,7 @@ class AuthoredIdleDesktopTests(unittest.TestCase):
         self.assertIsNone(self.window._authored_idle_context)
         self.assertIn('Private original walk candidate saved', self.window.log.toPlainText())
         self.assertIn(output.receipt_sha256, self.window.log.toPlainText())
+        self.assertIn(str(output.mapping_path), self.window.log.toPlainText())
 
     def test_walk_action_part_gate_preserves_idle_menu_and_stops_direct_invocation(self):
         from ucc.desktop.authored_idle_authoring_workflow import start_authored_walk_authoring

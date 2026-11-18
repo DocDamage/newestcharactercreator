@@ -14,7 +14,7 @@ from ucc.core.target_action_format import canonical_bytes
 from ucc.jobs.authored_idle_evidence import INSPECT
 from ucc.jobs.authored_idle_io import private_bytes
 from ucc.jobs.authored_walk import (
-    AUTHOR_REPORT, AUTHOR_STATUS, CONTACT_CHECKS, RECEIPT, SNAPSHOT, UNAPPROVED, VERIFY_REPORT, VERIFY_STATUS,
+    AUTHOR_REPORT, AUTHOR_STATUS, CONTACT_CHECKS, MAPPING, RECEIPT, SNAPSHOT, UNAPPROVED, VERIFY_REPORT, VERIFY_STATUS,
     author_original_walk,
 )
 from ucc.jobs.protocol import JobRequest, JobResult
@@ -28,11 +28,17 @@ class AuthoredWalkHostTests(unittest.TestCase):
         self.cancel = Event()
         self.fail_gate = False
         self.cancel_on_verify = False
+        self.mapping_error = None
 
     def run_host(self):
-        with patch('ucc.jobs.authored_walk.BlenderJobRunner') as runner:
+        with patch('ucc.jobs.authored_walk.BlenderJobRunner') as runner, \
+             patch('ucc.jobs.authored_walk.build_original_walk_profile') as mapping:
             runner.return_value.run.side_effect = self.worker
-            return author_original_walk(self.fixture.store, **self.fixture.args(), cancel=self.cancel, timeout_s=90)
+            mapping.return_value = {'policy': 'NONSHIPPING_MAPPING_PUBLISHER_FIXTURE'}
+            mapping.side_effect = self.mapping_error
+            result = author_original_walk(self.fixture.store, **self.fixture.args(), cancel=self.cancel, timeout_s=90)
+            self.assertEqual(mapping.call_args.kwargs['snapshot_sha256'], result.snapshot_sha256)
+            return result
 
     def worker(self, job, *, staged_inputs, timeout_s, cancel):
         if job.operation == INSPECT:
@@ -64,7 +70,7 @@ class AuthoredWalkHostTests(unittest.TestCase):
             (folder / AUTHOR_REPORT).write_bytes(private_bytes(report))
             status, names = AUTHOR_STATUS, (*REOPEN_BINDINGS, AUTHOR_REPORT)
         else:
-            (folder / SNAPSHOT).write_bytes(b'NONSHIPPING normalized snapshot stub')
+            (folder / SNAPSHOT).write_bytes(b'{"policy":"NONSHIPPING_SNAPSHOT_BOUNDARY_FIXTURE"}')
             report = {'schema_version': 1, 'policy': 'UCC_ORIGINAL_WALK_VERIFICATION_V1', 'status': VERIFY_STATUS,
                       'target': target, 'staged_inputs_preserved': True, **dict.fromkeys(UNAPPROVED, False),
                       'request_sha256': options['request_sha256'], 'walk_request_sha256': options['walk_request_sha256'],
@@ -95,6 +101,8 @@ class AuthoredWalkHostTests(unittest.TestCase):
         self.assertEqual([job.operation for job in jobs], [INSPECT, AUTHOR, VERIFY])
         self.assertEqual(len({job.job_id for job in jobs}), 3)
         self.assertTrue(candidate.fbx_path.is_file() and candidate.review_path.is_file())
+        self.assertEqual(candidate.mapping_path.name, MAPPING)
+        self.assertEqual(json.loads(candidate.mapping_path.read_bytes())['policy'], 'NONSHIPPING_MAPPING_PUBLISHER_FIXTURE')
         receipt_payload = (candidate.directory / RECEIPT).read_bytes()
         self.assertEqual(sha256(receipt_payload).hexdigest(), candidate.receipt_sha256)
         receipt = json.loads(receipt_payload)
@@ -116,6 +124,12 @@ class AuthoredWalkHostTests(unittest.TestCase):
     def test_cancelled_verification_leaves_destination_unpublished(self):
         self.cancel_on_verify = True
         with self.assertRaisesRegex(ProjectStorageError, 'cancelled by caller'):
+            self.run_host()
+        self.assertFalse(self.fixture.destination.path.exists())
+
+    def test_unmappable_source_leaves_destination_unpublished(self):
+        self.mapping_error = ValidationError('NONSHIPPING rejected exact same-rig mapping')
+        with self.assertRaisesRegex(ValidationError, 'rejected exact same-rig mapping'):
             self.run_host()
         self.assertFalse(self.fixture.destination.path.exists())
 

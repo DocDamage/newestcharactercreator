@@ -88,6 +88,22 @@ def _pairs() -> list[dict]:
             for source,target,tip,axis in rows]
 
 
+def same_rig_profile(source_sha256: str, snapshot_sha256: str, master_sha256: str) -> dict:
+    """Describe the fixed original MPFB joint, landmark and palm layout."""
+    pairs = _pairs()
+    landmarks = {key:{'source':name,'target':name} for key,name in (
+        ('left_hip','upperleg01.L'),('right_hip','upperleg01.R'),('head','head'),
+        ('left_hand','wrist.L'),('right_hand','wrist.R'),('left_foot','foot.L'),('right_foot','foot.R'))}
+    planes = {side:{key:{'source':name+'.'+suffix,'target':name+'.'+suffix}
+        for key,name in (('index','finger2-1'),('pinky','finger5-1'))}
+        for side,suffix in (('left','L'),('right','R'))}
+    return {'schema_version':1,'convention':CONVENTION,
+        'source_sha256':source_sha256,'snapshot_sha256':snapshot_sha256,'master_sha256':master_sha256,
+        'root_motion_policy':'ARMATURE_ORIGIN_DISPLACEMENT_V1','skin_deformation_policy':'BOUND_CORRECTIVE_SMOOTH_V1',
+        'mesh_strain_reference':'TRUE_NEUTRAL_BIND_V2','landmarks':landmarks,'pairs':pairs,
+        'hand_reference_planes':{'schema_version':2,'planes':planes}}
+
+
 def _build_original_idle_profile(request: AuthoredIdleRequest, *, frame_json: bytes,
         recipe_json: bytes, snapshot_json: bytes, verification_json: bytes,
         worker_request_json: bytes, worker_result_json: bytes,
@@ -203,20 +219,10 @@ def _build_original_idle_profile(request: AuthoredIdleRequest, *, frame_json: by
     observed = validate_snapshot(snapshot, source_sha256, cancel_check=cancel_check)
     need((observed['frame_count'], observed['first_frame'], observed['last_frame'], observed['fps']) == (300,2,301,30.),
          'Original idle mapping source clock differs')
-    pairs = _pairs()
-    check_same_rig_full_clock(snapshot, frame, {row['source'] for row in pairs if row['source'] != '@ARMATURE'},
+    profile = same_rig_profile(source_sha256, snapshot_sha256, request.target.master_sha256)
+    check_same_rig_full_clock(snapshot, frame,
+                              {row['source'] for row in profile['pairs'] if row['source'] != '@ARMATURE'},
                               cancel_check=cancel_check)
-    landmarks = {key:{'source':name,'target':name} for key,name in (
-        ('left_hip','upperleg01.L'),('right_hip','upperleg01.R'),('head','head'),
-        ('left_hand','wrist.L'),('right_hand','wrist.R'),('left_foot','foot.L'),('right_foot','foot.R'))}
-    planes = {side:{key:{'source':name+'.'+suffix,'target':name+'.'+suffix}
-        for key,name in (('index','finger2-1'),('pinky','finger5-1'))}
-        for side,suffix in (('left','L'),('right','R'))}
-    profile = {'schema_version':1,'convention':CONVENTION,
-        'source_sha256':source_sha256,'snapshot_sha256':snapshot_sha256,'master_sha256':request.target.master_sha256,
-        'root_motion_policy':'ARMATURE_ORIGIN_DISPLACEMENT_V1','skin_deformation_policy':'BOUND_CORRECTIVE_SMOOTH_V1',
-        'mesh_strain_reference':'TRUE_NEUTRAL_BIND_V2','landmarks':landmarks,'pairs':pairs,
-        'hand_reference_planes':{'schema_version':2,'planes':planes}}
     validate_native_profile(profile,source_sha256,snapshot_sha256,request.target.master_sha256)
     parents = {row['name']:row['parent'] for row in snapshot['bones']}
     validate_palm_hierarchy(profile,parents,'source')

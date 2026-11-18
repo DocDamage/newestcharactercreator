@@ -3,6 +3,8 @@ from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
 
+from ucc.animations.authored_walk_mapping import build_original_walk_profile
+from ucc.animations.fbx_snapshot import MAX_SNAPSHOT_BYTES
 from ucc.core.authored_idle import PROFILE, AuthoredIdleInspectionRequest
 from ucc.core.authored_walk_job import AUTHOR, VERIFY, INTENT, INPUT_BINDINGS, REOPEN_BINDINGS, walk_intent
 from ucc.core.errors import ValidationError
@@ -27,6 +29,7 @@ ANATOMY = 'idle_anatomical_frame.json'
 AUTHOR_REPORT = 'walk_author_report.json'
 VERIFY_REPORT = 'walk_verification.json'
 SNAPSHOT = 'authored_walk_source_snapshot.json'
+MAPPING = 'walk-target-mapping.json'
 RECEIPT = 'authored_walk_receipt.json'
 AUTHOR_STATUS = 'ORIGINAL_WALK_BAKED'
 VERIFY_STATUS = 'ORIGINAL_WALK_TECHNICALLY_VERIFIED'
@@ -48,6 +51,10 @@ class AuthoredWalkCandidate:
     fbx_path: Path
     review_path: Path
     snapshot_sha256: str
+
+    @property
+    def mapping_path(self) -> Path:
+        return self.directory / MAPPING
 
 
 def _summary(details: object, status: str, outputs: dict[str, dict]) -> None:
@@ -156,7 +163,7 @@ def _author(store, inspection, policies, database, destination, blender, worker,
         {'candidate.blend': context.master, INSPECTION: request},
         {'candidate.blend': master_pin, INSPECTION: inspection.sha256}, OUTPUTS[INSPECT])
     checked_summary(measured_summary, INSPECT, inspection, measured, budget)
-    target, _ = checked_inspection(measured, inspection, measured_summary, budget)
+    target, frame = checked_inspection(measured, inspection, measured_summary, budget)
     anatomy = measured_summary['anatomical_frame_sha256']
     project = write_input('project.ucc.json', inspection.project_snapshot_json)
     intent = write_input(INTENT, canonical_bytes(walk_intent(inspection, anatomy)))
@@ -192,6 +199,13 @@ def _author(store, inspection, policies, database, destination, blender, worker,
     verified_report = _read_report(verified / VERIFY_REPORT, verified_rows[VERIFY_REPORT], budget)
     _check_verification(verified_report, verify_pins, target.to_dict(), verified_rows[SNAPSHOT])
 
+    snapshot_sha256 = verified_rows[SNAPSHOT]['sha256']
+    snapshot = read_idle_json(verified / SNAPSHOT, budget, snapshot_sha256,
+                              canonical=False, maximum=MAX_SNAPSHOT_BYTES)
+    profile = build_original_walk_profile(frame, snapshot, source_sha256=verify_options['source_sha256'],
+        snapshot_sha256=snapshot_sha256, target_master_sha256=target.master_sha256, cancel_check=budget.check)
+    write_input(MAPPING, canonical_bytes(profile))
+
     guard()
     stage = destination.stage(inspection.job_id)
     stage_stamp = identity(protected(stage))
@@ -225,7 +239,7 @@ def _author(store, inspection, policies, database, destination, blender, worker,
         need(inventory(destination.path, names | {RECEIPT}, budget) == expected,
              'Published original walk files differ from the independent verification')
         return AuthoredWalkCandidate(destination.path, receipt_sha, destination.path / 'original_walk.fbx',
-                                     destination.path / 'original_walk.blend', verified_rows[SNAPSHOT]['sha256'])
+                                     destination.path / 'original_walk.blend', snapshot_sha256)
     except BaseException as error:
         publication.withdraw(error)
         raise
