@@ -110,7 +110,11 @@ jobs:
       - name: Run private body sprite dialog tests
         run: python -m unittest discover -s tests -p test_body_sprite_dialog.py -v
       - name: Run private body sprite workflow tests
-        run: python -m unittest discover -s tests -p test_body_sprite_desktop.py -v
+        # The receipt tests also check the pinned host executable identity.
+        run: >-
+          python -c "import pathlib,subprocess,sys;
+          executable=str(pathlib.Path(sys.executable).resolve(strict=True));
+          raise SystemExit(subprocess.call([executable,'-m','unittest','discover','-s','tests','-p','test_body_sprite_desktop.py','-v']))"
       - name: Run export compatibility report tests
         run: python -m unittest discover -s tests -p test_export_compatibility_report.py -v
       - name: Run registered target private-preview review tests (real Qt)
