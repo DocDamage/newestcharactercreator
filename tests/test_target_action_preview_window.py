@@ -177,6 +177,87 @@ class TargetPreviewWindowTests(unittest.TestCase):
         self.assertFalse(viewer.loop.isChecked())
         self.assertEqual(viewer.canvas.frame, 24)
 
+    def test_visual_decision_action_requires_live_full_loop_authority(self):
+        viewer = self.viewer
+        recorded = []
+        self.assertTrue(viewer.record_idle_decision.isHidden())
+        self.assertFalse(viewer.record_idle_decision.isEnabled())
+        current = True
+        viewer.install_idle_loop(lambda: current, record_decision=lambda: recorded.append(True))
+        self.assertFalse(viewer.record_idle_decision.isHidden())
+        viewer.record_idle_decision.click()
+        self.assertEqual(recorded, [True])
+        current = False
+        viewer.record_idle_decision.click()
+        self.assertEqual(recorded, [True])
+        self.apply(25, 30)
+        self.assertTrue(viewer.record_idle_decision.isHidden())
+
+    def test_visual_decision_dialog_requires_the_reviewers_own_explicit_input(self):
+        from ucc.desktop.authored_idle_visual_workflow import IdleVisualDecisionDialog
+
+        dialog = IdleVisualDecisionDialog()
+        self.addCleanup(dialog.deleteLater)
+        self.assertIsNone(dialog.decision.currentData())
+        self.assertFalse(dialog.attest.isChecked())
+        self.assertFalse(dialog.save.isEnabled())
+        dialog.decision.setCurrentIndex(dialog.decision.findData('rework'))
+        dialog.reviewer.setText('Nonshipping test reviewer')
+        dialog.note.setPlainText('Nonshipping test notes about the transition.')
+        dialog.accept()
+        self.assertNotEqual(dialog.result(), dialog.DialogCode.Accepted)
+        dialog.attest.setChecked(True)
+        self.assertTrue(dialog.save.isEnabled())
+        dialog.save.click()
+        value = dialog.declaration()
+        self.assertEqual(value.decision, 'rework')
+        self.assertTrue(value.personally_reviewed)
+
+    def test_visual_decision_workflow_supplies_exact_proof_and_fences_picker_drift(self):
+        from ucc.desktop.authored_idle_visual_workflow import (
+            IdleVisualDecisionDialog, KIND, start_visual_decision,
+        )
+
+        root = Path(self.temp.name).resolve()
+        context = SimpleNamespace(store=SimpleNamespace(root=root/'source'), database=root/'catalog.sqlite3')
+        proof = root/'idle-proof.json'
+        identity = SimpleNamespace(selection=object())
+        admitted = SimpleNamespace(review_identity=identity)
+        errors = []
+        window = SimpleNamespace(jobs=SimpleNamespace(busy=False), _error=errors.append)
+
+        class TestDialog(IdleVisualDecisionDialog):
+            def __init__(self, _parent):
+                super().__init__()
+
+            def exec(self):
+                self.decision.setCurrentIndex(self.decision.findData('approve'))
+                self.reviewer.setText('Nonshipping test reviewer')
+                self.note.setPlainText('Nonshipping review input.')
+                self.attest.setChecked(True)
+                self.accept()
+                return self.result()
+
+        with patch('ucc.desktop.authored_idle_visual_workflow.IdleVisualDecisionDialog', TestDialog), patch(
+                'ucc.desktop.authored_idle_visual_workflow.QFileDialog.getExistingDirectory',
+                return_value=str(root)), patch('ucc.desktop.authored_idle_visual_workflow.QInputDialog.getText',
+                return_value=('review', True)), patch('ucc.desktop.target_action_workflow._submit') as submit, patch(
+                'ucc.jobs.authored_idle_visual_review.publish_authored_idle_visual_decision') as publisher:
+            current = iter((True, False))
+            start_visual_decision(window, context, proof, admitted, lambda: next(current))
+            submit.assert_not_called()
+            self.assertIn('changed', errors.pop())
+            start_visual_decision(window, context, proof, admitted, lambda: True)
+            owner, kind, operation = submit.call_args.args
+            self.assertIs(owner, window)
+            self.assertEqual(kind, KIND)
+            operation(None, lambda _: None)
+            self.assertIs(publisher.call_args.args[0], context.store)
+            self.assertIs(publisher.call_args.kwargs['expected_identity'], identity)
+            self.assertEqual(publisher.call_args.kwargs['proof_file'], proof)
+            self.assertEqual(publisher.call_args.kwargs['decision'].decision, 'approve')
+            self.assertEqual(publisher.call_args.kwargs['destination'].path, root/'review')
+
     def test_revoked_loop_suppresses_queued_paint_and_releases_cache(self):
         viewer = self.viewer
         permitted = True

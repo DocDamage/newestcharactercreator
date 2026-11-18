@@ -2,13 +2,14 @@
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from hashlib import sha256
+import json
 from pathlib import Path
 import stat
 
 from ucc.animations.target_action_diagnostic_contract import TargetActionDiagnosticSelection
 from ucc.core.errors import ProjectConflict, ProjectStorageError, ValidationError
 from ucc.core.storage import ProjectStore
-from ucc.core.target_action import TargetActionBinding
+from ucc.core.target_action import TargetActionBinding, TargetActionSource
 from ucc.core.target_action_format import MAX_BYTES, MAX_FILE_BYTES, checked_sha, checked_text, closed, read_document
 from .authored_idle_policy import IdleSourcePolicyRecord
 from .authored_idle_receipt import _admitted_idle_candidate, _current_idle_mapping
@@ -60,6 +61,26 @@ def _check_stamps(stamps, databases):
 
 
 @dataclass(frozen=True, slots=True)
+class AuthoredIdleReviewIdentity:
+    selection: TargetActionDiagnosticSelection
+    proof_sha256: str
+    receipt_sha256: str
+    mapping_sha256: str
+    cache_sha256: str
+
+    def __post_init__(self) -> None:
+        if type(self.selection) is not TargetActionDiagnosticSelection:
+            raise ValidationError('An authored idle review needs the exact saved target selection')
+        for digest in (self.proof_sha256, self.receipt_sha256, self.mapping_sha256, self.cache_sha256):
+            checked_sha(digest)
+
+    def to_dict(self) -> dict:
+        return {'selection': self.selection.to_dict(), 'proof_sha256': self.proof_sha256,
+                'receipt_sha256': self.receipt_sha256, 'mapping_sha256': self.mapping_sha256,
+                'cache_sha256': self.cache_sha256}
+
+
+@dataclass(frozen=True, slots=True)
 class AuthoredIdleLoopPreview:
     binding_sha256: str
     cache_sha256: str
@@ -67,6 +88,10 @@ class AuthoredIdleLoopPreview:
     watched_identities: tuple[tuple[Path, tuple[int, int, int, int]], ...] = field(repr=False)
     database_path: Path
     _original_catalog: Path = field(repr=False)
+    review_identity: AuthoredIdleReviewIdentity
+    _candidate_directory: Path = field(repr=False)
+    _protected_output_scopes: tuple[Path, ...] = field(repr=False)
+    _target_source: TargetActionSource = field(repr=False)
 
     def assert_current(self) -> None:
         """Filesystem-only fence for transfer and playback; no cache reads or SQL."""
@@ -118,11 +143,12 @@ class _Authority:
         _check_stamps(self._stamps.items(), self._databases)
         self._budget.check()
 
-    def freeze(self, binding_sha, cache_sha, database, original):
+    def freeze(self, review, database, inputs, scopes, target_source):
         stamps = tuple(sorted(self._stamps.items(), key=lambda row: (len(row[0].parts), str(row[0]))))
         paths = tuple(sorted((path for path in self._paths
                               if self._stamps.get(path, _MISSING) != _MISSING), key=str))
-        result = AuthoredIdleLoopPreview(binding_sha, cache_sha, paths, stamps, database, original)
+        result = AuthoredIdleLoopPreview(review.selection.binding_sha256, review.cache_sha256,
+            paths, stamps, database, inputs.database, review, inputs.candidate_directory, scopes, target_source)
         self._budget.check()
         result.assert_current()
         self._budget.check()
@@ -160,12 +186,14 @@ class _IdleProofInputs:
     database: Path
     blender: Path
     worker: Path
+    proof_sha256: str
 
 
 @contextmanager
 def _source_from_idle_proof(proof_file, database, budget):
     reads = ProofReads(budget)
-    pointer = _pointer(reads.capture(_path(str(proof_file)), MAX_BYTES))
+    raw = reads.capture(_path(str(proof_file)), MAX_BYTES)
+    pointer = _pointer(raw)
     original = _path(pointer['catalog_path'])
     source_store = ProjectStore(_path(pointer['project_root']))
     directory = _path(pointer['candidate_directory'])
@@ -177,7 +205,8 @@ def _source_from_idle_proof(proof_file, database, budget):
     with _admitted_idle_candidate(source_store, directory, checked_sha(pointer['receipt_sha256']),
             records, original, blender, worker, budget.cancel, budget.remaining(),
             capture_authority=authority.remember) as (admitted, verifier, source_budget):
-        yield admitted, verifier, source_budget, authority, _IdleProofInputs(source_store.root, directory, original, blender, worker)
+        yield admitted, verifier, source_budget, authority, _IdleProofInputs(
+            source_store.root, directory, original, blender, worker, sha256(raw).hexdigest())
     authority.assert_current()
 
 
@@ -238,6 +267,12 @@ def load_authored_idle_loop_preview(store, *, proof_file: Path, selection: Targe
                 cache, binding, stamps = _target(store, selection, database, source_budget)
                 authority.remember(stamps)
                 cache_sha = _match(admitted, mapping, binding, cache)
-            return authority.freeze(binding.sha256, cache_sha, database, inputs.database)
+                review = AuthoredIdleReviewIdentity(selection, inputs.proof_sha256, admitted.candidate.receipt_sha256,
+                                                    mapping.mapping_sha256, cache_sha)
+                dependencies = json.loads(admitted.receipt_json)['worker_dependencies']
+                scopes = (inputs.project_root, inputs.candidate_directory, inputs.blender.parent, inputs.worker.parent,
+                    *coordination_paths(database), *coordination_paths(inputs.database),
+                    *(Path(name).parent for name in dependencies))
+            return authority.freeze(review, database, inputs, scopes, binding.source)
     except OSError as error:
         raise ProjectStorageError('Cannot read the private authored idle loop proof') from error

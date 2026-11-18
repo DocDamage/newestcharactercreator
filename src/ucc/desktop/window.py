@@ -507,6 +507,7 @@ class MainWindow(QMainWindow):
                 'target_action_prepare': 'Preparing and independently reopening a private target Action...',
                 'target_action_load': 'Validating the explicitly selected saved target preview...',
                 'target_action_idle_loop_review': 'Reviewing the authored idle proof and saved target preview...',
+                'target_action_idle_visual_decision': 'Rechecking the current idle and saving your visual decision...',
                 'authored_idle_source_review': 'Reviewing the exact saved MPFB authoring sources...',
                 'authored_idle_author': 'Authoring and independently reopening the private original idle...',
                 'godot_saved_review': 'Reviewing the selected saved Godot proof and source policies...',
