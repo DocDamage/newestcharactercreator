@@ -4,11 +4,13 @@ from threading import Event
 from PySide6.QtWidgets import QFileDialog,QDialog
 from ucc.core.errors import UCCError,ValidationError,ProjectConflict
 from ucc.core.material_master_intent import supports_material_master_intent
+from ucc.export.static_godot_contract import POLICY
 from ucc.jobs.static_export_sources import static_export_sources
 from ucc.jobs.export_destination import plan_destination
 from ucc.jobs.static_godot_export import export_static_godot,StaticGodotExport
 from ucc.jobs.master_preview import _digest
 from ucc.jobs.godot_candidate_inputs import read_json,regular_file
+from .export_compatibility_report import ExportProfile, show_export_compatibility
 from .godot_export_dialog import GodotExportDialog
 
 
@@ -56,8 +58,17 @@ def finish_export(window,result):
     try:
         if not isinstance(result,StaticGodotExport):raise ValidationError('Unexpected Godot export result')
         receipt=regular_file(result.destination/'export_receipt.json',result.destination,4*1024*1024)
-        if _digest(receipt)!=result.receipt_sha256:raise ValidationError('Export receipt changed after verification')
-        record=read_json(receipt,4*1024*1024)
+        record=read_json(receipt,4*1024*1024,expected_sha256=result.receipt_sha256)
+        if (type(record.get('schema_version')) is not int or record['schema_version']!=1
+                or record.get('policy')!=POLICY or record.get('request_sha256')!=result.request_sha256
+                or record.get('master_sha256')!=result.master_sha256
+                or record.get('private_godot_import_verified') is not True
+                or record.get('visual_quality_approved') is not False
+                or record.get('distribution_license_review_complete') is not False
+                or type(record.get('engine_observation')) is not dict
+                or record['engine_observation']!=result.observed
+                or type(record.get('files')) is not dict or not record['files']):
+            raise ValidationError('Godot receipt differs from this verified static export')
         for name,sha in record['files'].items():
             path=regular_file(result.destination/name,result.destination,128*1024*1024)
             if _digest(path)!=sha:raise ValidationError('Export output changed after verification: '+name)
@@ -65,6 +76,7 @@ def finish_export(window,result):
             'Fresh Blender and Godot checks passed for the rig, facial shapes, UVs, saved skin material and reopened scene.\n'
             'Open project.godot for the preview, or use character.tscn in your Godot project.\n'
             'No animation clips are included. Editable character and history were not changed. Visual quality and public distribution remain unapproved.')
+        show_export_compatibility(window, ExportProfile.GODOT, result.destination)
     except (UCCError,OSError,ValueError,KeyError) as error:window._error('Godot output could not be confirmed: '+str(error))
 
 

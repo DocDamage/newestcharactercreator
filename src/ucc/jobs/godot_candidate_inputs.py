@@ -5,6 +5,7 @@ export. The production Blender producer/reopen integration is still required.
 """
 from array import array
 from dataclasses import dataclass, field
+from hashlib import sha256
 import json
 import math
 from pathlib import Path
@@ -34,13 +35,16 @@ def check_cancel(cancel: Event | None) -> None:
         raise ProjectStorageError('Godot candidate cancelled; project and master remain authoritative')
 
 
-def read_json(path: Path, maximum: int) -> dict:
+def read_json(path: Path, maximum: int, *, expected_sha256: str | None = None) -> dict:
     if path.is_symlink() or not path.is_file() or not 2 <= path.stat().st_size <= maximum:
         raise ValidationError('Missing or oversized candidate JSON: '+path.name)
     try:
-        raw = path.read_bytes()
+        with path.open('rb') as stream:
+            raw = stream.read(maximum + 1)
         if len(raw) > maximum:
             raise ValidationError('Candidate JSON grew beyond its limit')
+        if expected_sha256 is not None and sha256(raw).hexdigest() != expected_sha256:
+            raise ValidationError('Export receipt changed after verification')
         value = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique_project_fields,
                            parse_constant=_nonfinite_project_number)
     except (ValueError, UnicodeError, RecursionError) as error:

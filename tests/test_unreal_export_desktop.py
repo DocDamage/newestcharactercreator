@@ -275,6 +275,7 @@ class UnrealExportDesktopTests(unittest.TestCase):
         return receipt_result(self.root/'UNIT_NOT_REAL_EXPORT', source_review)
 
     def test_completion_receipt_check_reports_narrow_scope(self):
+        from PySide6.QtWidgets import QLabel, QTreeWidget
         from ucc.desktop.unreal_export_workflow import finish_unreal_export
         result = self.completion()
         finish_unreal_export(self.window, result)
@@ -283,6 +284,17 @@ class UnrealExportDesktopTests(unittest.TestCase):
         self.assertIn('No animation clips', text)
         self.assertIn('remain unapproved', text)
         self.assertIn(str(result.destination), text)
+        report = self.window.findChild(QDialog, 'exportCompatibilityReport')
+        self.assertIsNotNone(report)
+        self.addCleanup(report.close)
+        scope = report.findChild(QLabel, 'exportCompatibilityScope').text()
+        self.assertIn('Unreal reopened the saved static scene', scope)
+        self.assertNotIn('Unity reopened', scope)
+        self.assertNotIn('Godot reopened', scope)
+        details = report.findChild(QTreeWidget, 'exportCompatibilityDetails')
+        statuses = {details.topLevelItem(row).text(0): details.topLevelItem(row).text(1)
+                    for row in range(details.topLevelItemCount())}
+        self.assertEqual(statuses['Player build'], 'Not tested')
 
     def test_changed_receipt_cannot_show_completion(self):
         from ucc.desktop.unreal_export_workflow import finish_unreal_export
@@ -291,6 +303,7 @@ class UnrealExportDesktopTests(unittest.TestCase):
         finish_unreal_export(self.window, result)
         self.assertIn('receipt changed', self.window._error.call_args.args[0])
         self.assertNotIn('project created', self.window.log.toPlainText())
+        self.assertIsNone(self.window.findChild(QDialog, 'exportCompatibilityReport'))
 
     def test_changed_desktop_project_cannot_show_completion(self):
         from ucc.desktop.unreal_export_workflow import finish_unreal_export
@@ -299,3 +312,4 @@ class UnrealExportDesktopTests(unittest.TestCase):
         finish_unreal_export(self.window, result)
         self.assertIn('context changed', self.window._error.call_args.args[0])
         self.assertNotIn('project created', self.window.log.toPlainText())
+        self.assertIsNone(self.window.findChild(QDialog, 'exportCompatibilityReport'))

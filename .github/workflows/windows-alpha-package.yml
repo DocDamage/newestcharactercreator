@@ -88,6 +88,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Unity per-use review dialog tests failed' }
           python -m unittest discover -s tests -p 'test_unity_export_desktop.py' -v
           if ($LASTEXITCODE -ne 0) { throw 'Unity desktop export workflow tests failed' }
+          python -m unittest discover -s tests -p 'test_export_compatibility_report.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Export compatibility report tests failed' }
           python -m unittest discover -s tests -p 'test_target_action_dialog.py' -v
           if ($LASTEXITCODE -ne 0) { throw 'Target private-preview review tests failed' }
           python -m unittest discover -s tests -p 'test_target_action_desktop.py' -v

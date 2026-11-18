@@ -14,6 +14,7 @@ from ucc.jobs.static_export_sources import static_export_sources
 from ucc.jobs.export_destination import plan_destination
 from ucc.jobs.godot_candidate_inputs import regular_file, identity, read_json
 from ucc.jobs.master_preview import _digest
+from .export_compatibility_report import ExportProfile, show_export_compatibility
 from .unity_export_dialog import UnityExportDialog
 
 
@@ -223,9 +224,7 @@ def finish_unity_export(window, result):
         # The transaction verifies the entire final payload on its worker before returning.
         # Confirm only the bounded receipt here so large mesh hashing cannot freeze Qt.
         receipt = regular_file(result.destination/'export_receipt.json', result.destination, 2*1024*1024)
-        if _digest(receipt) != result.receipt_sha256:
-            raise ValidationError('Unity export receipt changed after final verification')
-        record = read_json(receipt, 2*1024*1024)
+        record = read_json(receipt, 2*1024*1024, expected_sha256=result.receipt_sha256)
         if (record.get('request_sha256') != result.request_sha256
                 or record.get('master_sha256') != result.master_sha256
                 or result.master_sha256 != dict((s.asset_id, s.sha256) for s in review.sources)['master']
@@ -241,6 +240,7 @@ def finish_unity_export(window, result):
             'No animation clips are included. Editable master and history were preserved. '
             'Player builds, visual quality and public distribution remain unapproved.')
         window.statusBar().showMessage('Private Unity export verified; review the project and retained receipt')
+        show_export_compatibility(window, ExportProfile.UNITY, result.destination)
     except (UCCError, OSError, ValueError, TypeError, KeyError) as error:
         window._error('Unity output could not be confirmed. Inspect retained logs and receipt: '+str(error))
 
