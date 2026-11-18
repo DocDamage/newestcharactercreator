@@ -24,9 +24,14 @@ from .skin_material_preparation import _BudgetCancel
 from .export_guards import cancel_context, failure_reason
 
 
+_MIN_TIMEOUT_S = .05
+_MAX_TIMEOUT_S = 3600
+
+
 class Budget:
     def __init__(self, cancel, timeout_s):
-        if type(timeout_s) not in (int, float) or not math.isfinite(timeout_s) or not .05 <= timeout_s <= 3600:
+        if (type(timeout_s) not in (int, float) or not math.isfinite(timeout_s)
+                or not _MIN_TIMEOUT_S <= timeout_s <= _MAX_TIMEOUT_S):
             raise ValidationError('Target preview requires a bounded total deadline')
         self.user = cancel
         self.deadline, _ = cancel_context(cancel, time.monotonic() + timeout_s)
@@ -43,7 +48,8 @@ class Budget:
 
     def remaining(self):
         self.check()
-        return max(.05, self.deadline - time.monotonic())
+        # Subtracting a rounded absolute deadline can exceed the cap on the same clock tick.
+        return min(_MAX_TIMEOUT_S, max(_MIN_TIMEOUT_S, self.deadline - time.monotonic()))
 
 
 @contextmanager

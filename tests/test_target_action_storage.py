@@ -15,6 +15,7 @@ from ucc.jobs.godot_candidate_inputs import identity
 from ucc.jobs.skin_material_preparation import _BudgetCancel
 from ucc.jobs.target_action import (load_target_action, list_target_action_bindings,
     read_target_action_binding, check_target_action_catalog, review_target_action_source)
+from ucc.jobs.target_action_context import operation_budget
 
 
 class TargetActionStorageTests(unittest.TestCase):
@@ -92,6 +93,14 @@ class TargetActionStorageTests(unittest.TestCase):
         for cancel, text in ((_BudgetCancel(user, time.monotonic()-1), 'total deadline'), (user, 'cancelled')):
             if cancel is user: user.set()
             with self.subTest(reason=text), self.assertRaisesRegex(ProjectStorageError, text): self.load(cancel=cancel)
+
+    def test_nested_budget_accepts_maximum_timeout_on_a_single_clock_tick(self):
+        tick = 496.01612243705824
+        self.assertGreater((tick + 3600) - tick, 3600)
+        with patch('ucc.jobs.target_action_context.time.monotonic', return_value=tick):
+            with operation_budget(None, 3600) as parent:
+                with operation_budget(parent.cancel, parent.remaining()) as child:
+                    self.assertEqual(child.deadline, parent.deadline)
 
     def test_catalog_semantic_guard_allows_empty_wal_but_rejects_committed_policy_in_wal(self):
         args = {'expected_database_identity':identity(self.f.database)[:2],
