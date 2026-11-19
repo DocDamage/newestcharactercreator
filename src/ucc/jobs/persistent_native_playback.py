@@ -11,6 +11,7 @@ from ucc.animations.source_rest_frames import is_sha256
 from ucc.core.errors import ValidationError
 from ucc.core.models import CharacterProject
 from ucc.core.storage import ProjectStore
+from ucc.core.worker_payload import MANIFEST, SUPPORT, validate_worker_payload
 from ucc.preview.motion_cache import MAGIC, MAX_BYTES, MotionCache
 from ucc.preview.surface_review import SurfaceReview
 from .master_preview import _digest, _master_file
@@ -54,6 +55,8 @@ def _worker_fingerprint(worker: Path, cancel: Event | None) -> str:
         digest.update(path.relative_to(root).as_posix().encode('utf-8') + b'\0')
         digest.update(bytes.fromhex(_hash_file(path, cancel, _HASH_BATCH_LIMIT, allow_empty=True)))
     if frozen:
+        validate_worker_payload(root)
+        digest.update(bytes.fromhex(_hash_file(root / SUPPORT / MANIFEST, cancel, _HASH_BATCH_LIMIT)))
         digest.update(bytes.fromhex(_hash_file(Path(sys.executable).resolve(), cancel, 1024**3)))
     return digest.hexdigest()
 
