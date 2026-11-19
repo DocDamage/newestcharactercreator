@@ -102,6 +102,9 @@ def retarget_native(bpy: Any, root: Path, options: dict) -> dict:
     sb,source_height=body_frame(*(tuple(landmark("source",k)) for k in ("left_hip","right_hip","head")))
     tb,target_height=body_frame(*(tuple(landmark("target",k)) for k in ("left_hip","right_hip","head")))
     axes=multiply(tb,transpose(sb));scale=target_height/source_height
+    if "planted_knee" in adjustments:
+        from ucc.animations.planted_knee import validate_planted_alignment
+        validate_planted_alignment(profile,axes)
     palm_proofs=measure_planes(profile,source_points,target_points,parents,target_parents,
         source_height,target_height,source_snapshot=source)
     if not .25<=scale<=4:

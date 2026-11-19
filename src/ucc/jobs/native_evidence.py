@@ -13,6 +13,7 @@ from ucc.animations.native_palms import PALM_AXES, palm_evidence
 from ucc.animations.native_preview_adjustments import (
     adjusted_native_preview_source, preview_adjustment_declarations,
 )
+from ucc.animations.planted_knee import validate_planted_alignment
 from .motion_quality_evidence import validate_motion_quality
 from .native_anchor_evidence import anchor_context, check_anchor_frame, finish_anchor
 from .native_skin_evidence import validate_skin
@@ -90,6 +91,7 @@ def validate_native_timeline(data,report,source,profile,bindings,*,cancel_check=
     axes=data.get("source_to_target_axes");nm.check_rotation(axes)
     if _difference(axes,nm.product(tb,nm.transposed(sb)))>1e-5 or not number(data.get("root_motion_scale"),.25,4) or abs(data["root_motion_scale"]-th/sh)>1e-5:
         raise ValidationError("Native body orientation/root scale differs from measured landmarks")
+    validate_planted_alignment(profile,axes)
     proofs=data.get("reference_proofs")
     if type(proofs) is not list or len(proofs)!=len(pairs): raise ValidationError("Incomplete native bind/reference proof")
     source_rest={};references={}
