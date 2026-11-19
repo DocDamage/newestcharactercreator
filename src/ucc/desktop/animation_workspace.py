@@ -60,6 +60,28 @@ STYLE = """
     background: #25343e; color: #98aab5; border-color: #3e505b;
 }
 #animationWorkspace QPushButton:focus { border: 1px solid #b9e9df; }
+#animationWorkspace QWidget[workspacePlayback="true"] QPushButton {
+    background: #20313e; color: #e6f1f4; border: 1px solid #455967;
+    border-radius: 5px; padding: 5px 9px;
+}
+#animationWorkspace QWidget[workspacePlayback="true"] QPushButton:hover,
+#animationWorkspace QWidget[workspacePlayback="true"] QPushButton:checked { background: #304a59; }
+#animationWorkspace QWidget[workspacePlayback="true"] QPushButton[primary="true"] {
+    background: #87d4bd; color: #0c2923; font-weight: 700; border-color: #a5e2d0;
+}
+#animationWorkspace QWidget[workspacePlayback="true"] QPushButton:disabled {
+    background: #25343e; color: #98aab5;
+}
+#animationWorkspace QWidget[workspacePlayback="true"] QCheckBox { color: #dae7ec; spacing: 6px; }
+#animationWorkspace QWidget[workspacePlayback="true"] QSlider::groove:horizontal {
+    height: 4px; background: #30414e; border-radius: 2px;
+}
+#animationWorkspace QWidget[workspacePlayback="true"] QSlider::sub-page:horizontal {
+    background: #87d4bd; border-radius: 2px;
+}
+#animationWorkspace QWidget[workspacePlayback="true"] QSlider::handle:horizontal {
+    width: 13px; margin: -5px 0; background: #a5e2d0; border-radius: 6px;
+}
 """
 
 

@@ -41,6 +41,37 @@ class DesktopQtSmoke(unittest.TestCase):
         self.assertFalse(self.window.save_action.isEnabled())
         self.assertEqual(self.controller.view().name, "Changed Hero")
 
+    def test_animation_tab_shows_one_catalog_workspace_and_keeps_import_and_diagnostics_reachable(self):
+        from ucc.desktop.animation_workspace import AnimationWorkspace
+
+        pane = self.window.animations
+        pane.display_catalog([{"asset_id": "nonshipping_source", "format": "fbx", "clips": [],
+                               "status": "INDEXED"}])
+        self.window.show()
+        self.addCleanup(self.window.close)
+        self.window.tabs.setCurrentWidget(pane)
+        self.app.processEvents()
+        self.assertEqual(self.window.findChildren(AnimationWorkspace), [pane.workspace])
+        self.assertEqual(self.window.tabs.tabText(self.window.tabs.currentIndex()), "Animation library")
+        self.assertTrue(pane.catalog.isVisible())
+        self.assertTrue(pane.search.isVisible())
+        self.assertTrue(pane.preview_clip.isVisible())
+        self.assertFalse(pane.preview_clip.isEnabled())
+        self.assertFalse(pane.advanced_dialog.isVisible())
+        self.assertFalse(self.window.log.isVisible())
+
+        pane.advanced_tools.click()
+        self.assertTrue(pane.advanced_dialog.isVisible())
+        self.assertTrue(pane.selected.isVisible())
+        pane.advanced_dialog.reject()
+        self.assertFalse(pane.advanced_dialog.isVisible())
+        self.window.animation_diagnostics_action.trigger()
+        self.assertTrue(self.window.log.isVisible())
+        self.window.animation_diagnostics_action.trigger()
+        self.assertFalse(self.window.log.isVisible())
+        self.window.tabs.setCurrentWidget(self.window.character)
+        self.assertTrue(self.window.log.isVisible())
+
     def test_slider_and_advanced_anatomy_controls(self):
         self.assertFalse(self.window.character.advanced.isVisible())
         self.window.character.mode.setCurrentText("Advanced")
