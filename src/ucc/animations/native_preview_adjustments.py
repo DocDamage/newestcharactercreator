@@ -36,10 +36,20 @@ def validate_preview_adjustments(profile: dict) -> None:
             or 'hand_reference_planes' not in profile):
         raise ValidationError('Forearm roll requires measured hands and saved-skin preview verification')
     declaration = profile['forearm_roll']
-    if (type(declaration) is not dict or set(declaration) != {'schema_version', 'windows'}
-            or type(declaration['schema_version']) is not int or declaration['schema_version'] != 1
-            or type(declaration['windows']) is not list or not 1 <= len(declaration['windows']) <= 4):
+    if (type(declaration) is not dict or type(declaration.get('schema_version')) is not int
+            or declaration['schema_version'] not in (1,2)):
         raise ValidationError('Invalid private forearm roll declaration')
+    calibrated = declaration['schema_version'] == 2
+    keys = {'schema_version','windows','baseline_tenths'} if calibrated else {'schema_version','windows'}
+    if (set(declaration) != keys or type(declaration['windows']) is not list
+            or not (0 if calibrated else 1) <= len(declaration['windows']) <= 4):
+        raise ValidationError('Invalid private forearm roll declaration')
+    baseline = declaration.get('baseline_tenths',{})
+    if calibrated and (type(baseline) is not dict or not baseline or set(baseline)-{'left','right'}
+                       or any(type(angle) is not int or not 0 < abs(angle) <= 80 for angle in baseline.values())):
+        raise ValidationError('Forearm calibration requires a bounded signed offset for each named side')
+    for side in baseline:
+        _forearm_pair(profile,side)
     ends: dict[str, int] = {}
     for window in declaration['windows']:
         if (type(window) is not dict or set(window) != {'side', 'first_frame', 'angle_tenths'}
@@ -53,6 +63,8 @@ def validate_preview_adjustments(profile: dict) -> None:
                 or any(abs(a - b) > _MAX_STEP_TENTHS for a, b in zip(angles, angles[1:]))):
             raise ValidationError('Forearm roll needs a bounded sequence that starts and ends at zero')
         side, start = window['side'], window['first_frame']
+        if any(abs(angle+baseline.get(side,0)) > 90 for angle in angles):
+            raise ValidationError('Combined forearm correction exceeds its calibrated roll range')
         if start <= ends.get(side, -100_001):
             raise ValidationError('Forearm roll windows must be ordered and disjoint for each side')
         ends[side] = start + len(angles) - 1
@@ -87,13 +99,21 @@ def adjusted_native_preview_source(source: dict, profile: dict) -> dict:
     validate_preview_adjustments(profile)
     indexes = {bone['name']: i for i, bone in enumerate(source['bones'])}
     frames = source['frames'][:]
-    for window in profile['forearm_roll']['windows']:
-        forearm_name, hand_name = _forearm_pair(profile, window['side'])
+    declared = profile['forearm_roll']
+    baseline = declared.get('baseline_tenths',{})
+    if baseline and len(frames) > 600:
+        raise ValidationError('Forearm calibration exceeds the bounded preview clock')
+    corrections = [
+        (side,0,[angle]*len(frames)) for side,angle in baseline.items()
+    ] + [
+        (window['side'],window['first_frame']-source['first_frame'],window['angle_tenths'])
+        for window in declared['windows']
+    ]
+    for side,first,angles in corrections:
+        forearm_name, hand_name = _forearm_pair(profile,side)
         arm, hand = indexes.get(forearm_name), indexes.get(hand_name)
         if arm is None or hand is None or source['bones'][hand]['parent'] != forearm_name:
             raise ValidationError('Forearm roll requires a measured forearm and its direct hand child')
-        first = window['first_frame'] - source['first_frame']
-        angles = window['angle_tenths']
         if first < 0 or first + len(angles) > len(frames):
             raise ValidationError('Forearm roll falls outside the measured source clock')
         for index, angle in enumerate(angles, first):
