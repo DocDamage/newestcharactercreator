@@ -143,6 +143,18 @@ class RegisteredNativeWorkflowQtTests(unittest.TestCase):
         self.assertIsNone(self.window._native_review)
         self.assertIsNone(self.window.motion_viewer)
 
+    def test_inline_replays_current_clip_without_a_second_blender_job(self):
+        pane = self.select_inline_source()
+        pane.preview_clip.click()
+        self.finish()
+        viewer = self.window.motion_viewer
+        viewer.toggle()
+        pane.catalog.setCurrentCell(0, 1)
+        pane.preview_clip.click()
+        self.assertEqual(len(self.queued), 1)
+        self.assertIs(self.window.motion_viewer, viewer)
+        self.assertTrue(viewer.clock.playing)
+
     def test_inline_worker_completion_cannot_restore_playback_after_selection_change(self):
         pane = self.select_inline_source()
         pane.preview_clip.click()

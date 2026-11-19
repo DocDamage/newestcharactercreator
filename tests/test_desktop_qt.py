@@ -72,6 +72,34 @@ class DesktopQtSmoke(unittest.TestCase):
         self.window.tabs.setCurrentWidget(self.window.character)
         self.assertTrue(self.window.log.isVisible())
 
+    def test_animation_workspace_reveals_saved_character_when_motion_is_hidden(self):
+        from PySide6.QtWidgets import QDockWidget, QWidget
+
+        pane = self.window.animations
+        pane.display_catalog([{"asset_id": "nonshipping_source", "format": "fbx", "clips": [],
+                               "status": "INDEXED"}])
+        self.window.show()
+        self.addCleanup(self.window.close)
+        self.window.tabs.setCurrentWidget(pane)
+        character = self.window.workspace_character
+        pane.mount_character(character)
+        dock = QDockWidget(self.window)
+        dock.setWidget(QWidget(dock))
+        pane.mount_motion(dock)
+        self.app.processEvents()
+        self.assertTrue(dock.isVisible())
+        self.assertFalse(character.isVisible())
+        chrome = dock.titleBarWidget()
+
+        dock.hide()
+        self.app.processEvents()
+        self.assertTrue(character.isVisible())
+        pane.mount_motion(None)
+        pane.mount_motion(dock)
+        self.app.processEvents()
+        self.assertIs(dock.titleBarWidget(), chrome)
+        self.assertFalse(character.isVisible())
+
     def test_slider_and_advanced_anatomy_controls(self):
         self.assertFalse(self.window.character.advanced.isVisible())
         self.window.character.mode.setCurrentText("Advanced")

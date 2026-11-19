@@ -84,6 +84,10 @@ class MainWindow(QMainWindow):
         self.mesh_dock.setWidget(self.mesh_viewer)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.mesh_dock)
         self.mesh_dock.hide()
+        self.workspace_character = MeshViewer()
+        self._workspace_static_request = False
+        self._workspace_character_owner = None
+        self._workspace_clip_message = ''
         self._blender_executable: Path | None = None  # Session-only; no disk scan.
         self._native_review = None
         self._native_playback = None
@@ -226,11 +230,10 @@ class MainWindow(QMainWindow):
         self.animations.native_animation_open_requested.connect(lambda:open_native_result(self))
         self.animations.native_renders_open_requested.connect(lambda:open_native_result(self,rendered=True))
         self.animations.native_playback_requested.connect(lambda:start_native_playback(self))
-        from .registered_native_binding import clear_registered_native
-        from .registered_native_workflow import start_inline_preview
-        self.animations.catalog.currentCellChanged.connect(lambda *_:clear_registered_native(self))
-        self.animations.catalog.currentCellChanged.connect(lambda *_: self._refresh_animation_preview())
-        self.animations.preview_clip_requested.connect(lambda: start_inline_preview(self))
+        self.animations.catalog.currentCellChanged.connect(
+            self._animation_clip_changed)
+        self.animations.preview_clip_requested.connect(self._preview_animation_clip)
+        self.animations.show_character_requested.connect(lambda: self.preview_saved_master(workspace=True))
         self.tabs.currentChanged.connect(self._animation_tab_changed)
         self.animations.local_preview_review.toggled.connect(lambda _checked:self._clear_native_review())
         self.animations.native_include_hands.toggled.connect(lambda _checked:self._clear_native_review())
@@ -262,23 +265,39 @@ class MainWindow(QMainWindow):
         self.log.setVisible(visible)
         self.diagnostics_label.setVisible(visible)
 
+    def _animation_clip_changed(self, row: int, _column: int, previous: int, _previous_column: int) -> None:
+        if row != previous:
+            from .registered_native_binding import clear_registered_native
+            clear_registered_native(self)
+            self._workspace_clip_message = ''
+        self._refresh_animation_preview()
+
+    def _preview_animation_clip(self) -> None:
+        from .registered_native_workflow import start_inline_preview
+        self._workspace_clip_message = ''
+        self._refresh_animation_preview()
+        start_inline_preview(self)
+
     def _refresh_animation_preview(self) -> None:
         table = self.animations.catalog
         row = table.currentRow()
         fields = [table.item(row, column) for column in (1, 2, 3)] if row >= 0 else []
         measured = bool(fields and all(fields) and
                         [field.text() for field in fields] == ['fbx', '1', 'METADATA_EXTRACTED'])
+        saved = (self.controller.store is not None and self.controller.has_project
+                 and not self.controller.dirty and self.controller.require_project().master_blend is not None)
+        self.animations.show_character.setEnabled(saved and not self.jobs.busy)
         if self.jobs.busy:
             message = ('Preparing playback…' if self._work_kind in {'registered_native_body', 'registered_native_playback'}
-                       else 'A local task is running…')
+                       else 'Loading saved character…' if self._workspace_static_request else 'A local task is running…')
         elif self.controller.store is None or not self.controller.has_project:
             message = 'Open a saved character to preview on its rig.'
-        elif self.controller.dirty or self.controller.require_project().master_blend is None:
+        elif not saved:
             message = 'Save the character and its Blender master first.'
         elif not measured:
             message = 'Select a measured FBX clip.'
         else:
-            self.animations.set_preview_available(True, 'Private preview · local catalog')
+            self.animations.set_preview_available(True, self._workspace_clip_message or 'Private preview · local catalog')
             return
         self.animations.set_preview_available(False, message)
 
@@ -324,6 +343,10 @@ class MainWindow(QMainWindow):
             from .registered_native_binding import clear_registered_native
             clear_registered_native(self)
         self.character.display(state)
+        if self._workspace_character_owner is not None and (
+                self.controller.dirty or self._workspace_character_owner != (
+                    self.controller.store, self.controller.require_project())):
+            self._clear_workspace_character()
         self._refresh_animation_preview()
         from .skin_material_workflow import refresh_skin_material
         refresh_skin_material(self)
@@ -379,8 +402,15 @@ class MainWindow(QMainWindow):
         from .static_preview_binding import clear_binding
         clear_binding(self)
         self._clear_native_review()
+        self._clear_workspace_character()
         self.mesh_viewer.clear_model()
         self.mesh_dock.hide()
+
+    def _clear_workspace_character(self) -> None:
+        self._workspace_character_owner = None
+        self._workspace_clip_message = ''
+        self.animations.mount_character(None)
+        self.workspace_character.clear_model()
 
     def _clear_native_review(self) -> None:
         from .registered_native_binding import clear_registered_native
@@ -604,7 +634,8 @@ class MainWindow(QMainWindow):
         if busy and self._work_kind in {'registered_native_body','registered_native_playback'}:
             self.cancel_generation_action.setEnabled(True)
             self.statusBar().showMessage('Validating registered source rights and private native skin...')
-        self.cancel_preview.setVisible(busy and self._work_kind in {'registered_native_body','registered_native_playback'})
+        self.cancel_preview.setVisible(busy and (self._workspace_static_request
+            or self._work_kind in {'registered_native_body','registered_native_playback'}))
         self.cancel_preview.setEnabled(not self.jobs.cancel_requested)
         self._refresh_animation_preview()
         from .private_target_copy_workflow import KIND as PRIVATE_TARGET_COPY, refresh_private_target_copy
@@ -901,6 +932,8 @@ class MainWindow(QMainWindow):
             )
         elif self._work_kind == "saved_master_preview":
             assert isinstance(result, MasterPreview)
+            workspace = self._workspace_static_request
+            self._workspace_static_request = False
             if not self.controller.has_project or self.controller.store is None:
                 self._error("Project closed while previewing; preview was discarded")
                 return
@@ -918,8 +951,9 @@ class MainWindow(QMainWindow):
                     on_disk.master_blend != result.master_blend):
                 self._error("Project changed while previewing; preview was discarded")
                 return
+            viewer = self.workspace_character if workspace else self.mesh_viewer
             if result.full_surface:
-                self.mesh_viewer.show_full_model(result.mesh)
+                viewer.show_full_model(result.mesh)
                 try:
                     from .static_preview_binding import bind_preview
                     bind_preview(self, result)
@@ -928,8 +962,14 @@ class MainWindow(QMainWindow):
                     self._error(str(exc))
                     return
             else:
-                self.mesh_viewer.show_model(result.mesh)
-            self.mesh_dock.show()
+                viewer.show_model(result.mesh)
+            if workspace:
+                if result.full_surface:
+                    viewer.whole_focus.click()
+                self._workspace_character_owner = (self.controller.store, project)
+                self.animations.mount_character(viewer)
+            else:
+                self.mesh_dock.show()
             self.log.setPlainText(
                 f"STATIC PREVIEW OF SAVED UCC MASTER — revision {result.revision}\n"
                 f"Source SHA-256: {result.master_sha256}\n"
@@ -991,9 +1031,19 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Local operation completed; review results above")
 
     def _job_error(self, error: str) -> None:
+        if self._work_kind == 'saved_master_preview':
+            self._workspace_static_request = False
         if self._work_kind in {'registered_native_body','registered_native_playback'}:
             from .registered_native_binding import clear_registered_native
+            pending = getattr(self, '_registered_native_pending', None)
+            inline = bool(getattr(pending, 'inline', False))
             clear_registered_native(self)
+            if inline and (pending.cancel.is_set() or 'MotionQualityError:' in error):
+                self.log.setPlainText(error)
+                self._workspace_clip_message = ('Preview cancelled.' if self.jobs.cancel_requested else
+                    'This clip exceeds the saved character’s deformation limits. See View → Animation diagnostics.')
+                self.statusBar().showMessage(self._workspace_clip_message)
+                return
             self._error(error)
             return
         if self._work_kind == 'source_skeleton':
@@ -1278,7 +1328,7 @@ class MainWindow(QMainWindow):
             cancel=cancel,
         )
 
-    def preview_saved_master(self) -> None:
+    def preview_saved_master(self, *, workspace: bool = False) -> None:
         if self.jobs.busy:
             self._error("Another local task is still running")
             return
@@ -1291,6 +1341,9 @@ class MainWindow(QMainWindow):
         snapshot = self.controller.require_project()
         if snapshot.master_blend is None:
             self._error("This project does not have a generated Blender master yet")
+            return
+        if workspace and self._workspace_character_owner == (self.controller.store, snapshot):
+            self.animations.mount_character(self.workspace_character)
             return
         executable = self._blender_executable
         if executable is None or executable.is_symlink() or not executable.is_file():
@@ -1307,6 +1360,7 @@ class MainWindow(QMainWindow):
             self._blender_executable = executable
         store = self.controller.store
         cancel = Event()
+        self._workspace_static_request = workspace
         self._submit(
             "saved_master_preview",
             lambda: preview_master_from_desktop(

@@ -96,7 +96,22 @@ def start_registered_native_body(window) -> None:
 
 
 def start_inline_preview(window) -> None:
-    """The Preview on character action requests private local playback."""
+    """Resume current guarded playback or prepare the selected private preview."""
+    result = getattr(window, '_native_playback', None)
+    viewer = window.motion_viewer
+    if (not window.jobs.busy and isinstance(result, NativePlayback)
+            and isinstance(viewer, RegisteredNativeViewer) and viewer.cache is result.cache
+            and viewer.clock is not None and isinstance(result.source_authority, NativeSourceAuthority)
+            and guard_registered_native(window, result.source_authority)):
+        try:
+            if window._catalog_path() == result.source_authority.database_path:
+                _reveal_registered_playback(window, result)
+                _play_registered(window.motion_viewer)
+                return
+        except (UCCError, OSError, ValueError) as error:
+            clear_registered_native(window)
+            window._error(str(error))
+            return
     _start_body(window, inline=True)
 
 
@@ -274,11 +289,7 @@ def finish_registered_native(window, result) -> bool:
             window._native_review = inline_preview if pending.inline else pending.preview
             _publish_registered_playback(window, value)
             if pending.inline:
-                viewer = window.motion_viewer
-                # Job success can precede busy-clear on the containing workspace.
-                viewer.toggle()
-                if viewer.clock is None or not viewer.clock.playing:
-                    raise ValidationError('The registered preview could not start playback')
+                _play_registered(window.motion_viewer)
         return True
     except (UCCError, OSError, ValueError) as error:
         clear_registered_native(window)
@@ -314,6 +325,14 @@ def _publish_registered_playback(window, result: NativePlayback) -> None:
     window.motion_viewer.show_cache(result.cache)
     if window._native_playback is not result or not guard_registered_native(window, result.source_authority):
         raise ValidationError('Registered playback changed during adoption')
+    _reveal_registered_playback(window, result)
+    window.log.setPlainText('REGISTERED PRIVATE NATIVE SKIN PLAYBACK\n'
+        +_source_text(result.source_authority)+'\n'
+        f'{result.cache.frame_count} complete cached frames at {result.cache.fps:g} fps.\n'
+        'Existing catalog source rights remain bound. Visual/contact/engine quality and usable-motion acceptance remain unapproved.')
+
+
+def _reveal_registered_playback(window, result: NativePlayback) -> None:
     window.mesh_dock.hide()
     reveal = getattr(window, 'reveal_animation_motion', None)
     if reveal is None:
@@ -323,10 +342,14 @@ def _publish_registered_playback(window, result: NativePlayback) -> None:
         reveal()
     if window._native_playback is not result or not guard_registered_native(window, result.source_authority):
         raise ValidationError('Registered playback changed while revealing the viewer')
-    window.log.setPlainText('REGISTERED PRIVATE NATIVE SKIN PLAYBACK\n'
-        +_source_text(result.source_authority)+'\n'
-        f'{result.cache.frame_count} complete cached frames at {result.cache.fps:g} fps.\n'
-        'Existing catalog source rights remain bound. Visual/contact/engine quality and usable-motion acceptance remain unapproved.')
+
+
+def _play_registered(viewer: RegisteredNativeViewer) -> None:
+    # Background success can precede busy-clear on the containing workspace.
+    if viewer.clock is not None and not viewer.clock.playing:
+        viewer.toggle()
+    if viewer.clock is None or not viewer.clock.playing:
+        raise ValidationError('The registered preview could not start playback')
 
 
 def _source_text(authority) -> str:

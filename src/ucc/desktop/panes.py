@@ -250,6 +250,7 @@ class AnimationPane(QWidget):
     native_playback_requested = Signal()
     refresh_requested = Signal()
     preview_clip_requested = Signal()
+    show_character_requested = Signal()
     reference_attach_requested = Signal()
     reference_detach_requested = Signal()
 
@@ -265,10 +266,12 @@ class AnimationPane(QWidget):
         self.workspace = AnimationWorkspace(self.catalog, self.refresh)
         self.search = self.workspace.search
         self.preview_clip = self.workspace.preview_clip
+        self.show_character = self.workspace.show_character
         self.preview_status = self.workspace.preview_status
         self.catalog_selection_label = self.workspace.catalog_selection_label
         self.advanced_tools = self.workspace.advanced_tools
         self.preview_clip.clicked.connect(self.preview_clip_requested.emit)
+        self.show_character.clicked.connect(self.show_character_requested.emit)
         self.advanced_tools.clicked.connect(self._show_advanced_tools)
         outer.addWidget(self.workspace)
 
@@ -506,6 +509,9 @@ class AnimationPane(QWidget):
 
     def mount_motion(self, widget: QWidget | None) -> None:
         self.workspace.mount_motion(widget)
+
+    def mount_character(self, widget: QWidget | None) -> None:
+        self.workspace.mount_character(widget)
 
     def set_reference_target_ready(self, ready: bool) -> None:
         self._reference_target_ready = ready

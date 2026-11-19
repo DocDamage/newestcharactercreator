@@ -1,5 +1,7 @@
 """Catalog browser and embedded motion viewport for the Animation library tab."""
-from PySide6.QtCore import Qt
+from weakref import WeakSet
+
+from PySide6.QtCore import QEvent, QObject, Qt, QTimer, Slot
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QDockWidget,
@@ -16,6 +18,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from shiboken6 import isValid
 
 
 STYLE = """
@@ -93,7 +96,7 @@ def _caption(text: str, *, heading: bool = False) -> QLabel:
 
 
 class AnimationWorkspace(QWidget):
-    """Arrange the existing table and one live, guarded Qt motion widget."""
+    """Arrange the catalog and share one viewport between a character and its motion."""
 
     def __init__(self, catalog: QTableWidget, refresh: QPushButton) -> None:
         super().__init__()
@@ -101,6 +104,11 @@ class AnimationWorkspace(QWidget):
         self.setStyleSheet(STYLE)
         self.catalog = catalog
         self._mounted: QWidget | None = None
+        self._character: QWidget | None = None
+        self._observed_widgets: WeakSet[QWidget] = WeakSet()
+        self._viewport_refresh = QTimer(self)
+        self._viewport_refresh.setSingleShot(True)
+        self._viewport_refresh.timeout.connect(self._sync_viewport)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
@@ -171,6 +179,11 @@ class AnimationWorkspace(QWidget):
         layout.setSpacing(9)
         header = QHBoxLayout()
         header.addWidget(_caption("Motion preview", heading=True), 1)
+        self.show_character = QPushButton("Show character")
+        self.show_character.setProperty("workspaceButton", True)
+        self.show_character.setToolTip("Load the saved character for local preview.")
+        self.show_character.setEnabled(False)
+        header.addWidget(self.show_character)
         self.preview_clip = QPushButton("Preview on character")
         self.preview_clip.setToolTip("Preview locally on the saved character after reviewing the source.")
         self.preview_clip.setObjectName("animationPreviewClip")
@@ -189,10 +202,17 @@ class AnimationWorkspace(QWidget):
         self._stack = QStackedLayout(self._viewport)
         self._stack.setContentsMargins(0, 0, 0, 0)
         self._stack.setStackingMode(QStackedLayout.StackingMode.StackAll)
-        self._empty_preview = _caption("No motion loaded")
+        self._backdrop = QWidget()
+        self._backdrop_stack = QStackedLayout(self._backdrop)
+        self._backdrop_stack.setContentsMargins(0, 0, 0, 0)
+        self._backdrop_stack.setStackingMode(QStackedLayout.StackingMode.StackAll)
+        self._empty_preview = _caption("Open a character with a saved Blender master, then select Show character.")
         self._empty_preview.setObjectName("animationEmptyPreview")
         self._empty_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._stack.addWidget(self._empty_preview)
+        self._empty_preview.setWordWrap(True)
+        self._empty_preview.setContentsMargins(20, 12, 20, 12)
+        self._backdrop_stack.addWidget(self._empty_preview)
+        self._stack.addWidget(self._backdrop)
         layout.addWidget(self._viewport, 1)
 
         self.preview_status = _caption("Select a source to check preview availability.")
@@ -241,33 +261,70 @@ class AnimationWorkspace(QWidget):
                       "Select a reviewed source to check preview availability.")
         self.preview_status.setText(reason)
 
-    def mount_motion(self, widget: QWidget | None) -> None:
-        if widget is self._mounted:
+    def mount_character(self, widget: QWidget | None) -> None:
+        if widget is not self._character:
+            old, self._character = self._character, widget
+            self._remove_widget(old, self._backdrop_stack)
             if widget is not None:
-                widget.show()
-                widget.raise_()
-            return
+                self._backdrop_stack.addWidget(widget)
+                self._observe_widget(widget)
+        if widget is not None:
+            widget.show()
+        self._sync_viewport()
 
-        old = self._mounted
-        self._mounted = widget
-        if old is not None:
-            old.hide()
-            self._stack.removeWidget(old)
-        if widget is None:
-            self._stack.setCurrentWidget(self._empty_preview)
-            return
+    def mount_motion(self, widget: QWidget | None) -> None:
+        if widget is not self._mounted:
+            old, self._mounted = self._mounted, widget
+            self._remove_widget(old, self._stack)
+            if widget is not None:
+                if isinstance(widget, QDockWidget):
+                    widget.setFeatures(QDockWidget.DockWidgetFeature.NoDockWidgetFeatures)
+                    if widget.titleBarWidget() is None:
+                        empty_title = QWidget(widget)
+                        empty_title.setFixedHeight(0)
+                        widget.setTitleBarWidget(empty_title)
+                self._stack.addWidget(widget)
+                self._observe_widget(widget)
+        if widget is not None:
+            widget.show()
+        self._sync_viewport()
 
-        widget.setParent(self._viewport)
-        if isinstance(widget, QDockWidget):
-            widget.setFeatures(QDockWidget.DockWidgetFeature.NoDockWidgetFeatures)
-            empty_title = QWidget(widget)
-            empty_title.setFixedHeight(0)
-            widget.setTitleBarWidget(empty_title)
-        self._stack.addWidget(widget)
-        self._stack.setCurrentWidget(widget)
-        widget.destroyed.connect(lambda _object=None, mounted=widget: self._forget_motion(mounted))
-        widget.show()
+    def _remove_widget(self, widget: QWidget | None, layout: QStackedLayout) -> None:
+        if widget is not None and isValid(widget):
+            widget.hide()
+            layout.removeWidget(widget)
 
-    def _forget_motion(self, widget: QWidget) -> None:
-        if self._mounted is widget:
+    def _observe_widget(self, widget: QWidget) -> None:
+        if widget not in self._observed_widgets:
+            self._observed_widgets.add(widget)
+            widget.installEventFilter(self)
+            widget.destroyed.connect(self._schedule_viewport_refresh)
+
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
+        if (watched is self._mounted or watched is self._character) and event.type() in {
+            QEvent.Type.Show, QEvent.Type.Hide, QEvent.Type.ShowToParent, QEvent.Type.HideToParent,
+        }:
+            self._schedule_viewport_refresh()
+        return super().eventFilter(watched, event)
+
+    @Slot()
+    def _schedule_viewport_refresh(self) -> None:
+        self._viewport_refresh.start(0)
+
+    def _sync_viewport(self) -> None:
+        if self._mounted is not None and not isValid(self._mounted):
             self._mounted = None
+        if self._character is not None and not isValid(self._character):
+            self._character = None
+
+        character = self._character
+        has_character = character is not None and not character.isHidden()
+        self._backdrop_stack.setCurrentWidget(character if has_character else self._empty_preview)
+        self._empty_preview.setVisible(not has_character)
+        motion = self._mounted
+        if motion is not None and not motion.isHidden():
+            self._stack.setCurrentWidget(motion)
+            self._backdrop.hide()
+        else:
+            self._stack.setCurrentWidget(self._backdrop)
+            self._backdrop.show()
