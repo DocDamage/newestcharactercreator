@@ -50,3 +50,26 @@ class PlantedKneeTests(unittest.TestCase):
         source['frames'][1]['poses'] = deepcopy(source['frames'][0]['poses'])
         with self.assertRaisesRegex(ValidationError,'untouched motion'):
             adjusted_native_preview_source(source,profile)
+
+
+    def test_flight_window_eases_into_and_out_of_the_deep_knee(self):
+        source,profile = planted_knee_case()
+        low,high,_ = source['frames']
+        source['frames'] = [deepcopy(low if i == 7 else high) for i in range(15)]
+        for i,row in enumerate(source['frames']):
+            row['frame'] = source['first_frame']+i
+        profile['planted_knee'].update(schema_version=2,first_frame=12,frame_count=5)
+        adjusted = adjusted_native_preview_source(source,profile)
+        changes = []
+        for i,(before,after) in enumerate(zip(source['frames'],adjusted['frames'])):
+            if before is not after:
+                changes.append(i)
+                self.assertGreater(after['armature_world'][11],before['armature_world'][11])
+                for foot in (2,3,6,7):
+                    old = nm.product(nm.rows(before['armature_world']),nm.rows(before['poses'][foot]))
+                    new = nm.product(nm.rows(after['armature_world']),nm.rows(after['poses'][foot]))
+                    self.assertAlmostEqual(old[2][3],new[2][3],places=12)
+        self.assertEqual(changes,list(range(5,10)))
+        profile['planted_knee'].update(first_frame=13,frame_count=3)
+        with self.assertRaisesRegex(ValidationError,'does not join'):
+            adjusted_native_preview_source(source,profile)

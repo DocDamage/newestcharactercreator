@@ -9,6 +9,9 @@ from .native_skin_policy import CORRECTIVE_POLICIES
 _LIMIT = math.radians(148.)
 _MAX_LIFT = .11
 _MAX_LIFT_STEP = .025
+_FLIGHT_LIFT = .13
+_FLIGHT_RAMP = .020
+_FLIGHT_STEP = .023
 _IDENTITY = ((1., 0., 0.), (0., 1., 0.), (0., 0., 1.))
 
 
@@ -21,10 +24,11 @@ def validate_planted_knee(profile: dict) -> None:
             or profile.get('mesh_strain_reference') != 'TRUE_NEUTRAL_BIND_V2'):
         raise ValidationError('Planted knee correction requires the hip anchor and both neutral skin references')
     if (type(cfg) is not dict or set(cfg) != {'schema_version','first_frame','frame_count','source_lift_axis'}
-            or type(cfg['schema_version']) is not int or cfg['schema_version'] != 1
+            or type(cfg['schema_version']) is not int or cfg['schema_version'] not in (1, 2)
             or type(cfg['first_frame']) is not int or abs(cfg['first_frame']) > 100_000
-            or type(cfg['frame_count']) is not int or not 1 <= cfg['frame_count'] <= 12):
-        raise ValidationError('Planted knee correction requires a short, versioned opening window')
+            or type(cfg['frame_count']) is not int
+            or not 1 <= cfg['frame_count'] <= (12 if cfg['schema_version'] == 1 else 24)):
+        raise ValidationError('Planted knee correction requires a short, versioned source window')
     axis = cfg['source_lift_axis']
     if (type(axis) is not list or len(axis) != 3
             or any(type(v) not in (int, float) or not -1. <= v <= 1. for v in axis)
@@ -102,8 +106,8 @@ def _chain_indices(source, profile):
     return chains,tuple(sorted(names[name] for name in feet))
 
 
-def _required_lift(chains, axis):
-    minimum, maximum = 0., _MAX_LIFT
+def _lift_bounds(chains, axis, max_lift):
+    minimum, maximum = 0., max_lift
     for hip,knee,ankle in chains:
         upper, lower = math.dist(hip,knee), math.dist(knee,ankle)
         ray = _sub(hip,ankle)
@@ -112,12 +116,12 @@ def _required_lift(chains, axis):
         closest_sq = upper**2+lower**2+2.*upper*lower*math.cos(_LIMIT)
         farthest_sq = (upper+lower-1e-5)**2
         if height <= 0. or planar_sq >= farthest_sq:
-            raise ValidationError('Planted knee joint reach is incompatible with the opening contact')
+            raise ValidationError('Planted knee joint reach is incompatible with the calibrated lift axis')
         minimum = max(minimum,math.sqrt(max(0.,closest_sq-planar_sq))-height)
         maximum = min(maximum,math.sqrt(farthest_sq-planar_sq)-height)
     if minimum > maximum + 1e-10:
         raise ValidationError('Planted knee correction exceeds the available lift or joint reach')
-    return minimum
+    return minimum,maximum
 
 
 def _solve_knee(hip,knee,ankle,shift):
@@ -135,27 +139,68 @@ def _solve_knee(hip,knee,ankle,shift):
     return next_hip,knee_next
 
 
+def _points(row, chains, world):
+    poses = row['poses']
+    return [tuple(nm.point(world,[poses[i][j] for j in (3,7,11)]) for i in chain) for chain in chains]
+
+
+def _opening_lifts(frames, chains, axis, count):
+    values = [_lift_bounds(_points(row,chains,nm.rows(row['armature_world'])),axis,_MAX_LIFT)[0]
+              for row in frames[:count+1]]
+    if values[-1] > 1e-8 or values[-2] > _MAX_LIFT_STEP:
+        raise ValidationError('Planted knee correction does not join the untouched motion')
+    if min(values[:-1]) <= 1e-8 or any(abs(a-b) > _MAX_LIFT_STEP for a,b in zip(values[:-1],values[1:-1])):
+        raise ValidationError('Planted knee window contains unneeded or discontinuous lift')
+    return values[:-1]
+
+
+def _flight_lifts(frames, chains, axis, start, end):
+    # Two untouched samples at each end let the measured ramp and filter be
+    # validated against the original motion on both sides of the correction.
+    bounds = [_lift_bounds(_points(row,chains,nm.rows(row['armature_world'])),axis,_FLIGHT_LIFT)
+              for row in frames[start-2:end+2]]
+    minimum = [lo for lo,_ in bounds]
+    if max(minimum) <= 1e-8:
+        raise ValidationError('Flight knee correction requires a measured deep bend')
+    ramp = minimum[:]
+    for i in range(1,len(ramp)):
+        ramp[i] = max(ramp[i],ramp[i-1]-_FLIGHT_RAMP)
+    for i in range(len(ramp)-2,-1,-1):
+        ramp[i] = max(ramp[i],ramp[i+1]-_FLIGHT_RAMP)
+    samples = ramp[:]
+    weights = (1,2,3,2,1)
+    padded = [0.,0.,*ramp,0.,0.]
+    for i in range(len(ramp)):
+        samples[i] = max(minimum[i],sum(w*v for w,v in zip(weights,padded[i:i+5]))/9.)
+    if max(*samples[:2],*samples[-2:]) > 1e-8:
+        raise ValidationError('Flight knee correction does not join the untouched motion')
+    if (any(lift > high+1e-10 for lift,(_,high) in zip(samples,bounds))
+            or any(abs(a-b) > _FLIGHT_STEP for a,b in zip(samples,samples[1:]))):
+        raise ValidationError('Flight knee correction exceeds the measured reach or lift rate')
+    return samples[2:-2]
+
+
 def apply_planted_knee(source: dict, profile: dict) -> dict:
     cfg = profile['planted_knee']
-    count = cfg['frame_count']
-    if cfg['first_frame'] != source['first_frame'] or count >= len(source['frames']):
+    frames = source['frames'][:]
+    start = cfg['first_frame']-source['first_frame']
+    end = start+cfg['frame_count']
+    opening = cfg['schema_version'] == 1
+    if opening and (start != 0 or end >= len(frames)):
         raise ValidationError('Planted knee correction needs the measured opening and a handoff sample')
+    if not opening and not 2 <= start < end <= len(frames)-2:
+        raise ValidationError('Flight knee correction needs both measured handoffs')
     chains,feet = _chain_indices(source,profile)
     axis = cfg['source_lift_axis']
-    frames = source['frames'][:]
-    previous = None
-    for index,row in enumerate(frames[:count+1]):
+    values = (_opening_lifts(frames,chains,axis,end) if opening
+              else _flight_lifts(frames,chains,axis,start,end))
+    for index,lift in enumerate(values,start):
+        if lift <= 1e-10:
+            continue
+        row = frames[index]
         world = nm.rows(row['armature_world'])
         poses = row['poses']
-        points = [tuple(nm.point(world,[poses[i][j] for j in (3,7,11)]) for i in chain) for chain in chains]
-        lift = _required_lift(points,axis)
-        if index == count:
-            if lift > 1e-8 or previous > _MAX_LIFT_STEP:
-                raise ValidationError('Planted knee correction does not join the untouched motion')
-            break
-        if lift <= 1e-8 or (previous is not None and abs(lift-previous) > _MAX_LIFT_STEP):
-            raise ValidationError('Planted knee window contains unneeded or discontinuous lift')
-        previous = lift
+        points = _points(row,chains,world)
         shift = _scale(axis,lift)
         lifted_world = [row[:] for row in world]
         for i in range(3):
