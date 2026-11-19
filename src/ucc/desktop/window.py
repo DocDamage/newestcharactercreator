@@ -956,7 +956,7 @@ class MainWindow(QMainWindow):
                 viewer.show_full_model(result.mesh)
                 try:
                     from .static_preview_binding import bind_preview
-                    bind_preview(self, result)
+                    bind_preview(self, result, isolate_workspace=workspace)
                 except (UCCError, OSError, ValueError) as exc:
                     self._clear_preview()
                     self._error(str(exc))
@@ -1042,6 +1042,7 @@ class MainWindow(QMainWindow):
                 self.log.setPlainText(error)
                 self._workspace_clip_message = ('Preview cancelled.' if self.jobs.cancel_requested else
                     'This clip exceeds the saved character’s deformation limits. See View → Animation diagnostics.')
+                self.animations.preview_status.setText(self._workspace_clip_message)
                 self.statusBar().showMessage(self._workspace_clip_message)
                 return
             self._error(error)

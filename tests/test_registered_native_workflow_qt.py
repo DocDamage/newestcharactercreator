@@ -155,6 +155,14 @@ class RegisteredNativeWorkflowQtTests(unittest.TestCase):
         self.assertIs(self.window.motion_viewer, viewer)
         self.assertTrue(viewer.clock.playing)
 
+    def test_inline_deformation_failure_reports_in_workspace_without_modal(self):
+        pane = self.select_inline_source()
+        pane.preview_clip.click()
+        self.window._job_error('WorkerFailure: MotionQualityError: Extreme local edge strain')
+        self.assertEqual(self.errors, [])
+        self.assertIn('deformation limits', pane.preview_status.text())
+        self.assertIsNone(self.window._native_playback)
+
     def test_inline_worker_completion_cannot_restore_playback_after_selection_change(self):
         pane = self.select_inline_source()
         pane.preview_clip.click()
