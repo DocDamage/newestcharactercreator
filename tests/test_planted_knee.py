@@ -1,0 +1,52 @@
+"""Contract tests for the preview-only calibrated opening correction."""
+from copy import deepcopy
+import unittest
+
+from fixtures.planted_knee import planted_knee_case
+from ucc.animations import native_math as nm
+from ucc.animations.native_preview_adjustments import adjusted_native_preview_source
+from ucc.animations.planted_knee import validate_planted_alignment
+from ucc.core.errors import ValidationError
+
+
+class PlantedKneeTests(unittest.TestCase):
+    def test_opening_raises_only_root_and_preserves_all_foot_world_poses(self):
+        source,profile = planted_knee_case()
+        original = deepcopy(source)
+        derived = adjusted_native_preview_source(source,profile)
+        self.assertEqual(source,original)
+        self.assertIs(derived['frames'][1],source['frames'][1])
+        self.assertIs(derived['frames'][2],source['frames'][2])
+        before,after = source['frames'][0],derived['frames'][0]
+        self.assertGreater(after['armature_world'][11],before['armature_world'][11])
+        self.assertEqual(after['armature_world'][:11],before['armature_world'][:11])
+        self.assertNotEqual(before['poses'][1],after['poses'][1])
+        for index in (2,3,6,7):
+            saved = nm.product(nm.rows(before['armature_world']),nm.rows(before['poses'][index]))
+            adjusted = nm.product(nm.rows(after['armature_world']),nm.rows(after['poses'][index]))
+            for old,new in zip(saved,adjusted):
+                for a,b in zip(old,new):
+                    self.assertAlmostEqual(a,b,places=12)
+        self.assertEqual(after['pose_sha256'],nm.pose_digest(after['armature_world'],after['poses']))
+
+    def test_mismatched_axis_or_window_fails(self):
+        source,profile = planted_knee_case()
+        with self.assertRaisesRegex(ValidationError,'calibrated target vertical'):
+            validate_planted_alignment(profile,[[1.,0.,0.],[0.,0.,-1.],[0.,1.,0.]])
+        profile['planted_knee']['frame_count'] = 2
+        with self.assertRaisesRegex(ValidationError,'unneeded'):
+            adjusted_native_preview_source(source,profile)
+        profile['planted_knee']['frame_count'] = 1
+        profile['planted_knee']['source_lift_axis'] = [0.,0.,2.]
+        with self.assertRaisesRegex(ValidationError,'unit source lift axis'):
+            adjusted_native_preview_source(source,profile)
+
+    def test_wrong_geometry_or_handoff_fails(self):
+        source,profile = planted_knee_case()
+        source['bones'][1]['parent'] = None
+        with self.assertRaisesRegex(ValidationError,'direct hip-knee-foot'):
+            adjusted_native_preview_source(source,profile)
+        source,profile = planted_knee_case()
+        source['frames'][1]['poses'] = deepcopy(source['frames'][0]['poses'])
+        with self.assertRaisesRegex(ValidationError,'untouched motion'):
+            adjusted_native_preview_source(source,profile)

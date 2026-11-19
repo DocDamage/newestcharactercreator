@@ -5,10 +5,11 @@ from ucc.core.errors import ValidationError
 
 from . import native_math as nm
 from .native_skin_policy import CORRECTIVE_POLICIES
+from .planted_knee import apply_planted_knee, validate_planted_knee
 from .wrist_transitions import preview_source_motion, validate_wrist_transitions
 
 
-PREVIEW_ADJUSTMENT_KEYS = ('wrist_transitions', 'forearm_roll')
+PREVIEW_ADJUSTMENT_KEYS = ('wrist_transitions', 'forearm_roll', 'planted_knee')
 _MAX_ROLL_TENTHS = 60
 _MAX_STEP_TENTHS = 15
 
@@ -28,6 +29,7 @@ def _forearm_pair(profile: dict, side: str) -> tuple[str, str]:
 
 def validate_preview_adjustments(profile: dict) -> None:
     validate_wrist_transitions(profile)
+    validate_planted_knee(profile)
     if 'forearm_roll' not in profile:
         return
     if (profile.get('skin_deformation_policy') not in CORRECTIVE_POLICIES
@@ -75,6 +77,9 @@ def _roll_basis(forearm: list[float], hand: list[float], angle_tenths: int) -> l
 def adjusted_native_preview_source(source: dict, profile: dict) -> dict:
     """Leave the measured snapshot and all distal world poses untouched."""
     source = preview_source_motion(source, profile)
+    if 'planted_knee' in profile:
+        validate_planted_knee(profile)
+        source = apply_planted_knee(source, profile)
     if 'forearm_roll' not in profile:
         return source
     # The worker and the independent host evidence reader also check the declaration
