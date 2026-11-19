@@ -51,6 +51,29 @@ def pose_digest(world: list[float], poses: list[list[float]]) -> str:
     return digest.hexdigest()
 
 
+def _rest_bone_values(bone: Any, armature_world: list[float]) -> dict[str, Any]:
+    head = [float(value) for value in bone.head_local]
+    tail = [float(value) for value in bone.tail_local]
+    matrix = matrix_values(bone.matrix_local)
+    offsets = (3, 7, 11)
+    origin = [matrix[offset] for offset in offsets]
+    differences = [point - center for point, center in zip(head, origin)]
+    if max(map(abs, differences)) > 1e-5:
+        # Blender stores both RNA reads as floats. Centimeter-scale armatures
+        # can differ by two float32 steps while denoting the same joint origin.
+        world_difference = [sum(armature_world[row * 4 + column] * difference
+                                for column, difference in enumerate(differences))
+                            for row in range(3)]
+        if (math.hypot(*world_difference) > 1e-6 or any(
+                abs(difference) > math.ldexp(2.0, math.frexp(max(abs(point), abs(center)))[1] - 24)
+                for point, center, difference in zip(head, origin, differences))):
+            raise FbxSourceError("FBX rest bone matrix/endpoints disagree for " + bone.name)
+        for offset, point in zip(offsets, head):
+            matrix[offset] = point
+    return {"name": bone.name, "parent": bone.parent.name if bone.parent else None,
+            "head": head, "tail": tail, "matrix": matrix}
+
+
 def inspect_fbx_source(bpy: Any, source: Path, output: Path, expected_sha: str, *,
                        validate_auxiliary_actions: Callable[[Any, tuple[Any, ...]], bool] | None = None) -> dict[str, Any]:
     """Read the sole skeletal take. Trusted registered callers may validate additional bound actions."""
@@ -124,9 +147,7 @@ def inspect_fbx_source(bpy: Any, source: Path, output: Path, expected_sha: str, 
             ordered.append(bone)
             pending.remove(bone)
     scene = bpy.context.scene
-    rest = [{"name": b.name, "parent": b.parent.name if b.parent else None,
-             "head": [float(x) for x in b.head_local], "tail": [float(x) for x in b.tail_local],
-             "matrix": matrix_values(b.matrix_local)} for b in ordered]
+    rest = [_rest_bone_values(bone, rest_world) for bone in ordered]
     states = []
     for frame in range(first,last+1):
         scene.frame_set(frame)

@@ -9,7 +9,7 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
-from blender_bridge.fbx_source import matrix_values, FbxSourceError, inspect_fbx_source
+from blender_bridge.fbx_source import _rest_bone_values, matrix_values, FbxSourceError, inspect_fbx_source
 from fixtures.fbx_snapshot_contract import snapshot, report, IDENTITY
 from ucc.animations.fbx_snapshot import validate_snapshot, read_snapshot
 from ucc.core.errors import ValidationError
@@ -57,6 +57,30 @@ class FbxSnapshotTests(unittest.TestCase):
             v=IDENTITY[:];v[index]=value
             with self.subTest(index=index,value=value),self.assertRaises(FbxSourceError):
                 matrix_values([v[i:i+4] for i in range(0,16,4)])
+
+    def test_centimeter_armature_reconciles_only_submicrometer_float32_rest_origins(self):
+        rest = [IDENTITY[index:index + 4] for index in range(0, 16, 4)]
+        rest[1][3] = -96.0
+        centimeter_world = IDENTITY[:]
+        for index in (0, 5, 10):
+            centimeter_world[index] = .01
+        step = 2 ** -17
+        bone = SimpleNamespace(name="Sample", parent=None, head_local=[0., -96. + 2 * step, 0.],
+                               tail_local=[0., -95. + 2 * step, 0.], matrix_local=rest)
+        measured = _rest_bone_values(bone, centimeter_world)
+        self.assertEqual(measured["matrix"][7], measured["head"][1])
+        self.assertEqual(rest[1][3], -96.)
+        data = snapshot()
+        data["bones"][0].update({k: measured[k] for k in ("head", "tail", "matrix")})
+        validate_snapshot(data, "a" * 64)
+        with self.assertRaisesRegex(FbxSourceError, "matrix/endpoints disagree"):
+            _rest_bone_values(bone, IDENTITY)
+
+        bone.head_local[1] = -96. + 3 * step
+        with self.assertRaisesRegex(FbxSourceError, "matrix/endpoints disagree"):
+            _rest_bone_values(bone, centimeter_world)
+        bone.head_local[1] = -96. + step
+        self.assertEqual(_rest_bone_values(bone, centimeter_world)["matrix"][7], -96.)
 
     def test_snapshot_file_hash_and_rehashed_malformed_json_fail_closed(self):
         with tempfile.TemporaryDirectory() as temp:
