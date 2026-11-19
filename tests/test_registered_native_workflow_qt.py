@@ -158,6 +158,8 @@ class RegisteredNativeWorkflowQtTests(unittest.TestCase):
     def test_inline_deformation_failure_reports_in_workspace_without_modal(self):
         pane = self.select_inline_source()
         pane.preview_clip.click()
+        self.window.jobs._cancel = self.queued[-1][1]['cancel']
+        self.addCleanup(setattr, self.window.jobs, '_cancel', None)
         self.window._job_error('WorkerFailure: MotionQualityError: Extreme local edge strain')
         self.assertEqual(self.errors, [])
         self.assertIn('deformation limits', pane.preview_status.text())

@@ -1037,10 +1037,11 @@ class MainWindow(QMainWindow):
             from .registered_native_binding import clear_registered_native
             pending = getattr(self, '_registered_native_pending', None)
             inline = bool(getattr(pending, 'inline', False))
+            cancelled = inline and pending.cancel.is_set()
             clear_registered_native(self)
-            if inline and (pending.cancel.is_set() or 'MotionQualityError:' in error):
+            if inline and (cancelled or 'MotionQualityError:' in error):
                 self.log.setPlainText(error)
-                self._workspace_clip_message = ('Preview cancelled.' if self.jobs.cancel_requested else
+                self._workspace_clip_message = ('Preview cancelled.' if cancelled else
                     'This clip exceeds the saved character’s deformation limits. See View → Animation diagnostics.')
                 self.animations.preview_status.setText(self._workspace_clip_message)
                 self.statusBar().showMessage(self._workspace_clip_message)
