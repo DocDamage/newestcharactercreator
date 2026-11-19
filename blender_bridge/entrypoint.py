@@ -321,6 +321,7 @@ def verify_native_body(job: dict, root: Path) -> dict:
             type(options["render_private_frames"]) is not bool or
             any(type(options[k]) is not str or len(options[k])!=64 or any(c not in "0123456789abcdef" for c in options[k]) for k in hashes)):
         raise ValueError("Native body job needs exact bound source/snapshot/map/master and explicit rendering")
+    activate_material_contract()
     return retarget_native(bpy,root,options)
 
 
@@ -333,6 +334,7 @@ def reopen_native_body(job: dict, root: Path) -> dict:
         raise ValueError("Native reopen needs six exact input identities and no paths or override flags")
     action={"cache_native_fbx_body":export_native_cache,"reopen_native_fbx_body":reopen_native,
             "verify_native_surface_review":verify_surface_review}[job["operation"]]
+    activate_material_contract()
     return action(bpy,root,options)
 
 

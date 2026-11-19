@@ -59,8 +59,10 @@ def reopen_native(bpy: Any, root: Path, options: dict, *, frame_observer=None) -
     bound_scene(root/"candidate.blend",options["master_sha256"])
     bound_scene(root/"review_motion.blend",options["review_sha256"])
     source=validate_source(read_json(root/"source_snapshot.json",options["snapshot_sha256"],64*1024*1024),options["source_sha256"])
-    profile=validate_profile(read_json(root/"native_mapping.json",options["mapping_sha256"],64*1024),options["source_sha256"],options["snapshot_sha256"],options["master_sha256"])
+    profile=validate_profile(read_json(root/"native_mapping.json",options["mapping_sha256"],64*1024),options["source_sha256"],options["snapshot_sha256"],options["master_sha256"],allow_wrist_transitions=True)
     data=read_json(root/"target_timeline.json",options["timeline_sha256"],64*1024*1024)
+    if ("wrist_transitions" in data) != ("wrist_transitions" in profile) or data.get("wrist_transitions")!=profile.get("wrist_transitions"):
+        raise ValueError("Native reopen wrist transitions differ from the bound preview profile")
     policy=profile.get("skin_deformation_policy")
     reference=profile.get("mesh_strain_reference","FIRST_POSE_AND_NEUTRAL_V1")
     if data.get("mesh_strain_reference","FIRST_POSE_AND_NEUTRAL_V1")!=reference:

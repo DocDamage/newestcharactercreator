@@ -29,7 +29,7 @@ def export_native_cache(bpy: Any, root: Path, options: dict) -> dict:
     data=read_json(root/"target_timeline.json",options["timeline_sha256"],64*1024*1024)
     human,rig=scene_objects(bpy)
     profile=validate_profile(read_json(root/"native_mapping.json",options["mapping_sha256"],64*1024),
-        options["source_sha256"],options["snapshot_sha256"],options["master_sha256"])
+        options["source_sha256"],options["snapshot_sha256"],options["master_sha256"],allow_wrist_transitions=True)
     inspector=SurfaceInspector(profile,rig,human)
     binary=root/"motion_skin.bin";manifest=root/"motion_skin.json"
     contacts=root/"motion_contacts.json"

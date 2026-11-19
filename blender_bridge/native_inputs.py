@@ -93,8 +93,8 @@ def validate_source(data, source_sha):
     return data
 
 
-def validate_profile(data, source_sha, snapshot_sha, master_sha):
-    if (type(data) is not dict or set(data)-{"root_motion_policy","skin_deformation_policy","mesh_strain_reference","hand_reference_planes"}!={"schema_version","convention","source_sha256","snapshot_sha256","master_sha256","landmarks","pairs"} or
+def validate_profile(data, source_sha, snapshot_sha, master_sha, *, allow_wrist_transitions=False):
+    if (type(data) is not dict or set(data)-{"root_motion_policy","skin_deformation_policy","mesh_strain_reference","hand_reference_planes","wrist_transitions"}!={"schema_version","convention","source_sha256","snapshot_sha256","master_sha256","landmarks","pairs"} or
             type(data["schema_version"]) is not int or data["schema_version"]!=1 or data["convention"]!=CONVENTION or
             any(data[k]!=v for k,v in (("source_sha256",source_sha),("snapshot_sha256",snapshot_sha),("master_sha256",master_sha)))):
         raise ValueError("Native map convention/binding differs")
@@ -127,4 +127,9 @@ def validate_profile(data, source_sha, snapshot_sha, master_sha):
                 row["source"]=="@ARMATURE" or exact.get(row["source"])!=row["target"]): raise ValueError("Native landmark/pair mismatch")
     if len({r["source"] for r in landmarks.values()})!=len(LANDMARKS): raise ValueError("Native landmarks must be distinct")
     validate_palm_profile(data)
+    if "wrist_transitions" in data:
+        if not allow_wrist_transitions:
+            raise ValueError("Wrist transitions are private preview only")
+        from ucc.animations.wrist_transitions import validate_wrist_transitions
+        validate_wrist_transitions(data)
     return data
