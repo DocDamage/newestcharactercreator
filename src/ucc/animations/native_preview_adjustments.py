@@ -4,12 +4,13 @@ import math
 from ucc.core.errors import ValidationError
 
 from . import native_math as nm
+from .limb_alignment import apply_limb_alignment, validate_limb_alignment
 from .native_skin_policy import CORRECTIVE_POLICIES
 from .planted_knee import apply_planted_knee, validate_planted_knee
 from .wrist_transitions import preview_source_motion, validate_wrist_transitions
 
 
-PREVIEW_ADJUSTMENT_KEYS = ('wrist_transitions', 'forearm_roll', 'planted_knee')
+PREVIEW_ADJUSTMENT_KEYS = ('wrist_transitions', 'forearm_roll', 'planted_knee', 'limb_alignment')
 _MAX_ROLL_TENTHS = 60
 _MAX_STEP_TENTHS = 15
 
@@ -28,6 +29,7 @@ def _forearm_pair(profile: dict, side: str) -> tuple[str, str]:
 
 
 def validate_preview_adjustments(profile: dict) -> None:
+    validate_limb_alignment(profile)
     validate_wrist_transitions(profile)
     validate_planted_knee(profile)
     if 'forearm_roll' not in profile:
@@ -88,6 +90,8 @@ def _roll_basis(forearm: list[float], hand: list[float], angle_tenths: int) -> l
 
 def adjusted_native_preview_source(source: dict, profile: dict) -> dict:
     """Leave the measured snapshot and all distal world poses untouched."""
+    if 'limb_alignment' in profile:
+        return apply_limb_alignment(source, profile)
     source = preview_source_motion(source, profile)
     if 'planted_knee' in profile:
         validate_planted_knee(profile)

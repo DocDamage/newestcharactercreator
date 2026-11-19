@@ -10,7 +10,7 @@ from blender_bridge.native_palms import PALM_AXES, validate_palm_profile
 
 LANDMARKS = {"left_hip","right_hip","head","left_hand","right_hand","left_foot","right_foot"}
 # Legacy bridge routes run from a source checkout without the UCC package on sys.path.
-PREVIEW_ADJUSTMENT_KEYS = ("wrist_transitions", "forearm_roll", "planted_knee")
+PREVIEW_ADJUSTMENT_KEYS = ("wrist_transitions", "forearm_roll", "planted_knee", "limb_alignment")
 
 
 def preview_adjustment_declarations(data: dict) -> dict:
