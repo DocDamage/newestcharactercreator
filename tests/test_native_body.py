@@ -3,6 +3,8 @@ from copy import deepcopy
 from hashlib import sha256
 import json
 from pathlib import Path
+import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -17,6 +19,41 @@ from ucc.jobs.protocol import JobRequest
 
 
 class NativeProfileTests(unittest.TestCase):
+    def test_checkout_worker_validates_legacy_profiles_without_host_imports(self):
+        _, _, _, profile, _ = contract()
+        repo = Path(__file__).resolve().parents[1]
+        check = """
+import json
+import sys
+
+sys.path.insert(0, sys.argv[1])
+from blender_bridge.native_inputs import validate_profile
+
+profile = json.load(sys.stdin)
+bindings = [profile[key] for key in ("source_sha256", "snapshot_sha256", "master_sha256")]
+assert validate_profile(profile, *bindings) is profile
+for key, window in (
+    ("wrist_transitions", {"side": "left", "first_frame": 1, "last_frame": 3}),
+    ("forearm_roll", {"side": "left", "first_frame": 1, "angle_tenths": [0, 10, 0]}),
+):
+    declared = {**profile, key: {"schema_version": 1, "windows": [window]}}
+    try:
+        validate_profile(declared, *bindings)
+    except ValueError as error:
+        assert "private preview only" in str(error), error
+    else:
+        raise AssertionError("Preview adjustment accepted without opt-in")
+assert not any(name == "ucc" or name.startswith("ucc.") for name in sys.modules)
+"""
+        result = subprocess.run(
+            [sys.executable, "-I", "-S", "-B", "-c", check, str(repo)],
+            input=json.dumps(profile),
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
     def test_explicit_profile_passes_both_boundaries_and_binds_all_three_inputs(self):
         _,_,source,profile,_=contract()
         validate_native_profile(profile,"a"*64,"b"*64,"c"*64)

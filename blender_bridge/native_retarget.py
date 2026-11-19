@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from blender_bridge.native_inputs import read_json, validate_source, validate_profile
+from blender_bridge.native_inputs import preview_adjustment_declarations, read_json, validate_source, validate_profile
 from blender_bridge.native_reference import (
     CONVENTION, body_frame, target_reference, transport_global, check_mapping_hierarchy, RootRotation,
 )
@@ -59,10 +59,10 @@ def retarget_native(bpy: Any, root: Path, options: dict) -> dict:
     profile=validate_profile(read_json(profile_path,options["mapping_sha256"],64*1024),
                              options["source_sha256"],options["snapshot_sha256"],options["master_sha256"],
                              allow_preview_adjustments=not options["render_private_frames"])
-    from ucc.animations.native_preview_adjustments import (
-        adjusted_native_preview_source, preview_adjustment_declarations,
-    )
-    source=adjusted_native_preview_source(source,profile)
+    adjustments=preview_adjustment_declarations(profile)
+    if adjustments:
+        from ucc.animations.native_preview_adjustments import adjusted_native_preview_source
+        source=adjusted_native_preview_source(source,profile)
     pairs=profile["pairs"]
     def mat(values): return Matrix([values[i:i+4] for i in range(0,16,4)])
     bpy.ops.wm.open_mainfile(filepath=str(master),load_ui=False)
@@ -268,7 +268,7 @@ def retarget_native(bpy: Any, root: Path, options: dict) -> dict:
                   "omitted_source_bones":[b["name"] for b in source["bones"] if b["name"] not in {p["source"] for p in pairs}],
                   "neutral_target_helpers":[n for n in ordered if n not in by_target],
                   "retargeting_verified":False,"engine_import_verified":False}
-        timeline.update(preview_adjustment_declarations(profile))
+        timeline.update(adjustments)
         path=root/"target_timeline.json"
         payload=json.dumps(timeline,ensure_ascii=False,allow_nan=False,separators=(",",":")).encode()
         if len(payload)>64*1024*1024 or path.exists() or path.is_symlink(): raise ValueError("Invalid/occupied native timeline output")

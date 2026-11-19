@@ -5,7 +5,7 @@ import math
 from pathlib import Path
 from typing import Any
 
-from blender_bridge.native_inputs import read_json, validate_source, validate_profile
+from blender_bridge.native_inputs import preview_adjustment_declarations, read_json, validate_source, validate_profile
 from blender_bridge.native_corrective import SETTINGS, NAME, POLICY
 from blender_bridge.native_regional_corrective import POLICY as REGIONAL, verify_saved_layers
 from blender_bridge.native_region_mask import source_group_signature
@@ -61,7 +61,6 @@ def reopen_native(bpy: Any, root: Path, options: dict, *, frame_observer=None) -
     source=validate_source(read_json(root/"source_snapshot.json",options["snapshot_sha256"],64*1024*1024),options["source_sha256"])
     profile=validate_profile(read_json(root/"native_mapping.json",options["mapping_sha256"],64*1024),options["source_sha256"],options["snapshot_sha256"],options["master_sha256"],allow_preview_adjustments=True)
     data=read_json(root/"target_timeline.json",options["timeline_sha256"],64*1024*1024)
-    from ucc.animations.native_preview_adjustments import preview_adjustment_declarations
     if preview_adjustment_declarations(data) != preview_adjustment_declarations(profile):
         raise ValueError("Native reopen adjustments differ from the bound preview profile")
     policy=profile.get("skin_deformation_policy")
