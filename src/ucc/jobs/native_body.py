@@ -52,9 +52,12 @@ def _preview_native_body(store: ProjectStore, *, source_fbx: Path, mapping_profi
                         expected_project_id: str, expected_revision: int, expected_master_blend: str,
                         cancel: Event | None=None, timeout_s: float=300, include_hands: bool=False, skin_policy: str | None=None,
                         source_intake_observer: Callable | None=None, source_guard=None,
+                        render_private_frames: bool=True, progress: Callable[[str], None] | None=None,
                         _source_authority=None, _proof=None) -> NativeBodyPreview:
     if source_intake_observer is not None and not callable(source_intake_observer):
         raise ValidationError('Native source intake observer must be callable')
+    if type(render_private_frames) is not bool or (progress is not None and not callable(progress)):
+        raise ValidationError('Native preview render selection or progress callback differs')
     allowed,reason=permission.allow("local_preview")
     if not allowed: raise AssetPolicyError(reason)
     if type(include_hands) is not bool or (include_hands and mapping_profile is not None):
@@ -84,6 +87,8 @@ def _preview_native_body(store: ProjectStore, *, source_fbx: Path, mapping_profi
         source_intake_observer(request,result,folder)
     observer_options={} if source_intake_observer is None else {'observer':observe}
     if source_guard is not None: observer_options['source_guard']=source_guard
+    if progress is not None:
+        progress('INSPECT_SOURCE')
     intake=inspect_selected_fbx(source_fbx,blender_exe=blender_exe,worker_script=worker_script,
         jobs_root=store.root/".ucc-jobs",permission=permission,cancel=cancel,timeout_s=timeout_s,**observer_options)
     if source_intake_observer is not None and (len(intake_ids)!=2 or len(set(intake_ids))!=2):
@@ -117,9 +122,12 @@ def _preview_native_body(store: ProjectStore, *, source_fbx: Path, mapping_profi
                 raise ProjectStorageError("Native original/master/profile/snapshot changed during verification")
     for run in range(2):
         unchanged()
+        render = run == 0 and render_private_frames
         request=JobRequest.new("verify_native_fbx_body",input_project="candidate.blend",
-            options={**bindings,"render_private_frames":run==0})
+            options={**bindings,"render_private_frames":render})
         if source_guard is not None: source_guard()
+        if progress is not None:
+            progress('VERIFY_BODY_FIRST' if run == 0 else 'VERIFY_BODY_SECOND')
         result,folder=runner.run(request,timeout_s=timeout_s,cancel=cancel,
             staged_inputs={"candidate.blend":master,"source_snapshot.json":snapshot_path,"native_mapping.json":mapping_profile})
         unchanged()
@@ -138,11 +146,14 @@ def _preview_native_body(store: ProjectStore, *, source_fbx: Path, mapping_profi
         if _proof is not None:
             _proof.admit(path, result.details['timeline']['sha256'])
             _proof.admit(folder/'review_motion.blend', result.details['visual_review_blend']['sha256'])
+        rendered = result.details.get('private_review_renders') is not None
+        if render and not rendered:
+            raise ValidationError("Native first worker did not render private skin views")
+        if rendered and not render:
+            raise ValidationError("Native body worker rendered without request")
         if run==0:
-            if result.details.get("private_review_renders") is None:raise ValidationError("Native first worker did not render private skin views")
             first_data,first_report,first_folder,first_path=data,result.details,folder,path
         else:
-            if result.details.get("private_review_renders") is not None:raise ValidationError("Native second worker rendered without request")
             # Saved Blender copies contain save metadata; compare every actual
             # matrix/skin/root/quality value, excluding only distinct copy IDs.
             if ({k:v for k,v in first_data.items() if k!="visual_review_blend"}!=
@@ -152,7 +163,7 @@ def _preview_native_body(store: ProjectStore, *, source_fbx: Path, mapping_profi
     unchanged()
     bound_file(first_folder,first_report["timeline"],"target_timeline.json",64*1024*1024,cancel_check=check_cancel)
     action=bound_file(first_folder,first_report["visual_review_blend"],"review_motion.blend",512*1024*1024,cancel_check=check_cancel)
-    review=verify_native_renders(first_folder,first_report,first_data)
+    review=verify_native_renders(first_folder,first_report,first_data) if render_private_frames else ''
     reopen_id="";reopened=None
     if profile.get("skin_deformation_policy") in CORRECTIVE_POLICIES:
         unchanged()
@@ -161,6 +172,8 @@ def _preview_native_body(store: ProjectStore, *, source_fbx: Path, mapping_profi
         staged={"candidate.blend":master,"review_motion.blend":action,"target_timeline.json":first_path,
                 "source_snapshot.json":snapshot_path,"native_mapping.json":mapping_profile}
         if source_guard is not None: source_guard()
+        if progress is not None:
+            progress('REOPEN_BODY')
         result,reopen_folder=runner.run(request,timeout_s=timeout_s,cancel=cancel,staged_inputs=staged)
         unchanged()
         if reopen_folder.is_symlink() or reopen_folder.resolve().parent!=(store.root/".ucc-jobs").resolve():
@@ -176,7 +189,8 @@ def _preview_native_body(store: ProjectStore, *, source_fbx: Path, mapping_profi
         reopen_id=request.job_id;reopened=result.details
         bound_file(first_folder,first_report["timeline"],"target_timeline.json",64*1024*1024,cancel_check=check_cancel)
         bound_file(first_folder,first_report["visual_review_blend"],"review_motion.blend",512*1024*1024,cancel_check=check_cancel)
-        review=verify_native_renders(first_folder,first_report,first_data)
+        if render_private_frames:
+            review=verify_native_renders(first_folder,first_report,first_data)
     unchanged()
     return NativeBodyPreview(project.project_id,project.revision,master_sha,intake["source_sha256"],first_data,
                              str(action),review,str(first_path),tuple(ids),str(mapping_profile),first_report,reopen_id,reopened,tuple(intake_ids))
@@ -187,12 +201,14 @@ def preview_native_body(store: ProjectStore, *, source_fbx: Path, mapping_profil
         expected_project_id: str, expected_revision: int, expected_master_blend: str,
         cancel: Event | None=None, timeout_s: float=300, include_hands: bool=False,
         skin_policy: str | None=None, source_intake_observer: Callable | None=None,
-        source_guard=None, source_authority: NativeSourceAuthority | None=None) -> NativeBodyPreview:
+        source_guard=None, source_authority: NativeSourceAuthority | None=None,
+        render_private_frames: bool=True, progress: Callable[[str], None] | None=None) -> NativeBodyPreview:
     options = dict(source_fbx=source_fbx, mapping_profile=mapping_profile, blender_exe=blender_exe,
         worker_script=worker_script, permission=permission, expected_project_id=expected_project_id,
         expected_revision=expected_revision, expected_master_blend=expected_master_blend,
         cancel=cancel, timeout_s=timeout_s, include_hands=include_hands, skin_policy=skin_policy,
-        source_intake_observer=source_intake_observer, source_guard=source_guard)
+        source_intake_observer=source_intake_observer, source_guard=source_guard,
+        render_private_frames=render_private_frames, progress=progress)
     if source_authority is None:
         return _preview_native_body(store, **options)
     if type(source_authority) is not NativeSourceAuthority:

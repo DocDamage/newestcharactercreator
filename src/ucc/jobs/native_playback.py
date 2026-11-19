@@ -4,6 +4,7 @@ from hashlib import sha256
 import json
 from pathlib import Path
 from threading import Event
+from typing import Callable
 
 from ucc.animations.fbx_snapshot import validate_snapshot
 from ucc.animations.native_profile import read_native_profile
@@ -39,7 +40,10 @@ class NativePlayback:
 def _prepare_native_playback(store: ProjectStore, preview: NativeBodyPreview, *, source_fbx: Path,
                             permission: LicensePolicy, blender_exe: Path, worker_script: Path,
                             cancel: Event | None=None, timeout_s: float=300, source_guard=None,
+                            progress: Callable[[str], None] | None=None,
                             _source_authority=None, _proof=None) -> NativePlayback:
+    if progress is not None and not callable(progress):
+        raise ValidationError('Native playback progress callback differs')
     allowed,reason=permission.allow("local_preview")
     if not allowed:raise AssetPolicyError(reason)
     def check_cancel():
@@ -97,6 +101,8 @@ def _prepare_native_playback(store: ProjectStore, preview: NativeBodyPreview, *,
     unchanged()
     request=JobRequest.new("cache_native_fbx_body",input_project="candidate.blend",options=options)
     if source_guard is not None: source_guard()
+    if progress is not None:
+        progress('BUILD_CACHE')
     result,output=BlenderJobRunner(blender_exe,jobs_root,worker_script).run(request,timeout_s=timeout_s,cancel=cancel,staged_inputs=staged)
     unchanged()
     if output.is_symlink() or output.resolve().parent!=jobs_root.resolve():raise ValidationError("Playback worker folder is redirected")
@@ -113,6 +119,8 @@ def _prepare_native_playback(store: ProjectStore, preview: NativeBodyPreview, *,
         check=JobRequest.new("verify_native_surface_review",input_project="candidate.blend",
             options={**options,"surface_review_sha256":record["sha256"]})
         if source_guard is not None: source_guard()
+        if progress is not None:
+            progress('VERIFY_SURFACE')
         verified,verify_folder=BlenderJobRunner(blender_exe,jobs_root,worker_script).run(check,timeout_s=timeout_s,cancel=cancel,
             staged_inputs={**staged,"motion_contacts.json":contact})
         unchanged()
@@ -124,6 +132,8 @@ def _prepare_native_playback(store: ProjectStore, preview: NativeBodyPreview, *,
     if _proof is not None:
         _proof.before(output/'motion_skin.json')
         _proof.before(output/'motion_skin.bin')
+    if progress is not None:
+        progress('CHECK_CACHE')
     cache=read_motion_cache(output,result.details,options,data,cancel_check=check_cancel,profile=profile,surface_verification=surface_report)
     if _proof is not None:
         _proof.admit(output/'motion_skin.json', result.details['manifest']['sha256'])
@@ -134,9 +144,11 @@ def _prepare_native_playback(store: ProjectStore, preview: NativeBodyPreview, *,
 
 def prepare_native_playback(store: ProjectStore, preview: NativeBodyPreview, *, source_fbx: Path,
         permission: LicensePolicy, blender_exe: Path, worker_script: Path,
-        cancel: Event | None=None, timeout_s: float=300, source_guard=None) -> NativePlayback:
+        cancel: Event | None=None, timeout_s: float=300, source_guard=None,
+        progress: Callable[[str], None] | None=None) -> NativePlayback:
     options = dict(source_fbx=source_fbx, permission=permission, blender_exe=blender_exe,
-                   worker_script=worker_script, cancel=cancel, timeout_s=timeout_s, source_guard=source_guard)
+                   worker_script=worker_script, cancel=cancel, timeout_s=timeout_s, source_guard=source_guard,
+                   progress=progress)
     authority = getattr(preview, 'source_authority', None)
     if authority is None:
         return _prepare_native_playback(store, preview, **options)

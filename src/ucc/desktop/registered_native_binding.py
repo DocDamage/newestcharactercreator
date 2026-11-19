@@ -90,8 +90,8 @@ def install_binding(window, owner, project, authority, identities, proof_receipt
     epoch = object()
     window._registered_native_epoch = epoch
     watcher = QFileSystemWatcher(window)
-    watcher.fileChanged.connect(lambda _: _invalidate(window, epoch))
-    watcher.directoryChanged.connect(lambda _: _invalidate(window, epoch))
+    watcher.fileChanged.connect(lambda path: _invalidate(window, epoch, path))
+    watcher.directoryChanged.connect(lambda path: _invalidate(window, epoch, path))
     window._registered_native_watcher = watcher
     watcher.blockSignals(False)
     if watcher.addPaths([str(path) for path in sorted(existing)]) or not guard_registered_native(window, authority):
@@ -104,9 +104,15 @@ def install_binding(window, owner, project, authority, identities, proof_receipt
     timer.start()
 
 
-def _invalidate(window, epoch) -> None:
-    if getattr(window, '_registered_native_epoch', None) is epoch:
-        clear_registered_native(window, message='A registered source or proof input changed.')
+def _invalidate(window, epoch, path: str) -> None:
+    if getattr(window, '_registered_native_epoch', None) is not epoch:
+        return
+    authority = window._registered_native_binding[3]
+    database = authority.database_path
+    coordination = {database.parent, Path(str(database) + '-shm'), Path(str(database) + '-wal')}
+    if Path(path) in coordination and guard_registered_native(window, authority):
+        return
+    clear_registered_native(window, message='A registered source or proof input changed.')
 
 
 def _check_epoch(window, epoch) -> None:

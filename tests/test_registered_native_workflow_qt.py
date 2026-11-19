@@ -10,7 +10,7 @@ from unittest.mock import patch,PropertyMock
 
 from fixtures.registered_native_ui_contract import synthetic_environment,synthetic_canvas_type
 from ucc.animations.catalog import AnimationCatalog
-from ucc.core.errors import ValidationError
+from ucc.core.errors import UCCError, ValidationError
 from ucc.library.provenance import AssetPolicyError
 try:
     from PySide6.QtWidgets import QApplication,QMessageBox,QTableWidgetItem
@@ -112,6 +112,8 @@ class RegisteredNativeWorkflowQtTests(unittest.TestCase):
         self.cache_prepare.assert_called_once()
         native_authority = self.native.call_args.kwargs['source_authority']
         self.assertIs(self.cache_prepare.call_args.args[1].source_authority, native_authority)
+        self.assertIs(self.native.call_args.kwargs['render_private_frames'], False)
+        self.assertIs(self.native.call_args.kwargs['progress'], self.cache_prepare.call_args.kwargs['progress'])
         self.assertTrue(binding.guard_registered_native(self.window))
         viewer = self.window.motion_viewer
         dock = self.window.motion_dock
@@ -155,6 +157,73 @@ class RegisteredNativeWorkflowQtTests(unittest.TestCase):
         self.assertIs(self.window.motion_viewer, viewer)
         self.assertTrue(viewer.clock.playing)
 
+    def test_inline_reuses_protected_session_playback_after_selecting_away_and_back(self):
+        pane = self.select_inline_source()
+        pane.preview_clip.click()
+        result, _options = self.finish()
+        viewer = self.window.motion_viewer
+        pane.catalog.setCurrentCell(1, 0)
+        self.assertIsNone(viewer.cache)
+        self.assertIsNone(self.window._registered_native_binding)
+        pane.catalog.setCurrentCell(0, 0)
+        pane.preview_clip.click()
+        self.assertEqual(len(self.queued), 2)
+        self.assertIsNone(self.window._native_playback)
+        self.finish()
+        self.native.assert_called_once()
+        self.cache_prepare.assert_called_once()
+        self.assertIs(self.window._native_playback, result.value)
+        self.assertTrue(binding.guard_registered_native(self.window, result.value.source_authority))
+        self.assertTrue(viewer.clock.playing)
+
+    def test_inline_session_playback_rejects_changed_source_with_restored_stat_identity(self):
+        pane = self.select_inline_source()
+        pane.preview_clip.click()
+        result, _options = self.finish()
+        pane.catalog.setCurrentCell(1, 0)
+        stamp = self.f.source.stat()
+        source = self.f.source.read_bytes()
+        self.f.source.write_bytes(b'X' + source[1:])
+        os.utime(self.f.source, ns=(stamp.st_atime_ns, stamp.st_mtime_ns))
+        self.assertTrue(result.value.source_authority.identities_current())
+        pane.catalog.setCurrentCell(0, 0)
+        pane.preview_clip.click()
+        self.assertEqual(len(self.queued), 2)
+        self.assertIsNone(self.window._native_playback)
+        self.assertIsNone(self.window._registered_native_binding)
+        operation, _options = self.queued[-1]
+        with self.assertRaises(UCCError):
+            operation()
+        self.native.assert_called_once()
+        self.cache_prepare.assert_called_once()
+
+    def test_inline_progress_is_queued_and_ignores_obsolete_or_cancelled_requests(self):
+        pane = self.select_inline_source()
+        pane.preview_clip.click()
+        previous = self.window._registered_native_pending
+        reporter = self.window._registered_native_progress
+        reporter.changed.emit(previous.token, 'BUILD_CACHE')
+        self.assertIn('Checking source permissions', flow.registered_native_progress_text(self.window))
+        with patch.object(type(self.window.jobs), 'busy', new_callable=PropertyMock, return_value=True):
+            self.app.processEvents()
+        self.assertIn('Preparing frames for playback', pane.preview_status.text())
+        self.assertRegex(pane.preview_status.text(), r'\d+:\d{2} elapsed')
+
+        pane.catalog.setCurrentCell(1, 0)
+        pane.catalog.setCurrentCell(0, 0)
+        pane.preview_clip.click()
+        current = self.window._registered_native_pending
+        with patch.object(type(self.window.jobs), 'busy', new_callable=PropertyMock, return_value=True):
+            self.window._refresh_animation_preview()
+            reporter.changed.emit(previous.token, 'VERIFY_SURFACE')
+            self.app.processEvents()
+        self.assertIn('Checking source permissions', pane.preview_status.text())
+        current.cancel.set()
+        reporter.changed.emit(current.token, 'CHECK_CACHE')
+        self.app.processEvents()
+        self.assertEqual(flow.registered_native_progress_text(self.window), 'Cancelling preview…')
+        self.assertEqual(reporter.stage, 'SOURCE_AUTHORITY')
+
     def test_inline_deformation_failure_reports_in_workspace_without_modal(self):
         pane = self.select_inline_source()
         pane.preview_clip.click()
@@ -190,6 +259,7 @@ class RegisteredNativeWorkflowQtTests(unittest.TestCase):
     def test_healthy_real_binder_adopts_original_receipts_without_gui_heavy_guard(self):
         self.start();operation,_=self.queued[-1];result=operation()
         self.assertEqual(self.native.call_args.kwargs['timeout_s'],900)
+        self.assertTrue(self.native.call_args.kwargs.get('render_private_frames', True))
         value=result.value
         bad=lambda **kw:(_ for _ in ()).throw(AssertionError('GUI heavy guard forbidden'))
         value=replace(value,source_authority=replace(value.source_authority,guard=bad),
