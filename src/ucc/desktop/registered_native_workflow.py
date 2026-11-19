@@ -1,11 +1,12 @@
 """Explicit registered-source native review with background authority admission."""
 from dataclasses import dataclass
+import logging
 from pathlib import Path
 from threading import Event
 from time import monotonic
 import os
 
-from PySide6.QtCore import QObject, QTimer, Qt, Signal, Slot
+from PySide6.QtCore import QObject, QStandardPaths, QTimer, Qt, Signal, Slot
 from PySide6.QtWidgets import QFileDialog, QMessageBox
 
 from ucc.animations.catalog import AnimationCatalog
@@ -16,6 +17,7 @@ from ucc.jobs.native_body import NativeBodyPreview, preview_native_body
 from ucc.jobs.native_playback import NativePlayback, prepare_native_playback
 from ucc.jobs.native_preview_profiles import find_catalog_preview_profile
 from ucc.jobs.native_source_authority import NativeProofReceipt, NativeSourceAuthority, bind_native_catalog_source
+from ucc.jobs.persistent_native_playback import PersistentNativePreview
 from ucc.jobs.runner import WorkerFailure
 from .generation import bundled_worker_path
 from .registered_native_binding import (
@@ -27,6 +29,7 @@ from .registered_native_viewer import RegisteredNativeDock, RegisteredNativeView
 # The manual workflow retains the existing API defaults.
 REGISTERED_BODY_TIMEOUT_S = 900
 REGISTERED_PLAYBACK_TIMEOUT_S = 1800
+_LOG = logging.getLogger(__name__)
 
 _PROGRESS_LABELS = {
     'SOURCE_AUTHORITY': 'Checking source permissions',
@@ -119,9 +122,10 @@ class RegisteredNativePending:
 @dataclass(frozen=True, slots=True)
 class RegisteredNativeCompletion:
     token: object
-    value: NativeBodyPreview | NativePlayback
+    value: NativeBodyPreview | NativePlayback | None
     identities: tuple[tuple[Path, tuple[int, int, int, int]], ...]
     inline_preview: NativeBodyPreview | None = None
+    restored: bool = False
 
 
 def _identities(value, cancel, previous=None):
@@ -192,7 +196,7 @@ def start_inline_preview(window) -> None:
     _start_body(window, inline=True)
 
 
-def _start_body(window, *, inline: bool) -> None:
+def _start_body(window, *, inline: bool, look_on_disk: bool = True) -> None:
     try:
         if window.jobs.busy:
             raise ValidationError('Another local task is still running')
@@ -213,13 +217,19 @@ def _start_body(window, *, inline: bool) -> None:
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
             if answer != QMessageBox.StandardButton.Yes:
                 return
-        executable = _executable(window)
-        if executable is None:
-            return
         worker = bundled_worker_path()
         profile = Path(window.animations.native_body_profile.text()) if window.animations.native_body_profile.text().strip() else None
         include_hands = window.animations.native_include_hands.isChecked()
         database = window._catalog_path()
+        local_data = (QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppLocalDataLocation)
+                      if inline and profile is None and not include_hands else '')
+        index_root = Path(local_data) / 'registered-previews-v1' if local_data else None
+        check_retained = index_root is not None and look_on_disk
+        executable = window._blender_executable
+        if not check_retained or executable is not None:
+            executable = _executable(window)
+            if executable is None:
+                return
         if inline and (window.jobs.busy or window.controller.store is not store or window.controller.dirty
                 or not window.controller.has_project or window.controller.require_project() != project
                 or selected_clip(window) != clip_id):
@@ -245,6 +255,29 @@ def _start_body(window, *, inline: bool) -> None:
         selected_profile = profile
         if pending.inline and selected_profile is None and not include_hands:
             selected_profile = find_catalog_preview_profile(authority, Path(project.master_blend).stem)
+        retained = (PersistentNativePreview(index_root, store, project, authority, selected_profile, worker,
+                                           pending.cancel) if index_root is not None else None)
+        if retained is not None and check_retained:
+            progress('REUSE_VERIFY')
+            try:
+                reopened = retained.restore(executable)
+                if reopened is not None:
+                    return RegisteredNativeCompletion(pending.token, reopened, _identities(reopened, pending.cancel),
+                                                      restored=True)
+            except (UCCError, OSError, ValueError, KeyError, TypeError, IndexError):
+                if pending.cancel.is_set():
+                    raise
+                _LOG.debug('Retained native playback is unavailable', exc_info=True)
+        if executable is None:
+            return RegisteredNativeCompletion(pending.token, None, ())
+        context = None
+        if retained is not None:
+            try:
+                context = retained.capture_context(executable)
+            except (UCCError, OSError, ValueError):
+                if pending.cancel.is_set():
+                    raise
+                _LOG.debug('Native playback cannot be retained on disk', exc_info=True)
         inline_options = {'render_private_frames': False, 'progress': progress} if pending.inline else {}
         preview = preview_native_body(store, source_fbx=authority.source_path, mapping_profile=selected_profile,
             blender_exe=executable, worker_script=worker, permission=authority.policy,
@@ -259,6 +292,13 @@ def _start_body(window, *, inline: bool) -> None:
             return RegisteredNativeCompletion(pending.token, preview, identities)
         result, playback_identities = _prepare_playback(pending, preview, dict(identities), executable, worker,
                                                        progress=progress)
+        if context is not None:
+            try:
+                retained.save(result, context)
+            except (UCCError, OSError, ValueError):
+                if pending.cancel.is_set():
+                    raise
+                _LOG.debug('Could not retain verified native playback', exc_info=True)
         return RegisteredNativeCompletion(pending.token, result, playback_identities, inline_preview=preview)
 
     window._submit('registered_native_body', prepare, cancel=pending.cancel)
@@ -335,10 +375,28 @@ def finish_registered_native(window, result) -> bool:
                 or selected_clip(window) != pending.clip_id):
             raise ValidationError('Registered selection changed or was cancelled; private results are retained')
         expected_type = NativePlayback if pending.inline or pending.preview is not None else NativeBodyPreview
+        if value is None and pending.inline and not result.restored:
+            window._registered_native_pending = pending
+
+            def prompt_when_idle():
+                if window._registered_native_pending is not pending:
+                    return
+                if window.jobs.busy:
+                    QTimer.singleShot(25, prompt_when_idle)
+                    return
+                window._registered_native_pending = None
+                if not pending.cancel.is_set():
+                    _start_body(window, inline=True, look_on_disk=False)
+
+            QTimer.singleShot(0, prompt_when_idle)
+            return True
         if not isinstance(value, expected_type):
             raise ValidationError('Registered native preparation returned an invalid result')
         inline_preview = result.inline_preview
-        if pending.inline:
+        if result.restored:
+            if not pending.inline or inline_preview is not None:
+                raise ValidationError('Retained playback can only open in the Animation Library')
+        elif pending.inline:
             if (not isinstance(inline_preview, NativeBodyPreview)
                     or not isinstance(inline_preview.proof_receipt, NativeProofReceipt)
                     or inline_preview.source_authority is not value.source_authority
