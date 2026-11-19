@@ -7,11 +7,12 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QCheckBox, QComboBox, QFormLayout, QGroupBox, QHBoxLayout, QLabel,
     QLineEdit, QPushButton, QSlider, QSpinBox, QTableWidget, QTableWidgetItem,
-    QTextEdit, QVBoxLayout, QWidget, QFileDialog, QScrollArea, QListWidget,
+    QTextEdit, QVBoxLayout, QWidget, QFileDialog, QScrollArea, QListWidget, QDialog, QDialogButtonBox,
 )
 
 from ucc.core.anatomy import slot_catalog
 from ucc.core.models import MORPH_LIMITS
+from .animation_workspace import AnimationWorkspace
 from .controller import ProjectView
 
 
@@ -248,19 +249,43 @@ class AnimationPane(QWidget):
     native_renders_open_requested = Signal()
     native_playback_requested = Signal()
     refresh_requested = Signal()
+    preview_clip_requested = Signal()
     reference_attach_requested = Signal()
     reference_detach_requested = Signal()
 
     def __init__(self) -> None:
         super().__init__()
-        outer=QVBoxLayout(self)
-        scroll=QScrollArea()
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        self.catalog = QTableWidget(0, 4)
+        self.catalog.setHorizontalHeaderLabels(["Asset ID", "Format", "Clips", "Status"])
+        self.catalog.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.refresh = QPushButton("Refresh catalog")
+        self.refresh.clicked.connect(self.refresh_requested.emit)
+        self.workspace = AnimationWorkspace(self.catalog, self.refresh)
+        self.search = self.workspace.search
+        self.preview_clip = self.workspace.preview_clip
+        self.preview_status = self.workspace.preview_status
+        self.catalog_selection_label = self.workspace.catalog_selection_label
+        self.advanced_tools = self.workspace.advanced_tools
+        self.preview_clip.clicked.connect(self.preview_clip_requested.emit)
+        self.advanced_tools.clicked.connect(self._show_advanced_tools)
+        outer.addWidget(self.workspace)
+
+        self.advanced_dialog = QDialog(self)
+        self.advanced_dialog.setWindowTitle("Import and review animation sources")
+        self.advanced_dialog.resize(770, 650)
+        advanced = QVBoxLayout(self.advanced_dialog)
+        scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        content=QWidget()
+        content = QWidget()
         scroll.setWidget(content)
-        outer.addWidget(scroll)
+        advanced.addWidget(scroll, 1)
+        close = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        close.rejected.connect(self.advanced_dialog.reject)
+        advanced.addWidget(close)
         layout = QVBoxLayout(content)
-        label = QLabel("Local animation catalog • indexing is not retargeting or a license grant")
+        label = QLabel("Review each source's local Blender rights before measured indexing.")
         label.setWordWrap(True)
         layout.addWidget(label)
         form = QFormLayout()
@@ -299,8 +324,6 @@ class AnimationPane(QWidget):
         self.index.clicked.connect(lambda: self.index_requested.emit(
             self.selected.text(), self.asset_id.text(), self.provider.text(),
             self.license.text(), self.uri.text()))
-        self.refresh = QPushButton("Refresh catalog")
-        self.refresh.clicked.connect(self.refresh_requested.emit)
         self.test_local_bvh = QPushButton("Test selected BVH motion on saved MPFB rig...")
         self.test_local_bvh.setToolTip(
             "Reads one locally selected BVH, applies limited direct-name rotation "
@@ -311,7 +334,7 @@ class AnimationPane(QWidget):
             self.selected.text(), self.provider.text(), self.license.text(),
             self.uri.text(), self.local_preview_review.isChecked()
         ))
-        for button in (self.inspect, self.index, self.refresh):
+        for button in (self.inspect, self.index):
             row.addWidget(button)
         layout.addLayout(row)
         native=QGroupBox("FBX body preview (experimental)")
@@ -455,11 +478,6 @@ class AnimationPane(QWidget):
             self.audit_and_render.isChecked(),
         ))
         layout.addWidget(self.test_reviewed_bvh)
-        self.catalog = QTableWidget(0, 4)
-        self.catalog.setHorizontalHeaderLabels(["Asset ID", "Format", "Declared clips", "Status"])
-        self.catalog.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.catalog.horizontalHeader().setStretchLastSection(True)
-        layout.addWidget(self.catalog, 1)
         references = QGroupBox("Character source references")
         reference_layout = QVBoxLayout(references)
         info = QLabel("Attach measured sources to this saved character. Target playback and engine checks run separately.")
@@ -478,6 +496,17 @@ class AnimationPane(QWidget):
         self.references.currentRowChanged.connect(lambda *_: self._refresh_reference_buttons())
         self._refresh_reference_buttons()
 
+    def _show_advanced_tools(self) -> None:
+        self.advanced_dialog.show()
+        self.advanced_dialog.raise_()
+        self.advanced_dialog.activateWindow()
+
+    def set_preview_available(self, enabled: bool, reason: str = "") -> None:
+        self.workspace.set_preview_available(enabled, reason)
+
+    def mount_motion(self, widget: QWidget | None) -> None:
+        self.workspace.mount_motion(widget)
+
     def set_reference_target_ready(self, ready: bool) -> None:
         self._reference_target_ready = ready
         self._refresh_reference_buttons()
@@ -491,7 +520,8 @@ class AnimationPane(QWidget):
 
     def _refresh_reference_buttons(self) -> None:
         row = self.catalog.currentRow()
-        measured = (row >= 0 and all(self.catalog.item(row, i) is not None for i in range(4)) and
+        measured = (row >= 0 and not self.catalog.isRowHidden(row)
+                    and all(self.catalog.item(row, i) is not None for i in range(4)) and
                     [self.catalog.item(row, i).text() for i in (1, 2, 3)] == ['fbx', '1', 'METADATA_EXTRACTED'])
         self.attach_reference.setEnabled(self._reference_target_ready and measured)
         self.detach_reference.setEnabled(self._reference_target_ready and self.references.currentItem() is not None)
@@ -513,11 +543,22 @@ class AnimationPane(QWidget):
                 self.asset_id.setText(Path(path).stem[:100])
 
     def display_catalog(self, items: list[dict]) -> None:
+        selected = self.workspace.selected_asset_id()
+        self.catalog.clearSelection()
+        self.catalog.setCurrentCell(-1, -1)
         self.catalog.setRowCount(len(items))
+        selected_row = None
         for row, item in enumerate(items):
             values = (item["asset_id"], item["format"], str(len(item["clips"])), item["status"])
             for col, value in enumerate(values):
-                self.catalog.setItem(row, col, QTableWidgetItem(value))
+                cell = QTableWidgetItem(value)
+                cell.setToolTip(value)
+                self.catalog.setItem(row, col, cell)
+            if item["asset_id"] == selected:
+                selected_row = row
+        self.workspace.filter_catalog()
+        if selected_row is not None and not self.catalog.isRowHidden(selected_row):
+            self.catalog.selectRow(selected_row)
         self._refresh_reference_buttons()
 
 

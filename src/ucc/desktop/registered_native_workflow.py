@@ -36,6 +36,7 @@ class RegisteredNativePending:
     clip_id: str
     cancel: Event
     preview: NativeBodyPreview | None = None
+    inline: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,6 +44,7 @@ class RegisteredNativeCompletion:
     token: object
     value: NativeBodyPreview | NativePlayback
     identities: tuple[tuple[Path, tuple[int, int, int, int]], ...]
+    inline_preview: NativeBodyPreview | None = None
 
 
 def _identities(value, cancel, previous=None):
@@ -90,6 +92,15 @@ def _executable(window):
 
 
 def start_registered_native_body(window) -> None:
+    _start_body(window, inline=False)
+
+
+def start_inline_preview(window) -> None:
+    """The Preview on character action requests private local playback."""
+    _start_body(window, inline=True)
+
+
+def _start_body(window, *, inline: bool) -> None:
     try:
         if window.jobs.busy:
             raise ValidationError('Another local task is still running')
@@ -102,13 +113,14 @@ def start_registered_native_body(window) -> None:
         clip_id = selected_clip(window)
         if clip_id is None:
             raise ValidationError('Select one measured FBX source in the catalog')
-        answer = QMessageBox.question(window, 'Registered native skin preview',
-            'Test the selected catalog clip on this saved character using private Blender copies? '
-            'The existing reviewed catalog policy must already permit local preview. '
-            'This confirmation grants no new rights. Visual, contact and engine quality remain unapproved.',
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
-        if answer != QMessageBox.StandardButton.Yes:
-            return
+        if not inline:
+            answer = QMessageBox.question(window, 'Registered native skin preview',
+                'Test the selected catalog clip on this saved character using private Blender copies? '
+                'The existing reviewed catalog policy must already permit local preview. '
+                'This confirmation grants no new rights. Visual, contact and engine quality remain unapproved.',
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
+            if answer != QMessageBox.StandardButton.Yes:
+                return
         executable = _executable(window)
         if executable is None:
             return
@@ -116,10 +128,14 @@ def start_registered_native_body(window) -> None:
         profile = Path(window.animations.native_body_profile.text()) if window.animations.native_body_profile.text().strip() else None
         include_hands = window.animations.native_include_hands.isChecked()
         database = window._catalog_path()
+        if inline and (window.jobs.busy or window.controller.store is not store or window.controller.dirty
+                or not window.controller.has_project or window.controller.require_project() != project
+                or selected_clip(window) != clip_id):
+            raise ValidationError('The saved character or selected clip changed before preview')
     except (UCCError, OSError, ValueError) as error:
         window._error(str(error)); return
     window._clear_native_review()
-    pending = RegisteredNativePending(object(), store, store.root.resolve(), project, clip_id, Event())
+    pending = RegisteredNativePending(object(), store, store.root.resolve(), project, clip_id, Event(), inline=inline)
     window._registered_native_pending = pending
 
     def prepare():
@@ -133,15 +149,18 @@ def start_registered_native_body(window) -> None:
             catalog.library.require_permission(asset_id, 'local_preview')
         authority = bind_native_catalog_source(database, clip_id, expected_source_sha256=entry.sha256,
             expected_policy=entry.policy, local_preview_confirmed=True, cancel=pending.cancel)
-        result = preview_native_body(store, source_fbx=authority.source_path, mapping_profile=profile,
+        preview = preview_native_body(store, source_fbx=authority.source_path, mapping_profile=profile,
             blender_exe=executable, worker_script=worker, permission=authority.policy,
             expected_project_id=project.project_id, expected_revision=project.revision,
             expected_master_blend=project.master_blend, cancel=pending.cancel,
             include_hands=include_hands, source_authority=authority, timeout_s=REGISTERED_BODY_TIMEOUT_S)
-        identities = _identities(result, pending.cancel)
+        identities = _identities(preview, pending.cancel)
         if pending.cancel.is_set():
             raise WorkerFailure('Registered native preview cancelled; private records are retained')
-        return RegisteredNativeCompletion(pending.token, result, identities)
+        if not pending.inline:
+            return RegisteredNativeCompletion(pending.token, preview, identities)
+        result, playback_identities = _prepare_playback(pending, preview, dict(identities), executable, worker)
+        return RegisteredNativeCompletion(pending.token, result, playback_identities, inline_preview=preview)
 
     window._submit('registered_native_body', prepare, cancel=pending.cancel)
 
@@ -177,17 +196,23 @@ def start_registered_native_playback(window) -> None:
     window._registered_native_pending = pending
 
     def prepare():
-        authority.guard(cancel=pending.cancel)
-        preview.proof_receipt.guard(cancel=pending.cancel)
-        result = prepare_native_playback(store, preview, source_fbx=authority.source_path,
-            permission=authority.policy, blender_exe=executable, worker_script=worker, cancel=pending.cancel,
-            timeout_s=REGISTERED_PLAYBACK_TIMEOUT_S)
-        identities = _identities(result, pending.cancel, previous=original)
-        if pending.cancel.is_set():
-            raise WorkerFailure('Registered playback cancelled; private records are retained')
+        result, identities = _prepare_playback(pending, preview, original, executable, worker)
         return RegisteredNativeCompletion(pending.token, result, identities)
 
     window._submit('registered_native_playback', prepare, cancel=pending.cancel)
+
+
+def _prepare_playback(pending, preview, original, executable, worker):
+    authority = preview.source_authority
+    authority.guard(cancel=pending.cancel)
+    preview.proof_receipt.guard(cancel=pending.cancel)
+    result = prepare_native_playback(pending.store, preview, source_fbx=authority.source_path,
+        permission=authority.policy, blender_exe=executable, worker_script=worker, cancel=pending.cancel,
+        timeout_s=REGISTERED_PLAYBACK_TIMEOUT_S)
+    identities = _identities(result, pending.cancel, previous=original)
+    if pending.cancel.is_set():
+        raise WorkerFailure('Registered playback cancelled; private records are retained')
+    return result, identities
 
 
 def finish_registered_native(window, result) -> bool:
@@ -208,16 +233,28 @@ def finish_registered_native(window, result) -> bool:
                 or not window.controller.has_project or window.controller.require_project() != pending.project
                 or selected_clip(window) != pending.clip_id):
             raise ValidationError('Registered selection changed or was cancelled; private results are retained')
-        expected_type = NativeBodyPreview if pending.preview is None else NativePlayback
+        expected_type = NativePlayback if pending.inline or pending.preview is not None else NativeBodyPreview
         if not isinstance(value, expected_type):
             raise ValidationError('Registered native preparation returned an invalid result')
+        inline_preview = result.inline_preview
+        if pending.inline:
+            if (not isinstance(inline_preview, NativeBodyPreview)
+                    or not isinstance(inline_preview.proof_receipt, NativeProofReceipt)
+                    or inline_preview.source_authority is not value.source_authority
+                    or (inline_preview.project_id, inline_preview.revision, inline_preview.master_sha256,
+                        inline_preview.source_sha256) != (value.project_id, value.revision, value.master_sha256,
+                                                           value.source_sha256)):
+                raise ValidationError('Inline playback lost its exact original body preview')
+        elif inline_preview is not None:
+            raise ValidationError('Unexpected inline body preview in a manual completion')
         if isinstance(value, NativePlayback) and window._native_review is not None:
             raise ValidationError('Registered native review was superseded before playback')
         authority = value.source_authority
         if (not isinstance(authority, NativeSourceAuthority) or not isinstance(value.proof_receipt, NativeProofReceipt)
                 or authority.clip_id != pending.clip_id
                 or value.project_id != pending.project.project_id or value.revision != pending.project.revision
-                or value.source_sha256 != authority.source_sha256):
+                or value.source_sha256 != authority.source_sha256
+                or (pending.inline and window._catalog_path() != authority.database_path)):
             raise ValidationError('Registered native result lost its source authority')
         if isinstance(value, NativePlayback) and (
                 value.cache.frame_count != authority.clock.frame_count or value.cache.fps != authority.clock.fps
@@ -234,8 +271,14 @@ def finish_registered_native(window, result) -> bool:
             window.log.setPlainText(native_result_text(value)+'\n'+_source_text(authority)+
                 '\nRegistered source policy remains bound; private-open and fitting actions are unavailable in this mode.')
         else:
-            window._native_review = pending.preview
+            window._native_review = inline_preview if pending.inline else pending.preview
             _publish_registered_playback(window, value)
+            if pending.inline:
+                viewer = window.motion_viewer
+                # Job success can precede busy-clear on the containing workspace.
+                viewer.toggle()
+                if viewer.clock is None or not viewer.clock.playing:
+                    raise ValidationError('The registered preview could not start playback')
         return True
     except (UCCError, OSError, ValueError) as error:
         clear_registered_native(window)
@@ -260,14 +303,26 @@ def _publish_registered_playback(window, result: NativePlayback) -> None:
         window.motion_dock = RegisteredNativeDock(window)
         window.motion_dock.setObjectName('RegisteredNativeSkinDock')
         window.motion_dock.setWidget(window.motion_viewer)
-        window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, window.motion_dock)
+        mount = getattr(window, 'mount_animation_motion', None)
+        if mount is None:
+            window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, window.motion_dock)
+        else:
+            mount(window.motion_dock)
     window._native_playback = result
     window.animations.load_native_motion.setEnabled(False)
     window._fitted_playback = window._body_contact_review = None
     window.motion_viewer.show_cache(result.cache)
     if window._native_playback is not result or not guard_registered_native(window, result.source_authority):
         raise ValidationError('Registered playback changed during adoption')
-    window.mesh_dock.hide(); window.motion_dock.show(); window.motion_dock.raise_()
+    window.mesh_dock.hide()
+    reveal = getattr(window, 'reveal_animation_motion', None)
+    if reveal is None:
+        window.motion_dock.show()
+        window.motion_dock.raise_()
+    else:
+        reveal()
+    if window._native_playback is not result or not guard_registered_native(window, result.source_authority):
+        raise ValidationError('Registered playback changed while revealing the viewer')
     window.log.setPlainText('REGISTERED PRIVATE NATIVE SKIN PLAYBACK\n'
         +_source_text(result.source_authority)+'\n'
         f'{result.cache.frame_count} complete cached frames at {result.cache.fps:g} fps.\n'
@@ -277,6 +332,6 @@ def _publish_registered_playback(window, result: NativePlayback) -> None:
 def _source_text(authority) -> str:
     clock = authority.clock
     return (f'Registered clip: {authority.clip_id}\n'
-        f'Stored source frames {clock.source_first_frame}–{clock.source_last_frame} at {clock.fps:g} fps; '
+        f'Stored source frames {clock.source_first_frame}â€“{clock.source_last_frame} at {clock.fps:g} fps; '
         f'sample span {clock.sample_span_s:.6f} s, nominal coverage {clock.nominal_coverage_s:.6f} s.\n'
         f'Source SHA-256: {authority.source_sha256}')

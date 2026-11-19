@@ -74,7 +74,8 @@ class MainWindow(QMainWindow):
         container = QWidget()
         layout = QVBoxLayout(container)
         layout.addWidget(self.tabs, 1)
-        layout.addWidget(QLabel("Results and diagnostics (local only)"))
+        self.diagnostics_label = QLabel("Results and diagnostics (local only)")
+        layout.addWidget(self.diagnostics_label)
         layout.addWidget(self.log)
         self.setCentralWidget(container)
         self.mesh_viewer = MeshViewer()
@@ -93,9 +94,14 @@ class MainWindow(QMainWindow):
         self._motion_watcher = None
         self._make_menu()
         self.jobs = BackgroundJobs(self._job_success, self._job_error, self._busy_changed)
+        self.cancel_preview = QPushButton("Cancel preview")
+        self.cancel_preview.clicked.connect(self.cancel_generation)
+        self.statusBar().addPermanentWidget(self.cancel_preview)
+        self.cancel_preview.hide()
         self._work_kind = ""
         self._connect()
         self.statusBar().showMessage("No character project opened")
+        self._refresh_animation_preview()
         if self.controller.has_project:
             self.refresh_project()
 
@@ -158,6 +164,10 @@ class MainWindow(QMainWindow):
             character_menu, 'Create private original idle…', '', lambda: start_authored_idle_authoring(self))
         self.authored_idle_action.setEnabled(False)
         view_menu = self.menuBar().addMenu("&View")
+        self.animation_diagnostics_action = QAction("Animation diagnostics", view_menu)
+        self.animation_diagnostics_action.setCheckable(True)
+        self.animation_diagnostics_action.toggled.connect(self._sync_diagnostics)
+        view_menu.addAction(self.animation_diagnostics_action)
         self.mesh_action = self._action(view_menu, "&Preview local GLB model...", "Ctrl+Shift+M", self.open_mesh_preview)
         self.preview_master_action = self._action(
             view_menu, "Preview current saved &Blender master...", "",
@@ -217,7 +227,11 @@ class MainWindow(QMainWindow):
         self.animations.native_renders_open_requested.connect(lambda:open_native_result(self,rendered=True))
         self.animations.native_playback_requested.connect(lambda:start_native_playback(self))
         from .registered_native_binding import clear_registered_native
+        from .registered_native_workflow import start_inline_preview
         self.animations.catalog.currentCellChanged.connect(lambda *_:clear_registered_native(self))
+        self.animations.catalog.currentCellChanged.connect(lambda *_: self._refresh_animation_preview())
+        self.animations.preview_clip_requested.connect(lambda: start_inline_preview(self))
+        self.tabs.currentChanged.connect(self._animation_tab_changed)
         self.animations.local_preview_review.toggled.connect(lambda _checked:self._clear_native_review())
         self.animations.native_include_hands.toggled.connect(lambda _checked:self._clear_native_review())
         for field in (self.animations.selected,self.animations.native_body_profile,self.animations.provider,self.animations.license,self.animations.uri):
@@ -235,6 +249,53 @@ class MainWindow(QMainWindow):
         self.log.setPlainText(msg)
         self.statusBar().showMessage("Operation failed")
         QMessageBox.warning(self, "UCC operation blocked", msg)
+
+    def _animation_tab_changed(self, _index: int) -> None:
+        self._sync_diagnostics()
+        if (self.tabs.currentWidget() is self.animations and not self.jobs.busy
+                and self.animations.catalog.rowCount() == 0):
+            self.refresh_catalog()
+
+    def _sync_diagnostics(self) -> None:
+        visible = self.tabs.currentWidget() is not self.animations or self.animation_diagnostics_action.isChecked()
+        self.log.setVisible(visible)
+        self.diagnostics_label.setVisible(visible)
+
+    def _refresh_animation_preview(self) -> None:
+        table = self.animations.catalog
+        row = table.currentRow()
+        fields = [table.item(row, column) for column in (1, 2, 3)] if row >= 0 else []
+        measured = bool(fields and all(fields) and
+                        [field.text() for field in fields] == ['fbx', '1', 'METADATA_EXTRACTED'])
+        if self.jobs.busy:
+            message = ('Preparing playback…' if self._work_kind in {'registered_native_body', 'registered_native_playback'}
+                       else 'A local task is running…')
+        elif self.controller.store is None or not self.controller.has_project:
+            message = 'Open a saved character to preview on its rig.'
+        elif self.controller.dirty or self.controller.require_project().master_blend is None:
+            message = 'Save the character and its Blender master first.'
+        elif not measured:
+            message = 'Select a measured FBX clip.'
+        else:
+            self.animations.set_preview_available(True, 'Private preview · local catalog')
+            return
+        self.animations.set_preview_available(False, message)
+
+    def mount_animation_motion(self, dock: QDockWidget) -> None:
+        dock.widget().use_workspace_controls()
+        self.animations.mount_motion(dock)
+
+    def reveal_animation_motion(self, dock: QDockWidget | None = None) -> None:
+        dock = self.motion_dock if dock is None else dock
+        if dock is None:
+            return
+        if dock is self.motion_dock and getattr(self, '_target_action_result', None) is not None:
+            from .target_action_preview import clear_target_action_preview
+            clear_target_action_preview(self)
+        self.mesh_dock.hide()
+        self.animations.mount_motion(dock)
+        self.tabs.setCurrentWidget(self.animations)
+        dock.show()
 
     def _apply(self, fn: Callable[[], Any]) -> None:
         try:
@@ -262,6 +323,7 @@ class MainWindow(QMainWindow):
             from .registered_native_binding import clear_registered_native
             clear_registered_native(self)
         self.character.display(state)
+        self._refresh_animation_preview()
         from .skin_material_workflow import refresh_skin_material
         refresh_skin_material(self)
         self.animations.display_reference_ids(self.controller.require_project().animations)
@@ -541,6 +603,9 @@ class MainWindow(QMainWindow):
         if busy and self._work_kind in {'registered_native_body','registered_native_playback'}:
             self.cancel_generation_action.setEnabled(True)
             self.statusBar().showMessage('Validating registered source rights and private native skin...')
+        self.cancel_preview.setVisible(busy and self._work_kind in {'registered_native_body','registered_native_playback'})
+        self.cancel_preview.setEnabled(not self.jobs.cancel_requested)
+        self._refresh_animation_preview()
         from .private_target_copy_workflow import KIND as PRIVATE_TARGET_COPY, refresh_private_target_copy
         refresh_private_target_copy(self)
         if busy and self._work_kind == PRIVATE_TARGET_COPY:
@@ -653,6 +718,7 @@ class MainWindow(QMainWindow):
         if self._work_kind == "catalog":
             assert isinstance(result, list)
             self.animations.display_catalog(result)
+            self._refresh_animation_preview()
             self.log.setPlainText(f"Catalog contains {len(result)} source files. Metadata only; no retargeting verified.")
         elif self._work_kind == "generate_humanoid":
             assert isinstance(result, HumanoidGeneration)
@@ -1252,6 +1318,7 @@ class MainWindow(QMainWindow):
 
     def cancel_generation(self) -> None:
         if self.jobs.cancel():
+            self.cancel_preview.setEnabled(False)
             from .authored_idle_authoring_workflow import KINDS as IDLE_AUTHORING_KINDS
             from .private_target_copy_workflow import KIND as PRIVATE_TARGET_COPY
             from .target_action_workflow import KINDS
