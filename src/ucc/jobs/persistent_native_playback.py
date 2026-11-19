@@ -26,9 +26,9 @@ _VERSION = 1
 _HASH_BATCH_LIMIT = 2 * 1024**2
 
 
-def _hash_file(path: Path, cancel: Event | None, limit: int) -> str:
+def _hash_file(path: Path, cancel: Event | None, limit: int, *, allow_empty: bool = False) -> str:
     before = watch_identity(path)
-    if not path.is_file() or not 0 < before[2] <= limit:
+    if not path.is_file() or not (0 if allow_empty else 1) <= before[2] <= limit:
         raise ValidationError('Playback input is missing or outside its size limit')
     digest = _digest(path, cancel)
     if watch_identity(path) != before:
@@ -52,7 +52,7 @@ def _worker_fingerprint(worker: Path, cancel: Event | None) -> str:
     digest = sha256(sys.implementation.cache_tag.encode('ascii'))
     for path in files:
         digest.update(path.relative_to(root).as_posix().encode('utf-8') + b'\0')
-        digest.update(bytes.fromhex(_hash_file(path, cancel, _HASH_BATCH_LIMIT)))
+        digest.update(bytes.fromhex(_hash_file(path, cancel, _HASH_BATCH_LIMIT, allow_empty=True)))
     if frozen:
         digest.update(bytes.fromhex(_hash_file(Path(sys.executable).resolve(), cancel, 1024**3)))
     return digest.hexdigest()
@@ -125,11 +125,13 @@ class PersistentNativePreview:
                 'context': context, 'proof': pins, 'job': playback.job_id,
                 'surface_job': playback.surface_verification_job_id,
                 'cache': {
-                    'chunks': cache.chunks, 'hips': cache.hips, 'world_matrix': cache.world_matrix,
+                    'chunks': [list(row) for row in cache.chunks],
+                    'hips': [list(row) for row in cache.hips],
+                    'world_matrix': list(cache.world_matrix),
                     'fps': cache.fps, 'vertex_count': cache.vertex_count,
                     'triangle_count': cache.triangle_count, 'radius': cache.radius,
                     'source_first_frame': cache.source_first_frame,
-                    'surface_review': asdict(cache.surface_review) if cache.surface_review else None,
+                    'surface_review': _surface_document(cache.surface_review),
                 },
             }
             budget.check()
@@ -192,6 +194,17 @@ class PersistentNativePreview:
         return NativePlayback(self.project.project_id, self.project.revision, context['master_sha256'],
                               self.authority.source_sha256, cache, job, str(manifest), surface_job,
                               self.authority, receipt)
+
+
+def _surface_document(surface: SurfaceReview | None) -> dict | None:
+    if surface is None:
+        return None
+    return {
+        'status': surface.status, 'reason': surface.reason, 'policy': surface.policy,
+        'triangles': [list(row) for row in surface.triangles],
+        'pairs': [list(row) for row in surface.pairs],
+        'triangle_hashes': list(surface.triangle_hashes),
+    }
 
 
 def _restore_frames(packed: bytes, metadata: dict, authority: NativeSourceAuthority) -> MotionCache:

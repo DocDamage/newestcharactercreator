@@ -7,9 +7,11 @@ from unittest.mock import patch
 
 from fixtures.persistent_native_playback import retained_preview_fixture
 from ucc.core.errors import ProjectStorageError, ValidationError
-from ucc.jobs.persistent_native_playback import PersistentNativePreview, _restore_frames
+from ucc.jobs.persistent_native_playback import PersistentNativePreview, _restore_frames, _worker_fingerprint
+from ucc.jobs.persistent_preview_index import read_index
 from ucc.jobs.source_skeleton_files import watch_identity
 from ucc.jobs.target_action_context import operation_budget
+from ucc.preview.surface_review import SurfaceReview
 
 
 class PersistentNativePlaybackTests(unittest.TestCase):
@@ -28,6 +30,23 @@ class PersistentNativePlaybackTests(unittest.TestCase):
             'job': job, 'surface_job': '', 'cache': self.metadata,
             'proof': {str(path): [pin, list(watch_identity(path))] for path, pin in hashes.items()},
         }
+        self.authority.database_path = root / 'catalog.db'
+        self.authority.clip_id = 'retained-clip#clip-0000'
+
+    @patch('ucc.jobs.persistent_native_playback.find_catalog_preview_profile', return_value=None)
+    def test_live_cache_serializes_all_immutable_frame_and_surface_arrays(self, _profile):
+        with operation_budget(self.cancel, 5) as budget:
+            result = self.preview._restore_record(self.record, self.context, budget)
+        surface = SurfaceReview('CHECKED', '', ((1,), (2, 3)), ((1, 0), (0, 2)),
+                                ('a' * 64, 'b' * 64))
+        result = replace(result, cache=replace(result.cache, surface_review=surface))
+        self.context['blender'] = str(self.geometry)
+        with patch.object(PersistentNativePreview, '_context', return_value=self.context):
+            self.preview.save(result, self.context)
+            loaded = self.preview.restore(None)
+        self.assertIsInstance(read_index(self.preview.root, self.preview._slot), dict)
+        self.assertIsNotNone(loaded)
+        self.assertEqual(loaded.cache, result.cache)
 
     @patch('ucc.jobs.persistent_native_playback.find_catalog_preview_profile', return_value=None)
     def test_restart_recaptures_proofs_and_detects_same_byte_replacement(self, _profile):
@@ -62,3 +81,9 @@ class PersistentNativePlaybackTests(unittest.TestCase):
             with self.assertRaises(ProjectStorageError):
                 self.preview.restore(None)
         read.assert_not_called()
+
+    def test_actual_source_worker_fingerprint_includes_empty_package_files(self):
+        root = Path(__file__).resolve().parents[1]
+        self.assertEqual((root / 'src/ucc/jobs/__init__.py').stat().st_size, 0)
+        self.assertRegex(_worker_fingerprint(root / 'blender_bridge/entrypoint.py', self.cancel), r'^[0-9a-f]{64}$')
+from dataclasses import replace
