@@ -40,6 +40,7 @@ for key, window in (
     ("wrist_transitions", {"side": "left", "first_frame": 1, "last_frame": 3}),
     ("forearm_roll", {"side": "left", "first_frame": 1, "angle_tenths": [0, 10, 0]}),
     ("planted_knee", {"first_frame": 1, "frame_count": 1, "source_lift_axis": [0, 0, 1]}),
+    ("limb_alignment", {"first_frame": 1}),
 ):
     declared = {**profile, key: {"schema_version": 1, "windows": [window]}}
     try:
