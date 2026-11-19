@@ -247,6 +247,30 @@ class NativeSourceAuthorityTests(unittest.TestCase):
             with self.assertRaises(UCCError):prepare_native_playback(self.store,preview,**(self.playback_options()|{'permission':replace(self.policy,no_ai=False)}))
             cache.assert_not_called()
 
+    def test_stripped_authority_cannot_prepare_adjusted_playback(self):
+        preview = self.body(self.bind())
+        folder = self.project/'.ucc-jobs'/'synthetic-body'
+        folder.mkdir(parents=True)
+        path = self.master.relative_to(self.project).as_posix()
+        self.store.load = lambda: SimpleNamespace(master_blend=path, project_id=preview.project_id, revision=1)
+        bindings = {'source_sha256':self.source_sha,'master_sha256':preview.master_sha256,
+                    'snapshot_sha256':'a'*64,'mapping_sha256':'b'*64}
+        preview = replace(preview,source_authority=None,
+                          private_timeline=str(folder/'target_timeline.json'),
+                          worker_report={'bindings':bindings,'timeline':{},'visual_review_blend':{}})
+        module = 'ucc.jobs.native_playback'
+        for adjustment in ('wrist_transitions','forearm_roll','planted_knee'):
+            profile = {'skin_deformation_policy':'BOUND_CORRECTIVE_SMOOTH_V1',adjustment:{}}
+            with (self.subTest(adjustment=adjustment),
+                  patch(module+'._master_file',return_value=(self.master,preview.master_sha256)),
+                  patch(module+'.bound_file'),
+                  patch(module+'.read_native_profile',return_value=(profile,bindings['mapping_sha256'])),
+                  patch(module+'.BlenderJobRunner') as runner):
+                with self.assertRaisesRegex(UCCError,'requires its authenticated catalog source'):
+                    prepare_native_playback(self.store,preview,**self.playback_options())
+                runner.assert_not_called()
+
+
     def test_manual_none_route_does_not_add_guards_or_require_catalog(self):
         sentinel=object()
         with patch('ucc.jobs.native_body._preview_native_body',return_value=sentinel) as body:

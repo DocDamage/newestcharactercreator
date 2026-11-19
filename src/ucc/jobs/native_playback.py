@@ -7,6 +7,7 @@ from threading import Event
 from typing import Callable
 
 from ucc.animations.fbx_snapshot import validate_snapshot
+from ucc.animations.native_preview_adjustments import preview_adjustment_declarations
 from ucc.animations.native_profile import read_native_profile
 from ucc.animations.native_skin_policy import CORRECTIVE_POLICIES
 from ucc.core.errors import ProjectConflict, ProjectStorageError, ValidationError
@@ -69,6 +70,8 @@ def _prepare_native_playback(store: ProjectStore, preview: NativeBodyPreview, *,
     review=bound_file(folder,report["visual_review_blend"],"review_motion.blend",512*1024*1024,cancel_check=check_cancel)
     snapshot=folder/"source_snapshot.json";profile_path=Path(preview.mapping_profile_used)
     profile,map_sha=read_native_profile(profile_path,preview.source_sha256,bindings["snapshot_sha256"],master_sha)
+    if _source_authority is None and preview_adjustment_declarations(profile):
+        raise ValidationError("Adjusted playback requires its authenticated catalog source")
     if profile.get("skin_deformation_policy") not in CORRECTIVE_POLICIES or map_sha!=bindings["mapping_sha256"]:
         raise ValidationError("In-UCC playback currently requires the audited bound-skin preview policy")
     if snapshot.is_symlink() or not snapshot.is_file() or not 0<snapshot.stat().st_size<=64*1024*1024:
