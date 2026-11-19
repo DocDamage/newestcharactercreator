@@ -10,7 +10,7 @@ from ucc.core.errors import ValidationError
 from .source_rest_frames import is_sha256
 from .native_palms import PALM_AXES, validate_palm_profile
 from .native_skin_policy import CORRECTIVE_POLICIES
-from .wrist_transitions import validate_wrist_transitions
+from .native_preview_adjustments import PREVIEW_ADJUSTMENT_KEYS, validate_preview_adjustments
 
 CONVENTION = "NATIVE_ANATOMICAL_REFERENCE_V1"
 ROOT_POLICIES = {"ARMATURE_ORIGIN_DISPLACEMENT_V1", "SOURCE_HIP_MIDPOINT_V1"}
@@ -21,7 +21,7 @@ MAX_PROFILE_BYTES = 64*1024
 
 
 def validate_native_profile(data: Any, source_sha: str, snapshot_sha: str, master_sha: str) -> dict:
-    if (type(data) is not dict or set(data)-{"root_motion_policy","skin_deformation_policy","mesh_strain_reference","hand_reference_planes","wrist_transitions"} != {"schema_version","convention","source_sha256",
+    if (type(data) is not dict or set(data)-{"root_motion_policy","skin_deformation_policy","mesh_strain_reference","hand_reference_planes",*PREVIEW_ADJUSTMENT_KEYS} != {"schema_version","convention","source_sha256",
             "snapshot_sha256","master_sha256","landmarks","pairs"} or
             type(data["schema_version"]) is not int or data["schema_version"] != 1 or
             data["convention"] != CONVENTION):
@@ -68,7 +68,7 @@ def validate_native_profile(data: Any, source_sha: str, snapshot_sha: str, maste
     if len({r["source"] for r in landmarks.values()}) != len(LANDMARKS):
         raise ValidationError("Native anatomical landmarks must be distinct")
     validate_palm_profile(data)
-    validate_wrist_transitions(data)
+    validate_preview_adjustments(data)
     return data
 
 

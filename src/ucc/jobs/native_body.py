@@ -8,6 +8,7 @@ import re
 
 from ucc.animations.fbx_snapshot import read_snapshot
 from ucc.animations.native_profile import read_native_profile
+from ucc.animations.native_preview_adjustments import preview_adjustment_declarations
 from ucc.animations.native_family import measured_body_profile
 from ucc.core.errors import ProjectConflict, ProjectStorageError, ValidationError
 from ucc.core.storage import ProjectStore
@@ -108,8 +109,8 @@ def _preview_native_body(store: ProjectStore, *, source_fbx: Path, mapping_profi
             json.dump(generated,stream,ensure_ascii=False,allow_nan=False,separators=(",",":"))
     if _proof is not None: _proof.before(mapping_profile)
     profile,mapping_sha=read_native_profile(mapping_profile,intake["source_sha256"],snapshot_sha,master_sha)
-    if "wrist_transitions" in profile and (_source_authority is None or render_private_frames):
-        raise ValidationError("Wrist transitions require an authenticated animation-library preview")
+    if preview_adjustment_declarations(profile) and (_source_authority is None or render_private_frames):
+        raise ValidationError("Source pose adjustments require an authenticated animation-library preview")
     if _proof is not None: _proof.admit(mapping_profile, mapping_sha)
     bindings={"source_sha256":intake["source_sha256"],"snapshot_sha256":snapshot_sha,
               "mapping_sha256":mapping_sha,"master_sha256":master_sha}

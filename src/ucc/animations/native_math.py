@@ -1,5 +1,7 @@
 """Independent small matrix checks for native retarget evidence (no bpy/Qt)."""
+from hashlib import sha256
 import math
+import struct
 from ucc.core.errors import ValidationError
 from ucc.animations.fbx_snapshot import _matrix
 
@@ -7,6 +9,13 @@ from ucc.animations.fbx_snapshot import _matrix
 def product(a,b):
     n=len(a)
     return [[sum(a[i][k]*b[k][j] for k in range(n)) for j in range(n)] for i in range(n)]
+
+
+def pose_digest(world: list[float], poses: list[list[float]]) -> str:
+    digest = sha256()
+    for matrix in (world, *poses):
+        digest.update(struct.pack("<16q", *(round(value * 1_000_000) for value in matrix)))
+    return digest.hexdigest()
 
 
 def transposed(a): return [list(v) for v in zip(*a)]

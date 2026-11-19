@@ -10,7 +10,9 @@ from ucc.animations.source_rest_frames import is_sha256
 from ucc.animations.native_profile import CONVENTION, LANDMARKS
 from ucc.animations import native_math as nm
 from ucc.animations.native_palms import PALM_AXES, palm_evidence
-from ucc.animations.wrist_transitions import preview_source_motion
+from ucc.animations.native_preview_adjustments import (
+    adjusted_native_preview_source, preview_adjustment_declarations,
+)
 from .motion_quality_evidence import validate_motion_quality
 from .native_anchor_evidence import anchor_context, check_anchor_frame, finish_anchor
 from .native_skin_evidence import validate_skin
@@ -59,9 +61,9 @@ def validate_native_timeline(data,report,source,profile,bindings,*,cancel_check=
             any(data.get(k) is not False for k in ("retargeting_verified","animation_visual_quality_verified","engine_import_verified","joint_twist_visual_quality_verified")) or
             data.get("visual_review_artifact_created") is not True or data.get("visual_review_blend")!=report["visual_review_blend"]):
         raise ValidationError("Native complete timeline convention/bindings/flags differ")
-    if ("wrist_transitions" in data) != ("wrist_transitions" in profile) or data.get("wrist_transitions") != profile.get("wrist_transitions"):
-        raise ValidationError("Native timeline wrist transitions differ from the bound preview profile")
-    source=preview_source_motion(source,profile)
+    if preview_adjustment_declarations(data) != preview_adjustment_declarations(profile):
+        raise ValidationError("Native timeline adjustments differ from the bound preview profile")
+    source=adjusted_native_preview_source(source,profile)
     pairs=profile["pairs"];count=len(source["frames"])
     source_bones={b["name"]:b for b in source["bones"]}
     if {p["source"] for p in pairs}-{*source_bones,"@ARMATURE"}:
