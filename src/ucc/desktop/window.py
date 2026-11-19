@@ -253,7 +253,8 @@ class MainWindow(QMainWindow):
     def _animation_tab_changed(self, _index: int) -> None:
         self._sync_diagnostics()
         if (self.tabs.currentWidget() is self.animations and not self.jobs.busy
-                and self.animations.catalog.rowCount() == 0):
+                and self.animations.catalog.rowCount() == 0
+                and self._native_playback is None and getattr(self, '_target_action_result', None) is None):
             self.refresh_catalog()
 
     def _sync_diagnostics(self) -> None:
