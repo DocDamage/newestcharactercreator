@@ -2,9 +2,10 @@
 from dataclasses import dataclass
 from pathlib import Path
 from threading import Event
+from time import monotonic
 import os
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QObject, QTimer, Qt, Signal, Slot
 from PySide6.QtWidgets import QFileDialog, QMessageBox
 
 from ucc.animations.catalog import AnimationCatalog
@@ -25,6 +26,81 @@ from .registered_native_viewer import RegisteredNativeDock, RegisteredNativeView
 # The manual workflow retains the existing API defaults.
 REGISTERED_BODY_TIMEOUT_S = 900
 REGISTERED_PLAYBACK_TIMEOUT_S = 1800
+
+_PROGRESS_LABELS = {
+    'SOURCE_AUTHORITY': 'Checking source permissions',
+    'REUSE_VERIFY': 'Checking the retained playback',
+    'INSPECT_SOURCE': 'Measuring the source motion',
+    'VERIFY_BODY_FIRST': 'Checking motion on the saved rig',
+    'VERIFY_BODY_SECOND': 'Checking the rig motion independently',
+    'REOPEN_BODY': 'Reopening the verified motion',
+    'BUILD_CACHE': 'Preparing frames for playback',
+    'VERIFY_SURFACE': 'Checking the animated skin',
+    'CHECK_CACHE': 'Validating the prepared frames',
+    'FINAL_GUARD': 'Checking playback permissions and files',
+}
+
+
+class _RegisteredNativeProgress(QObject):
+    """Update only the active inline request from queued worker messages."""
+
+    changed = Signal(object, str)
+
+    def __init__(self, window):
+        super().__init__(window)
+        self.window = window
+        self.token = None
+        self.stage = 'SOURCE_AUTHORITY'
+        self.started = 0.0
+        self.timer = QTimer(self)
+        self.timer.setInterval(1000)
+        self.timer.timeout.connect(self.refresh)
+        self.changed.connect(self.advance, Qt.ConnectionType.QueuedConnection)
+
+    def begin(self, token):
+        self.token = token
+        self.stage = 'SOURCE_AUTHORITY'
+        self.started = monotonic()
+        self.timer.start()
+
+    def pending(self):
+        pending = getattr(self.window, '_registered_native_pending', None)
+        return pending if pending is not None and pending.inline and pending.token is self.token else None
+
+    @Slot(object, str)
+    def advance(self, token, stage):
+        pending = self.pending()
+        if pending is None or token is not self.token or pending.cancel.is_set() or stage not in _PROGRESS_LABELS:
+            return
+        self.stage = stage
+        self.refresh()
+
+    @Slot()
+    def refresh(self):
+        if self.pending() is None:
+            self.timer.stop()
+            return
+        self.window._refresh_animation_preview()
+
+
+def registered_native_progress_text(window) -> str:
+    progress = getattr(window, '_registered_native_progress', None)
+    pending = progress.pending() if progress is not None else None
+    if pending is None:
+        return 'Preparing playback…'
+    if pending.cancel.is_set():
+        return 'Cancelling preview…'
+    minutes, seconds = divmod(int(monotonic() - progress.started), 60)
+    return f'{_PROGRESS_LABELS[progress.stage]}… · {minutes}:{seconds:02d} elapsed'
+
+
+def _begin_inline_progress(window, token):
+    progress = getattr(window, '_registered_native_progress', None)
+    if progress is None:
+        progress = _RegisteredNativeProgress(window)
+        window._registered_native_progress = progress
+    progress.begin(token)
+    return lambda stage: progress.changed.emit(token, stage)
 
 
 @dataclass(frozen=True, slots=True)
@@ -152,6 +228,7 @@ def _start_body(window, *, inline: bool) -> None:
     window._clear_native_review()
     pending = RegisteredNativePending(object(), store, store.root.resolve(), project, clip_id, Event(), inline=inline)
     window._registered_native_pending = pending
+    progress = _begin_inline_progress(window, pending.token) if inline else None
 
     def prepare():
         if pending.cancel.is_set():
@@ -164,17 +241,20 @@ def _start_body(window, *, inline: bool) -> None:
             catalog.library.require_permission(asset_id, 'local_preview')
         authority = bind_native_catalog_source(database, clip_id, expected_source_sha256=entry.sha256,
             expected_policy=entry.policy, local_preview_confirmed=True, cancel=pending.cancel)
+        inline_options = {'render_private_frames': False, 'progress': progress} if pending.inline else {}
         preview = preview_native_body(store, source_fbx=authority.source_path, mapping_profile=profile,
             blender_exe=executable, worker_script=worker, permission=authority.policy,
             expected_project_id=project.project_id, expected_revision=project.revision,
             expected_master_blend=project.master_blend, cancel=pending.cancel,
-            include_hands=include_hands, source_authority=authority, timeout_s=REGISTERED_BODY_TIMEOUT_S)
+            include_hands=include_hands, source_authority=authority, timeout_s=REGISTERED_BODY_TIMEOUT_S,
+            **inline_options)
         identities = _identities(preview, pending.cancel)
         if pending.cancel.is_set():
             raise WorkerFailure('Registered native preview cancelled; private records are retained')
         if not pending.inline:
             return RegisteredNativeCompletion(pending.token, preview, identities)
-        result, playback_identities = _prepare_playback(pending, preview, dict(identities), executable, worker)
+        result, playback_identities = _prepare_playback(pending, preview, dict(identities), executable, worker,
+                                                       progress=progress)
         return RegisteredNativeCompletion(pending.token, result, playback_identities, inline_preview=preview)
 
     window._submit('registered_native_body', prepare, cancel=pending.cancel)
@@ -217,13 +297,15 @@ def start_registered_native_playback(window) -> None:
     window._submit('registered_native_playback', prepare, cancel=pending.cancel)
 
 
-def _prepare_playback(pending, preview, original, executable, worker):
+def _prepare_playback(pending, preview, original, executable, worker, *, progress=None):
     authority = preview.source_authority
     authority.guard(cancel=pending.cancel)
     preview.proof_receipt.guard(cancel=pending.cancel)
     result = prepare_native_playback(pending.store, preview, source_fbx=authority.source_path,
         permission=authority.policy, blender_exe=executable, worker_script=worker, cancel=pending.cancel,
-        timeout_s=REGISTERED_PLAYBACK_TIMEOUT_S)
+        timeout_s=REGISTERED_PLAYBACK_TIMEOUT_S, progress=progress)
+    if progress is not None:
+        progress('FINAL_GUARD')
     identities = _identities(result, pending.cancel, previous=original)
     if pending.cancel.is_set():
         raise WorkerFailure('Registered playback cancelled; private records are retained')

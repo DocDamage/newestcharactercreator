@@ -273,10 +273,12 @@ class MainWindow(QMainWindow):
         self._refresh_animation_preview()
 
     def _preview_animation_clip(self) -> None:
+        from .registered_native_cache import replay_session_preview
         from .registered_native_workflow import start_inline_preview
         self._workspace_clip_message = ''
         self._refresh_animation_preview()
-        start_inline_preview(self)
+        if not replay_session_preview(self):
+            start_inline_preview(self)
 
     def _refresh_animation_preview(self) -> None:
         table = self.animations.catalog
@@ -288,8 +290,11 @@ class MainWindow(QMainWindow):
                  and not self.controller.dirty and self.controller.require_project().master_blend is not None)
         self.animations.show_character.setEnabled(saved and not self.jobs.busy)
         if self.jobs.busy:
-            message = ('Preparing playback…' if self._work_kind in {'registered_native_body', 'registered_native_playback'}
-                       else 'Loading saved character…' if self._workspace_static_request else 'A local task is running…')
+            if self._work_kind in {'registered_native_body', 'registered_native_playback'}:
+                from .registered_native_workflow import registered_native_progress_text
+                message = registered_native_progress_text(self)
+            else:
+                message = 'Loading saved character…' if self._workspace_static_request else 'A local task is running…'
         elif self.controller.store is None or not self.controller.has_project:
             message = 'Open a saved character to preview on its rig.'
         elif not saved:
@@ -387,6 +392,8 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Universal Character Creator — " + state.name + (" *" if state.dirty else ""))
 
     def _clear_preview(self) -> None:
+        from .registered_native_cache import clear_session_previews
+        clear_session_previews(self)
         from .body_sprite_workflow import clear_body_sprite
         clear_body_sprite(self)
         from .source_skeleton_workflow import clear_source_skeleton
@@ -685,7 +692,11 @@ class MainWindow(QMainWindow):
         from .registered_native_workflow import RegisteredNativeCompletion, finish_registered_native
         if (isinstance(result, RegisteredNativeCompletion)
                 or self._work_kind in {'registered_native_body','registered_native_playback'}):
+            pending = getattr(self, '_registered_native_pending', None)
             finish_registered_native(self,result)
+            if isinstance(result, RegisteredNativeCompletion):
+                from .registered_native_cache import remember_session_preview
+                remember_session_preview(self, pending, result)
             return
         if self._work_kind == 'source_skeleton':
             from .source_skeleton_workflow import finish_source_skeleton
