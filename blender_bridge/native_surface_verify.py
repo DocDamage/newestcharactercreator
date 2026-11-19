@@ -7,12 +7,13 @@ from blender_bridge.native_inputs import read_json,validate_profile
 from blender_bridge.native_surface_review import SurfaceInspector
 
 
-def verify_surface_review(bpy,root,options: dict,*,frame_observer=None) -> dict:
+def verify_surface_review(bpy,root,options: dict,*,frame_observer=None,
+                          allow_preview_adjustments: bool = False) -> dict:
     base={k:v for k,v in options.items() if k!="surface_review_sha256"}
-    reopened=reopen_native(bpy,root,base)
+    reopened=reopen_native(bpy,root,base,allow_preview_adjustments=allow_preview_adjustments)
     expected=read_json(root/"motion_contacts.json",options["surface_review_sha256"],16*1024*1024)
     profile=validate_profile(read_json(root/"native_mapping.json",base["mapping_sha256"],64*1024),
-        base["source_sha256"],base["snapshot_sha256"],base["master_sha256"],allow_preview_adjustments=True)
+        base["source_sha256"],base["snapshot_sha256"],base["master_sha256"],allow_preview_adjustments=allow_preview_adjustments)
     data=read_json(root/"target_timeline.json",base["timeline_sha256"],64*1024*1024)
     human,rig=scene_objects(bpy);inspector=SurfaceInspector(profile,rig,human)
     for frame,row in enumerate(data["full_timeline_frames"],1):

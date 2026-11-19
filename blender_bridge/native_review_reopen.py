@@ -52,14 +52,15 @@ def same_strain(measured: dict, expected: Any, frame: int) -> bool:
                 for k,v in measured.items()))
 
 
-def reopen_native(bpy: Any, root: Path, options: dict, *, frame_observer=None) -> dict:
+def reopen_native(bpy: Any, root: Path, options: dict, *, frame_observer=None,
+                  allow_preview_adjustments: bool = False) -> dict:
     from mathutils import Matrix
     paths={"candidate.blend":"master_sha256","review_motion.blend":"review_sha256",
            "source_snapshot.json":"snapshot_sha256","native_mapping.json":"mapping_sha256","target_timeline.json":"timeline_sha256"}
     bound_scene(root/"candidate.blend",options["master_sha256"])
     bound_scene(root/"review_motion.blend",options["review_sha256"])
     source=validate_source(read_json(root/"source_snapshot.json",options["snapshot_sha256"],64*1024*1024),options["source_sha256"])
-    profile=validate_profile(read_json(root/"native_mapping.json",options["mapping_sha256"],64*1024),options["source_sha256"],options["snapshot_sha256"],options["master_sha256"],allow_preview_adjustments=True)
+    profile=validate_profile(read_json(root/"native_mapping.json",options["mapping_sha256"],64*1024),options["source_sha256"],options["snapshot_sha256"],options["master_sha256"],allow_preview_adjustments=allow_preview_adjustments)
     data=read_json(root/"target_timeline.json",options["timeline_sha256"],64*1024*1024)
     if preview_adjustment_declarations(data) != preview_adjustment_declarations(profile):
         raise ValueError("Native reopen adjustments differ from the bound preview profile")
