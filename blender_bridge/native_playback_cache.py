@@ -22,14 +22,15 @@ def record(path: Path) -> dict:
     return {"name":path.name,"bytes":path.stat().st_size,"sha256":digest(path)}
 
 
-def export_native_cache(bpy: Any, root: Path, options: dict) -> dict:
+def export_native_cache(bpy: Any, root: Path, options: dict, *,
+                        allow_preview_adjustments: bool = False) -> dict:
     # This rechecks actual binding/weights/world/Action and every raw/corrected
     # frame, not just the JSON assertion or the saved file's checksum.
-    reopened=reopen_native(bpy,root,options)
+    reopened=reopen_native(bpy,root,options,allow_preview_adjustments=allow_preview_adjustments)
     data=read_json(root/"target_timeline.json",options["timeline_sha256"],64*1024*1024)
     human,rig=scene_objects(bpy)
     profile=validate_profile(read_json(root/"native_mapping.json",options["mapping_sha256"],64*1024),
-        options["source_sha256"],options["snapshot_sha256"],options["master_sha256"],allow_wrist_transitions=True)
+        options["source_sha256"],options["snapshot_sha256"],options["master_sha256"],allow_preview_adjustments=allow_preview_adjustments)
     inspector=SurfaceInspector(profile,rig,human)
     binary=root/"motion_skin.bin";manifest=root/"motion_skin.json"
     contacts=root/"motion_contacts.json"

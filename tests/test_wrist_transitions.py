@@ -5,6 +5,7 @@ import math
 import unittest
 
 from ucc.animations import native_math as nm
+from ucc.animations.native_preview_adjustments import adjusted_native_preview_source, validate_preview_adjustments
 from ucc.animations.wrist_transitions import preview_source_motion, validate_wrist_transitions
 from ucc.core.errors import ValidationError
 
@@ -85,3 +86,61 @@ class WristTransitionTests(unittest.TestCase):
         bad_skin['skin_deformation_policy'] = 'MASTER_MODIFIERS_V1'
         with self.assertRaisesRegex(ValidationError, 'saved-skin'):
             validate_wrist_transitions(bad_skin)
+
+class ForearmRollTests(unittest.TestCase):
+    def declaration(self):
+        selected = profile()
+        selected['landmarks']['left_hand']['target'] = 'wrist.L'
+        selected['hand_reference_planes'] = {}
+        selected['pairs'] = [
+            {'source': 'Forearm', 'source_tip': 'Wrist', 'target_tip': 'wrist.L'},
+        ]
+        selected['forearm_roll'] = {'schema_version': 1, 'windows': [
+            {'side': 'left', 'first_frame': 65, 'angle_tenths': [0, 10, 20, 10, 0]},
+        ]}
+        return selected
+
+    def test_measured_ray_roll_rotates_only_the_forearm_basis(self):
+        source = synthetic_source()
+        baseline = deepcopy(source)
+        selected = self.declaration()
+        del selected['wrist_transitions']
+        adjusted = adjusted_native_preview_source(source, selected)
+        self.assertEqual(source, baseline)
+        for before, after in zip(source['frames'], adjusted['frames']):
+            if before['frame'] in (65, 69):
+                self.assertIs(before, after)
+                continue
+            self.assertNotEqual(before['poses'][0], after['poses'][0])
+            self.assertEqual(before['poses'][1:], after['poses'][1:])
+            self.assertEqual(before['armature_world'], after['armature_world'])
+            self.assertEqual([before['poses'][0][i] for i in (3, 7, 11)],
+                             [after['poses'][0][i] for i in (3, 7, 11)])
+            self.assertEqual(after['pose_sha256'], nm.pose_digest(after['armature_world'], after['poses']))
+            for original, revised in zip((local(before, 1, 0)[i][3] for i in range(3)),
+                                         (local(after, 1, 0)[i][3] for i in range(3))):
+                self.assertAlmostEqual(original, revised, places=12)
+
+    def test_forearm_roll_preserves_the_already_corrected_wrist(self):
+        source = synthetic_source()
+        selected = self.declaration()
+        wrist_only = preview_source_motion(source, selected)
+        derived = adjusted_native_preview_source(source, selected)
+        self.assertNotEqual(wrist_only['frames'][2]['poses'][0], derived['frames'][2]['poses'][0])
+        self.assertEqual(wrist_only['frames'][2]['poses'][1:], derived['frames'][2]['poses'][1:])
+        self.assertIs(adjusted_native_preview_source(source, {}), source)
+
+    def test_scope_rejects_unbounded_steps_frames_and_hierarchy(self):
+        for angles in ([0, 20, 0], [1, 10, 0], [0, 0, 0], [0, True, 0], [0, 10]*9):
+            with self.subTest(angles=angles), self.assertRaises(ValidationError):
+                selected = self.declaration()
+                selected['forearm_roll']['windows'][0]['angle_tenths'] = angles
+                validate_preview_adjustments(selected)
+        selected = self.declaration()
+        selected['forearm_roll']['windows'][0]['first_frame'] = 64
+        with self.assertRaisesRegex(ValidationError, 'outside the measured source clock'):
+            adjusted_native_preview_source(synthetic_source(), selected)
+        source = synthetic_source()
+        source['bones'][1]['parent'] = 'Other'
+        with self.assertRaisesRegex(ValidationError, 'direct hand child'):
+            adjusted_native_preview_source(source, self.declaration())

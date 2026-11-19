@@ -335,7 +335,7 @@ def reopen_native_body(job: dict, root: Path) -> dict:
     action={"cache_native_fbx_body":export_native_cache,"reopen_native_fbx_body":reopen_native,
             "verify_native_surface_review":verify_surface_review}[job["operation"]]
     activate_material_contract()
-    return action(bpy,root,options)
+    return action(bpy,root,options,allow_preview_adjustments=True)
 
 
 def inspect_native_fbx(job: dict, root: Path) -> dict:

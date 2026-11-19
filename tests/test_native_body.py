@@ -3,11 +3,17 @@ from copy import deepcopy
 from hashlib import sha256
 import json
 from pathlib import Path
+import subprocess
+import sys
 import tempfile
+from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 
 from fixtures.native_body_contract import contract,digest
+from fixtures.native_palm_contract import palm_contract
 from blender_bridge.native_inputs import validate_profile as worker_profile, validate_source as worker_source, read_json
+from blender_bridge import native_playback_cache, native_review_reopen, native_surface_verify
 from ucc.animations.native_profile import validate_native_profile,read_native_profile
 from ucc.animations.native_family import measured_body_profile
 from ucc.animations.native_math import product,rows,inverse,rotation
@@ -17,6 +23,41 @@ from ucc.jobs.protocol import JobRequest
 
 
 class NativeProfileTests(unittest.TestCase):
+    def test_checkout_worker_validates_legacy_profiles_without_host_imports(self):
+        _, _, _, profile, _ = contract()
+        repo = Path(__file__).resolve().parents[1]
+        check = """
+import json
+import sys
+
+sys.path.insert(0, sys.argv[1])
+from blender_bridge.native_inputs import validate_profile
+
+profile = json.load(sys.stdin)
+bindings = [profile[key] for key in ("source_sha256", "snapshot_sha256", "master_sha256")]
+assert validate_profile(profile, *bindings) is profile
+for key, window in (
+    ("wrist_transitions", {"side": "left", "first_frame": 1, "last_frame": 3}),
+    ("forearm_roll", {"side": "left", "first_frame": 1, "angle_tenths": [0, 10, 0]}),
+):
+    declared = {**profile, key: {"schema_version": 1, "windows": [window]}}
+    try:
+        validate_profile(declared, *bindings)
+    except ValueError as error:
+        assert "private preview only" in str(error), error
+    else:
+        raise AssertionError("Preview adjustment accepted without opt-in")
+assert not any(name == "ucc" or name.startswith("ucc.") for name in sys.modules)
+"""
+        result = subprocess.run(
+            [sys.executable, "-I", "-S", "-B", "-c", check, str(repo)],
+            input=json.dumps(profile),
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
     def test_explicit_profile_passes_both_boundaries_and_binds_all_three_inputs(self):
         _,_,source,profile,_=contract()
         validate_native_profile(profile,"a"*64,"b"*64,"c"*64)
@@ -26,6 +67,37 @@ class NativeProfileTests(unittest.TestCase):
             bad=deepcopy(profile);bad[key]="f"*64
             with self.subTest(key=key),self.assertRaises(ValidationError):validate_native_profile(bad,"a"*64,"b"*64,"c"*64)
             with self.assertRaises(ValueError):worker_profile(bad,"a"*64,"b"*64,"c"*64)
+
+    def test_shared_native_review_workers_default_to_denying_preview_adjustments(self):
+        _, _, source, _, bindings = contract()
+        profile = palm_contract()[0]
+        hand = profile["landmarks"]["left_hand"]
+        forearm = next(pair for pair in profile["pairs"] if pair["source"] == "S08")
+        forearm.update(source_tip=hand["source"], target_tip=hand["target"])
+        profile["forearm_roll"] = {"schema_version": 1, "windows": [
+            {"side": "left", "first_frame": 1, "angle_tenths": [0, 10, 0]},
+        ]}
+        self.assertIs(worker_profile(profile, "a"*64, "b"*64, "c"*64,
+                                     allow_preview_adjustments=True), profile)
+        staged = {"source_snapshot.json": source, "native_mapping.json": profile}
+
+        def read_staged(path, *_):
+            if path.name not in staged:
+                raise AssertionError("Shared review reached timeline before refusing preview adjustments")
+            return staged[path.name]
+
+        options = {**bindings, "review_sha256": "e"*64, "timeline_sha256": "f"*64}
+        operations = (
+            (native_review_reopen.reopen_native, options),
+            (native_playback_cache.export_native_cache, options),
+            (native_surface_verify.verify_surface_review, {**options, "surface_review_sha256": "0"*64}),
+        )
+        with (patch.dict(sys.modules, {"mathutils": SimpleNamespace(Matrix=object())}),
+              patch.object(native_review_reopen, "bound_scene"),
+              patch.object(native_review_reopen, "read_json", side_effect=read_staged)):
+            for operation, bound in operations:
+                with self.subTest(operation=operation.__name__), self.assertRaisesRegex(ValueError, "private preview only"):
+                    operation(None, Path("synthetic"), bound)
 
     def test_names_roles_root_convention_and_false_schema_versions_reject(self):
         _,_,_,profile,_=contract()

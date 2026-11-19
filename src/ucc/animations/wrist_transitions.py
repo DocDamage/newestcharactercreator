@@ -1,8 +1,6 @@
 """Bounded source-backed wrist transition correction for private previews."""
 
-from hashlib import sha256
 import math
-import struct
 
 from ucc.core.errors import ValidationError
 
@@ -116,8 +114,6 @@ def preview_source_motion(source: dict, profile: dict) -> dict:
             for descendant in subtree - {wrist}:
                 poses[descendant] = _flatten(nm.product(delta, nm.rows(poses[descendant])))
             poses[wrist] = _flatten(corrected)
-            digest = sha256()
-            for matrix in (row['armature_world'], *poses):
-                digest.update(struct.pack('<16q', *(round(value * 1_000_000) for value in matrix)))
-            derived_frames[index] = {**row, 'poses': poses, 'pose_sha256': digest.hexdigest()}
+            derived_frames[index] = {**row, 'poses': poses,
+                                     'pose_sha256': nm.pose_digest(row['armature_world'], poses)}
     return {**source, 'frames': derived_frames}

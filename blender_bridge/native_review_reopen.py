@@ -5,7 +5,7 @@ import math
 from pathlib import Path
 from typing import Any
 
-from blender_bridge.native_inputs import read_json, validate_source, validate_profile
+from blender_bridge.native_inputs import preview_adjustment_declarations, read_json, validate_source, validate_profile
 from blender_bridge.native_corrective import SETTINGS, NAME, POLICY
 from blender_bridge.native_regional_corrective import POLICY as REGIONAL, verify_saved_layers
 from blender_bridge.native_region_mask import source_group_signature
@@ -52,17 +52,18 @@ def same_strain(measured: dict, expected: Any, frame: int) -> bool:
                 for k,v in measured.items()))
 
 
-def reopen_native(bpy: Any, root: Path, options: dict, *, frame_observer=None) -> dict:
+def reopen_native(bpy: Any, root: Path, options: dict, *, frame_observer=None,
+                  allow_preview_adjustments: bool = False) -> dict:
     from mathutils import Matrix
     paths={"candidate.blend":"master_sha256","review_motion.blend":"review_sha256",
            "source_snapshot.json":"snapshot_sha256","native_mapping.json":"mapping_sha256","target_timeline.json":"timeline_sha256"}
     bound_scene(root/"candidate.blend",options["master_sha256"])
     bound_scene(root/"review_motion.blend",options["review_sha256"])
     source=validate_source(read_json(root/"source_snapshot.json",options["snapshot_sha256"],64*1024*1024),options["source_sha256"])
-    profile=validate_profile(read_json(root/"native_mapping.json",options["mapping_sha256"],64*1024),options["source_sha256"],options["snapshot_sha256"],options["master_sha256"],allow_wrist_transitions=True)
+    profile=validate_profile(read_json(root/"native_mapping.json",options["mapping_sha256"],64*1024),options["source_sha256"],options["snapshot_sha256"],options["master_sha256"],allow_preview_adjustments=allow_preview_adjustments)
     data=read_json(root/"target_timeline.json",options["timeline_sha256"],64*1024*1024)
-    if ("wrist_transitions" in data) != ("wrist_transitions" in profile) or data.get("wrist_transitions")!=profile.get("wrist_transitions"):
-        raise ValueError("Native reopen wrist transitions differ from the bound preview profile")
+    if preview_adjustment_declarations(data) != preview_adjustment_declarations(profile):
+        raise ValueError("Native reopen adjustments differ from the bound preview profile")
     policy=profile.get("skin_deformation_policy")
     reference=profile.get("mesh_strain_reference","FIRST_POSE_AND_NEUTRAL_V1")
     if data.get("mesh_strain_reference","FIRST_POSE_AND_NEUTRAL_V1")!=reference:

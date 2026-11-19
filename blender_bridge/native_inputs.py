@@ -9,6 +9,12 @@ from blender_bridge.native_reference import CONVENTION
 from blender_bridge.native_palms import PALM_AXES, validate_palm_profile
 
 LANDMARKS = {"left_hip","right_hip","head","left_hand","right_hand","left_foot","right_foot"}
+# Legacy bridge routes run from a source checkout without the UCC package on sys.path.
+PREVIEW_ADJUSTMENT_KEYS = ("wrist_transitions", "forearm_roll")
+
+
+def preview_adjustment_declarations(data: dict) -> dict:
+    return {key: data[key] for key in PREVIEW_ADJUSTMENT_KEYS if key in data}
 
 
 def read_json(path: Path, digest: str, maximum: int):
@@ -93,8 +99,8 @@ def validate_source(data, source_sha):
     return data
 
 
-def validate_profile(data, source_sha, snapshot_sha, master_sha, *, allow_wrist_transitions=False):
-    if (type(data) is not dict or set(data)-{"root_motion_policy","skin_deformation_policy","mesh_strain_reference","hand_reference_planes","wrist_transitions"}!={"schema_version","convention","source_sha256","snapshot_sha256","master_sha256","landmarks","pairs"} or
+def validate_profile(data, source_sha, snapshot_sha, master_sha, *, allow_preview_adjustments=False):
+    if (type(data) is not dict or set(data)-{"root_motion_policy","skin_deformation_policy","mesh_strain_reference","hand_reference_planes",*PREVIEW_ADJUSTMENT_KEYS}!={"schema_version","convention","source_sha256","snapshot_sha256","master_sha256","landmarks","pairs"} or
             type(data["schema_version"]) is not int or data["schema_version"]!=1 or data["convention"]!=CONVENTION or
             any(data[k]!=v for k,v in (("source_sha256",source_sha),("snapshot_sha256",snapshot_sha),("master_sha256",master_sha)))):
         raise ValueError("Native map convention/binding differs")
@@ -127,9 +133,9 @@ def validate_profile(data, source_sha, snapshot_sha, master_sha, *, allow_wrist_
                 row["source"]=="@ARMATURE" or exact.get(row["source"])!=row["target"]): raise ValueError("Native landmark/pair mismatch")
     if len({r["source"] for r in landmarks.values()})!=len(LANDMARKS): raise ValueError("Native landmarks must be distinct")
     validate_palm_profile(data)
-    if "wrist_transitions" in data:
-        if not allow_wrist_transitions:
-            raise ValueError("Wrist transitions are private preview only")
-        from ucc.animations.wrist_transitions import validate_wrist_transitions
-        validate_wrist_transitions(data)
+    if preview_adjustment_declarations(data):
+        if not allow_preview_adjustments:
+            raise ValueError("Source pose adjustments are private preview only")
+        from ucc.animations.native_preview_adjustments import validate_preview_adjustments
+        validate_preview_adjustments(data)
     return data
