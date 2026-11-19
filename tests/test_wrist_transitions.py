@@ -144,3 +144,23 @@ class ForearmRollTests(unittest.TestCase):
         source['bones'][1]['parent'] = 'Other'
         with self.assertRaisesRegex(ValidationError, 'direct hand child'):
             adjusted_native_preview_source(source, self.declaration())
+
+    def test_calibrated_baseline_is_bounded_and_preserves_other_joints(self):
+        source = synthetic_source()
+        selected = self.declaration()
+        del selected['wrist_transitions']
+        selected['forearm_roll'] = {
+            'schema_version': 2,
+            'baseline_tenths': {'left': 80},
+            'windows': [],
+        }
+
+        adjusted = adjusted_native_preview_source(source, selected)
+        for before, after in zip(source['frames'], adjusted['frames']):
+            self.assertNotEqual(before['poses'][0], after['poses'][0])
+            self.assertEqual(before['poses'][1:], after['poses'][1:])
+            self.assertEqual(before['armature_world'], after['armature_world'])
+
+        selected['forearm_roll']['baseline_tenths']['left'] = 81
+        with self.assertRaises(ValidationError):
+            validate_preview_adjustments(selected)

@@ -23,12 +23,18 @@ def validate_planted_knee(profile: dict) -> None:
             or profile.get('skin_deformation_policy') not in CORRECTIVE_POLICIES
             or profile.get('mesh_strain_reference') != 'TRUE_NEUTRAL_BIND_V2'):
         raise ValidationError('Planted knee correction requires the hip anchor and both neutral skin references')
-    if (type(cfg) is not dict or set(cfg) != {'schema_version','first_frame','frame_count','source_lift_axis'}
-            or type(cfg['schema_version']) is not int or cfg['schema_version'] not in (1, 2)
-            or type(cfg['first_frame']) is not int or abs(cfg['first_frame']) > 100_000
+    if type(cfg) is not dict or type(cfg.get('schema_version')) is not int or cfg['schema_version'] not in (1,2,3):
+        raise ValidationError('Unknown planted knee correction version')
+    version = cfg['schema_version']
+    keys = {'schema_version','first_frame','frame_count'}
+    if version != 3:
+        keys.add('source_lift_axis')
+    if (set(cfg) != keys or type(cfg['first_frame']) is not int or abs(cfg['first_frame']) > 100_000
             or type(cfg['frame_count']) is not int
-            or not 1 <= cfg['frame_count'] <= (12 if cfg['schema_version'] == 1 else 24)):
+            or not 1 <= cfg['frame_count'] <= (24 if version == 2 else 12)):
         raise ValidationError('Planted knee correction requires a short, versioned source window')
+    if version == 3:
+        return
     axis = cfg['source_lift_axis']
     if (type(axis) is not list or len(axis) != 3
             or any(type(v) not in (int, float) or not -1. <= v <= 1. for v in axis)
@@ -37,7 +43,7 @@ def validate_planted_knee(profile: dict) -> None:
 
 
 def validate_planted_alignment(profile: dict, axes) -> None:
-    if 'planted_knee' in profile:
+    if 'planted_knee' in profile and profile['planted_knee']['schema_version'] != 3:
         axis = profile['planted_knee']['source_lift_axis']
         projected = [_dot(row, axis) for row in axes]
         if math.dist(projected, (0., 0., 1.)) > 1e-6:
@@ -180,28 +186,95 @@ def _flight_lifts(frames, chains, axis, start, end):
     return samples[2:-2]
 
 
+_ZERO_SHIFT = (0.,0.,0.)
+
+
+def _closest_intersection(left, right):
+    a, ra = left
+    b, rb = right
+    line = _sub(b,a)
+    distance = math.hypot(*line)
+    if distance < 1e-12 or not abs(ra-rb)-1e-10 <= distance <= ra+rb+1e-10:
+        return None
+    normal = _scale(line,1./distance)
+    section = (ra**2-rb**2+distance**2)/(2.*distance)
+    center = _add(a,_scale(normal,section))
+    circle_radius = math.sqrt(max(0.,ra**2-section**2))
+    toward_origin = _scale(_sub(center,_scale(normal,_dot(center,normal))),-1.)
+    if math.hypot(*toward_origin) < 1e-12:
+        return center if circle_radius < 1e-10 else None
+    return _add(center,_scale(nm.unit(toward_origin),circle_radius))
+
+
+def _minimum_folded_shift(chains):
+    constraints = []
+    for hip,knee,ankle in chains:
+        length_a,length_b = math.dist(hip,knee),math.dist(knee,ankle)
+        minimum = math.sqrt(length_a**2+length_b**2+2.*length_a*length_b*math.cos(_LIMIT))
+        constraints.append((_sub(ankle,hip),minimum,length_a+length_b))
+
+    def feasible(point):
+        return all(lo-1e-10 <= math.dist(point,center) <= hi+1e-10 for center,lo,hi in constraints)
+
+    if feasible(_ZERO_SHIFT):
+        return _ZERO_SHIFT
+    spheres = [[(center,lo),(center,hi)] for center,lo,hi in constraints]
+    options = []
+    for pair in spheres:
+        for center,radius in pair:
+            distance = math.hypot(*center)
+            if distance > 1e-12:
+                options.append(_scale(center,1.-radius/distance))
+    for left in spheres[0]:
+        for right in spheres[1]:
+            point = _closest_intersection(left,right)
+            if point is not None:
+                options.append(point)
+    retained = [point for point in options if feasible(point)]
+    if not retained:
+        raise ValidationError('Folded knee correction has no unambiguous common reach')
+    return min(retained,key=lambda point:math.hypot(*point))
+
+
+def _folded_shifts(frames, chains, start, end):
+    shifts = [_minimum_folded_shift(_points(row,chains,nm.rows(row['armature_world'])))
+              for row in frames[start-1:end+1]]
+    if shifts[0] != _ZERO_SHIFT or shifts[-1] != _ZERO_SHIFT:
+        raise ValidationError('Folded knee correction does not join the untouched motion')
+    if (max(math.hypot(*shift) for shift in shifts) > .075
+            or any(math.dist(a,b) > .036 for a,b in zip(shifts,shifts[1:]))
+            or _ZERO_SHIFT in shifts[1:-1]):
+        raise ValidationError('Folded knee correction exceeds its measured displacement window')
+    return shifts[1:-1]
+
+
 def apply_planted_knee(source: dict, profile: dict) -> dict:
     cfg = profile['planted_knee']
     frames = source['frames'][:]
     start = cfg['first_frame']-source['first_frame']
     end = start+cfg['frame_count']
-    opening = cfg['schema_version'] == 1
-    if opening and (start != 0 or end >= len(frames)):
+    version = cfg['schema_version']
+    if version == 1 and (start != 0 or end >= len(frames)):
         raise ValidationError('Planted knee correction needs the measured opening and a handoff sample')
-    if not opening and not 2 <= start < end <= len(frames)-2:
+    if version == 2 and not 2 <= start < end <= len(frames)-2:
         raise ValidationError('Flight knee correction needs both measured handoffs')
+    if version == 3 and not 1 <= start < end < len(frames):
+        raise ValidationError('Folded knee correction needs both measured handoffs')
     chains,feet = _chain_indices(source,profile)
-    axis = cfg['source_lift_axis']
-    values = (_opening_lifts(frames,chains,axis,end) if opening
-              else _flight_lifts(frames,chains,axis,start,end))
-    for index,lift in enumerate(values,start):
-        if lift <= 1e-10:
+    if version == 3:
+        shifts = _folded_shifts(frames,chains,start,end)
+    else:
+        axis = cfg['source_lift_axis']
+        values = (_opening_lifts(frames,chains,axis,end) if version == 1
+                  else _flight_lifts(frames,chains,axis,start,end))
+        shifts = [_scale(axis,lift) for lift in values]
+    for index,shift in enumerate(shifts,start):
+        if math.hypot(*shift) <= 1e-10:
             continue
         row = frames[index]
         world = nm.rows(row['armature_world'])
         poses = row['poses']
         points = _points(row,chains,world)
-        shift = _scale(axis,lift)
         lifted_world = [row[:] for row in world]
         for i in range(3):
             lifted_world[i][3] += shift[i]

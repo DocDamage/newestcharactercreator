@@ -73,3 +73,27 @@ class PlantedKneeTests(unittest.TestCase):
         profile['planted_knee'].update(first_frame=13,frame_count=3)
         with self.assertRaisesRegex(ValidationError,'does not join'):
             adjusted_native_preview_source(source,profile)
+
+    def test_folded_window_preserves_foot_transforms_and_adjacent_samples(self):
+        source, profile = planted_knee_case()
+        deep, shallow, _ = source['frames']
+        middle = deepcopy(deep)
+        middle['frame'] = 8
+        source['frames'] = [{**shallow, 'frame': 7}, middle, {**shallow, 'frame': 9}]
+        profile['planted_knee'] = {'schema_version': 3, 'first_frame': 8, 'frame_count': 1}
+
+        derived = adjusted_native_preview_source(source, profile)
+        before, after = middle, derived['frames'][1]
+        self.assertIs(derived['frames'][0], source['frames'][0])
+        self.assertIs(derived['frames'][2], source['frames'][2])
+        self.assertNotEqual(after['armature_world'], before['armature_world'])
+        for index in (2, 3, 6, 7):
+            old = nm.product(nm.rows(before['armature_world']), nm.rows(before['poses'][index]))
+            new = nm.product(nm.rows(after['armature_world']), nm.rows(after['poses'][index]))
+            for old_row, new_row in zip(old, new):
+                for original, corrected in zip(old_row, new_row):
+                    self.assertAlmostEqual(original, corrected, places=12)
+
+        profile['planted_knee']['source_lift_axis'] = [0., 0., 1.]
+        with self.assertRaises(ValidationError):
+            adjusted_native_preview_source(source, profile)
