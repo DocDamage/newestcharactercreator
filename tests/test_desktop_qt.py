@@ -100,6 +100,31 @@ class DesktopQtSmoke(unittest.TestCase):
         self.assertIs(dock.titleBarWidget(), chrome)
         self.assertFalse(character.isVisible())
 
+    def test_workspace_static_watch_ignores_job_directory_changes_but_revokes_changed_master(self):
+        from hashlib import sha256
+        from types import SimpleNamespace
+        from ucc.desktop.static_preview_binding import bind_preview
+
+        store = self.controller.store
+        project = store.load()
+        master = store.root / 'identity-test.dat'
+        master.write_bytes(b'first identity')
+        pin = sha256(master.read_bytes()).hexdigest()
+        result = SimpleNamespace(project_id=project.project_id, revision=project.revision,
+            master_blend=project.master_blend, master_sha256=pin, watched_inputs=())
+        with (
+            patch('ucc.desktop.static_preview_binding._master_file', return_value=(master, pin)),
+            patch.object(self.window, '_clear_preview') as clear,
+        ):
+            bind_preview(self.window, result, isolate_workspace=True)
+            watcher = self.window._static_preview_watcher
+            (store.root / '.ucc-jobs').mkdir()
+            watcher.directoryChanged.emit(str(store.root))
+            clear.assert_not_called()
+            master.write_bytes(b'a different identity')
+            watcher.directoryChanged.emit(str(store.root))
+            clear.assert_called_once()
+
     def test_slider_and_advanced_anatomy_controls(self):
         self.assertFalse(self.window.character.advanced.isVisible())
         self.window.character.mode.setCurrentText("Advanced")
