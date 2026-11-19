@@ -1,6 +1,7 @@
 """Bounded session reuse of already authenticated registered previews."""
 from collections import OrderedDict
 from dataclasses import dataclass
+from pathlib import Path
 from threading import Event
 
 from ucc.core.errors import UCCError, ValidationError
@@ -8,6 +9,7 @@ from ucc.core.models import CharacterProject
 from ucc.core.storage import ProjectStore
 from ucc.jobs.native_body import NativeBodyPreview
 from ucc.jobs.native_playback import NativePlayback
+from ucc.jobs.native_preview_profiles import catalog_preview_profile_path, find_catalog_preview_profile
 from ucc.jobs.target_action_context import operation_budget
 from .registered_native_binding import guard_registered_native, selected_clip
 
@@ -86,10 +88,14 @@ def replay_session_preview(window) -> bool:
 
     def verify():
         with operation_budget(pending.cancel, 60) as budget:
+            slot = catalog_preview_profile_path(authority.database_path, authority.source_sha256,
+                                                authority.snapshot_sha256, cached.body.master_sha256)
+            cached_mapping = slot if Path(cached.body.mapping_profile_used) == slot else None
             if (authority.guard(cancel=budget.cancel, timeout_s=budget.remaining()) is not True
                     or proof.guard(cancel=budget.cancel, timeout_s=budget.remaining()) is not True
                     or authority.guard(cancel=budget.cancel, timeout_s=budget.remaining()) is not True
-                    or not authority.identities_current() or not proof.identities_current()):
+                    or not authority.identities_current() or not proof.identities_current()
+                    or find_catalog_preview_profile(authority, cached.body.master_sha256) != cached_mapping):
                 raise ValidationError('Saved preview inputs changed. Preview the clip again to verify the new files.')
             return RegisteredNativeCompletion(pending.token, cached.playback, cached.identities,
                                               inline_preview=cached.body)
