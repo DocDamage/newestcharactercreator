@@ -57,7 +57,11 @@ def retarget_native(bpy: Any, root: Path, options: dict) -> dict:
         raise ValueError("Native target master SHA-256 differs")
     source=validate_source(read_json(source_path,options["snapshot_sha256"],64*1024*1024),options["source_sha256"])
     profile=validate_profile(read_json(profile_path,options["mapping_sha256"],64*1024),
-                             options["source_sha256"],options["snapshot_sha256"],options["master_sha256"])
+                             options["source_sha256"],options["snapshot_sha256"],options["master_sha256"],
+                             allow_wrist_transitions=not options["render_private_frames"])
+    if "wrist_transitions" in profile:
+        from ucc.animations.wrist_transitions import preview_source_motion
+        source=preview_source_motion(source,profile)
     pairs=profile["pairs"]
     def mat(values): return Matrix([values[i:i+4] for i in range(0,16,4)])
     bpy.ops.wm.open_mainfile(filepath=str(master),load_ui=False)
@@ -263,6 +267,8 @@ def retarget_native(bpy: Any, root: Path, options: dict) -> dict:
                   "omitted_source_bones":[b["name"] for b in source["bones"] if b["name"] not in {p["source"] for p in pairs}],
                   "neutral_target_helpers":[n for n in ordered if n not in by_target],
                   "retargeting_verified":False,"engine_import_verified":False}
+        if "wrist_transitions" in profile:
+            timeline["wrist_transitions"]=profile["wrist_transitions"]
         path=root/"target_timeline.json"
         payload=json.dumps(timeline,ensure_ascii=False,allow_nan=False,separators=(",",":")).encode()
         if len(payload)>64*1024*1024 or path.exists() or path.is_symlink(): raise ValueError("Invalid/occupied native timeline output")

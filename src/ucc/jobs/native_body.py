@@ -108,6 +108,8 @@ def _preview_native_body(store: ProjectStore, *, source_fbx: Path, mapping_profi
             json.dump(generated,stream,ensure_ascii=False,allow_nan=False,separators=(",",":"))
     if _proof is not None: _proof.before(mapping_profile)
     profile,mapping_sha=read_native_profile(mapping_profile,intake["source_sha256"],snapshot_sha,master_sha)
+    if "wrist_transitions" in profile and (_source_authority is None or render_private_frames):
+        raise ValidationError("Wrist transitions require an authenticated animation-library preview")
     if _proof is not None: _proof.admit(mapping_profile, mapping_sha)
     bindings={"source_sha256":intake["source_sha256"],"snapshot_sha256":snapshot_sha,
               "mapping_sha256":mapping_sha,"master_sha256":master_sha}

@@ -12,7 +12,7 @@ def verify_surface_review(bpy,root,options: dict,*,frame_observer=None) -> dict:
     reopened=reopen_native(bpy,root,base)
     expected=read_json(root/"motion_contacts.json",options["surface_review_sha256"],16*1024*1024)
     profile=validate_profile(read_json(root/"native_mapping.json",base["mapping_sha256"],64*1024),
-        base["source_sha256"],base["snapshot_sha256"],base["master_sha256"])
+        base["source_sha256"],base["snapshot_sha256"],base["master_sha256"],allow_wrist_transitions=True)
     data=read_json(root/"target_timeline.json",base["timeline_sha256"],64*1024*1024)
     human,rig=scene_objects(bpy);inspector=SurfaceInspector(profile,rig,human)
     for frame,row in enumerate(data["full_timeline_frames"],1):
