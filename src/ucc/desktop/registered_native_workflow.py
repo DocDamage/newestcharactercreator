@@ -14,6 +14,7 @@ from ucc.core.models import CharacterProject
 from ucc.core.storage import ProjectStore
 from ucc.jobs.native_body import NativeBodyPreview, preview_native_body
 from ucc.jobs.native_playback import NativePlayback, prepare_native_playback
+from ucc.jobs.native_preview_profiles import find_catalog_preview_profile
 from ucc.jobs.native_source_authority import NativeProofReceipt, NativeSourceAuthority, bind_native_catalog_source
 from ucc.jobs.runner import WorkerFailure
 from .generation import bundled_worker_path
@@ -241,8 +242,11 @@ def _start_body(window, *, inline: bool) -> None:
             catalog.library.require_permission(asset_id, 'local_preview')
         authority = bind_native_catalog_source(database, clip_id, expected_source_sha256=entry.sha256,
             expected_policy=entry.policy, local_preview_confirmed=True, cancel=pending.cancel)
+        selected_profile = profile
+        if pending.inline and selected_profile is None and not include_hands:
+            selected_profile = find_catalog_preview_profile(authority, Path(project.master_blend).stem)
         inline_options = {'render_private_frames': False, 'progress': progress} if pending.inline else {}
-        preview = preview_native_body(store, source_fbx=authority.source_path, mapping_profile=profile,
+        preview = preview_native_body(store, source_fbx=authority.source_path, mapping_profile=selected_profile,
             blender_exe=executable, worker_script=worker, permission=authority.policy,
             expected_project_id=project.project_id, expected_revision=project.revision,
             expected_master_blend=project.master_blend, cancel=pending.cancel,

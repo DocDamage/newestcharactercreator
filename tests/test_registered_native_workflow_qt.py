@@ -2,6 +2,7 @@
 import os
 os.environ.setdefault('QT_QPA_PLATFORM','offscreen')
 from dataclasses import replace
+from hashlib import sha256
 import json
 from pathlib import Path
 import tempfile
@@ -11,6 +12,7 @@ from unittest.mock import patch,PropertyMock
 from fixtures.registered_native_ui_contract import synthetic_environment,synthetic_canvas_type
 from ucc.animations.catalog import AnimationCatalog
 from ucc.core.errors import UCCError, ValidationError
+from ucc.jobs.native_preview_profiles import catalog_preview_profile_path
 from ucc.library.provenance import AssetPolicyError
 try:
     from PySide6.QtWidgets import QApplication,QMessageBox,QTableWidgetItem
@@ -175,6 +177,39 @@ class RegisteredNativeWorkflowQtTests(unittest.TestCase):
         self.assertIs(self.window._native_playback, result.value)
         self.assertTrue(binding.guard_registered_native(self.window, result.value.source_authority))
         self.assertTrue(viewer.clock.playing)
+
+    def local_profile_path(self):
+        snapshot = sha256((self.f.folder / 'source_snapshot.json').read_bytes()).hexdigest()
+        return catalog_preview_profile_path(self.f.database, self.f.source_sha, snapshot,
+                                            Path(self.f.project.master_blend).stem)
+
+    def test_inline_selects_the_local_body_map_that_matches_all_three_input_pins(self):
+        pane = self.select_inline_source()
+        local = self.local_profile_path()
+        local.parent.mkdir()
+        local.with_name('a' * 64 + '.json').write_text('{}')
+        local.write_text('{}')
+        pane.preview_clip.click()
+        self.finish()
+        self.assertEqual(self.native.call_args.kwargs['mapping_profile'], local)
+
+    def test_inline_does_not_resume_default_session_cache_after_a_local_map_appears(self):
+        pane = self.select_inline_source()
+        pane.preview_clip.click()
+        self.finish()
+        pane.catalog.setCurrentCell(1, 0)
+        local = self.local_profile_path()
+        local.parent.mkdir()
+        local.write_text('{}')
+        pane.catalog.setCurrentCell(0, 0)
+        pane.preview_clip.click()
+        retry, _ = self.queued[-1]
+        with self.assertRaisesRegex(ValidationError, 'Saved preview inputs changed'):
+            retry()
+        self.native.assert_called_once()
+        pane.preview_clip.click()
+        self.finish()
+        self.assertEqual(self.native.call_args.kwargs['mapping_profile'], local)
 
     def test_inline_session_playback_rejects_changed_source_with_restored_stat_identity(self):
         pane = self.select_inline_source()
