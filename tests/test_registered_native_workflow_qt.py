@@ -11,6 +11,7 @@ from unittest.mock import patch,PropertyMock
 from fixtures.registered_native_ui_contract import synthetic_environment,synthetic_canvas_type
 from ucc.animations.catalog import AnimationCatalog
 from ucc.core.errors import ValidationError
+from ucc.library.provenance import AssetPolicyError
 try:
     from PySide6.QtWidgets import QApplication,QMessageBox,QTableWidgetItem
     from ucc.desktop.controller import DesktopController
@@ -64,6 +65,117 @@ class RegisteredNativeWorkflowQtTests(unittest.TestCase):
 
     def playback(self):
         self.body();self.window.animations.load_native_motion.click();return self.finish()
+
+    def select_inline_source(self):
+        pane = self.window.animations
+        pane.display_catalog([
+            {'asset_id': 'source', 'format': 'fbx', 'clips': ['source#clip-0000'],
+             'status': 'METADATA_EXTRACTED'},
+            {'asset_id': 'other_source', 'format': 'fbx', 'clips': [], 'status': 'INDEXED'},
+        ])
+        self.window.tabs.setCurrentWidget(pane)
+        pane.catalog.setCurrentCell(0, 0)
+        self.assertTrue(pane.preview_clip.isEnabled())
+        return pane
+
+    def test_inline_search_excludes_hidden_selection_without_selecting_another_source(self):
+        pane = self.select_inline_source()
+        pane.search.setText('SOURCE measured')
+        self.assertTrue(pane.catalog.isRowHidden(0))
+        self.assertIsNone(pane.workspace.selected_asset_id())
+        self.assertFalse(pane.preview_clip.isEnabled())
+        pane.search.setText('OTHER source')
+        self.assertTrue(pane.catalog.isRowHidden(0))
+        self.assertFalse(pane.catalog.isRowHidden(1))
+        self.assertIsNone(pane.workspace.selected_asset_id())
+        pane.catalog.setCurrentCell(1, 0)
+        self.assertEqual(pane.catalog_selection_label.text(), 'other_source')
+        self.assertFalse(pane.preview_clip.isEnabled())
+        pane.search.clear()
+        pane.catalog.setCurrentCell(0, 0)
+        self.assertTrue(pane.preview_clip.isEnabled())
+        self.window.rename('NONSHIPPING unsaved edit')
+        self.assertFalse(pane.preview_clip.isEnabled())
+
+    def test_inline_one_click_starts_guarded_playback_in_workspace_and_filter_revokes_it(self):
+        pane = self.select_inline_source()
+        with patch.object(flow, 'AnimationCatalog', side_effect=AssertionError('GUI SQL forbidden')), \
+             patch.object(QMessageBox, 'question', side_effect=AssertionError('Unexpected second confirmation')):
+            pane.preview_clip.click()
+        self.assertEqual(len(self.queued), 1)
+        self.native.assert_not_called()
+        self.cache_prepare.assert_not_called()
+        self.finish()
+        self.assertEqual(self.errors, [])
+        self.assertEqual(len(self.queued), 1)
+        self.native.assert_called_once()
+        self.cache_prepare.assert_called_once()
+        native_authority = self.native.call_args.kwargs['source_authority']
+        self.assertIs(self.cache_prepare.call_args.args[1].source_authority, native_authority)
+        self.assertTrue(binding.guard_registered_native(self.window))
+        viewer = self.window.motion_viewer
+        dock = self.window.motion_dock
+        self.assertTrue(pane.workspace.isAncestorOf(dock))
+        self.assertIs(dock.widget(), viewer)
+        self.assertTrue(viewer.clock.playing)
+        self.assertTrue(viewer.timer.isActive())
+        canvas = viewer.canvas
+        pane.search.setText('other_source')
+        self.assertIsNone(self.window._registered_native_binding)
+        self.assertIsNone(viewer.cache)
+        self.assertFalse(viewer.timer.isActive())
+        self.assertTrue(canvas.released)
+        self.assertFalse(pane.preview_clip.isEnabled())
+
+    def test_inline_click_does_not_replace_revoked_catalog_permission(self):
+        pane = self.select_inline_source()
+        with AnimationCatalog(self.f.database) as writer:
+            revoked = self.f.policy.to_dict()
+            revoked['local_preview_allowed'] = False
+            writer.db.execute('UPDATE asset_sources SET license_json=?', (json.dumps(revoked),))
+            writer.db.commit()
+        pane.preview_clip.click()
+        operation, _options = self.queued[-1]
+        with self.assertRaises(AssetPolicyError):
+            operation()
+        self.native.assert_not_called()
+        self.cache_prepare.assert_not_called()
+        self.assertIsNone(self.window._native_review)
+        self.assertIsNone(self.window.motion_viewer)
+
+    def test_inline_replays_current_clip_without_a_second_blender_job(self):
+        pane = self.select_inline_source()
+        pane.preview_clip.click()
+        self.finish()
+        viewer = self.window.motion_viewer
+        viewer.toggle()
+        pane.catalog.setCurrentCell(0, 1)
+        pane.preview_clip.click()
+        self.assertEqual(len(self.queued), 1)
+        self.assertIs(self.window.motion_viewer, viewer)
+        self.assertTrue(viewer.clock.playing)
+
+    def test_inline_deformation_failure_reports_in_workspace_without_modal(self):
+        pane = self.select_inline_source()
+        pane.preview_clip.click()
+        self.window.jobs._cancel = self.queued[-1][1]['cancel']
+        self.addCleanup(setattr, self.window.jobs, '_cancel', None)
+        self.window._job_error('WorkerFailure: MotionQualityError: Extreme local edge strain')
+        self.assertEqual(self.errors, [])
+        self.assertIn('deformation limits', pane.preview_status.text())
+        self.assertIsNone(self.window._native_playback)
+
+    def test_inline_worker_completion_cannot_restore_playback_after_selection_change(self):
+        pane = self.select_inline_source()
+        pane.preview_clip.click()
+        operation, options = self.queued[-1]
+        result = operation()
+        pane.catalog.setCurrentCell(1, 0)
+        self.assertTrue(options['cancel'].is_set())
+        self.window._job_success(result)
+        self.assertIsNone(self.window.motion_viewer)
+        self.assertIsNone(self.window._native_playback)
+        self.assertIsNone(self.window._registered_native_binding)
 
     def test_default_no_and_gui_never_reads_catalog_or_prepares_native(self):
         with patch.object(QMessageBox,'question',return_value=QMessageBox.StandardButton.No) as consent, \

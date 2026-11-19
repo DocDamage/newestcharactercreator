@@ -552,7 +552,11 @@ def publish_target_action(window, context, review, result, *, selected_binding: 
             dock = _TargetActionDock('Registered clip — private one-shot target preview', window)
             dock.setObjectName('RegisteredTargetActionPreviewDock')
             dock.setWidget(viewer)
-            window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dock)
+            mount = getattr(window, 'mount_animation_motion', None)
+            if mount is not None:
+                mount(dock)
+            else:
+                window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dock)
             window._target_action_viewer = viewer
             window._target_action_dock = dock
         viewer = window._target_action_viewer
@@ -574,8 +578,12 @@ def publish_target_action(window, context, review, result, *, selected_binding: 
         window._target_action_catalog_parent = context.database.parent
         window._target_action_identities = {Path(path): expected for path, expected in identities.items()}
         window._target_action_result = result
-        window._target_action_dock.show()
-        window._target_action_dock.raise_()
+        reveal = getattr(window, 'reveal_animation_motion', None)
+        if reveal is not None:
+            reveal(window._target_action_dock)
+        else:
+            window._target_action_dock.show()
+            window._target_action_dock.raise_()
     except BaseException:
         clear_target_action_preview(window)
         raise

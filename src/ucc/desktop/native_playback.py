@@ -37,8 +37,12 @@ def publish_playback(window,result):
         window.motion_viewer.body_review_requested.connect(lambda:start_body_contact_review(window))
         window.motion_dock=QDockWidget("Verified cached animation — private preview",window)
         window.motion_dock.setObjectName("MotionPreviewDock");window.motion_dock.setWidget(window.motion_viewer)
-        window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea,window.motion_dock)
-        window.mesh_action.parent().addAction(window.motion_dock.toggleViewAction())
+        mount = getattr(window, 'mount_animation_motion', None)
+        if mount is not None:
+            mount(window.motion_dock)
+        else:
+            window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea,window.motion_dock)
+            window.mesh_action.parent().addAction(window.motion_dock.toggleViewAction())
         window._motion_watcher=QFileSystemWatcher(window)
         watcher=window._motion_watcher
         window._motion_watcher.fileChanged.connect(lambda _path:
@@ -57,7 +61,11 @@ def publish_playback(window,result):
     window.motion_viewer.show_cache(result.cache)
     window._native_playback=result
     window._fitted_playback=None;window._body_contact_review=None
-    window.mesh_dock.hide();window.motion_dock.show();window.motion_dock.raise_()
+    reveal = getattr(window, 'reveal_animation_motion', None)
+    if reveal is not None:
+        reveal()
+    else:
+        window.mesh_dock.hide();window.motion_dock.show();window.motion_dock.raise_()
     window.log.setPlainText("VERIFIED CACHED SKIN PLAYBACK READY IN UCC\n"
         f"{result.cache.frame_count} complete frames at {result.cache.fps:g} fps; full visible mesh.\n"
         "Play/Pause, frame scrub, loop, orbit, pan and zoom are available in the animation view.\n"

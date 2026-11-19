@@ -41,6 +41,90 @@ class DesktopQtSmoke(unittest.TestCase):
         self.assertFalse(self.window.save_action.isEnabled())
         self.assertEqual(self.controller.view().name, "Changed Hero")
 
+    def test_animation_tab_shows_one_catalog_workspace_and_keeps_import_and_diagnostics_reachable(self):
+        from ucc.desktop.animation_workspace import AnimationWorkspace
+
+        pane = self.window.animations
+        pane.display_catalog([{"asset_id": "nonshipping_source", "format": "fbx", "clips": [],
+                               "status": "INDEXED"}])
+        self.window.show()
+        self.addCleanup(self.window.close)
+        self.window.tabs.setCurrentWidget(pane)
+        self.app.processEvents()
+        self.assertEqual(self.window.findChildren(AnimationWorkspace), [pane.workspace])
+        self.assertEqual(self.window.tabs.tabText(self.window.tabs.currentIndex()), "Animation library")
+        self.assertTrue(pane.catalog.isVisible())
+        self.assertTrue(pane.search.isVisible())
+        self.assertTrue(pane.preview_clip.isVisible())
+        self.assertFalse(pane.preview_clip.isEnabled())
+        self.assertFalse(pane.advanced_dialog.isVisible())
+        self.assertFalse(self.window.log.isVisible())
+
+        pane.advanced_tools.click()
+        self.assertTrue(pane.advanced_dialog.isVisible())
+        self.assertTrue(pane.selected.isVisible())
+        pane.advanced_dialog.reject()
+        self.assertFalse(pane.advanced_dialog.isVisible())
+        self.window.animation_diagnostics_action.trigger()
+        self.assertTrue(self.window.log.isVisible())
+        self.window.animation_diagnostics_action.trigger()
+        self.assertFalse(self.window.log.isVisible())
+        self.window.tabs.setCurrentWidget(self.window.character)
+        self.assertTrue(self.window.log.isVisible())
+
+    def test_animation_workspace_reveals_saved_character_when_motion_is_hidden(self):
+        from PySide6.QtWidgets import QDockWidget, QWidget
+
+        pane = self.window.animations
+        pane.display_catalog([{"asset_id": "nonshipping_source", "format": "fbx", "clips": [],
+                               "status": "INDEXED"}])
+        self.window.show()
+        self.addCleanup(self.window.close)
+        self.window.tabs.setCurrentWidget(pane)
+        character = self.window.workspace_character
+        pane.mount_character(character)
+        dock = QDockWidget(self.window)
+        dock.setWidget(QWidget(dock))
+        pane.mount_motion(dock)
+        self.app.processEvents()
+        self.assertTrue(dock.isVisible())
+        self.assertFalse(character.isVisible())
+        chrome = dock.titleBarWidget()
+
+        dock.hide()
+        self.app.processEvents()
+        self.assertTrue(character.isVisible())
+        pane.mount_motion(None)
+        pane.mount_motion(dock)
+        self.app.processEvents()
+        self.assertIs(dock.titleBarWidget(), chrome)
+        self.assertFalse(character.isVisible())
+
+    def test_workspace_static_watch_ignores_job_directory_changes_but_revokes_changed_master(self):
+        from hashlib import sha256
+        from types import SimpleNamespace
+        from ucc.desktop.static_preview_binding import bind_preview
+
+        store = self.controller.store
+        project = store.load()
+        master = store.root / 'identity-test.dat'
+        master.write_bytes(b'first identity')
+        pin = sha256(master.read_bytes()).hexdigest()
+        result = SimpleNamespace(project_id=project.project_id, revision=project.revision,
+            master_blend=project.master_blend, master_sha256=pin, watched_inputs=())
+        with (
+            patch('ucc.desktop.static_preview_binding._master_file', return_value=(master, pin)),
+            patch.object(self.window, '_clear_preview') as clear,
+        ):
+            bind_preview(self.window, result, isolate_workspace=True)
+            watcher = self.window._static_preview_watcher
+            (store.root / '.ucc-jobs').mkdir()
+            watcher.directoryChanged.emit(str(store.root))
+            clear.assert_not_called()
+            master.write_bytes(b'a different identity')
+            watcher.directoryChanged.emit(str(store.root))
+            clear.assert_called_once()
+
     def test_slider_and_advanced_anatomy_controls(self):
         self.assertFalse(self.window.character.advanced.isVisible())
         self.window.character.mode.setCurrentText("Advanced")
